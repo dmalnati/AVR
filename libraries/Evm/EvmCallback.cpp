@@ -21,6 +21,11 @@ void IdleCallback::Start()
     Evm::GetInstance().SetIdleCallback(this);
 }
 
+void IdleCallback::Stop()
+{
+    Evm::GetInstance().CancelIdleCallback(this);
+}
+
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -39,3 +44,22 @@ void TimedCallback::ScheduleInterval(uint32_t duration)
     
     Schedule(duration);
 }
+
+void TimedCallback::Cancel()
+{
+    Evm::GetInstance().CancelTimeout(this);
+    
+    // make sure this isn't re-scheduled if interval
+    isInterval_ = 0;
+}
+
+
+
+
+
+
+
+
+
+
+

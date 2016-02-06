@@ -17,7 +17,11 @@
 // - insert sorted
 // - push back
  
-
+//
+// State Keeping
+//
+// idxFront_ points to the actual first element.  Fast access.
+// idxBack_  points to the next free slot.
  
 
  
@@ -84,6 +88,18 @@ public:
         ++size_;
     }
     
+    T PopBack()
+    {
+        --idxBack_;
+        if (idxBack_ >= capacity_) { idxBack_ = (capacity_ - 1); }
+        
+        T element = table_[idxBack_];
+        
+        --size_;
+        
+        return element;
+    }
+    
     
     /////////// Random Access ///////////
    
@@ -104,6 +120,62 @@ public:
         }
    
         return table_[idxActual];
+    }
+    
+    T PopAt(uint8_t idxLogical)
+    {
+        // Hold a temp copy to return after array shifted
+        T element = (*this)[idxLogical];
+        
+        // Calculate elements to the right of this element
+        // We shift all elements, then call PopBack to update
+        // data structure internals.
+        uint8_t elementsToShift = (Size() - idxLogical) - 1;
+        
+        // Shift everything remaining to the left
+        for (uint8_t i = idxLogical; i <= elementsToShift; ++i)
+        {
+            (*this)[i] = (*this)[i + 1];
+        }
+        
+        PopBack();
+        
+        return element;
+    }
+    
+    bool Remove(T element)
+    {
+        bool    retVal     = false;
+        uint8_t idxLogical = 0;
+        
+        if (FindIdxFirst(element, idxLogical))
+        {
+            PopAt(idxLogical);
+            
+            retVal = true;
+        }
+        
+        return retVal;
+    }
+    
+    
+    /////////// Search ///////////
+    
+    bool FindIdxFirst(T element, uint8_t &idxLogical)
+    {
+        bool    found = false;
+        uint8_t size  = Size();
+        
+        for (idxLogical = 0; idxLogical < size; ++idxLogical)
+        {
+            if (element == (*this)[idxLogical])
+            {
+                found = true;
+                break;
+            }
+        }
+        
+        return found;
     }
     
     
@@ -161,6 +233,11 @@ public:
         printf("idxFront_: %i\n", idxFront_);
         printf("idxBack_ : %i\n", idxBack_);
         printf("size_    : %i\n", size_);
+        printf("Elements :\n");
+        for (uint8_t i = 0; i < Size(); ++i)
+        {
+            printf("    %3i: %i\n", i, (uint32_t)(*this)[i]);
+        }
     }
 
 #endif

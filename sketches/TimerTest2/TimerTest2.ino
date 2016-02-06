@@ -54,12 +54,12 @@ void TogglePINX(void *userData)
 
 
 
-class MyPinToggler : public IdleCallback
+class MyIdlePinToggler : public IdleCallback
 {
 public:
-  MyPinToggler(uint8_t pin) : pin_(pin) { pinMode(pin_, OUTPUT); }
+  MyIdlePinToggler(uint8_t pin) : pin_(pin) { pinMode(pin_, OUTPUT); }
 
-private:
+protected:
   void OnCallback()
   {
     digitalWrite(pin_, HIGH);
@@ -69,19 +69,79 @@ private:
   uint8_t pin_;
 };
 
+class MyIdlePinTogglerWhoCancelsAfterX : public MyIdlePinToggler
+{
+public:
+  MyIdlePinTogglerWhoCancelsAfterX(uint8_t pin, uint8_t count)
+  : MyIdlePinToggler(pin)
+  , count_(count)
+  {
+    // nothing to do
+  }
+
+protected:
+  virtual void OnCallback()
+  {
+    for (uint8_t i = 0; i < count_; ++i)
+    {
+      MyIdlePinToggler::OnCallback();
+    }
+    
+    --count_;
+
+    if (!count_)
+    {
+      Stop();
+    }
+  }
+
+private:
+  uint8_t count_;
+};
+
 class MyTimedPinToggler : public TimedCallback
 {
 public:
   MyTimedPinToggler(uint8_t pin) : pin_(pin) { pinMode(pin_, OUTPUT); }
 
-private:
-  void OnCallback()
+protected:
+  virtual void OnCallback()
   {
     digitalWrite(pin_, HIGH);
     digitalWrite(pin_, LOW);
   }
 
   uint8_t pin_;
+};
+
+class MyTimedPinTogglerWhoCancelsAfterX : public MyTimedPinToggler
+{
+public:
+  MyTimedPinTogglerWhoCancelsAfterX(uint8_t pin, uint8_t count)
+  : MyTimedPinToggler(pin)
+  , count_(count)
+  {
+    // nothing to do
+  }
+
+protected:
+  virtual void OnCallback()
+  {
+    for (uint8_t i = 0; i < count_; ++i)
+    {
+      MyTimedPinToggler::OnCallback();
+    }
+    
+    --count_;
+
+    if (!count_)
+    {
+      Cancel();
+    }
+  }
+
+private:
+  uint8_t count_;
 };
 
 
@@ -91,9 +151,12 @@ void loop()
 
   
   // Set up an idle callback the hard way
-  MyPinToggler pt0(0); pt0.Start();
-  //MyPinToggler pt3(3); pt3.Start();
+  //MyIdlePinToggler pt0(0); pt0.Start();
+  MyIdlePinTogglerWhoCancelsAfterX ptx0(0, 15); ptx0.Start();
+  //MyIdlePinToggler pt3(3); pt3.Start();
   //IdleCallbackFnWrapper ic3(TogglePIN3, NULL); ic3.Start();
+
+  MyIdlePinTogglerWhoCancelsAfterX ptx2(2, 45); ptx2.Start();
 
   // Set up timed callbacks
   //MyTimedPinToggler tpt2(2); tpt2.Schedule(50);;
@@ -102,6 +165,7 @@ void loop()
   //TimedCallbackFnWrapper tcf0(TogglePINX, (void *)0); tcf0.ScheduleInterval(1000);
   //TimedCallbackFnWrapper tcf21(TogglePINX, (void *)2); tcf21.ScheduleInterval(150);
   //TimedCallbackFnWrapper tcf3(TogglePINX, (void *)3); tcf3.ScheduleInterval(100);
+  MyTimedPinTogglerWhoCancelsAfterX tcx3(3, 7); tcx3.ScheduleInterval(20);
   //TimedCallbackFnWrapper tcf2(TogglePINX, (void *)2); tcf2.ScheduleInterval(0);
   
   evm.MainLoop();

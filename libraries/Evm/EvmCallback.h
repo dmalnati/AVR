@@ -33,6 +33,7 @@ class IdleCallback : public Callback
 {
 public:
     void Start();
+    void Stop();
 };
 
 
@@ -51,6 +52,7 @@ public:
 
     void Schedule(uint32_t duration);
     void ScheduleInterval(uint32_t duration);
+    void Cancel();
 
 private:
     // Evm uses these for state keeping
@@ -98,112 +100,6 @@ private:
     CallbackFn  fn_;
     void       *userData_;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-//////////////////////////////////////////////////////////////////////
-//
-// Simple Callback interface, and wrapper for pure functions
-//
-//////////////////////////////////////////////////////////////////////
-
-class Callback
-{
-public:
-    Callback() { }
-    ~Callback() { }
-    virtual void OnCallback() = 0;
-};
-
-template<CallbackFn fn, void *userData>
-class CallbackFnWrapper : public Callback
-{
-public:
-    CallbackFnWrapper() : fn_(fn), userData_(userData) { }
-    ~CallbackFnWrapper() { }
-    
-    virtual void OnCallback() { fn_(userData_); }
-private:
-    CallbackFn  fn_;
-    void       *userData_;
-};
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Simple Timed Callback interface, and wrapper for pure functions
-//
-//////////////////////////////////////////////////////////////////////
-
-class TimedCallback : public Callback
-{
-    friend class Evm;
-
-private:
-    uint32_t timeQueued_;
-    uint32_t duration_;
-};
-
-template<CallbackFn fn, void *userData>
-class TimedCallbackFnWrapper : public TimedCallback
-{
-public:
-    TimedCallbackFnWrapper() : fn_(fn), userData_(userData) { }
-    ~TimedCallbackFnWrapper() { }
-    
-    virtual void OnCallback() { fn_(userData_); }
-private:
-    CallbackFn  fn_;
-    void       *userData_;
-};
-
-*/
-
-//////////////////////////////////////////////////////////////////////
-//
-// Callback system
-// - Only way to schedule Evm work is through these classes
-//
-//////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

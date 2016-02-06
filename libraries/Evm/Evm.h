@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 
-#include <Arduino.h>
 
 #include "EvmCallback.h"
 #include "MyStaqueue.h"
@@ -20,47 +19,13 @@ public:
     
     void MainLoop();
     
-    static Evm &
-    GetInstance(uint8_t maxEventCapacity = DEFAULT_MAX_EVENT_CAPACITY)
-    {
-        static Evm *evm = NULL;
-        
-        if (!evm)
-        {
-            evm = new Evm(maxEventCapacity);
-        }
-        
-        return *evm;
-    }
-
-    static int8_t CmpTimedCallback(TimedCallback *tc1, TimedCallback *tc2)
-    {
-        int8_t retVal;
-        
-        uint32_t timeNow = millis();
-        
-        uint32_t expiryOne = (timeNow + tc1->timeQueued_) + tc1->duration_;
-        uint32_t expiryTwo = (timeNow + tc2->timeQueued_) + tc2->duration_;
-        
-        if (expiryOne < expiryTwo)
-        {
-            retVal = -1;
-        }
-        else if (expiryOne > expiryTwo)
-        {
-            retVal = 1;
-        }
-        else // (expiryOne == expiryTwo)
-        {
-            retVal = 0;
-        }
-        
-        return retVal;
-    }
+    static Evm &GetInstance(uint8_t maxEventCapacity = MAX_EVENT_CAPACITY);
+    static int8_t CmpTimedCallback(TimedCallback *tc1, TimedCallback *tc2);
     
 private:
-    static const uint8_t DEFAULT_MAX_EVENT_CAPACITY = 8;
+    static const uint8_t MAX_EVENT_CAPACITY = 8;
 
+    
     // Can't construct directly
     Evm(uint8_t maxEventCapacity)
     : timedEventList_(maxEventCapacity)
@@ -69,22 +34,24 @@ private:
         // nothing to do
     }
     
-    void SetTimeout(uint32_t duration, TimedCallback *cbo);
-    void SetTimeoutMs(uint32_t duration, TimedCallback *cbo);
+    
+    // Idle Events
     void SetIdleCallback(Callback *cbo);
-
-    void HandleTimers();
+    void CancelIdleCallback(Callback *cbo);
     void HandleIdleFunctions();
     
+    
+    // Timed Events
+    void SetTimeout(uint32_t duration, TimedCallback *cbo);
+    void SetTimeoutMs(uint32_t duration, TimedCallback *cbo);
+    void CancelTimeout(TimedCallback *cbo);
+    void HandleTimers();
+
+    
+    // Members
     MyStaqueue<TimedCallback *> timedEventList_;
     MyStaqueue<Callback *>      idleEventList_;
 };
-
-
-
-
-
-
 
 
 #endif  // __EVM_H__
