@@ -39,8 +39,53 @@ public:
         delete[] table_;
     }
  
+    /////////// Basic Getters / Setters ///////////
+    
     uint8_t Capacity() const { return capacity_; }
     uint8_t Size() const { return size_; }
+    
+    
+    /////////// Front Access ///////////
+    
+    void PushFront(T element)
+    {
+        --idxFront_;
+        if (idxFront_ >= capacity_) { idxFront_ = (capacity_ - 1); }
+        
+        table_[idxFront_] = element;
+        
+        ++size_;
+    }
+    
+    T PeekFront() const { return table_[idxFront_]; }
+ 
+    T PopFront()
+    {
+        T element = table_[idxFront_];
+ 
+        ++idxFront_;
+        if (idxFront_ >= capacity_) { idxFront_ = 0; }
+ 
+        --size_;
+ 
+        return element;
+    }
+    
+    
+    /////////// Back Access ///////////
+ 
+    void PushBack(T element)
+    {
+        table_[idxBack_] = element;
+ 
+        ++idxBack_;
+        if (idxBack_ >= capacity_) { idxBack_ = 0; }
+ 
+        ++size_;
+    }
+    
+    
+    /////////// Random Access ///////////
    
     T &operator[](uint8_t idxLogical)
     {
@@ -60,52 +105,10 @@ public:
    
         return table_[idxActual];
     }
-   
-    T PeekFront() const { return table_[idxFront_]; }
- 
-    T PopFront()
-    {
-        T element = table_[idxFront_];
- 
-        ++idxFront_;
-        if (idxFront_ >= capacity_) { idxFront_ = 0; }
- 
-        --size_;
- 
-        return element;
-    }
- 
-    void PushBack(T element)
-    {
-        table_[idxBack_] = element;
- 
-        ++idxBack_;
-        if (idxBack_ >= capacity_) { idxBack_ = 0; }
- 
-        ++size_;
-    }
     
-    void PushFront(T element)
-    {
-        --idxFront_;
-        if (idxFront_ >= capacity_) { idxFront_ = (capacity_ - 1); }
-        
-        table_[idxFront_] = element;
-        
-        ++size_;
-    }
     
-#ifdef DEBUG
-
-    void PrintDebug()
-    {
-        printf("idxFront_: %i\n", idxFront_);
-        printf("idxBack_ : %i\n", idxBack_);
-        printf("size_    : %i\n", size_);
-    }
-
-#endif
-    
+    /////////// Sorted Access ///////////
+ 
     typedef int8_t (*CmpFn)(T left, T right);
     
     // inserts before the first element greater than it.
@@ -147,7 +150,22 @@ public:
             }
         }
     }
- 
+    
+    
+    /////////// Debug ///////////
+    
+#ifdef DEBUG
+
+    void PrintDebug()
+    {
+        printf("idxFront_: %i\n", idxFront_);
+        printf("idxBack_ : %i\n", idxBack_);
+        printf("size_    : %i\n", size_);
+    }
+
+#endif
+   
+   
 private:
     static const uint8_t OVERFLOW_BOUNDARY = (uint8_t)-1;
  
