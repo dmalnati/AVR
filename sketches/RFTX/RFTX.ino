@@ -6,17 +6,13 @@
 
 
 class MyTimedSender
-: public TimedCallback
-, public MyRadioControllerCallbackIface
+: private TimedCallback
+, public MyRadioControllerTxCallbackIface
 {
 public:
-    MyTimedSender(uint8_t pin, uint8_t interval)
-    : rc_(pin)
+    MyTimedSender(int8_t pin, uint16_t interval)
+    : rc_(-1, NULL, pin, this)
     {
-        // Register to know when TX has finished
-        rc_.SetCallback(this);
-
-        // 10 seconds
         digitalWrite(3, HIGH);
         ScheduleInterval(interval);
         digitalWrite(3, LOW);
@@ -33,7 +29,7 @@ private:
     }
 
     // Implement the MyRadioControllerCallbackIface callback
-    virtual void OnTxFinished()
+    virtual void OnTxComplete()
     {
         digitalWrite(3, LOW);
     }
@@ -61,7 +57,7 @@ private:
 
 // This sketch doesn't work on ATtiny85 since it seems that
 // VirtualWire takes over Timer0 on that platform (only)
-// (despite saying Timer1)
+// (despite saying Timer1, which is accurate elsewhere.)
 //
 // As a result, use of micros()/millis() doesn't work.
 // That affects:
@@ -91,13 +87,13 @@ void loop()
 
     // Invoke, it tries to send periodically.
     const uint8_t PIN_RF_TX = 2;
-    const uint8_t SEND_INTERVAL = 75;
+    const uint16_t SEND_INTERVAL = 1000;
     MyTimedSender mts(PIN_RF_TX, SEND_INTERVAL);
 
     // Run this guy just to keep track of how events unfold
     // during transmission.  AKA make sure things don't get
     // blocked.
-    TimedPinToggler tpt1(1) ; tpt1.ScheduleInterval(1);
+    TimedPinToggler tpt1(1) ; tpt1.ScheduleInterval(100);
 
     evm.MainLoop();
 }

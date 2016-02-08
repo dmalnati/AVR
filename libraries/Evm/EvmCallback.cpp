@@ -37,6 +37,11 @@ void IdleCallback::Stop()
 
 void TimedCallback::Schedule(uint32_t duration)
 {
+    // Don't allow yourself to be scheduled more than once
+    uint8_t isIntervalCache = isInterval_;
+    Cancel();
+    isInterval_ = isIntervalCache;
+    
     Evm::GetInstance().SetTimeout(duration, this);
 }
 

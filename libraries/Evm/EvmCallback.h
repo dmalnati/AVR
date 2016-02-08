@@ -32,6 +32,7 @@ public:
 class IdleCallback : public Callback
 {
 public:
+    ~IdleCallback() { Stop(); }
     void Start();
     void Stop();
 };
@@ -49,6 +50,7 @@ class TimedCallback : public Callback
     
 public:
     TimedCallback() : isInterval_(0) { }
+    ~TimedCallback() { Cancel(); }
 
     void Schedule(uint32_t duration);
     void ScheduleInterval(uint32_t duration);

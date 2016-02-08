@@ -9,105 +9,168 @@
 // Notes about features:
 // - Abstracts libs and hw behind the implementation
 //   - VirtualWire at first implementation.
-// - Lets caller be told when a message has been sent in three ways:
-//   - boolean pollable value
-//   - subclass this object and wait for internal callback
-// - Other
-//   - synchronous wait not offered, have to use one of the above
+// - Synchronous operations unavailable, async callbacks only.
+//
+// How to use:
+// - TX and RX can be used independently or together.
+//   - pass -1 for any pin not used
+// - TX
+//   - Lets caller register for callback when message completes being sent
+// - RX
+//   - Lets caller register for callback when message arrives
+//
 
 
-class MyRadioControllerCallbackIface
+class MyRadioControllerTxCallbackIface
 {
 public:
-    virtual void OnTxFinished() = 0;
+    virtual void OnTxComplete() = 0;
+};
+
+class MyRadioControllerRxCallbackIface
+{
+public:
+    virtual void OnRxAvailable(uint8_t *buf, uint8_t bufSize) = 0;
 };
 
 
 class MyRadioController : private IdleCallback
 {
 public:
-    MyRadioController(uint8_t pin, uint16_t baud = DEFAULT_BAUD)
-    : pin_(pin)
+    MyRadioController(int8_t                            rxPin,
+                      MyRadioControllerRxCallbackIface *rxCb,
+                      int8_t                            txPin,
+                      MyRadioControllerTxCallbackIface *txCb,
+                      uint16_t                          baud = DEFAULT_BAUD)
+    : rxCb_(rxPin != -1 ? rxCb : NULL)
+    , txCb_(txPin != -1 ? txCb : NULL)
     , txActive_(0)
     , txActiveLast_(0)
     {
-        pinMode(pin, OUTPUT);
+        // Handle RX functions
+        if (rxCb_) { pinMode(rxPin, INPUT);   vw_set_rx_pin(rxPin); }
         
-        // init the VirtualWire libs
-        vw_set_tx_pin(pin);
-        vw_setup(baud);
+        // Handle TX functions
+        if (txCb_) { pinMode(txPin, OUTPUT);  vw_set_tx_pin(txPin); }
+        
+        // Configure bitrate, common between RX and TX
+        if (rxCb_ || txCb_) { vw_setup(baud); }
+        
+        // Handle RX functions
+        if (rxCb_) { vw_rx_start(); }
+        
+        // Start Idle processing if necessary
+        MaybeStartIdleProcessing();
+    }
+    
+    ~MyRadioController()
+    {
+        if (rxCb_) { vw_rx_stop(); }
     }
     
     uint8_t Send(uint8_t* buf, uint8_t len)
     {
-        uint8_t txActive = GetTxActive();
-        uint8_t retVal   = txActive;
+        uint8_t retVal = !txActive_;
         
         // Only send if there are no ongoing transmissions.
         //
         // Insanely, VirtualWire seems to lock the entire core to
-        // (I'm guessing) finish sending the prior message.
+        // finish sending the prior message.
         // That isn't acceptable, so the burden falls to senders to cope
         // with not being able to send.
-        if (!txActive)
+        if (retVal)
         {
             // pass-through to VirtualWire
             retVal = vw_send(buf, len);
             
-            // update status
-            txActive_ = vx_tx_active();
+            // if sending not possible, then don't take any further action
+            if (retVal)
+            {
+                // declare that tx is active, need to force it to be true
+                // at least once so that subsequent checks will notice a
+                // change when it's done
+                txActive_ = 1;
 
-            // Become Idle process
-            Start();
+                // Become Idle process
+                MaybeStartIdleProcessing();
+            }
         }
         
         return retVal;
     }
     
-    void SetCallback(MyRadioControllerCallbackIface *cb) { cb_ = cb; }
-    
-    // Users can poll this to find out state of TX
-    uint8_t GetTxActive() const { return txActive_; }
-    
-    // Sub-classes should implement this to find out about this event
-    virtual void OnTxFinished() { }
-
 private:
     static const uint16_t DEFAULT_BAUD = 2000;
     
-    // Implement the IdleCallback notification
+    // Implement the IdleCallback event
     virtual void OnCallback()
     {
-        // debug, watch when this thing is acting as an idle proc
         digitalWrite(0, HIGH);
+        if (rxCb_) { CheckForRxData();     }
+        if (txCb_) { CheckForTxComplete(); }
         digitalWrite(0, LOW);
+    }
+    
+    void MaybeStartIdleProcessing()
+    {
+        // When suggested, we should be an Idle process under two conditions:
+        // - We are doing RX  -or-
+        // - We are doing TX, and a message is currently being sent
         
-        // Check status of TX -- currently going on?
+        if (rxCb_ || txActive_) { Start(); }
+    }
+    
+    void MaybeStopIdleProcessing()
+    {
+        // The only way this function can be called is if we're either doing
+        // TX or RX or both.
+        //
+        // Given that, the only conditions where we can stop being an Idle
+        // process are:
+        // - NOT doing RX -and- are doing TX, but no active msg
+        
+        if (!rxCb_ && !txActive_) { Stop(); }
+    }
+    
+    void CheckForRxData()
+    {
+        uint8_t buf[VW_MAX_MESSAGE_LEN];
+        uint8_t bufLen = VW_MAX_MESSAGE_LEN;
+        
+        if (vw_get_message(buf, &bufLen))
+        {
+            rxCb_->OnRxAvailable(buf, bufLen);
+        }
+    }
+    
+    void CheckForTxComplete()
+    {
+        // Record prior TX state
+        txActiveLast_ = txActive_;
+        
+        // Update status of TX -- currently going on?
         txActive_ = vx_tx_active();
         
         // If TX finished since the last time checked, this is an event we care
         // about.
         if (txActive_ == 0 && txActive_ != txActiveLast_)
         {
-            // Stop being an idle process for now since the one thing you're
+            // Call back listener
+            txCb_->OnTxComplete();
+            
+            // Stop being an idle process for now since the one thing TX is
             // trying to be responsive to just happened.
-            Stop();
-            
-            // Call back any child classes
-            OnTxFinished();
-            
-            // Call back any listeners
-            if (cb_) { cb_->OnTxFinished(); }
+            MaybeStopIdleProcessing();
         }
-        
-        txActiveLast_ = txActive_;
     }
     
-    uint8_t pin_;
-    uint8_t txActive_;
-    uint8_t txActiveLast_;
-    
-    MyRadioControllerCallbackIface *cb_;
+    // RX Members
+    MyRadioControllerRxCallbackIface *rxCb_;
+
+    // TX Members
+    MyRadioControllerTxCallbackIface *txCb_;
+    uint8_t                           txActive_;
+    uint8_t                           txActiveLast_;
 };
 
 
