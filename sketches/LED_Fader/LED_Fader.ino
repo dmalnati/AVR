@@ -5,15 +5,13 @@
 const uint8_t PIN_SERIAL_TX = 1;
 const uint8_t PIN_SERIAL_RX = -1;
 
-SoftwareSerial SS(PIN_SERIAL_RX, PIN_SERIAL_TX);
+SoftwareSerial sS(PIN_SERIAL_RX, PIN_SERIAL_TX);
 
 void setup()
 {
     pinMode(PIN_SERIAL_TX, OUTPUT);
-    SS.begin(9600);
+    sS.begin(9600);
 }
-
-
 
 void loop()
 {

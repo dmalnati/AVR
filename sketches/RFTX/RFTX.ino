@@ -1,55 +1,131 @@
-#include <SoftwareSerial.h>
-#include <VirtualWire.h>
+#include <Evm.h>
+#include <EvmCallback.h>
+#include <MyRadioController.h>
 
-const int PIN_RF_TX = 3;
-const int PIN_LED = PB2;
-const int PIN_SERIAL_TX = PB1;
-const int PIN_SERIAL_RX = -1;
 
-SoftwareSerial SS(PIN_SERIAL_RX, PIN_SERIAL_TX);
+
+
+class MyTimedSender
+: public TimedCallback
+, public MyRadioControllerCallbackIface
+{
+public:
+    MyTimedSender(uint8_t pin, uint8_t interval)
+    : rc_(pin)
+    {
+        // Register to know when TX has finished
+        rc_.SetCallback(this);
+
+        // 10 seconds
+        digitalWrite(3, HIGH);
+        ScheduleInterval(interval);
+        digitalWrite(3, LOW);
+    }
+
+private:
+    constexpr static const char *MSG = "TEXT";
+
+    // Implement the TimedCallback interface
+    virtual void OnCallback()
+    {
+        digitalWrite(3, HIGH);
+        rc_.Send((uint8_t *)MSG, strlen(MSG));
+    }
+
+    // Implement the MyRadioControllerCallbackIface callback
+    virtual void OnTxFinished()
+    {
+        digitalWrite(3, LOW);
+    }
+
+    MyRadioController rc_;
+};
+
+
+
+class TimedPinToggler : public TimedCallback
+{
+public:
+    TimedPinToggler(uint8_t pin) : pin_(pin) { pinMode(pin_, OUTPUT); }
+    
+    void OnCallback()
+    {
+        digitalWrite(pin_, HIGH);
+        digitalWrite(pin_, LOW);
+    }
+
+private:
+    uint8_t pin_;
+};
+
+
+// This sketch doesn't work on ATtiny85 since it seems that
+// VirtualWire takes over Timer0 on that platform (only)
+// (despite saying Timer1)
+//
+// As a result, use of micros()/millis() doesn't work.
+// That affects:
+// - Evm's TimedEvents (but not IdleEvents)
+// - LedFader, etc
+//
+void loop()
+{
+    Evm &evm = Evm::GetInstance();
+
+    // Just enable and toggle some bits to make debugging easier
+    // both to show where the start of the program is but also
+    // to set up some pins for signaling elsewhere deeper in libs.
+    delay(200);
+    for (uint8_t i = 0; i < 5; ++i)
+    {
+        pinMode(i, OUTPUT);
+    }
+    delay(200);
+    for (uint8_t i = 0; i < 5; ++i)
+    {
+        digitalWrite(i, LOW);  delay(1);
+        digitalWrite(i, HIGH); delay(1);
+        digitalWrite(i, LOW);  delay(1);
+    }
+    delay(200);
+
+    // Invoke, it tries to send periodically.
+    const uint8_t PIN_RF_TX = 2;
+    const uint8_t SEND_INTERVAL = 75;
+    MyTimedSender mts(PIN_RF_TX, SEND_INTERVAL);
+
+    // Run this guy just to keep track of how events unfold
+    // during transmission.  AKA make sure things don't get
+    // blocked.
+    TimedPinToggler tpt1(1) ; tpt1.ScheduleInterval(1);
+
+    evm.MainLoop();
+}
+
+
+
+
+
+
+
 
 void setup()
 {
-  vw_set_tx_pin(PIN_RF_TX);
-  vw_setup(2000);
-
-  pinMode(PIN_LED, OUTPUT);
-
-  pinMode(PIN_SERIAL_TX, OUTPUT);
-  SS.begin(9600);
+    // nothing to do
 }
 
-void MyDelay(uint8_t ms)
-{
-  for (int i = 0; i < 255; ++i)
-  {
-    ++i; --i; ++i; --i;
-  }
-}
 
-void TransmitLoop()
-{
-  uint8_t txBuf[2] = { 0 };
-  uint8_t *seqNo = &(txBuf[0]);
-  uint8_t *data  = &(txBuf[1]);
 
-  while (1)
-  {
-    *seqNo += 1;
-    *data = (*data + 1) % 5;
 
-    SS.write(txBuf, 2);
 
-    digitalWrite(PIN_LED, HIGH);
-    vw_send(txBuf, 2);
-    vw_wait_tx();
-    digitalWrite(PIN_LED, LOW);
-    
-    MyDelay(100);
-  }
-}
 
-void loop()
-{
-  TransmitLoop();
-}
+
+
+
+
+
+
+
+
+
+

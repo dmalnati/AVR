@@ -18,6 +18,8 @@
 
 void IdleCallback::Start()
 {
+    // Don't allow yourself to be scheduled more than once
+    Stop();
     Evm::GetInstance().SetIdleCallback(this);
 }
 
