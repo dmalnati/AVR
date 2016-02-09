@@ -4,10 +4,10 @@
 
 #include <Arduino.h>
 
-#include "EvmCallback.h"
+#include "EvmEventHandler.h"
 
 
-class MyLedFader : private IdleCallback
+class MyLedFader : private IdleTimeEventHandler
 {
 public:
     MyLedFader(uint8_t pin)
@@ -24,11 +24,8 @@ public:
 
     void Fade()
     {
-        // Remove self as idle callback in case already running
-        Stop();
-
         // Register as idle callback
-        Start();
+        RegisterForIdleTimeEvent();
 
         // Set up for next (first) step
         bool reset = true;
@@ -84,7 +81,7 @@ private:
         timeStepDuration_ = STEP_DURATION;
     }
 
-    void OnCallback()
+    void OnIdleTimeEvent()
     {
         // Has current step expired?
         uint32_t timeNow = micros();

@@ -13,12 +13,12 @@ MyShiftRegister sr(PIN_SR_LOAD,
                    PIN_SR_CLOCK_ENABLE,
                    PIN_SR_SERIAL);
 
-SoftwareSerial SS(PIN_SERIAL_RX, PIN_SERIAL_TX);
+SoftwareSerial ss(PIN_SERIAL_RX, PIN_SERIAL_TX);
 
 void setup()
 {
   pinMode(PIN_SERIAL_TX, OUTPUT);
-  SS.begin(9600);
+  ss.begin(9600);
 }
 
 void MonitorSIPO()
@@ -32,7 +32,7 @@ void MonitorSIPO()
 
     if (sipoData != sipoDataLast)
     {
-      SS.write(sipoData);
+      ss.write(sipoData);
     }
 
     sipoDataLast = sipoData;

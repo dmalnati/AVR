@@ -1,12 +1,12 @@
 #include <Evm.h>
-#include <EvmCallback.h>
+#include <EvmEventHandler.h>
 #include <MyRadioController.h>
 
 
 
 
 class MyTimedSender
-: private TimedCallback
+: private TimedEventHandler
 , public MyRadioControllerTxCallbackIface
 {
 public:
@@ -14,7 +14,7 @@ public:
     : rc_(-1, NULL, pin, this)
     {
         digitalWrite(3, HIGH);
-        ScheduleInterval(interval);
+        RegisterForTimedEventInterval(interval);
         digitalWrite(3, LOW);
     }
 
@@ -22,7 +22,7 @@ private:
     constexpr static const char *MSG = "TEXT";
 
     // Implement the TimedCallback interface
-    virtual void OnCallback()
+    virtual void OnTimedEvent()
     {
         digitalWrite(3, HIGH);
         rc_.Send((uint8_t *)MSG, strlen(MSG));
@@ -39,12 +39,12 @@ private:
 
 
 
-class TimedPinToggler : public TimedCallback
+class TimedPinToggler : public TimedEventHandler
 {
 public:
     TimedPinToggler(uint8_t pin) : pin_(pin) { pinMode(pin_, OUTPUT); }
     
-    void OnCallback()
+    void OnTimedEvent()
     {
         digitalWrite(pin_, HIGH);
         digitalWrite(pin_, LOW);
@@ -93,7 +93,7 @@ void loop()
     // Run this guy just to keep track of how events unfold
     // during transmission.  AKA make sure things don't get
     // blocked.
-    TimedPinToggler tpt1(1) ; tpt1.ScheduleInterval(100);
+    TimedPinToggler tpt1(1) ; tpt1.RegisterForTimedEventInterval(100);
 
     evm.MainLoop();
 }

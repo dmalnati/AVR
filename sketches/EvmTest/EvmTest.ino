@@ -1,16 +1,7 @@
 #include <Evm.h>
-#include <MyRadioController.h>
 
 
-
-class MyRadioReceiver : public MyRadioController
-{
-public:
-
-
-private:
-
-};
+// Some code to test refactoring Evm libs.
 
 
 void loop()
@@ -18,31 +9,10 @@ void loop()
     Evm &evm = Evm::GetInstance();
 
 
-
     evm.MainLoop();
 }
-
-
-
-
-
-
-
-
 
 void setup()
 {
     // nothing to do
 }
-
-
-
-
-
-
-
-
-
-
-
-

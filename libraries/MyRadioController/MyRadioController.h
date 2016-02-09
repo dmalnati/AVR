@@ -2,7 +2,7 @@
 #define __MY_RADIO_CONTROLLER_H__
 
 
-#include <EvmCallback.h>
+#include <EvmEventHandler.h>
 #include <VirtualWire.h>
 
 
@@ -34,7 +34,7 @@ public:
 };
 
 
-class MyRadioController : private IdleCallback
+class MyRadioController : private IdleTimeEventHandler
 {
 public:
     MyRadioController(int8_t                            rxPin,
@@ -102,8 +102,8 @@ public:
 private:
     static const uint16_t DEFAULT_BAUD = 2000;
     
-    // Implement the IdleCallback event
-    virtual void OnCallback()
+    // Implement the Idle event
+    virtual void OnIdleTimeEvent()
     {
         digitalWrite(0, HIGH);
         if (rxCb_) { CheckForRxData();     }
@@ -117,7 +117,7 @@ private:
         // - We are doing RX  -or-
         // - We are doing TX, and a message is currently being sent
         
-        if (rxCb_ || txActive_) { Start(); }
+        if (rxCb_ || txActive_) { RegisterForIdleTimeEvent(); }
     }
     
     void MaybeStopIdleProcessing()
@@ -129,7 +129,7 @@ private:
         // process are:
         // - NOT doing RX -and- are doing TX, but no active msg
         
-        if (!rxCb_ && !txActive_) { Stop(); }
+        if (!rxCb_ && !txActive_) { DeRegisterForIdleTimeEvent(); }
     }
     
     void CheckForRxData()
