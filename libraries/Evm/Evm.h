@@ -5,14 +5,14 @@
 #include <stdint.h>
 
 
-#include "EvmCallback.h"
+#include "EvmEventHandler.h"
 #include "MyStaqueue.h"
 
 
 class Evm
 {
-    friend class IdleCallback;
-    friend class TimedCallback;
+    friend class IdleTimeEventHandler;
+    friend class TimedEventHandler;
     
 public:
     ~Evm() {}
@@ -20,7 +20,8 @@ public:
     void MainLoop();
     
     static Evm &GetInstance(uint8_t maxEventCapacity = MAX_EVENT_CAPACITY);
-    static int8_t CmpTimedCallback(TimedCallback *tc1, TimedCallback *tc2);
+    static int8_t CmpTimedEventHandler(TimedEventHandler *teh1,
+                                       TimedEventHandler *teh2);
     
 private:
     static const uint8_t MAX_EVENT_CAPACITY = 8;
@@ -28,29 +29,30 @@ private:
     
     // Can't construct directly
     Evm(uint8_t maxEventCapacity)
-    : timedEventList_(maxEventCapacity)
-    , idleEventList_(maxEventCapacity)
+    : idleTimeEventHandlerList_(maxEventCapacity)
+    , timedEventHandlerList_(maxEventCapacity)
     {
         // nothing to do
     }
     
     
     // Idle Events
-    void SetIdleCallback(Callback *cbo);
-    void CancelIdleCallback(Callback *cbo);
-    void HandleIdleFunctions();
+    void RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh);
+    void DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh);
+    
+    void ServiceIdleTimeEventHandlers();
     
     
     // Timed Events
-    void SetTimeout(uint32_t duration, TimedCallback *cbo);
-    void SetTimeoutMs(uint32_t duration, TimedCallback *cbo);
-    void CancelTimeout(TimedCallback *cbo);
-    void HandleTimers();
+    void RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t duration );
+    void DeRegisterTimedEventHandler(TimedEventHandler *teh);
+    
+    void ServiceTimedEventHandlers();
 
     
     // Members
-    MyStaqueue<TimedCallback *> timedEventList_;
-    MyStaqueue<Callback *>      idleEventList_;
+    MyStaqueue<IdleTimeEventHandler *> idleTimeEventHandlerList_;
+    MyStaqueue<TimedEventHandler *>    timedEventHandlerList_;
 };
 
 

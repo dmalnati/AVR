@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "EvmCallback.h"
+#include "EvmEventHandler.h"
 
 /*
  * Have to keep some of this in a cc file so that the mutual-dependency
@@ -16,16 +16,17 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-void IdleCallback::Start()
+void IdleTimeEventHandler::RegisterForIdleTimeEvent()
 {
     // Don't allow yourself to be scheduled more than once
-    Stop();
-    Evm::GetInstance().SetIdleCallback(this);
+    DeRegisterForIdleTimeEvent();
+    
+    Evm::GetInstance().RegisterIdleTimeEventHandler(this);
 }
 
-void IdleCallback::Stop()
+void IdleTimeEventHandler::DeRegisterForIdleTimeEvent()
 {
-    Evm::GetInstance().CancelIdleCallback(this);
+    Evm::GetInstance().DeRegisterIdleTimeEventHandler(this);
 }
 
 
@@ -35,26 +36,28 @@ void IdleCallback::Stop()
 //
 //////////////////////////////////////////////////////////////////////
 
-void TimedCallback::Schedule(uint32_t duration)
+void TimedEventHandler::RegisterForTimedEvent(uint32_t duration)
 {
-    // Don't allow yourself to be scheduled more than once
+    // Don't allow yourself to be scheduled more than once.
+    // Cache whether this is an interval callback since that
+    // gets reset during cancel.
     uint8_t isIntervalCache = isInterval_;
-    Cancel();
+    DeRegisterForTimedEvent();
     isInterval_ = isIntervalCache;
     
-    Evm::GetInstance().SetTimeout(duration, this);
+    Evm::GetInstance().RegisterTimedEventHandler(this, duration);
 }
 
-void TimedCallback::ScheduleInterval(uint32_t duration)
+void TimedEventHandler::RegisterForTimedEventInterval(uint32_t duration)
 {
     isInterval_ = 1;
     
-    Schedule(duration);
+    RegisterForTimedEvent(duration);
 }
 
-void TimedCallback::Cancel()
+void TimedEventHandler::DeRegisterForTimedEvent()
 {
-    Evm::GetInstance().CancelTimeout(this);
+    Evm::GetInstance().DeRegisterTimedEventHandler(this);
     
     // make sure this isn't re-scheduled if interval
     isInterval_ = 0;

@@ -9,17 +9,17 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-void Evm::SetIdleCallback(Callback *cbo)
+void Evm::RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
-    idleEventList_.PushBack(cbo);
+    idleTimeEventHandlerList_.PushBack(iteh);
 }
 
-void Evm::CancelIdleCallback(Callback *cbo)
+void Evm::DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
-    idleEventList_.Remove(cbo);
+    idleTimeEventHandlerList_.Remove(iteh);
 }
 
-void Evm::HandleIdleFunctions()
+void Evm::ServiceIdleTimeEventHandlers()
 {
     // Have to deal with the fact that an idle event may cancel itself
     // or another idle event at any given time, as well as possibly add another,
@@ -30,9 +30,9 @@ void Evm::HandleIdleFunctions()
     //   - idle functions are not guaranteed to run in any order, or a given
     //     number of times relative to any other idle functions.  if we miss
     //     one as a result of a resize, tough.
-    for (uint8_t i = 0; i < idleEventList_.Size(); ++i)
+    for (uint8_t i = 0; i < idleTimeEventHandlerList_.Size(); ++i)
     {
-        idleEventList_[i]->OnCallback();
+        idleTimeEventHandlerList_[i]->OnIdleTimeEvent();
     }
 }
 
@@ -44,41 +44,37 @@ void Evm::HandleIdleFunctions()
 //
 //////////////////////////////////////////////////////////////////////
 
-void Evm::SetTimeout(uint32_t duration, TimedCallback *cbo)
-{
-    SetTimeoutMs(duration, cbo);
-}
 
-void Evm::SetTimeoutMs(uint32_t duration, TimedCallback *cbo)
+void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t duration)
 {
     // Note what time it is when timer requested
     uint32_t timeNow = millis();
     
     // Keep track of some useful state
-    cbo->timeQueued_ = timeNow;
-    cbo->duration_   = duration;
+    teh->timeQueued_ = timeNow;
+    teh->duration_   = duration;
 
     // Queue it
-    timedEventList_.PushSorted(cbo, CmpTimedCallback);
+    timedEventHandlerList_.PushSorted(teh, CmpTimedEventHandler);
 }
 
-void Evm::CancelTimeout(TimedCallback *cbo)
+void Evm::DeRegisterTimedEventHandler(TimedEventHandler *teh)
 {
-    timedEventList_.Remove(cbo);
+    timedEventHandlerList_.Remove(teh);
 }
 
-void Evm::HandleTimers()
+void Evm::ServiceTimedEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
     
-    if (timedEventList_.Size())
+    if (timedEventHandlerList_.Size())
     {
-        uint8_t        remainingEvents = MAX_EVENTS_HANDLED;
-        bool           keepGoing       = true;
-        TimedCallback *cbo             = NULL;
+        uint8_t            remainingEvents = MAX_EVENTS_HANDLED;
+        bool               keepGoing       = true;
+        TimedEventHandler *teh             = NULL;
         
         do {
-            cbo = timedEventList_.PeekFront();
+            teh = timedEventHandlerList_.PeekFront();
             
             //uint32_t timeNow = micros();
             uint32_t timeNow = millis();
@@ -86,16 +82,19 @@ void Evm::HandleTimers()
             // Check if the time since accepting event is gte than
             // the duration the event was supposed to wait for.
             // Handles wraparound this way.
-            if ((timeNow - cbo->timeQueued_) >= cbo->duration_)
+            if ((timeNow - teh->timeQueued_) >= teh->duration_)
             {
                 // drop this element from the list
-                timedEventList_.PopFront();
+                timedEventHandlerList_.PopFront();
                 
-                // invoke the callback
-                cbo->OnCallback();
+                // invoke the IdleTimeEventHandler
+                teh->OnTimedEvent();
                 
                 // re-schedule if it is an interval timer
-                if (cbo->isInterval_) { SetTimeout(cbo->duration_, cbo); }
+                if (teh->isInterval_)
+                {
+                    RegisterTimedEventHandler(teh, teh->duration_);
+                }
                 
                 // only keep going if remaining quota of events remains
                 --remainingEvents;
@@ -105,7 +104,7 @@ void Evm::HandleTimers()
             {
                 keepGoing = false;
             }
-        } while (keepGoing && timedEventList_.Size());
+        } while (keepGoing && timedEventHandlerList_.Size());
     }
 }
 
@@ -113,8 +112,8 @@ void Evm::MainLoop()
 {
     while (1)
     {
-        HandleTimers();
-        HandleIdleFunctions();
+        ServiceIdleTimeEventHandlers();
+        ServiceTimedEventHandlers();
     }
 }
 
@@ -142,14 +141,14 @@ Evm::GetInstance(uint8_t maxEventCapacity)
 }
 
 int8_t
-Evm::CmpTimedCallback(TimedCallback *tc1, TimedCallback *tc2)
+Evm::CmpTimedEventHandler(TimedEventHandler *teh1, TimedEventHandler *teh2)
 {
     int8_t retVal;
     
     uint32_t timeNow = millis();
     
-    uint32_t expiryOne = (timeNow + tc1->timeQueued_) + tc1->duration_;
-    uint32_t expiryTwo = (timeNow + tc2->timeQueued_) + tc2->duration_;
+    uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->duration_;
+    uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->duration_;
     
     if (expiryOne < expiryTwo)
     {

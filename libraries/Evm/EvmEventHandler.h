@@ -10,31 +10,19 @@ class Evm;
 
 //////////////////////////////////////////////////////////////////////
 //
-// Basic Interface
-//
-//////////////////////////////////////////////////////////////////////
-
-class Callback
-{
-public:
-    typedef void (*CallbackFn)(void *userData);
-
-    virtual void OnCallback() = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////
-//
 // Idle Events
 //
 //////////////////////////////////////////////////////////////////////
 
-class IdleCallback : public Callback
+class IdleTimeEventHandler
 {
 public:
-    ~IdleCallback() { Stop(); }
-    void Start();
-    void Stop();
+    virtual ~IdleTimeEventHandler() { DeRegisterForIdleTimeEvent(); }
+    
+    void RegisterForIdleTimeEvent();
+    void DeRegisterForIdleTimeEvent();
+    
+    virtual void OnIdleTimeEvent() = 0;
 };
 
 
@@ -44,17 +32,19 @@ public:
 //
 //////////////////////////////////////////////////////////////////////
 
-class TimedCallback : public Callback
+class TimedEventHandler
 {
     friend class Evm;
     
 public:
-    TimedCallback() : isInterval_(0) { }
-    ~TimedCallback() { Cancel(); }
+    TimedEventHandler() : isInterval_(0) { }
+    virtual ~TimedEventHandler() { DeRegisterForTimedEvent(); }
 
-    void Schedule(uint32_t duration);
-    void ScheduleInterval(uint32_t duration);
-    void Cancel();
+    void RegisterForTimedEvent(uint32_t duration);
+    void RegisterForTimedEventInterval(uint32_t duration);
+    void DeRegisterForTimedEvent();
+    
+    virtual void OnTimedEvent() = 0;
 
 private:
     // Evm uses these for state keeping
@@ -70,16 +60,18 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-class IdleCallbackFnWrapper : public IdleCallback
+class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler
 {
+    typedef void (*CallbackFn)(void *userData);
+    
 public:
-    IdleCallbackFnWrapper(CallbackFn fn, void *userData)
+    IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
     : fn_(fn)
     , userData_(userData)
     {
         // nothing to do
     }
-    void OnCallback() { fn_(userData_); }
+    void OnIdleTimeEvent() { fn_(userData_); }
 
 private:
     CallbackFn  fn_;
@@ -87,16 +79,18 @@ private:
 };
 
 
-class TimedCallbackFnWrapper : public TimedCallback
+class TimedEventHandlerFnWrapper : public TimedEventHandler
 {
+    typedef void (*CallbackFn)(void *userData);
+    
 public:
-    TimedCallbackFnWrapper(CallbackFn fn, void *userData)
+    TimedEventHandlerFnWrapper(CallbackFn fn, void *userData)
     : fn_(fn)
     , userData_(userData)
     {
         // nothing to do
     }
-    void OnCallback() { fn_(userData_); }
+    void OnTimedEvent() { fn_(userData_); }
 
 private:
     CallbackFn  fn_;
