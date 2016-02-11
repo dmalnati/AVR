@@ -137,10 +137,12 @@ private:
         uint8_t buf[VW_MAX_MESSAGE_LEN];
         uint8_t bufLen = VW_MAX_MESSAGE_LEN;
         
+        digitalWrite(4, HIGH);
         if (vw_get_message(buf, &bufLen))
         {
             rxCb_->OnRxAvailable(buf, bufLen);
         }
+        digitalWrite(4, LOW);
     }
     
     void CheckForTxComplete()

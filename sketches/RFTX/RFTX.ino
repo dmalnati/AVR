@@ -5,12 +5,12 @@
 
 
 
-class MyTimedSender
+class MyTimedRadioSender
 : private TimedEventHandler
 , public MyRadioControllerTxCallbackIface
 {
 public:
-    MyTimedSender(int8_t pin, uint16_t interval)
+    MyTimedRadioSender(int8_t pin, uint16_t interval)
     : rc_(-1, NULL, pin, this)
     {
         digitalWrite(3, HIGH);
@@ -19,13 +19,27 @@ public:
     }
 
 private:
-    constexpr static const char *MSG = "TEXT";
-
     // Implement the TimedCallback interface
     virtual void OnTimedEvent()
     {
+        static uint8_t msgData = 0;
+
+        ++msgData;
+
+        // range of 1 - 5 inclusive
+        if (msgData == 6) { msgData = 1; }
+
+        for (uint8_t i = 0; i < msgData; ++i)
+        {
+            digitalWrite(3, HIGH);
+            digitalWrite(3, LOW);
+            delay(5);
+        }
+
+        delay(50);
+        
         digitalWrite(3, HIGH);
-        rc_.Send((uint8_t *)MSG, strlen(MSG));
+        rc_.Send((uint8_t *)&msgData, 1);
     }
 
     // Implement the MyRadioControllerCallbackIface callback
@@ -88,12 +102,12 @@ void loop()
     // Invoke, it tries to send periodically.
     const uint8_t PIN_RF_TX = 2;
     const uint16_t SEND_INTERVAL = 1000;
-    MyTimedSender mts(PIN_RF_TX, SEND_INTERVAL);
+    MyTimedRadioSender mts(PIN_RF_TX, SEND_INTERVAL);
 
     // Run this guy just to keep track of how events unfold
     // during transmission.  AKA make sure things don't get
     // blocked.
-    TimedPinToggler tpt1(1) ; tpt1.RegisterForTimedEventInterval(100);
+    TimedPinToggler tpt1(1) ; tpt1.RegisterForTimedEventInterval(1000);
 
     evm.MainLoop();
 }
