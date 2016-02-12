@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 
-#include "EvmEventHandler.h"
+#include "IdleTimeEventHandler.h"
+#include "TimedEventHandler.h"
+#include "InterruptEventHandler.h"
 #include "MyStaqueue.h"
 
 
@@ -31,6 +33,7 @@ private:
     Evm(uint8_t maxEventCapacity)
     : idleTimeEventHandlerList_(maxEventCapacity)
     , timedEventHandlerList_(maxEventCapacity)
+    , interruptEventHandlerList_(maxEventCapacity)
     {
         // nothing to do
     }
@@ -44,15 +47,34 @@ private:
     
     
     // Timed Events
-    void RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t duration );
+    void RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout);
     void DeRegisterTimedEventHandler(TimedEventHandler *teh);
     
     void ServiceTimedEventHandlers();
+    
+    
+    // Interrupt Events
+public: // needed so ISR static functions can actually (de)register events
+    void RegisterInterruptEventHandler(InterruptEventHandler *ieh);
+    void DeRegisterInterruptEventHandler(InterruptEventHandler *ieh);
+private:    
+    void ServiceInterruptEventHandlers();
 
     
     // Members
-    MyStaqueue<IdleTimeEventHandler *> idleTimeEventHandlerList_;
-    MyStaqueue<TimedEventHandler *>    timedEventHandlerList_;
+    MyStaqueue<IdleTimeEventHandler *>  idleTimeEventHandlerList_;
+    MyStaqueue<TimedEventHandler *>     timedEventHandlerList_;
+    
+    // This is a data structure which needs to be carefully managed.
+    //
+    // It can be accessed both from ISR-driven code as well as typical
+    // "main thread" code.
+    //
+    // As a result, any code which accesses this structure must be
+    // written with a full appreciation of which code is driving
+    // its execution and prevent corruption of its data
+    // as well as any logic making use of its data.
+    MyStaqueue<InterruptEventHandler *> interruptEventHandlerList_;
 };
 
 

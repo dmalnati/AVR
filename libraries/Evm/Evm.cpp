@@ -45,14 +45,14 @@ void Evm::ServiceIdleTimeEventHandlers()
 //////////////////////////////////////////////////////////////////////
 
 
-void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t duration)
+void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
 {
     // Note what time it is when timer requested
     uint32_t timeNow = millis();
     
     // Keep track of some useful state
     teh->timeQueued_ = timeNow;
-    teh->duration_   = duration;
+    teh->timeout_   = timeout;
 
     // Queue it
     timedEventHandlerList_.PushSorted(teh, CmpTimedEventHandler);
@@ -80,9 +80,9 @@ void Evm::ServiceTimedEventHandlers()
             uint32_t timeNow = millis();
             
             // Check if the time since accepting event is gte than
-            // the duration the event was supposed to wait for.
+            // the timeout the event was supposed to wait for.
             // Handles wraparound this way.
-            if ((timeNow - teh->timeQueued_) >= teh->duration_)
+            if ((timeNow - teh->timeQueued_) >= teh->timeout_)
             {
                 // drop this element from the list
                 timedEventHandlerList_.PopFront();
@@ -93,7 +93,7 @@ void Evm::ServiceTimedEventHandlers()
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
                 {
-                    RegisterTimedEventHandler(teh, teh->duration_);
+                    RegisterTimedEventHandler(teh, teh->timeout_);
                 }
                 
                 // only keep going if remaining quota of events remains
@@ -108,12 +108,110 @@ void Evm::ServiceTimedEventHandlers()
     }
 }
 
+
+
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// Interrupt Events
+//
+//////////////////////////////////////////////////////////////////////
+
+
+//
+// MUST NOT ENABLE INTERRUPTS IN THIS FUNCTION
+//
+// This function is only called from an ISR.
+//
+// That ISR is:
+// - already in a state of interrupts being suppressed
+// - going to break if interrupts are re-enabled here and another ISR fires
+//   before the whole operation completes.
+//
+void Evm::RegisterInterruptEventHandler(InterruptEventHandler *ieh)
+{
+    uint8_t idxLogical = 0;
+    
+    // Prevent this event from being added more than once
+    if (!interruptEventHandlerList_.FindIdxFirst(ieh, idxLogical))
+    {
+        interruptEventHandlerList_.PushBack(ieh);
+    }
+}
+
+//
+// This function is only called from the "main thread."
+//
+// As a result, access to ISR-changeable structures must be protected,
+// as well as any logic which relies on those structures remaining static.
+//
+void Evm::DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
+{
+    noInterrupts();
+    
+    interruptEventHandlerList_.Remove(ieh);
+    
+    interrupts();
+}
+
+//
+// This function is only called from the "main thread."
+//
+// As a result, access to ISR-changeable structures must be protected,
+// as well as any logic which relies on those structures remaining static.
+//
+void Evm::ServiceInterruptEventHandlers()
+{
+    const uint8_t MAX_EVENTS_HANDLED = 4;
+    
+    uint8_t remainingEvents = MAX_EVENTS_HANDLED;
+    
+    // Suppress interrupts during critical sections of code
+    noInterrupts();
+    while (interruptEventHandlerList_.Size() && remainingEvents)
+    {
+        InterruptEventHandler *ieh = interruptEventHandlerList_.PopFront();
+        interrupts();
+        
+        // No need to disable interrupts here, ISR-invoked code only modifies
+        // the interruptEventHandlerList_.
+        //
+        // Everything else behaves like normal.
+        ieh->OnInterruptEvent();
+ 
+        // Keep track of remaining events willing to handle
+        --remainingEvents;
+        
+        // Suppress interrupts, about to loop around and look at list again
+        noInterrupts();
+    }
+    
+    // Re-Enable interrupts
+    interrupts();
+}
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// Main Loop
+//
+//////////////////////////////////////////////////////////////////////
+
+
 void Evm::MainLoop()
 {
     while (1)
     {
         ServiceIdleTimeEventHandlers();
         ServiceTimedEventHandlers();
+        ServiceInterruptEventHandlers();
     }
 }
 
@@ -147,8 +245,8 @@ Evm::CmpTimedEventHandler(TimedEventHandler *teh1, TimedEventHandler *teh2)
     
     uint32_t timeNow = millis();
     
-    uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->duration_;
-    uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->duration_;
+    uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->timeout_;
+    uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->timeout_;
     
     if (expiryOne < expiryTwo)
     {

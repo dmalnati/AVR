@@ -1,29 +1,8 @@
-#ifndef __EVM_CALLBACK_H__
-#define __EVM_CALLBACK_H__
+#ifndef __TIMED_EVENT_HANDLER_H__
+#define __TIMED_EVENT_HANDLER_H__
 
 
 #include <stdint.h>
-
-
-class Evm;
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Idle Events
-//
-//////////////////////////////////////////////////////////////////////
-
-class IdleTimeEventHandler
-{
-public:
-    virtual ~IdleTimeEventHandler() { DeRegisterForIdleTimeEvent(); }
-    
-    void RegisterForIdleTimeEvent();
-    void DeRegisterForIdleTimeEvent();
-    
-    virtual void OnIdleTimeEvent() = 0;
-};
 
 
 //////////////////////////////////////////////////////////////////////
@@ -40,8 +19,8 @@ public:
     TimedEventHandler() : isInterval_(0) { }
     virtual ~TimedEventHandler() { DeRegisterForTimedEvent(); }
 
-    void RegisterForTimedEvent(uint32_t duration);
-    void RegisterForTimedEventInterval(uint32_t duration);
+    void RegisterForTimedEvent(uint32_t timeout);
+    void RegisterForTimedEventInterval(uint32_t timeout);
     void DeRegisterForTimedEvent();
     
     virtual void OnTimedEvent() = 0;
@@ -49,7 +28,7 @@ public:
 private:
     // Evm uses these for state keeping
     uint32_t timeQueued_;
-    uint32_t duration_;
+    uint32_t timeout_;
     uint8_t  isInterval_;
 };
 
@@ -59,25 +38,6 @@ private:
 // Function Wrappers
 //
 //////////////////////////////////////////////////////////////////////
-
-class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler
-{
-    typedef void (*CallbackFn)(void *userData);
-    
-public:
-    IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
-    : fn_(fn)
-    , userData_(userData)
-    {
-        // nothing to do
-    }
-    void OnIdleTimeEvent() { fn_(userData_); }
-
-private:
-    CallbackFn  fn_;
-    void       *userData_;
-};
-
 
 class TimedEventHandlerFnWrapper : public TimedEventHandler
 {
@@ -101,4 +61,14 @@ private:
 
 
 
-#endif  // __EVM_CALLBACK_H__
+#endif  // __TIMED_EVENT_HANDLER_H__
+
+
+
+
+
+
+
+
+
+
