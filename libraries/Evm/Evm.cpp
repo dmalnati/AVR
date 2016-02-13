@@ -1,3 +1,5 @@
+#include <avr/interrupt.h>
+
 #include <Arduino.h>
 
 #include "Evm.h"
@@ -148,11 +150,11 @@ void Evm::RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 //
 void Evm::DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
-    noInterrupts();
+    cli();
     
     interruptEventHandlerList_.Remove(ieh);
     
-    interrupts();
+    sei();
 }
 
 //
@@ -168,11 +170,11 @@ void Evm::ServiceInterruptEventHandlers()
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
     // Suppress interrupts during critical sections of code
-    noInterrupts();
+    cli();
     while (interruptEventHandlerList_.Size() && remainingEvents)
     {
         InterruptEventHandler *ieh = interruptEventHandlerList_.PopFront();
-        interrupts();
+        sei();
         
         // No need to disable interrupts here, ISR-invoked code only modifies
         // the interruptEventHandlerList_.
@@ -184,11 +186,11 @@ void Evm::ServiceInterruptEventHandlers()
         --remainingEvents;
         
         // Suppress interrupts, about to loop around and look at list again
-        noInterrupts();
+        cli();
     }
     
     // Re-Enable interrupts
-    interrupts();
+    sei();
 }
 
 

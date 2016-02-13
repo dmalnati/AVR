@@ -1,11 +1,11 @@
-#include <Arduino.h>
+#include <avr/interrupt.h>
 
 #include "ISR.h"
 #include "Evm.h"
 
 
 /*
- * Main Principle of Architecture:
+ * Main Principle of Interrupt Synchronization Architecture:
  * - ISR-invoked code can only add to Evm InterruptEventHandler list
  *   - and never enables interrupts while running
  *
@@ -24,28 +24,51 @@
  *   opportunity for other ISRs to be serviced, since they are blocked out
  *   while other ISRs are running.
  *
+ *
+ *
+ *
+ * Main Principle of Architecture-specific implementation of Interrupt Handling
+ * - Establish an API that any given architecture can implement.
+ * - Make use of that API within the externally-visible code.
+ * - Detect (via #ifdef) a particular architecture, and implement.
+ *
  */
 
  
-// A simple typedef for function prototype of ISR handling functions
-typedef void (*ISRFn)(void);
+ 
 
-
-// Prototype of a function defined later in the file
-static ISRFn ISR_GetISRFnFromPin(uint8_t pin);
-
-
-// Storage for mapping between pin and InterruptEventHandler
-static InterruptEventHandler *pin__ieh[24] = { 0 };
-
-
-
+ 
 //////////////////////////////////////////////////////////////////////
 //
-// Externally visible code
+// Forward Declarations for API provided
+// by Architecture-specific implementations
 //
 //////////////////////////////////////////////////////////////////////
 
+
+static void
+ISR_AttachInterruptForPhysicalPin(uint8_t                physicalPin,
+                                  InterruptEventHandler *ieh);
+static void
+ISR_DetachInterruptForPhysicalPin(uint8_t physicalPin);
+
+static uint8_t
+ISR_InterruptIsActiveForPhysicalPin(uint8_t physicalPin);
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+//////////////////////////////////////////////////////////////////////
+//
+// Externally visible functions
+//
+//////////////////////////////////////////////////////////////////////
 
 
 //////////////////////////////////////////////////////////////////////
@@ -59,54 +82,31 @@ static InterruptEventHandler *pin__ieh[24] = { 0 };
 
 void ISR_RegisterForInterruptEvent(InterruptEventHandler *ieh)
 {
-    noInterrupts();
+    cli();
     
-    // find the ISR corresponding to the pin number, if supported
-    ISRFn fn = ISR_GetISRFnFromPin(ieh->GetPin());
-    
-    if (fn)
+    // Don't allow double registration
+    if (!ISR_InterruptIsActiveForPhysicalPin(ieh->GetPin()))
     {
-        // prevent overwriting -- only save the object if slot empty
-        if (!pin__ieh[ieh->GetPin()])
-        {
-            // Record object related to pin number
-            pin__ieh[ieh->GetPin()] = ieh;
-            
-            // Use Arduino libs to attach to interrupt
-            attachInterrupt(digitalPinToInterrupt(ieh->GetPin()),
-                            fn,
-                            ieh->GetMode());
-                            
-            attachInterrupt(PCINT21,
-                            fn,
-                            ieh->GetMode());
-        }
+        ISR_AttachInterruptForPhysicalPin(ieh->GetPin(), ieh);
     }
     
-    interrupts();
+    sei();
 }
 
 void ISR_DeRegisterForInterruptEvent(InterruptEventHandler *ieh)
 {
-    noInterrupts();
+    cli();
     
-    // Find the ISR corresponding to the pin number
-    // This is only to validate that the pin number is supported
-    ISRFn fn = ISR_GetISRFnFromPin(ieh->GetPin());
-    
-    if (fn)
+    // Be sure there is a handler already active
+    if (ISR_InterruptIsActiveForPhysicalPin(ieh->GetPin()))
     {
-        // Use Arduino libs to detach from interrupt
-        detachInterrupt(digitalPinToInterrupt(ieh->GetPin()));
-
-        // Remove object from table
-        pin__ieh[ieh->GetPin()] = NULL;
+        ISR_DetachInterruptForPhysicalPin(ieh->GetPin());
         
-        // dequeue any timed events already scheduled
+        // Dequeue any timed events already scheduled
         Evm::GetInstance().DeRegisterInterruptEventHandler(ieh);
     }
     
-    interrupts();
+    sei();
 }
 
 
@@ -115,49 +115,285 @@ void ISR_DeRegisterForInterruptEvent(InterruptEventHandler *ieh)
 
 
 
-//////////////////////////////////////////////////////////////////////
-//
-// Internal code
-//
-//////////////////////////////////////////////////////////////////////
+
+
 
 
 
 //////////////////////////////////////////////////////////////////////
 //
-// This function handles interfacing with ISRs
-//
-// This function is only called from an ISR.
-//
-// As a result, no protection from reentrant effects is required.
+// API Implementation for specific architectures.
 //
 //////////////////////////////////////////////////////////////////////
 
-void ISR_RouteInterruptOnPinToEventHandler(uint8_t pin)
+
+#ifdef __AVR_ATmega328P__
+
+
+/*
+ * ATmega328P Pin Change Interrupt Support
+ *
+ *
+ * Can see literal definitions included with Arduino avr-gcc here:
+ * /Program Files (x86)/Arduino/hardware/tools/avr/avr/include/avr/iom328p.h
+ *
+ *
+ * From datasheet:
+ *
+ * Port/Pin | Pin Change Int | Physical Pin
+ * ---------|----------------|-------------
+ *   PB0    |    PCINT0      |     14      
+ *   PB1    |    PCINT1      |     15      
+ *   PB2    |    PCINT2      |     16      
+ *   PB3    |    PCINT3      |     17      
+ *   PB4    |    PCINT4      |     18      
+ *   PB5    |    PCINT5      |     19      
+ *   PB6    |    PCINT6      |      9      
+ *   PB7    |    PCINT7      |     10      
+ * ----------------------------------------
+ *   PC0    |    PCINT8      |     23      
+ *   PC1    |    PCINT9      |     24      
+ *   PC2    |    PCINT10     |     25      
+ *   PC3    |    PCINT11     |     26      
+ *   PC4    |    PCINT12     |     27      
+ *   PC5    |    PCINT13     |     28      
+ *   PC6    |    PCINT14     |      1      
+ *    x     |       x        |     x       
+ * ----------------------------------------
+ *   PD0    |    PCINT16     |      2      
+ *   PD1    |    PCINT17     |      3      
+ *   PD2    |    PCINT18     |      4      
+ *   PD3    |    PCINT19     |      5      
+ *   PD4    |    PCINT20     |      6      
+ *   PD5    |    PCINT21     |     11      
+ *   PD6    |    PCINT22     |     12      
+ *   PD7    |    PCINT23     |     13      
+ * ----------------------------------------
+ *
+ *
+ * Other Pins not mentioned above
+ *
+ * What   | Physical Pin
+ * ---------------------
+ * VCC    |      7      
+ * GND    |      8      
+ * AVCC   |     20      
+ * AREF   |     21      
+ * GND    |     22      
+ *
+ *
+ *
+ * Registers:
+ * - This chip has 3 ports - B, C, D
+ * - Where X is used below, use one of B, C, D for relevant operation
+ *
+ * DDRX - Data Direction - control whether a pin is input or output
+ *        (0 = INPUT, 1 = OUTPUT)
+ * 
+ * When DDR indicates a pin is input:
+ * - PORTX dictates whether there is an internal pullup
+ * - PINX  reads from the pin
+ * 
+ * When DDR indicates a pin is output:
+ * - PORTX writes to the pin
+ * - PINX  ...
+ *
+ */
+ 
+ 
+ 
+
+//////////////////////////////////////////////////////////////////////
+//
+// Local Definitions
+//
+//////////////////////////////////////////////////////////////////////
+ 
+#define EVM_ISR_PORT_B 0
+#define EVM_ISR_PORT_C 1
+#define EVM_ISR_PORT_D 2
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// Forward Declarations
+//
+//////////////////////////////////////////////////////////////////////
+
+static uint8_t
+ISR_GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
+                                     uint8_t *port,
+                                     uint8_t *portPin);
+ 
+
+//////////////////////////////////////////////////////////////////////
+//
+// Local Storage
+//
+//////////////////////////////////////////////////////////////////////
+ 
+ /*
+ * Create 3 x 8 table to store callbacks for a given Pin Change interrupt:
+ * - port    (B = 0, C = 1, D = 2)
+ * - portPin (0, 1, ..., 7)
+ *
+ * Note: 'portPin' here refers to 3 for PB3, not the physical pin
+ *
+ */
+static InterruptEventHandler *port_portPin__ieh[3][8] = { NULL };
+
+// Lookup tables for access to port-specific data in an abstracted way
+static          uint8_t  port__refCount[3] = { 0 };
+static volatile uint8_t *port__pcmskPtr[3] = { &PCMSK0, &PCMSK1, &PCMSK2 };
+static volatile uint8_t *port__ddrPtr[3]   = { &DDRB,   &DDRC,   &DDRD   };
+
+// Storage to keep track of the last state of each port's pins
+static uint8_t pinStateLast[3] = { 0 };
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// API implementation for this architecture
+//
+//////////////////////////////////////////////////////////////////////
+
+static void
+ISR_AttachInterruptForPhysicalPin(uint8_t                physicalPin,
+                                  InterruptEventHandler *ieh)
 {
-    // Find the ISR corresponding to the pin number
-    // This is only to validate that the pin number is supported
-    ISRFn fn = ISR_GetISRFnFromPin(pin);
+    uint8_t port;
+    uint8_t portPin;
     
-    if (fn)
+    // Find the port and portPin to register handler on
+    if (ISR_GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
     {
-        InterruptEventHandler *ieh = pin__ieh[pin];
+        // Store this handler in the lookup table
+        port_portPin__ieh[port][portPin] = ieh;
         
-        // make sure there is an object stored here
-        if (ieh)
+        // Default to explicitly setting this pin to be an output
+        *port__ddrPtr[port] |= _BV(portPin);
+        
+        // Enable interrupts for this specific pin on this port
+        *port__pcmskPtr[port] |= _BV(portPin);
+        
+        // If there were previously no interrupts registered for this port
+        // then enable interrupts for this port
+        if (!port__refCount[port])
         {
-            digitalWrite(5, HIGH);
-            Evm::GetInstance().RegisterInterruptEventHandler(ieh);
-            digitalWrite(5, LOW);
+            PCICR |= _BV(port);
+        }
+        
+        // Increment reference count for users of this port
+        ++port__refCount[port];
+    }
+}
+
+static void
+ISR_DetachInterruptForPhysicalPin(uint8_t physicalPin)
+{
+    uint8_t port;
+    uint8_t portPin;
+    
+    // Find the port and portPin to register handler on
+    if (ISR_GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+    {
+        // Remove the handler from the lookup table
+        port_portPin__ieh[port][portPin] = NULL;
+        
+        // Change nothing about the output state of the pin
+        
+        // Disable interrupts for this specific pon on this port
+        *port__pcmskPtr[port] &= ~_BV(portPin);
+        
+        // Decrement reference count for users of this port
+        --port__refCount[port];
+        
+        // If there are now no interrupts registered for this port
+        // then disable interrupts for this port
+        if (!port__refCount[port])
+        {
+            PCICR &= ~_BV(port);
         }
     }
 }
+
+static uint8_t
+ISR_InterruptIsActiveForPhysicalPin(uint8_t physicalPin)
+{
+    uint8_t retVal = 0;
     
+    uint8_t port;
+    uint8_t portPin;
+    
+    if (ISR_GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+    {
+        retVal = (port_portPin__ieh[port][portPin] != NULL);
+    }
+    
+    return retVal;
+}
+
+
+ 
+
+ 
+ 
+//////////////////////////////////////////////////////////////////////
+//
+// Private implementation details
+//
+//////////////////////////////////////////////////////////////////////
+
+// Return 1 for successfully found, 0 for failure
+static uint8_t
+ISR_GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
+                                     uint8_t *port,
+                                     uint8_t *portPin)
+{
+    uint8_t retVal = 1;
+    
+    switch (physicalPin)
+    {
+        case  0: retVal = 0;
+        case  1: *port = EVM_ISR_PORT_C; *portPin = PINC6; break;
+        case  2: *port = EVM_ISR_PORT_D; *portPin = PIND0; break;
+        case  3: *port = EVM_ISR_PORT_D; *portPin = PIND1; break;
+        case  4: *port = EVM_ISR_PORT_D; *portPin = PIND2; break;
+        case  5: *port = EVM_ISR_PORT_D; *portPin = PIND3; break;
+        case  6: *port = EVM_ISR_PORT_D; *portPin = PIND4; break;
+        case  7: retVal = 0;                               break;
+        case  8: retVal = 0;                               break;
+        case  9: *port = EVM_ISR_PORT_B; *portPin = PINB6; break;
+        case 10: *port = EVM_ISR_PORT_B; *portPin = PINB7; break;
+        case 11: *port = EVM_ISR_PORT_D; *portPin = PIND5; break;
+        case 12: *port = EVM_ISR_PORT_D; *portPin = PIND6; break;
+        case 13: *port = EVM_ISR_PORT_D; *portPin = PIND7; break;
+        case 14: *port = EVM_ISR_PORT_B; *portPin = PINB0; break;
+        case 15: *port = EVM_ISR_PORT_B; *portPin = PINB1; break;
+        case 16: *port = EVM_ISR_PORT_B; *portPin = PINB2; break;
+        case 17: *port = EVM_ISR_PORT_B; *portPin = PINB3; break;
+        case 18: *port = EVM_ISR_PORT_B; *portPin = PINB4; break;
+        case 19: *port = EVM_ISR_PORT_B; *portPin = PINB5; break;
+        case 20: retVal = 0;                               break;
+        case 21: retVal = 0;                               break;
+        case 22: retVal = 0;                               break;
+        case 23: *port = EVM_ISR_PORT_C; *portPin = PINC0; break;
+        case 24: *port = EVM_ISR_PORT_C; *portPin = PINC1; break;
+        case 25: *port = EVM_ISR_PORT_C; *portPin = PINC2; break;
+        case 26: *port = EVM_ISR_PORT_C; *portPin = PINC3; break;
+        case 27: *port = EVM_ISR_PORT_C; *portPin = PINC4; break;
+        case 28: *port = EVM_ISR_PORT_C; *portPin = PINC5; break;
+        
+        default: retVal = 0;
+    }
+    
+    return retVal;
+}
 
 
 //////////////////////////////////////////////////////////////////////
 //
-// The actual literal functions mapping to/from pin interrupts
+// Actual Interrupt vector handling.
 //
 // These functions are only called from an ISR.
 //
@@ -165,76 +401,96 @@ void ISR_RouteInterruptOnPinToEventHandler(uint8_t pin)
 //
 //////////////////////////////////////////////////////////////////////
 
-static void ISR_FOR_PIN_0()  { ISR_RouteInterruptOnPinToEventHandler(0);  }
-static void ISR_FOR_PIN_1()  { ISR_RouteInterruptOnPinToEventHandler(1);  }
-static void ISR_FOR_PIN_2()  { ISR_RouteInterruptOnPinToEventHandler(2);  }
-static void ISR_FOR_PIN_3()  { ISR_RouteInterruptOnPinToEventHandler(3);  }
-static void ISR_FOR_PIN_4()  { ISR_RouteInterruptOnPinToEventHandler(4);  }
-static void ISR_FOR_PIN_5()  { ISR_RouteInterruptOnPinToEventHandler(5);  }
-static void ISR_FOR_PIN_6()  { ISR_RouteInterruptOnPinToEventHandler(6);  }
-static void ISR_FOR_PIN_7()  { ISR_RouteInterruptOnPinToEventHandler(7);  }
-static void ISR_FOR_PIN_8()  { ISR_RouteInterruptOnPinToEventHandler(8);  }
-static void ISR_FOR_PIN_9()  { ISR_RouteInterruptOnPinToEventHandler(9);  }
-static void ISR_FOR_PIN_10() { ISR_RouteInterruptOnPinToEventHandler(10); }
-static void ISR_FOR_PIN_11() { ISR_RouteInterruptOnPinToEventHandler(11); }
-static void ISR_FOR_PIN_12() { ISR_RouteInterruptOnPinToEventHandler(12); }
-static void ISR_FOR_PIN_13() { ISR_RouteInterruptOnPinToEventHandler(13); }
-static void ISR_FOR_PIN_14() { ISR_RouteInterruptOnPinToEventHandler(14); }
-static void ISR_FOR_PIN_15() { ISR_RouteInterruptOnPinToEventHandler(15); }
-static void ISR_FOR_PIN_16() { ISR_RouteInterruptOnPinToEventHandler(16); }
-static void ISR_FOR_PIN_17() { ISR_RouteInterruptOnPinToEventHandler(17); }
-static void ISR_FOR_PIN_18() { ISR_RouteInterruptOnPinToEventHandler(18); }
-static void ISR_FOR_PIN_19() { ISR_RouteInterruptOnPinToEventHandler(19); }
-static void ISR_FOR_PIN_20() { ISR_RouteInterruptOnPinToEventHandler(20); }
-static void ISR_FOR_PIN_21() { ISR_RouteInterruptOnPinToEventHandler(21); }
-static void ISR_FOR_PIN_22() { ISR_RouteInterruptOnPinToEventHandler(22); }
-static void ISR_FOR_PIN_23() { ISR_RouteInterruptOnPinToEventHandler(23); }
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// This function is called from both ISRs as well as "Main Thread" code.
-//
-// However, in both cases, it is already protected from reentrant effects
-// earlier in the stack, so no additional protection is required here.
-//
-//////////////////////////////////////////////////////////////////////
-static ISRFn ISR_GetISRFnFromPin(uint8_t pin)
+static void
+ISR_OnPortPinStateChange(uint8_t port, uint8_t portPin, uint8_t changeDir)
 {
-    ISRFn fn = NULL;
+    InterruptEventHandler *ieh = port_portPin__ieh[port][portPin];
     
-    switch (pin)
+    InterruptEventHandler::MODE changeType = (
+        changeDir                                 ?
+        InterruptEventHandler::MODE::MODE_RISING  :
+        InterruptEventHandler::MODE::MODE_FALLING
+    );
+    
+    if (ieh)
     {
-        case 0:  fn = ISR_FOR_PIN_0;  break;
-        case 1:  fn = ISR_FOR_PIN_1;  break;
-        case 2:  fn = ISR_FOR_PIN_2;  break;
-        case 3:  fn = ISR_FOR_PIN_3;  break;
-        case 4:  fn = ISR_FOR_PIN_4;  break;
-        case 5:  fn = ISR_FOR_PIN_5;  break;
-        case 6:  fn = ISR_FOR_PIN_6;  break;
-        case 7:  fn = ISR_FOR_PIN_7;  break;
-        case 8:  fn = ISR_FOR_PIN_8;  break;
-        case 9:  fn = ISR_FOR_PIN_9;  break;
-        case 10: fn = ISR_FOR_PIN_10; break;
-        case 11: fn = ISR_FOR_PIN_11; break;
-        case 12: fn = ISR_FOR_PIN_12; break;
-        case 13: fn = ISR_FOR_PIN_13; break;
-        case 14: fn = ISR_FOR_PIN_14; break;
-        case 15: fn = ISR_FOR_PIN_15; break;
-        case 16: fn = ISR_FOR_PIN_16; break;
-        case 17: fn = ISR_FOR_PIN_17; break;
-        case 18: fn = ISR_FOR_PIN_18; break;
-        case 19: fn = ISR_FOR_PIN_19; break;
-        case 20: fn = ISR_FOR_PIN_20; break;
-        case 21: fn = ISR_FOR_PIN_21; break;
-        case 22: fn = ISR_FOR_PIN_22; break;
-        case 23: fn = ISR_FOR_PIN_23; break;
-        
-        default: break;
+        if (ieh->GetMode() == changeType)
+        {
+            Evm::GetInstance().RegisterInterruptEventHandler(ieh);
+        }
     }
-    
-    return fn;
 }
+
+
+/*
+ * Single function called from all three ISRs.
+ *
+ * Dedicated to understanding which pins changed, and how.
+ *
+ * Bitmap logic:
+ *
+ * old       : 0b0011
+ * new       : 0b0101
+ * change    : 0b0110  (old ^ new   )
+ * changeDir : 0b0100  (new & change) -- only applies to bits which changed
+ *
+ */
+static void
+ISR_OnISR(uint8_t port,
+          uint8_t bitmapPortPinState,
+          uint8_t bitmapPortPinStateLast)
+{
+    // Calculate what changed, and how
+    uint8_t bitmapChange    = bitmapPortPinStateLast ^ bitmapPortPinState;
+    uint8_t bitmapChangeDir = bitmapPortPinState     & bitmapChange;
+
+    // Apply bitmaps to figure out which pins actually changed and how
+    for (uint8_t portPin = 0; portPin < 8; ++portPin)
+    {
+        uint8_t pinChanged = (bitmapChange & _BV(portPin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir = (bitmapChangeDir & _BV(portPin)) ? 1 : 0;
+            
+            ISR_OnPortPinStateChange(port, portPin, changeDir);
+        }
+    }
+}
+
+
+
+// ISR for Port B
+ISR(PCINT0_vect)
+{
+    ISR_OnISR(EVM_ISR_PORT_B, PINB, pinStateLast[EVM_ISR_PORT_B]);
+    
+    // Store current state for next time
+    pinStateLast[EVM_ISR_PORT_B] = PINB;
+}
+
+// ISR for Port C
+ISR(PCINT1_vect)
+{
+    ISR_OnISR(EVM_ISR_PORT_C, PINC, pinStateLast[EVM_ISR_PORT_C]);
+    
+    // Store current state for next time
+    pinStateLast[EVM_ISR_PORT_C] = PINC;
+}
+
+// ISR for Port D
+ISR(PCINT2_vect)
+{
+    ISR_OnISR(EVM_ISR_PORT_D, PIND, pinStateLast[EVM_ISR_PORT_D]);
+    
+    // Store current state for next time
+    pinStateLast[EVM_ISR_PORT_D] = PIND;
+}
+
+
+#endif  // __AVR_ATmega328P__
+
 
 
 

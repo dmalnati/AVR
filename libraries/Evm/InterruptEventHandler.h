@@ -17,7 +17,9 @@
 class InterruptEventHandler
 {
 public:
-    InterruptEventHandler(uint8_t pin, uint8_t mode = RISING)
+    enum class MODE : uint8_t { MODE_FALLING = 0, MODE_RISING = 1 };
+    
+    InterruptEventHandler(uint8_t pin, MODE mode = MODE::MODE_RISING)
     : pin_(pin)
     , mode_(mode)
     {
@@ -26,7 +28,7 @@ public:
     ~InterruptEventHandler() { DeRegisterForInterruptEvent(); }
     
     uint8_t GetPin() const { return pin_; }
-    uint8_t GetMode() const { return mode_; }
+    MODE GetMode() const { return mode_; }
     
     void RegisterForInterruptEvent();
     void DeRegisterForInterruptEvent();
@@ -35,7 +37,7 @@ public:
     
 private:
     uint8_t pin_;
-    uint8_t mode_;
+    MODE mode_;
 };
 
 
@@ -51,7 +53,7 @@ class InterruptEventHandlerFnWrapper : public InterruptEventHandler
     
 public:
     InterruptEventHandlerFnWrapper(uint8_t     pin,
-                                   uint8_t     mode,
+                                   MODE        mode,
                                    CallbackFn  fn,
                                    void       *userData)
     : InterruptEventHandler(pin, mode)

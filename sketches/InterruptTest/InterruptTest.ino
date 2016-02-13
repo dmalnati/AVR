@@ -7,12 +7,32 @@
 #include <InterruptEventHandler.h>
 
 
-const uint8_t PIN_BLOCKING       = 0;
-const uint8_t PIN_TIMED_INTERVAL = 1;
-const uint8_t PIN_INT_INPUT_RAW  = 2;
-const uint8_t PIN_INT_OUTPUT_RAW = 3;
-const uint8_t PIN_INT_INPUT_EVM  = 4;
-const uint8_t PIN_INT_OUTPUT_EVM = PD5;
+// expressed in Arduino pins
+const uint8_t PIN_BLOCKING       = 0;   // physical pin  2
+const uint8_t PIN_TIMED_INTERVAL = 1;   // physical pin  3
+const uint8_t PIN_INT_INPUT_RAW  = 2;   // physical pin  4
+const uint8_t PIN_INT_OUTPUT_RAW = 3;   // physical pin  5
+
+// expressed in physical pins
+
+// Testing for individual ports
+//const uint8_t PIN_INT_INPUT_EVM = 6;    // Arduino pin 4    (PD4)
+//const uint8_t PIN_INT_INPUT_EVM = 28;    // Arduino pin 4    (PC5)
+//const uint8_t PIN_INT_INPUT_EVM = 9;    // Arduino pin 4    (PB6)
+
+// Testing for double port registration
+//const uint8_t PIN_INT_INPUT_EVM  = 4;   // (PD2)
+//const uint8_t PIN_INT_INPUT_EVM2 = 9;   // (PB6)
+
+// Testing for deregistration
+//const uint8_t PIN_INT_INPUT_EVM  = 4;   // (PD2)
+
+// Testing for false trigger
+const uint8_t PIN_INT_INPUT_EVM  = 4;   // (PD2)
+
+
+// expressed in Arduino pins
+const uint8_t PIN_INT_OUTPUT_EVM = 5;   // physical pin 11
 
 
 
@@ -43,8 +63,8 @@ class MyISR
 : public InterruptEventHandler
 {
 public:
-    MyISR(uint8_t pin, uint8_t mode, uint8_t outPin)
-    : InterruptEventHandler(pin, mode)
+    MyISR(uint8_t inPin, MODE mode, uint8_t outPin)
+    : InterruptEventHandler(inPin, mode)
     , outPin_(outPin)
     {
         pinMode(outPin_, OUTPUT);
@@ -58,9 +78,39 @@ private:
     {
         digitalWrite(outPin_, HIGH);
         digitalWrite(outPin_, LOW);
+        digitalWrite(outPin_, HIGH);
+        digitalWrite(outPin_, LOW);
     }
 
     uint8_t outPin_;
+};
+
+class TimedDeregReg
+: public TimedEventHandler
+{
+public:
+    TimedDeregReg(MyISR *isr) : isr_(isr), onOff_(1) { }
+
+    // Implement timeout event
+    virtual void OnTimedEvent()
+    {
+        if (onOff_)
+        {
+            isr_->DeRegisterForInterruptEvent();
+
+            onOff_ = 0;
+        }
+        else
+        {
+            isr_->RegisterForInterruptEvent();
+
+            onOff_ = 1;
+        }
+    }
+
+private:
+    MyISR   *isr_;
+    uint8_t  onOff_;
 };
 
 
@@ -78,8 +128,10 @@ void loop()
     //attachInterrupt(digitalPinToInterrupt(PIN_INT_INPUT_RAW), INT, RISING);
 
     // Test evm interrupt handler
-    //MyISR myIsr(PIN_INT_INPUT_EVM, RISING, PIN_INT_OUTPUT_EVM); myIsr.RegisterForInterruptEvent();
-    MyISR myIsr(PIN_INT_INPUT_RAW, RISING, PIN_INT_OUTPUT_EVM); myIsr.RegisterForInterruptEvent();
+    MyISR myIsr(PIN_INT_INPUT_EVM,
+                InterruptEventHandler::MODE::MODE_RISING,
+                PIN_INT_OUTPUT_EVM);
+    myIsr.RegisterForInterruptEvent();
 
 
     evm.MainLoop();
@@ -87,9 +139,38 @@ void loop()
 
 
 
+/*
+
+Tests done:
+- registration on a pin on each port works (yes)
+- intr fires only when its pin is touched (yes)
+  - register on a pin on a port
+  - toggle two pins on that port
 
 
+- reg on two ports works (yes)
 
+- double reg same pin doesn't work (yes)
+
+- dereg works (yes)
+  - ref counters go back to zero
+
+- re-enable works (yes)
+
+- registering for a transition to high for a pin already high
+  doesn't trigger an interrupt.
+
+  Unsure.  Had a hard time making it happen.  I tried and it didn't
+  seem to trigger.  However, not sure how saving the initial state
+  of the PIN registers won't lead to it.
+
+  If an issue, I'd think I'd consider:
+  - On initial use of a port, clear any interrupts
+  - On initial use of a pin
+    - set the cached "last" state to be the current value.
+    - clear interrupts for this pin which are pending
+
+*/
 
 
 void setup()

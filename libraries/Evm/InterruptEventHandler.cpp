@@ -11,8 +11,8 @@
 
 void InterruptEventHandler::RegisterForInterruptEvent()
 {
-    // Don't allow yourself to be registered more than once
-    DeRegisterForInterruptEvent();
+    // No need to prevent double-registration.
+    // This is already handled elsewhere in the ISR routines.
     
     ISR_RegisterForInterruptEvent(this);
 }
