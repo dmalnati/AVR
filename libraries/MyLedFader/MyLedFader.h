@@ -2,8 +2,7 @@
 #define __MY_LED_FADER_H__
 
 
-#include <Arduino.h>
-
+#include "PAL.h"
 #include "EvmEventHandler.h"
 
 
@@ -16,7 +15,7 @@ public:
     , stepDir_(1)
     , onOffState_(0)
     {
-        pinMode(pin_, OUTPUT);
+        PAL.PinMode(pin_, OUTPUT);
     }
 
     const uint16_t STEP_DURATION = 50000;
@@ -77,14 +76,14 @@ private:
         onOffState_ = 0;
 
         // Record first step time start
-        timeStepStart_    = micros();
+        timeStepStart_    = PAL.Micros();
         timeStepDuration_ = STEP_DURATION;
     }
 
     void OnIdleTimeEvent()
     {
         // Has current step expired?
-        uint32_t timeNow = micros();
+        uint32_t timeNow = PAL.Micros();
 
         if ((timeNow - timeStepStart_) >= timeStepDuration_)
         {
@@ -116,7 +115,7 @@ private:
             // The value of the pin should be the opposite of the index
             // 0th index represents on
             // 1st index represents off
-            digitalWrite(pin_, !onOffState_);
+            PAL.DigitalWrite(pin_, !onOffState_);
             --onOffState__quota_[onOffState_];
         }
     }

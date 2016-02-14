@@ -2,9 +2,6 @@
 #define __INTERRUPT_EVENT_HANDLER_H__
 
 
-#include <Arduino.h>
-
-
 #include <stdint.h>
 
 

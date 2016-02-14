@@ -1,0 +1,74 @@
+#ifndef __PAL_H__
+#define __PAL_H__
+
+
+#include <Arduino.h>
+
+
+/*
+ * Objectives:
+ * - Keep inputs in terms of the physical hardware.
+ *   - This is the opposite of Arduino's objective
+ * - Map back to Arduino only when necessary, such as:
+ *   - Handing off arduino pins to 3rd party libs
+ *   - Implementing wrapper around arduino libs which take in physical pin
+ * - Hide any Arduino libs currently in use such that they can be changed
+ *   across the board at a later date.
+ *   
+ */
+
+
+class PlatformAbstractionLayer
+{
+public:
+    void PinMode(uint8_t physicalPin, uint8_t mode)
+    {
+        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
+        
+        pinMode(arduinoPin, mode);
+    }
+    
+    void DigitalWrite(uint8_t physicalPin, uint8_t value)
+    {
+        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
+        
+        digitalWrite(arduinoPin, value);
+    }
+    
+    uint32_t Millis()
+    {
+        return millis();
+    }
+    
+    uint32_t Micros()
+    {
+        return micros();
+    }
+    
+    void DelayMicroseconds(uint32_t delay)
+    {
+        return delayMicroseconds(delay);
+    }
+    
+    uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
+    {
+        uint8_t arduinoDataPin  = GetArduinoPinFromPhysicalPin(dataPin);
+        uint8_t arduinoClockPin = GetArduinoPinFromPhysicalPin(clockPin);
+        
+        return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
+    }
+
+private:
+    static int8_t GetArduinoPinFromPhysicalPin(uint8_t physicalPin);
+};
+
+
+
+
+// Make the global instance known
+extern PlatformAbstractionLayer PAL;
+
+
+
+
+#endif  // __PAL_H__

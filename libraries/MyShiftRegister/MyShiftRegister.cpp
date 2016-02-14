@@ -9,6 +9,7 @@
  */
 
 
+#include "PAL.h"
 #include "MyShiftRegister.h"
 
 
@@ -28,14 +29,14 @@ MyShiftRegister(uint8_t pinLoad,
 void MyShiftRegister::Setup()
 {
     // Set pin input/output modes
-    pinMode(pinLoad_,        OUTPUT);
-    pinMode(pinClock_,       OUTPUT);
-    pinMode(pinClockEnable_, OUTPUT);
-    pinMode(pinSerial_,      INPUT);
+    PAL.PinMode(pinLoad_,        OUTPUT);
+    PAL.PinMode(pinClock_,       OUTPUT);
+    PAL.PinMode(pinClockEnable_, OUTPUT);
+    PAL.PinMode(pinSerial_,      INPUT);
     
     // Set initial state of pins
-    digitalWrite(pinClockEnable_, HIGH);
-    digitalWrite(pinLoad_,        HIGH);
+    PAL.DigitalWrite(pinClockEnable_, HIGH);
+    PAL.DigitalWrite(pinLoad_,        HIGH);
 }
 
 uint8_t MyShiftRegister::ShiftIn()
@@ -43,21 +44,21 @@ uint8_t MyShiftRegister::ShiftIn()
     uint8_t retVal = 0;
     
     // Tell the shift register that it should lock the parallel values
-    digitalWrite(pinLoad_, LOW);
-    delayMicroseconds(5);
-    digitalWrite(pinLoad_, HIGH);
-    delayMicroseconds(5);
+    PAL.DigitalWrite(pinLoad_, LOW);
+    PAL.DelayMicroseconds(5);
+    PAL.DigitalWrite(pinLoad_, HIGH);
+    PAL.DelayMicroseconds(5);
     
     // Tell the shift register to start paying attention to the clock for
     // shifting
-    digitalWrite(pinClock_,       HIGH);
-    digitalWrite(pinClockEnable_, LOW);
+    PAL.DigitalWrite(pinClock_,       HIGH);
+    PAL.DigitalWrite(pinClockEnable_, LOW);
     
     // Actually extract the serialized data
-    retVal = shiftIn(pinSerial_, pinClock_, MSBFIRST);
+    retVal = PAL.ShiftIn(pinSerial_, pinClock_, MSBFIRST);
     
     // Tell the shift register to stop looking at the clock
-    digitalWrite(pinClockEnable_, HIGH);
+    PAL.DigitalWrite(pinClockEnable_, HIGH);
     
     return retVal;
 }

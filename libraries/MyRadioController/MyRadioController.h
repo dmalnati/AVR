@@ -2,6 +2,7 @@
 #define __MY_RADIO_CONTROLLER_H__
 
 
+#include "PAL.h"
 #include <EvmEventHandler.h>
 #include <VirtualWire.h>
 
@@ -47,11 +48,15 @@ public:
     , txActive_(0)
     , txActiveLast_(0)
     {
+        // Determine Arduino pin for handoff to VirtualWire
+        uint8_t arduinoRxPin = PAL.GetArduinoPinFromPhysicalPin(rxPin);
+        uint8_t arduinoTxPin = PAL.GetArduinoPinFromPhysicalPin(txPin);
+        
         // Handle RX functions
-        if (rxCb_) { pinMode(rxPin, INPUT);   vw_set_rx_pin(rxPin); }
+        if (rxCb_) { vw_set_rx_pin(arduinoRxPin); }
         
         // Handle TX functions
-        if (txCb_) { pinMode(txPin, OUTPUT);  vw_set_tx_pin(txPin); }
+        if (txCb_) { vw_set_tx_pin(arduinoTxPin); }
         
         // Configure bitrate, common between RX and TX
         if (rxCb_ || txCb_) { vw_setup(baud); }
@@ -105,10 +110,8 @@ private:
     // Implement the Idle event
     virtual void OnIdleTimeEvent()
     {
-        digitalWrite(0, HIGH);
         if (rxCb_) { CheckForRxData();     }
         if (txCb_) { CheckForTxComplete(); }
-        digitalWrite(0, LOW);
     }
     
     void MaybeStartIdleProcessing()
@@ -137,12 +140,10 @@ private:
         uint8_t buf[VW_MAX_MESSAGE_LEN];
         uint8_t bufLen = VW_MAX_MESSAGE_LEN;
         
-        digitalWrite(4, HIGH);
         if (vw_get_message(buf, &bufLen))
         {
             rxCb_->OnRxAvailable(buf, bufLen);
         }
-        digitalWrite(4, LOW);
     }
     
     void CheckForTxComplete()

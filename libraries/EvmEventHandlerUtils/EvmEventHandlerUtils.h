@@ -2,6 +2,7 @@
 #define __EVM_EVENT_HANDLER_UTILS_H__
 
 
+#include <PAL.h>
 #include <TimedEventHandler.h>
 
 
@@ -21,8 +22,8 @@ public:
     
     void OnTimedEvent()
     {
-        digitalWrite(pin_, HIGH);
-        digitalWrite(pin_, LOW);
+        PAL.DigitalWrite(pin_, HIGH);
+        PAL.DigitalWrite(pin_, LOW);
     }
 
 private:

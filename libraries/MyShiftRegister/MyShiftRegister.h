@@ -2,7 +2,8 @@
 #define __MY_SHIFT_REGISTER_H__
 
 
-#include <Arduino.h>
+#include <stdint.h>
+
 
 class MyShiftRegister
 {

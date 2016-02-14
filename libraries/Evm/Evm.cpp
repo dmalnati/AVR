@@ -1,7 +1,5 @@
 #include <avr/interrupt.h>
 
-#include <Arduino.h>
-
 #include "Evm.h"
 
 
@@ -50,7 +48,7 @@ void Evm::ServiceIdleTimeEventHandlers()
 void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
 {
     // Note what time it is when timer requested
-    uint32_t timeNow = millis();
+    uint32_t timeNow = PAL.Millis();
     
     // Keep track of some useful state
     teh->timeQueued_ = timeNow;
@@ -78,8 +76,7 @@ void Evm::ServiceTimedEventHandlers()
         do {
             teh = timedEventHandlerList_.PeekFront();
             
-            //uint32_t timeNow = micros();
-            uint32_t timeNow = millis();
+            uint32_t timeNow = PAL.Millis();
             
             // Check if the time since accepting event is gte than
             // the timeout the event was supposed to wait for.

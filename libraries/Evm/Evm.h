@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 
+#include "PAL.h"
 #include "IdleTimeEventHandler.h"
 #include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
