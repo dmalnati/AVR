@@ -7,6 +7,8 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#ifdef __AVR_ATmega328P__
+
 /*
  * Meant as a mapping for pins for IO.
  */
@@ -51,7 +53,7 @@ PlatformAbstractionLayer::GetArduinoPinFromPhysicalPin(uint8_t physicalPin)
     return physicalPin__arduinoPin[physicalPin];
 }
 
-
+#endif  // __AVR_ATmega328P__
 
 
 
