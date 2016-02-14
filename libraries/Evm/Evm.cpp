@@ -11,7 +11,7 @@
 
 void Evm::RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
-    idleTimeEventHandlerList_.PushBack(iteh);
+    idleTimeEventHandlerList_.Push(iteh);
 }
 
 void Evm::DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
@@ -55,7 +55,7 @@ void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
     teh->timeout_   = timeout;
 
     // Queue it
-    timedEventHandlerList_.PushSorted(teh, CmpTimedEventHandler);
+    timedEventHandlerList_.Push(teh);
 }
 
 void Evm::DeRegisterTimedEventHandler(TimedEventHandler *teh)
@@ -72,9 +72,10 @@ void Evm::ServiceTimedEventHandlers()
         uint8_t            remainingEvents = MAX_EVENTS_HANDLED;
         bool               keepGoing       = true;
         TimedEventHandler *teh             = NULL;
+        TimedEventHandler *tehTmp          = NULL;
         
         do {
-            teh = timedEventHandlerList_.PeekFront();
+            timedEventHandlerList_.Peek(teh);
             
             uint32_t timeNow = PAL.Millis();
             
@@ -84,7 +85,7 @@ void Evm::ServiceTimedEventHandlers()
             if ((timeNow - teh->timeQueued_) >= teh->timeout_)
             {
                 // drop this element from the list
-                timedEventHandlerList_.PopFront();
+                timedEventHandlerList_.Pop(tehTmp);
                 
                 // invoke the IdleTimeEventHandler
                 teh->OnTimedEvent();
@@ -130,12 +131,10 @@ void Evm::ServiceTimedEventHandlers()
 //
 void Evm::RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
-    uint8_t idxLogical = 0;
-    
     // Prevent this event from being added more than once
-    if (!interruptEventHandlerList_.FindIdxFirst(ieh, idxLogical))
+    if (!interruptEventHandlerList_.HasElement(ieh))
     {
-        interruptEventHandlerList_.PushBack(ieh);
+        interruptEventHandlerList_.Push(ieh);
     }
 }
 
@@ -166,11 +165,13 @@ void Evm::ServiceInterruptEventHandlers()
     
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
+    InterruptEventHandler *ieh = NULL;
+    
     // Suppress interrupts during critical sections of code
     cli();
     while (interruptEventHandlerList_.Size() && remainingEvents)
     {
-        InterruptEventHandler *ieh = interruptEventHandlerList_.PopFront();
+        interruptEventHandlerList_.Pop(ieh);
         sei();
         
         // No need to disable interrupts here, ISR-invoked code only modifies
@@ -225,43 +226,18 @@ void Evm::MainLoop()
 
 
 Evm &
-Evm::GetInstance(uint8_t maxEventCapacity)
+Evm::GetInstance()
 {
     static Evm *evm = NULL;
     
     if (!evm)
     {
-        evm = new Evm(maxEventCapacity);
+        evm = new Evm();
     }
     
     return *evm;
 }
 
-int8_t
-Evm::CmpTimedEventHandler(TimedEventHandler *teh1, TimedEventHandler *teh2)
-{
-    int8_t retVal;
-    
-    uint32_t timeNow = millis();
-    
-    uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->timeout_;
-    uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->timeout_;
-    
-    if (expiryOne < expiryTwo)
-    {
-        retVal = -1;
-    }
-    else if (expiryOne > expiryTwo)
-    {
-        retVal = 1;
-    }
-    else // (expiryOne == expiryTwo)
-    {
-        retVal = 0;
-    }
-    
-    return retVal;
-}
 
 
 

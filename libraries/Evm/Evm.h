@@ -9,7 +9,9 @@
 #include "IdleTimeEventHandler.h"
 #include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
-#include "MyStaqueue.h"
+#include "Container.h"
+
+
 
 
 class Evm
@@ -22,19 +24,46 @@ public:
     
     void MainLoop();
     
-    static Evm &GetInstance(uint8_t maxEventCapacity = MAX_EVENT_CAPACITY);
-    static int8_t CmpTimedEventHandler(TimedEventHandler *teh1,
-                                       TimedEventHandler *teh2);
+    static Evm &GetInstance();
+    
+    class CmpTimedEventHandler
+    {
+    public:
+        uint8_t operator()(TimedEventHandler *teh1, TimedEventHandler *teh2)
+        {
+            int8_t retVal;
+            
+            uint32_t timeNow = millis();
+            
+            uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->timeout_;
+            uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->timeout_;
+            
+            if (expiryOne < expiryTwo)
+            {
+                retVal = -1;
+            }
+            else if (expiryOne > expiryTwo)
+            {
+                retVal = 1;
+            }
+            else // (expiryOne == expiryTwo)
+            {
+                retVal = 0;
+            }
+            
+            return retVal;
+        }
+    };
     
 private:
-    static const uint8_t MAX_EVENT_CAPACITY = 8;
+    static const uint8_t INITIAL_EVENT_CAPACITY = 4;
 
     
     // Can't construct directly
-    Evm(uint8_t maxEventCapacity)
-    : idleTimeEventHandlerList_(maxEventCapacity)
-    , timedEventHandlerList_(maxEventCapacity)
-    , interruptEventHandlerList_(maxEventCapacity)
+    Evm()
+    : idleTimeEventHandlerList_(INITIAL_EVENT_CAPACITY)
+    , timedEventHandlerList_(INITIAL_EVENT_CAPACITY)
+    , interruptEventHandlerList_(INITIAL_EVENT_CAPACITY)
     {
         // nothing to do
     }
@@ -63,8 +92,9 @@ private:
 
     
     // Members
-    MyStaqueue<IdleTimeEventHandler *>  idleTimeEventHandlerList_;
-    MyStaqueue<TimedEventHandler *>     timedEventHandlerList_;
+    Queue<IdleTimeEventHandler *>      idleTimeEventHandlerList_;
+    SortedQueue<TimedEventHandler *,
+                CmpTimedEventHandler>  timedEventHandlerList_;
     
     // This is a data structure which needs to be carefully managed.
     //
@@ -75,7 +105,7 @@ private:
     // written with a full appreciation of which code is driving
     // its execution and prevent corruption of its data
     // as well as any logic making use of its data.
-    MyStaqueue<InterruptEventHandler *> interruptEventHandlerList_;
+    Queue<InterruptEventHandler *> interruptEventHandlerList_;
 };
 
 

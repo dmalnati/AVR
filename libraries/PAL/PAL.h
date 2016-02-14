@@ -35,6 +35,11 @@ public:
         digitalWrite(arduinoPin, value);
     }
     
+    void Delay(uint32_t ms)
+    {
+        delay(ms);
+    }
+    
     uint32_t Millis()
     {
         return millis();
