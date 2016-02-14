@@ -1,5 +1,5 @@
-#ifndef __MY_STAQUEUE_H__
-#define __MY_STAQUEUE_H__
+#ifndef __CONTAINER_H__
+#define __CONTAINER_H__
 
 
 #include <stdint.h>
@@ -266,9 +266,6 @@ public:
 #endif
 
    
-   
-   
-   
 private:
     uint8_t EnsureCapacityForOneMore()
     {
@@ -407,59 +404,6 @@ private:
 
 
 
-
-/*
-
-
-Idle:
-- PushBack
-- Remove
-- Size()
-- []
-
-
-Timed:
-- PushSorted
-- Remove
-- Size
-- PeekFront
-- PopFront
-
-Interrupt:
-- FindIdxFirst
-- PushBack
-- Remove
-- Size
-- PopFront
-
-
-
-
-  What                 Idle             Timed           Interrupt
------------------|----------------|----------------|--------------------
-  FindIdxFirst                                              X  (really HasElement)
-  PopFront                                 X                X
-  Size                   X                 X                X
-  Remove                 X                 X                X
-  PushBack               X                                  X
-  []                     X
-  PushSorted                               X
-  PeekFront                                X
-
-----------------------------------------------------------------------------
-                                                           Queue
-                                        SortedQueue
-                       Queue
-
-
-
-
-*/
-
-
-
-
-
 template<typename T>
 class Queue
 : protected RingBuffer<T>
@@ -515,17 +459,6 @@ public:
     {
         return RingBuffer<T>::operator[](idxLogical);
     }
-    
-#ifdef DEBUG
-
-    void PrintDebug(const char *msg)
-    {
-        RingBuffer<T>::PrintDebug(msg);
-    }
-
-#endif
-    
-    
 };
 
 
@@ -533,7 +466,6 @@ template<typename T, typename CMP>
 class SortedQueue
 : public Queue<T>
 {
-    
 public:
     SortedQueue(uint8_t capacity = RingBuffer<T>::RING_BUFFER_DEFAULT_CAPACITY,
                 uint8_t growSize = RingBuffer<T>::RING_BUFFER_DEFAULT_GROW_SIZE)
@@ -599,7 +531,7 @@ public:
 
 
 
-#endif  // __MY_STAQUEUE_H__
+#endif  // __CONTAINER_H__
 
 
 
