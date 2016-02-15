@@ -406,16 +406,20 @@ ISR_OnPortPinStateChange(uint8_t port, uint8_t portPin, uint8_t changeDir)
 {
     InterruptEventHandler *ieh = port_portPin__ieh[port][portPin];
     
-    InterruptEventHandler::MODE changeType = (
-        changeDir                                 ?
-        InterruptEventHandler::MODE::MODE_RISING  :
-        InterruptEventHandler::MODE::MODE_FALLING
-    );
-    
     if (ieh)
     {
-        if (ieh->GetMode() == changeType)
+        InterruptEventHandler::MODE changeType = (
+            changeDir                                 ?
+            InterruptEventHandler::MODE::MODE_RISING  :
+            InterruptEventHandler::MODE::MODE_FALLING
+        );
+    
+        if (ieh->GetMode() == changeType ||
+            ieh->GetMode() ==
+                InterruptEventHandler::MODE::MODE_RISING_AND_FALLING)
         {
+            ieh->SetPinLevel(changeDir);
+            
             Evm::GetInstance().RegisterInterruptEventHandler(ieh);
         }
     }

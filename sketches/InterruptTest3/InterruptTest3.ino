@@ -18,15 +18,15 @@ public:
     , pinC_(pinC)
     {
         // Assign interrupts to handler functions
-        MapAndStartInterrupt(pinA_, this, &ButtonResponder::OnButtonA);
-        MapButNotStartInterrupt(pinB_, this, &ButtonResponder::OnButtonB);
-        MapButNotStartInterrupt(pinC_, this, &ButtonResponder::OnButtonC)->RegisterForInterruptEvent();
+        MapAndStartInterrupt(pinA_, this, &ButtonResponder::OnButtonA, LEVEL_RISING);
+        MapAndStartInterrupt(pinB_, this, &ButtonResponder::OnButtonB, LEVEL_FALLING);
+        MapAndStartInterrupt(pinC_, this, &ButtonResponder::OnButtonC, LEVEL_RISING_AND_FALLING);
 
         PAL.PinMode(pinSignal_, OUTPUT);
     }
 
 private:
-    void TogglePattern(uint8_t countFirst, uint8_t countSecond)
+    void TogglePattern(uint8_t countFirst, uint8_t countSecond, uint8_t countThird)
     {
         // Signal the pin number
         for (uint8_t i = 0; i < countFirst; ++i)
@@ -43,9 +43,18 @@ private:
             PAL.DigitalWrite(pinSignal_, HIGH);
             PAL.DigitalWrite(pinSignal_, LOW);
         }
+        
+        PAL.Delay(1);
+
+        // Signal the number of times you've seen it
+        for (uint8_t i = 0; i < countThird; ++i)
+        {
+            PAL.DigitalWrite(pinSignal_, HIGH);
+            PAL.DigitalWrite(pinSignal_, LOW);
+        }
     }
 
-    void OnButtonA()
+    void OnButtonA(uint8_t pinLevel)
     {
         static uint8_t count = 0;
         
@@ -53,10 +62,10 @@ private:
         ++count;
 
         // Signal
-        TogglePattern(pinA_, count);
+        TogglePattern(pinA_, pinLevel + 1, count);
     }
 
-    void OnButtonB()
+    void OnButtonB(uint8_t pinLevel)
     {
         static uint8_t count = 0;
         
@@ -64,10 +73,10 @@ private:
         ++count;
 
         // Signal
-        TogglePattern(pinB_, count);
+        TogglePattern(pinB_, pinLevel + 1, count);
     }
     
-    void OnButtonC()
+    void OnButtonC(uint8_t pinLevel)
     {
         static uint8_t count = 0;
         
@@ -75,7 +84,7 @@ private:
         ++count;
 
         // Signal
-        TogglePattern(pinC_, count);
+        TogglePattern(pinC_, pinLevel + 1, count);
     }
 
     uint8_t pinA_;
