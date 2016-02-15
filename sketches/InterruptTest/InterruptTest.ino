@@ -7,11 +7,11 @@
 #include <InterruptEventHandler.h>
 
 
-// expressed in Arduino pins
-const uint8_t PIN_BLOCKING       = 0;   // physical pin  2
-const uint8_t PIN_TIMED_INTERVAL = 1;   // physical pin  3
-const uint8_t PIN_INT_INPUT_RAW  = 2;   // physical pin  4
-const uint8_t PIN_INT_OUTPUT_RAW = 3;   // physical pin  5
+// expressed in physical pins
+const uint8_t PIN_BLOCKING       = 2;
+const uint8_t PIN_TIMED_INTERVAL = 3;
+const uint8_t PIN_INT_INPUT_RAW  = 4;
+const uint8_t PIN_INT_OUTPUT_RAW = 5;
 
 // expressed in physical pins
 
@@ -32,18 +32,18 @@ const uint8_t PIN_INT_INPUT_EVM  = 4;   // (PD2)
 
 
 // expressed in Arduino pins
-const uint8_t PIN_INT_OUTPUT_EVM = 5;   // physical pin 11
+const uint8_t PIN_INT_OUTPUT_EVM = 11;
 
 
 
 // A function which will block the main thread for long periods of time
 void BlockingFunction(void *)
 {
-    pinMode(PIN_BLOCKING, OUTPUT);
+    PAL.PinMode(PIN_BLOCKING, OUTPUT);
 
-    digitalWrite(PIN_BLOCKING, HIGH);
-    delay(750),
-    digitalWrite(PIN_BLOCKING, LOW);
+    PAL.DigitalWrite(PIN_BLOCKING, LOW);
+    PAL.Delay(750),
+    PAL.DigitalWrite(PIN_BLOCKING, HIGH);
 }
 
 
@@ -52,8 +52,8 @@ void INT()
 {
     static TimedPinToggler tpt(PIN_INT_OUTPUT_RAW);
 
-    digitalWrite(PIN_INT_OUTPUT_RAW, HIGH);
-    digitalWrite(PIN_INT_OUTPUT_RAW, LOW);
+    PAL.DigitalWrite(PIN_INT_OUTPUT_RAW, HIGH);
+    PAL.DigitalWrite(PIN_INT_OUTPUT_RAW, LOW);
 
     tpt.RegisterForTimedEvent(50);
 }
@@ -67,19 +67,19 @@ public:
     : InterruptEventHandler(inPin, mode)
     , outPin_(outPin)
     {
-        pinMode(outPin_, OUTPUT);
+        PAL.PinMode(outPin_, OUTPUT);
 
-        digitalWrite(outPin_, HIGH);
-        digitalWrite(outPin_, LOW);
+        PAL.DigitalWrite(outPin_, HIGH);
+        PAL.DigitalWrite(outPin_, LOW);
     }
 
 private:
     void OnInterruptEvent()
     {
-        digitalWrite(outPin_, HIGH);
-        digitalWrite(outPin_, LOW);
-        digitalWrite(outPin_, HIGH);
-        digitalWrite(outPin_, LOW);
+        PAL.DigitalWrite(outPin_, HIGH);
+        PAL.DigitalWrite(outPin_, LOW);
+        PAL.DigitalWrite(outPin_, HIGH);
+        PAL.DigitalWrite(outPin_, LOW);
     }
 
     uint8_t outPin_;
@@ -120,9 +120,10 @@ void loop()
 
     // As usual, see the effect on the main thread
     TimedPinToggler tpt(PIN_TIMED_INTERVAL) ; tpt.RegisterForTimedEventInterval(1000);
-
+    
     // A blocking function to run for long periods, periodically
     TimedEventHandlerFnWrapper bf(BlockingFunction, NULL) ; bf.RegisterForTimedEventInterval(1000);
+    IdlePinToggler ipt(PIN_BLOCKING) ; ipt.RegisterForIdleTimeEvent();
 
     // Test raw interrupt handler
     //attachInterrupt(digitalPinToInterrupt(PIN_INT_INPUT_RAW), INT, RISING);

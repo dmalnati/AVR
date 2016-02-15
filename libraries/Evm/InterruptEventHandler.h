@@ -38,6 +38,74 @@ private:
 };
 
 
+
+//////////////////////////////////////////////////////////////////////
+//
+// Object Wrappers
+//
+//////////////////////////////////////////////////////////////////////
+
+template <typename T>
+class InterruptEventHandlerObjectWrapper
+: public InterruptEventHandler
+{
+    typedef void (T::*MemberCallbackFn)();
+    
+public:
+    InterruptEventHandlerObjectWrapper(
+        uint8_t           pin,
+        T                *obj,
+        MemberCallbackFn  func,
+        MODE              mode = MODE::MODE_RISING)
+    : InterruptEventHandler(pin, mode)
+    , obj_(obj)
+    , func_(func)
+    {
+        // nothing to do
+    }
+
+private:
+    virtual void OnInterruptEvent()
+    {
+        ((*obj_).*func_)();
+    }
+
+    T                *obj_;
+    MemberCallbackFn  func_;
+};
+
+template <typename T>
+InterruptEventHandlerObjectWrapper<T> *
+MapButNotStartInterrupt(
+    uint8_t                      pin,
+    T                           *obj,
+    void                         (T::*cbFn)(),
+    InterruptEventHandler::MODE  mode = InterruptEventHandler::MODE::MODE_RISING)
+{
+    InterruptEventHandlerObjectWrapper<T> * iehow =
+        new InterruptEventHandlerObjectWrapper<T>(pin, obj, cbFn, mode);
+    
+    return iehow;
+}
+
+template <typename T>
+InterruptEventHandlerObjectWrapper<T> *
+MapAndStartInterrupt(
+    uint8_t                      pin,
+    T                           *obj,
+    void                         (T::*cbFn)(),
+    InterruptEventHandler::MODE  mode = InterruptEventHandler::MODE::MODE_RISING)
+{
+    InterruptEventHandlerObjectWrapper<T> * iehow =
+        MapButNotStartInterrupt(pin, obj, cbFn, mode);
+
+    iehow->RegisterForInterruptEvent();
+    
+    return iehow;
+}
+
+
+
 //////////////////////////////////////////////////////////////////////
 //
 // Function Wrappers
