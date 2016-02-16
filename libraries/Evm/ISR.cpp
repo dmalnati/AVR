@@ -418,7 +418,7 @@ ISR_OnPortPinStateChange(uint8_t port, uint8_t portPin, uint8_t changeDir)
             ieh->GetMode() ==
                 InterruptEventHandler::MODE::MODE_RISING_AND_FALLING)
         {
-            ieh->SetPinLevel(changeDir);
+            ieh->SetLogicLevel(changeDir);
             
             Evm::GetInstance().RegisterInterruptEventHandler(ieh);
         }

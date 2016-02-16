@@ -28,6 +28,13 @@ public:
         pinMode(arduinoPin, mode);
     }
     
+    uint8_t DigitalRead(uint8_t physicalPin)
+    {
+        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
+        
+        return digitalRead(arduinoPin);
+    }
+    
     void DigitalWrite(uint8_t physicalPin, uint8_t value)
     {
         uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
@@ -63,8 +70,11 @@ public:
         return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
     }
 
-private:
     static int8_t GetArduinoPinFromPhysicalPin(uint8_t physicalPin);
+    
+    
+private:
+
 };
 
 

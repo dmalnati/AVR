@@ -1,9 +1,9 @@
-#ifndef __MY_RADIO_CONTROLLER_H__
-#define __MY_RADIO_CONTROLLER_H__
+#ifndef __RF_LINK_H__
+#define __RF_LINK_H__
 
 
 #include "PAL.h"
-#include <EvmEventHandler.h>
+#include <IdleTimeEventHandler.h>
 #include <VirtualWire.h>
 
 
@@ -22,28 +22,24 @@
 //
 
 
-class MyRadioControllerTxCallbackIface
-{
-public:
-    virtual void OnTxComplete() = 0;
-};
-
-class MyRadioControllerRxCallbackIface
-{
-public:
-    virtual void OnRxAvailable(uint8_t *buf, uint8_t bufSize) = 0;
-};
 
 
-class MyRadioController : private IdleTimeEventHandler
+template <typename T>
+class RFLink
+: private IdleTimeEventHandler
 {
+    typedef void (T::*OnRxAvailableCbFn)(uint8_t *buf, uint8_t bufSize);
+    typedef void (T::*OnTxCompleteCbFn)();
+    
 public:
-    MyRadioController(int8_t                            rxPin,
-                      MyRadioControllerRxCallbackIface *rxCb,
-                      int8_t                            txPin,
-                      MyRadioControllerTxCallbackIface *txCb,
-                      uint16_t                          baud = DEFAULT_BAUD)
-    : rxCb_(rxPin != -1 ? rxCb : NULL)
+    RFLink(T                 *obj,
+           int8_t             rxPin,
+           OnRxAvailableCbFn  rxCb,
+           int8_t             txPin,
+           OnTxCompleteCbFn   txCb,
+           uint16_t           baud = DEFAULT_BAUD)
+    : obj_(obj)
+    , rxCb_(rxPin != -1 ? rxCb : NULL)
     , txCb_(txPin != -1 ? txCb : NULL)
     , txActive_(0)
     , txActiveLast_(0)
@@ -68,7 +64,7 @@ public:
         MaybeStartIdleProcessing();
     }
     
-    ~MyRadioController()
+    ~RFLink()
     {
         if (rxCb_) { vw_rx_stop(); }
     }
@@ -142,7 +138,8 @@ private:
         
         if (vw_get_message(buf, &bufLen))
         {
-            rxCb_->OnRxAvailable(buf, bufLen);
+            // Call back listener
+            ((*obj_).*rxCb_)(buf, bufLen);
         }
     }
     
@@ -159,7 +156,7 @@ private:
         if (txActive_ == 0 && txActive_ != txActiveLast_)
         {
             // Call back listener
-            txCb_->OnTxComplete();
+            ((*obj_).*txCb_)();
             
             // Stop being an idle process for now since the one thing TX is
             // trying to be responsive to just happened.
@@ -167,19 +164,22 @@ private:
         }
     }
     
+    // Object owning the callback functions
+    T                 *obj_;
+    
     // RX Members
-    MyRadioControllerRxCallbackIface *rxCb_;
+    OnRxAvailableCbFn rxCb_;
 
     // TX Members
-    MyRadioControllerTxCallbackIface *txCb_;
-    uint8_t                           txActive_;
-    uint8_t                           txActiveLast_;
+    OnTxCompleteCbFn  txCb_;
+    uint8_t           txActive_;
+    uint8_t           txActiveLast_;
 };
 
 
 
 
-#endif // __MY_RADIO_CONTROLLER_H__
+#endif // __RF_LINK_H__
 
 
 

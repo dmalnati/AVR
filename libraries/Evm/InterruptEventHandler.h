@@ -20,17 +20,17 @@ public:
     
     InterruptEventHandler(uint8_t pin, MODE mode = MODE::MODE_RISING)
     : pin_(pin)
-    , pinLevel_(0)
+    , logicLevel_(0)
     , mode_(mode)
     {
         // nothing to do
     }
     ~InterruptEventHandler() { DeRegisterForInterruptEvent(); }
     
-    uint8_t GetPin()      const           { return pin_;          }
-    uint8_t GetPinLevel() const           { return pinLevel_;     }
-    void    SetPinLevel(uint8_t pinLevel) { pinLevel_ = pinLevel; }
-    MODE    GetMode()     const           { return mode_;         }
+    uint8_t GetPin()      const               { return pin_;              }
+    uint8_t GetLogicLevel() const             { return logicLevel_;       }
+    void    SetLogicLevel(uint8_t logicLevel) { logicLevel_ = logicLevel; }
+    MODE    GetMode()     const               { return mode_;             }
     
     void RegisterForInterruptEvent();
     void DeRegisterForInterruptEvent();
@@ -39,7 +39,7 @@ public:
     
 private:
     uint8_t pin_;
-    uint8_t pinLevel_;
+    uint8_t logicLevel_;
     MODE    mode_;
 };
 
@@ -61,7 +61,7 @@ template <typename T>
 class InterruptEventHandlerObjectWrapper
 : public InterruptEventHandler
 {
-    typedef void (T::*MemberCallbackFn)(uint8_t);
+    typedef void (T::*MemberCallbackFn)(uint8_t logicLevel);
     
 public:
     InterruptEventHandlerObjectWrapper(
@@ -79,7 +79,7 @@ public:
 private:
     virtual void OnInterruptEvent()
     {
-        ((*obj_).*func_)(this->GetPinLevel());
+        ((*obj_).*func_)(this->GetLogicLevel());
     }
 
     T                *obj_;
@@ -91,7 +91,7 @@ InterruptEventHandlerObjectWrapper<T> *
 MapButNotStartInterrupt(
     uint8_t                      pin,
     T                           *obj,
-    void                         (T::*cbFn)(uint8_t),
+    void                         (T::*cbFn)(uint8_t logicLevel),
     InterruptEventHandler::MODE  mode = InterruptEventHandler::MODE::MODE_RISING)
 {
     InterruptEventHandlerObjectWrapper<T> * iehow =
@@ -105,7 +105,7 @@ InterruptEventHandlerObjectWrapper<T> *
 MapAndStartInterrupt(
     uint8_t                      pin,
     T                           *obj,
-    void                         (T::*cbFn)(uint8_t),
+    void                         (T::*cbFn)(uint8_t logicLevel),
     InterruptEventHandler::MODE  mode = InterruptEventHandler::MODE::MODE_RISING)
 {
     InterruptEventHandlerObjectWrapper<T> * iehow =
