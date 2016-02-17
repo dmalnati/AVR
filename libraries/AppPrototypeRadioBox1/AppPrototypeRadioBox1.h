@@ -30,6 +30,8 @@ struct AppPrototypeRadioBox1Config
     
     uint8_t pinClearButton;
     
+    uint8_t valRadioRealm;
+    uint8_t valProtocolId;
     uint8_t pinRadioRX;
     uint8_t pinRadioTX;
 };
@@ -50,7 +52,10 @@ private:
     
     
     void StartRadioSystem();
-    void OnRadioRXAvailable(uint8_t *buf, uint8_t bufSize);
+    void OnRadioRXAvailable(uint8_t  srcAddr,
+                            uint8_t  protocolId,
+                            uint8_t *buf,
+                            uint8_t  bufSize);
     void OnRadioTXComplete();
     
     void ReadRadioAddressRxTx();

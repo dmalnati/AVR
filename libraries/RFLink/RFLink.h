@@ -24,20 +24,22 @@
 
 
 
+
+
 template <typename T>
-class RFLink
+class RFLink_Raw
 : private IdleTimeEventHandler
 {
     typedef void (T::*OnRxAvailableCbFn)(uint8_t *buf, uint8_t bufSize);
     typedef void (T::*OnTxCompleteCbFn)();
     
 public:
-    RFLink(T                 *obj,
-           int8_t             rxPin,
-           OnRxAvailableCbFn  rxCb,
-           int8_t             txPin,
-           OnTxCompleteCbFn   txCb,
-           uint16_t           baud = DEFAULT_BAUD)
+    RFLink_Raw(T                 *obj,
+               int8_t             rxPin,
+               OnRxAvailableCbFn  rxCb,
+               int8_t             txPin,
+               OnTxCompleteCbFn   txCb,
+               uint16_t           baud = DEFAULT_BAUD)
     : obj_(obj)
     , rxCb_(rxPin != -1 ? rxCb : NULL)
     , txCb_(txPin != -1 ? txCb : NULL)
@@ -64,7 +66,7 @@ public:
         MaybeStartIdleProcessing();
     }
     
-    ~RFLink()
+    virtual ~RFLink_Raw()
     {
         if (rxCb_) { vw_rx_stop(); }
     }
@@ -100,9 +102,9 @@ public:
         return retVal;
     }
     
-private:
     static const uint16_t DEFAULT_BAUD = 2000;
     
+private:
     // Implement the Idle event
     virtual void OnIdleTimeEvent()
     {
@@ -175,6 +177,138 @@ private:
     uint8_t           txActive_;
     uint8_t           txActiveLast_;
 };
+
+
+
+
+
+
+
+
+// Stand in the way of RFLink_Raw and data handed back to the application
+template <typename T>
+class RFLink
+: private RFLink_Raw<RFLink<T>>
+{
+    typedef void (T::*OnRxAvailableCbFn)(uint8_t  srcAddr,
+                                         uint8_t  protocolId,
+                                         uint8_t *buf,
+                                         uint8_t  bufSize);
+    typedef void (T::*OnTxCompleteCbFn)();
+    
+public:
+    RFLink(uint8_t            realm,
+           uint8_t            srcAddr,
+           T                 *obj,
+           int8_t             rxPin,
+           OnRxAvailableCbFn  rxCb,
+           int8_t             txPin,
+           OnTxCompleteCbFn   txCb,
+           uint16_t           baud = RFLink_Raw<RFLink<T>>::DEFAULT_BAUD)
+    : RFLink_Raw<RFLink>(this,
+                         rxPin,
+                         rxCb ? &RFLink<T>::OnRxAvailable : NULL, // intercepted
+                         txPin,
+                         txCb ? &RFLink<T>::OnTxComplete : NULL, // intercepted
+                         baud)
+    , realm_(realm)
+    , obj_(obj)
+    , rxCb_(rxCb)
+    , srcAddr_(srcAddr)
+    , txCb_(txCb)
+    {
+        // Nothing to do
+    }
+    
+    // Encapsulate
+    uint8_t SendTo(uint8_t  dstAddr,
+                   uint8_t  protocolId,
+                   uint8_t *buf,
+                   uint8_t  bufSize)
+    {
+        uint8_t retVal = 0;
+        
+        // First check to see if it can all fit
+        if ((sizeof(Header) + bufSize) <= VW_MAX_MESSAGE_LEN)
+        {
+            // Reserve space to craft outbound message
+            uint8_t bufSizeNew = sizeof(Header) + bufSize;
+            uint8_t bufNew[bufSizeNew];
+            
+            // Fill out header
+            Header *hdr = (Header *)&(bufNew[0]);
+            
+            hdr->realm      = realm_;
+            hdr->srcAddr    = srcAddr_;
+            hdr->dstAddr    = dstAddr;
+            hdr->protocolId = protocolId;
+
+            // Copy in user data
+            memcpy(&(bufNew[sizeof(Header) - 1]), buf, bufSize);
+            
+            // Hand off to RFLink_Raw, note success value
+            retVal = RFLink_Raw<RFLink<T>>::Send(bufNew, bufSizeNew);
+        }
+        
+        return retVal;
+    }
+    
+    
+private:
+    struct Header
+    {
+        uint8_t realm;
+        uint8_t srcAddr;
+        uint8_t dstAddr;
+        uint8_t protocolId;
+    };
+
+    // Intercepted from RFLink_Raw
+    void OnRxAvailable(uint8_t *buf, uint8_t bufSize)
+    {
+        // Filter before passing up.  Must have at least full header.
+        if (bufSize >= sizeof(Header))
+        {
+            Header *hdr = (Header *)buf;
+            
+            if (hdr->realm == realm_ && hdr->dstAddr == srcAddr_)
+            {
+                // Filter criteria passed.
+                
+                // Pass data upward, but stripping off the header data
+                ((*obj_).*rxCb_)(hdr->srcAddr,
+                                 hdr->protocolId,
+                                 &(buf[sizeof(Header) - 1]),
+                                 bufSize - sizeof(Header));
+            }
+            else
+            {
+                PAL.DigitalWrite(5, LOW);
+                PAL.Delay(1000);
+                PAL.DigitalWrite(5, HIGH);
+            }
+        }
+    }
+
+    // No need to filter this, simply relay    
+    void OnTxComplete()
+    {
+        ((*obj_).*txCb_)();
+    }
+    
+    
+    T                 *obj_;
+    uint8_t            realm_;
+    uint8_t            srcAddr_;
+    OnRxAvailableCbFn  rxCb_;
+    OnTxCompleteCbFn   txCb_;
+};
+
+
+
+
+
+
 
 
 

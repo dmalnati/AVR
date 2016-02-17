@@ -12,7 +12,8 @@ void loop()
 
         .pinAttentionButton   = 18,
         .pinAttentionRedLED   = 15,
-        .pinAttentionGreenLED = 16,
+        //.pinAttentionGreenLED = 16,   // nope, VW uses OC1B
+        .pinAttentionGreenLED = 19,
         .pinAttentionBlueLED  = 17,
 
         .pinFreeToTalkButton  = 13,
@@ -26,6 +27,8 @@ void loop()
 
         .pinClearButton       = 27,
 
+        .valRadioRealm        =  1,
+        .valProtocolId        =  1,
         .pinRadioRX           =  3,
         .pinRadioTX           =  2
     };

@@ -68,6 +68,8 @@ StartRadioSystem()
     // Start Radio Handler
     rfLink_ =
         new RFLink<AppPrototypeRadioBox1>(
+            cfg_.valRadioRealm,
+            radioAddressRx_,
             this,
             cfg_.pinRadioRX,
             &AppPrototypeRadioBox1::OnRadioRXAvailable,
@@ -77,9 +79,12 @@ StartRadioSystem()
 }
 
 void AppPrototypeRadioBox1::
-OnRadioRXAvailable(uint8_t *buf, uint8_t bufSize)
+OnRadioRXAvailable(uint8_t  srcAddr,
+                   uint8_t  protocolId,
+                   uint8_t *buf,
+                   uint8_t  bufSize)
 {
-    
+    PinToggle(cfg_.pinFreeToTalkLED);
 }
 
 void AppPrototypeRadioBox1::
@@ -201,20 +206,20 @@ StartButtonMonitoring()
 void AppPrototypeRadioBox1::
 OnAttentionButton(uint8_t logicLevel)
 {
-    PinToggle(cfg_.pinAttentionRedLED);
+    
 }
 
 
 void AppPrototypeRadioBox1::
 OnFreeToTalkButton(uint8_t logicLevel)
 {
-    PinToggle(cfg_.pinAttentionGreenLED);
+    
 }
 
 void AppPrototypeRadioBox1::
 OnYesButton(uint8_t logicLevel)
 {
-    PinToggle(cfg_.pinAttentionBlueLED);
+    
 }
 
 void AppPrototypeRadioBox1::
@@ -228,8 +233,9 @@ OnClearButton(uint8_t logicLevel)
 {
     PAL.DigitalWrite(cfg_.pinYesLED, HIGH);
     
-    uint8_t buf[5] = { 1, 2, 3, 4, 5 };
-    rfLink_->Send(buf, 5);
+    uint8_t buf[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                       11, 12, 13, 14, 15, 16, 17, 18, 19, 20    };
+    rfLink_->SendTo(radioAddressTx_, cfg_.valProtocolId, buf, 20);
 }
 
 
