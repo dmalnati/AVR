@@ -22,10 +22,6 @@
 //
 
 
-
-
-
-
 template <typename T>
 class RFLink_Raw
 : private IdleTimeEventHandler
@@ -253,6 +249,11 @@ public:
         return retVal;
     }
     
+    void SetSrcAddr(uint8_t srcAddr)
+    {
+        srcAddr_ = srcAddr;
+    }
+    
     
 private:
     struct Header
@@ -270,7 +271,38 @@ private:
         if (bufSize >= sizeof(Header))
         {
             Header *hdr = (Header *)buf;
+
+            // Signal that data was received
+            PAL.DigitalWrite(12, HIGH);
+            PAL.Delay(500);
+            PAL.DigitalWrite(12, LOW);
             
+            PAL.Delay(500);
+            
+            
+            // Signal local address
+            for (uint8_t i = 0; i < srcAddr_; ++i)
+            {
+                PAL.DigitalWrite(12, HIGH);
+                PAL.Delay(100);
+                PAL.DigitalWrite(12, LOW);
+                PAL.Delay(100);
+            }
+            
+            PAL.Delay(500);
+            
+            // Signal where the data was addressed to
+            for (uint8_t i = 0; i < hdr->dstAddr; ++i)
+            {
+                PAL.DigitalWrite(12, HIGH);
+                PAL.Delay(100);
+                PAL.DigitalWrite(12, LOW);
+                PAL.Delay(100);
+            }
+            
+            PAL.Delay(500);
+
+             
             if (hdr->realm == realm_ && hdr->dstAddr == srcAddr_)
             {
                 // Filter criteria passed.
@@ -283,9 +315,10 @@ private:
             }
             else
             {
-                PAL.DigitalWrite(5, LOW);
-                PAL.Delay(1000);
-                PAL.DigitalWrite(5, HIGH);
+                PAL.DigitalWrite(12, HIGH);
+                PAL.Delay(3000);
+                PAL.DigitalWrite(12, LOW);
+                PAL.Delay(100);
             }
         }
     }

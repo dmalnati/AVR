@@ -61,10 +61,7 @@ private:
     void ReadRadioAddressRxTx();
     void ShowRadioAddressRxTx();
     void StartRxTxAddressMonitoring();
-    void OnDipAddressRx1(uint8_t logicLevel);
-    void OnDipAddressRx2(uint8_t logicLevel);
-    void OnDipAddressTx1(uint8_t logicLevel);
-    void OnDipAddressTx2(uint8_t logicLevel);
+    void OnRxTxAddressChange(uint8_t logicLevel);
 
     
     void StartButtonMonitoring();

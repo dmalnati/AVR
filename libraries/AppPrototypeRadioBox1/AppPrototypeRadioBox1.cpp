@@ -92,6 +92,8 @@ OnRadioTXComplete()
 {
     // TX complete from Clear button
     PAL.DigitalWrite(cfg_.pinYesLED, LOW);
+    
+    PAL.DigitalWrite(cfg_.pinFreeToTalkLED, LOW);
 }
 
 
@@ -133,52 +135,45 @@ ShowRadioAddressRxTx()
 
 void AppPrototypeRadioBox1::
 StartRxTxAddressMonitoring()
-{
+{   
     MapAndStartInterrupt(cfg_.pinDipAddressRx1,
                          this,
-                         &AppPrototypeRadioBox1::OnDipAddressRx1,
+                         &AppPrototypeRadioBox1::OnRxTxAddressChange,
                          LEVEL_RISING_AND_FALLING);
     MapAndStartInterrupt(cfg_.pinDipAddressRx2,
                          this,
-                         &AppPrototypeRadioBox1::OnDipAddressRx2,
+                         &AppPrototypeRadioBox1::OnRxTxAddressChange,
                          LEVEL_RISING_AND_FALLING);
     MapAndStartInterrupt(cfg_.pinDipAddressTx1,
                          this,
-                         &AppPrototypeRadioBox1::OnDipAddressTx1,
+                         &AppPrototypeRadioBox1::OnRxTxAddressChange,
                          LEVEL_RISING_AND_FALLING);
     MapAndStartInterrupt(cfg_.pinDipAddressTx2,
                          this,
-                         &AppPrototypeRadioBox1::OnDipAddressTx2,
+                         &AppPrototypeRadioBox1::OnRxTxAddressChange,
                          LEVEL_RISING_AND_FALLING);
 }
 
 void AppPrototypeRadioBox1::
-OnDipAddressRx1(uint8_t logicLevel)
+OnRxTxAddressChange(uint8_t /* logicLevel */)
 {
+    // Debug
+    //return;
+    
+    
+    
+    
+    
     ReadRadioAddressRxTx();
     ShowRadioAddressRxTx();
+    
+    // Keep the radio system aware of the local address
+    if (rfLink_)
+    {
+        rfLink_->SetSrcAddr(radioAddressRx_);
+    }
 }
 
-void AppPrototypeRadioBox1::
-OnDipAddressRx2(uint8_t logicLevel)
-{
-    ReadRadioAddressRxTx();
-    ShowRadioAddressRxTx();
-}
-
-void AppPrototypeRadioBox1::
-OnDipAddressTx1(uint8_t logicLevel)
-{
-    ReadRadioAddressRxTx();
-    ShowRadioAddressRxTx();
-}
-
-void AppPrototypeRadioBox1::
-OnDipAddressTx2(uint8_t logicLevel)
-{
-    ReadRadioAddressRxTx();
-    ShowRadioAddressRxTx();
-}
 
 
 
@@ -233,9 +228,8 @@ OnClearButton(uint8_t logicLevel)
 {
     PAL.DigitalWrite(cfg_.pinYesLED, HIGH);
     
-    uint8_t buf[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                       11, 12, 13, 14, 15, 16, 17, 18, 19, 20    };
-    rfLink_->SendTo(radioAddressTx_, cfg_.valProtocolId, buf, 20);
+    uint8_t buf[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10    };
+    rfLink_->SendTo(radioAddressTx_, cfg_.valProtocolId, buf, sizeof(buf));
 }
 
 
