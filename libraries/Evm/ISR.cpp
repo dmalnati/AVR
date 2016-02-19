@@ -243,12 +243,14 @@ ISR_GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
 static InterruptEventHandler *port_portPin__ieh[3][8] = { NULL };
 
 // Lookup tables for access to port-specific data in an abstracted way
-static          uint8_t  port__refCount[3] = { 0 };
+static          uint8_t  port__refCount[3] = { 0,       0,       0       };
 static volatile uint8_t *port__pcmskPtr[3] = { &PCMSK0, &PCMSK1, &PCMSK2 };
 static volatile uint8_t *port__ddrPtr[3]   = { &DDRB,   &DDRC,   &DDRD   };
 
-// Storage to keep track of the last state of each port's pins
-static uint8_t pinStateLast[3] = { 0 };
+// Lookup tables for access to port-specific pin values
+// in an abstracted way
+static volatile uint8_t *port__pinStatePtr[3]  = { &PINB, &PINC, &PIND };
+static volatile uint8_t  port__pinStateLast[3] = { 0,     0,     0     };
 
 
 //////////////////////////////////////////////////////////////////////
@@ -275,6 +277,23 @@ ISR_AttachInterruptForPhysicalPin(uint8_t                physicalPin,
         
         // Enable interrupts for this specific pin on this port
         *port__pcmskPtr[port] |= _BV(portPin);
+        
+        // Set the cached pin value to the present value.
+        //
+        // This prevents a scenario where the prior cached version is
+        // (for example) a 0, but the current pin state is actually 1.
+        // The next time any pin on this port changes, the ISR logic here will
+        // detect a 'change' in that pin state despite it not having happened.
+        //
+        // Bitwise operation steps:
+        // - eliminate presence of the bit representing the portPin
+        //   - aka cause it to be zero without affecting any other bit values
+        // - OR that value with a bitfield where only the portPin's bit value
+        //   has been filtered through
+        //
+        port__pinStateLast[port] =
+            (  port__pinStateLast[port] & ~_BV(portPin) ) | // zero out bit
+            ( *port__pinStatePtr[port]  &  _BV(portPin) );  // combine live bit
         
         // If there were previously no interrupts registered for this port
         // then enable interrupts for this port
@@ -304,6 +323,8 @@ ISR_DetachInterruptForPhysicalPin(uint8_t physicalPin)
         
         // Disable interrupts for this specific pon on this port
         *port__pcmskPtr[port] &= ~_BV(portPin);
+        
+        // No need to update any last values, they won't lead to app callbacks
         
         // Decrement reference count for users of this port
         --port__refCount[port];
@@ -468,28 +489,28 @@ ISR_OnISR(uint8_t port,
 // ISR for Port B
 ISR(PCINT0_vect)
 {
-    ISR_OnISR(EVM_ISR_PORT_B, PINB, pinStateLast[EVM_ISR_PORT_B]);
+    ISR_OnISR(EVM_ISR_PORT_B, PINB, port__pinStateLast[EVM_ISR_PORT_B]);
     
     // Store current state for next time
-    pinStateLast[EVM_ISR_PORT_B] = PINB;
+    port__pinStateLast[EVM_ISR_PORT_B] = PINB;
 }
 
 // ISR for Port C
 ISR(PCINT1_vect)
 {
-    ISR_OnISR(EVM_ISR_PORT_C, PINC, pinStateLast[EVM_ISR_PORT_C]);
+    ISR_OnISR(EVM_ISR_PORT_C, PINC, port__pinStateLast[EVM_ISR_PORT_C]);
     
     // Store current state for next time
-    pinStateLast[EVM_ISR_PORT_C] = PINC;
+    port__pinStateLast[EVM_ISR_PORT_C] = PINC;
 }
 
 // ISR for Port D
 ISR(PCINT2_vect)
 {
-    ISR_OnISR(EVM_ISR_PORT_D, PIND, pinStateLast[EVM_ISR_PORT_D]);
+    ISR_OnISR(EVM_ISR_PORT_D, PIND, port__pinStateLast[EVM_ISR_PORT_D]);
     
     // Store current state for next time
-    pinStateLast[EVM_ISR_PORT_D] = PIND;
+    port__pinStateLast[EVM_ISR_PORT_D] = PIND;
 }
 
 
