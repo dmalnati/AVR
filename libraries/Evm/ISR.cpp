@@ -273,10 +273,10 @@ ISR_AttachInterruptForPhysicalPin(uint8_t                physicalPin,
         port_portPin__ieh[port][portPin] = ieh;
         
         // Default to explicitly setting this pin to be an output
-        *port__ddrPtr[port] |= _BV(portPin);
+        *port__ddrPtr[port] |= (uint8_t)_BV(portPin);
         
         // Enable interrupts for this specific pin on this port
-        *port__pcmskPtr[port] |= _BV(portPin);
+        *port__pcmskPtr[port] |= (uint8_t)_BV(portPin);
         
         // Set the cached pin value to the present value.
         //
@@ -291,15 +291,15 @@ ISR_AttachInterruptForPhysicalPin(uint8_t                physicalPin,
         // - OR that value with a bitfield where only the portPin's bit value
         //   has been filtered through
         //
-        port__pinStateLast[port] =
-            (  port__pinStateLast[port] & ~_BV(portPin) ) | // zero out bit
-            ( *port__pinStatePtr[port]  &  _BV(portPin) );  // combine live bit
+        port__pinStateLast[port] = (uint8_t)
+            ((  port__pinStateLast[port] & (uint8_t)~_BV(portPin) )  | // zero out bit
+             ( *port__pinStatePtr[port]  & (uint8_t) _BV(portPin) ));  // combine live bit
         
         // If there were previously no interrupts registered for this port
         // then enable interrupts for this port
         if (!port__refCount[port])
         {
-            PCICR |= _BV(port);
+            PCICR |= (uint8_t)_BV(port);
         }
         
         // Increment reference count for users of this port
@@ -322,7 +322,7 @@ ISR_DetachInterruptForPhysicalPin(uint8_t physicalPin)
         // Change nothing about the output state of the pin
         
         // Disable interrupts for this specific pon on this port
-        *port__pcmskPtr[port] &= ~_BV(portPin);
+        *port__pcmskPtr[port] &= (uint8_t)~_BV(portPin);
         
         // No need to update any last values, they won't lead to app callbacks
         
@@ -333,7 +333,7 @@ ISR_DetachInterruptForPhysicalPin(uint8_t physicalPin)
         // then disable interrupts for this port
         if (!port__refCount[port])
         {
-            PCICR &= ~_BV(port);
+            PCICR &= (uint8_t)~_BV(port);
         }
     }
 }
@@ -466,18 +466,19 @@ ISR_OnISR(uint8_t port,
           uint8_t bitmapPortPinStateLast)
 {
     // Calculate what changed, and how
-    uint8_t bitmapChange    = bitmapPortPinStateLast ^ bitmapPortPinState;
-    uint8_t bitmapChangeDir = bitmapPortPinState     & bitmapChange;
+    uint8_t bitmapChange    = (uint8_t)bitmapPortPinStateLast ^ bitmapPortPinState;
+    uint8_t bitmapChangeDir = (uint8_t)bitmapPortPinState     & bitmapChange;
 
     // Apply bitmaps to figure out which pins actually changed and how
     for (uint8_t portPin = 0; portPin < 8; ++portPin)
     {
-        uint8_t pinChanged = (bitmapChange & _BV(portPin));
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(portPin));
         
         if (pinChanged)
         {
             // Normalize -- Change up == 1, Change down == 0
-            uint8_t changeDir = (bitmapChangeDir & _BV(portPin)) ? 1 : 0;
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(portPin)) ? 1 : 0;
             
             ISR_OnPortPinStateChange(port, portPin, changeDir);
         }
