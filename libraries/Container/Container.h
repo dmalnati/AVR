@@ -2,6 +2,8 @@
 #define __CONTAINER_H__
 
 
+#include <util/atomic.h>
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -45,11 +47,17 @@ public:
     , idxBack_(0)
     , size_(0)
     {
-        table_ = (T *)malloc(sizeof(T) * capacity_);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            table_ = (T *)malloc(sizeof(T) * capacity_);
+        }
     }
     virtual ~RingBuffer()
     {
-        free(table_);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            free(table_);
+        }
     }
  
     /////////// Basic Getters / Setters ///////////
@@ -280,8 +288,12 @@ private:
         else if (size_ + 1 > capacity_)
         {
             uint8_t  capacityNew = capacity_ + growSize_;
-            T       *tableNew    = (T *)realloc(table_,
-                                                sizeof(T) * capacityNew);
+            T       *tableNew    = NULL;
+            
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                tableNew = (T *)realloc(table_, sizeof(T) * capacityNew);
+            }
             
             if (tableNew)
             {

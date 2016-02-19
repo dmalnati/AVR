@@ -2,7 +2,10 @@
 #define __INTERRUPT_EVENT_HANDLER_H__
 
 
+#include <util/atomic.h>
+
 #include <stdint.h>
+#include <stdlib.h>
 
 
 //////////////////////////////////////////////////////////////////////
@@ -94,8 +97,12 @@ MapButNotStartInterrupt(
     void                         (T::*cbFn)(uint8_t logicLevel),
     InterruptEventHandler::MODE  mode = InterruptEventHandler::MODE::MODE_RISING)
 {
-    InterruptEventHandlerObjectWrapper<T> * iehow =
-        new InterruptEventHandlerObjectWrapper<T>(pin, obj, cbFn, mode);
+    InterruptEventHandlerObjectWrapper<T> *iehow = NULL;
+    
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        iehow = new InterruptEventHandlerObjectWrapper<T>(pin, obj, cbFn, mode);
+    }
     
     return iehow;
 }

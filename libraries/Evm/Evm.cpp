@@ -1,5 +1,7 @@
 #include <avr/interrupt.h>
 
+#include <util/atomic.h>
+
 #include "Evm.h"
 
 
@@ -232,7 +234,10 @@ Evm::GetInstance()
     
     if (!evm)
     {
-        evm = new Evm();
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            evm = new Evm();
+        }
     }
     
     return *evm;
