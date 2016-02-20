@@ -1,19 +1,21 @@
 #include <AppPrototypeRadioBox1.h>
 
 
+
+
+// Debug
+#include <EvmEventHandlerUtils.h>
+
+
 void loop()
 {
     // Physical pins
     AppPrototypeRadioBox1Config cfg = {
-        .pinDipAddressRx1     = 23,
-        .pinDipAddressRx2     = 24,
-        .pinDipAddressTx1     = 25,
-        .pinDipAddressTx2     = 26,
 
+        // Visual and Button Interface System
         .pinAttentionButton   = 18,
         .pinAttentionRedLED   = 15,
-        //.pinAttentionGreenLED = 16,   // nope, VW uses OC1B
-        .pinAttentionGreenLED = 19,
+        .pinAttentionGreenLED = 16,
         .pinAttentionBlueLED  = 17,
 
         .pinFreeToTalkButton  = 13,
@@ -27,13 +29,28 @@ void loop()
 
         .pinClearButton       = 27,
 
-        .valRadioRealm        =  1,
+        // Application Messaging System
         .valProtocolId        =  1,
+
+        // Radio Link Layer
+        .valRealm             =  1,
+        .pinDipAddressRx1     = 23,
+        .pinDipAddressRx2     = 24,
+        .pinDipAddressTx1     = 25,
+        .pinDipAddressTx2     = 26,
+
+        // Radio Physical Layer
         .pinRadioRX           =  3,
-        .pinRadioTX           =  2
+        .pinRadioTX           =  2,
+        .valBaud              = 2000
     };
     
     AppPrototypeRadioBox1 app(cfg);
+
+
+    // Debug
+    (new IdlePinToggler(cfg.pinNoLED))->RegisterForIdleTimeEvent();
+
 
     app.Run();
 }

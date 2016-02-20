@@ -6,14 +6,9 @@
 #include <RFLink.h>
 
 
-
 struct AppPrototypeRadioBox1Config
 {
-    uint8_t pinDipAddressRx1;
-    uint8_t pinDipAddressRx2;
-    uint8_t pinDipAddressTx1;
-    uint8_t pinDipAddressTx2;
-    
+    // Visual and Button Interface System
     uint8_t pinAttentionButton;
     uint8_t pinAttentionRedLED;
     uint8_t pinAttentionGreenLED;
@@ -30,12 +25,21 @@ struct AppPrototypeRadioBox1Config
     
     uint8_t pinClearButton;
     
-    uint8_t valRadioRealm;
+    // Application Messaging System
     uint8_t valProtocolId;
-    uint8_t pinRadioRX;
-    uint8_t pinRadioTX;
+    
+    // Radio Link Layer
+    uint8_t valRealm;
+    uint8_t pinDipAddressRx1;
+    uint8_t pinDipAddressRx2;
+    uint8_t pinDipAddressTx1;
+    uint8_t pinDipAddressTx2;
+    
+    // Radio Physical Layer
+    uint8_t  pinRadioRX;
+    uint8_t  pinRadioTX;
+    uint16_t valBaud;
 };
-
 
 
 class AppPrototypeRadioBox1
@@ -47,36 +51,53 @@ public:
     void Run() { Evm::GetInstance().MainLoop(); }
 
 private:
-    void StartupLightShow();
-    
-    
-    
-    void StartRadioSystem();
-    void OnRadioRXAvailable(uint8_t  srcAddr,
-                            uint8_t  protocolId,
-                            uint8_t *buf,
-                            uint8_t  bufSize);
-    void OnRadioTXComplete();
-    
-    void ReadRadioAddressRxTx();
-    void ShowRadioAddressRxTx();
-    void StartRxTxAddressMonitoring();
-    void OnRxTxAddressChange(uint8_t logicLevel);
 
+    // Visual Interface System
+    void StartupLightShow();
+    void ShowRadioAddressRxTx();
     
-    void StartButtonMonitoring();
+    // Button Interface System
     void OnAttentionButton(uint8_t logicLevel);
     void OnFreeToTalkButton(uint8_t logicLevel);
     void OnYesButton(uint8_t logicLevel);
     void OnNoButton(uint8_t logicLevel);
     void OnClearButton(uint8_t logicLevel);
     
+    // Application Messaging System
+    enum class MessageType : uint8_t {
+        MSG_ATTENTION,
+        MSG_FREE_TO_TALK,
+        MSG_YES,
+        MSG_NO
+    };
+
+    struct Message
+    {
+        MessageType msgType;
+    };
+
+    void CreateAndSendMessageByType(MessageType msgType);
+    void SendMessage(Message &msg);
+    void OnMessageReceived(Message &msg);
+    
+    // Radio Control System
+    void StartRadioSystem();
+    void OnRxTxAddressChange(uint8_t logicLevel);
+    void ReadRadioAddressRxTx();
+    void OnRadioRXAvailable(uint8_t  srcAddr,
+                            uint8_t  protocolId,
+                            uint8_t *buf,
+                            uint8_t  bufSize);
+    void RadioTX(uint8_t *buf, uint8_t bufSize);
+    void OnRadioTXComplete();
+    
+    // External Event Monitoring
+    void StartButtonMonitoring();
+    void StartRxTxAddressMonitoring();
     
     
-    
-    
-    AppPrototypeRadioBox1Config &cfg_;
-    
+    // State keeping
+    AppPrototypeRadioBox1Config   &cfg_;
     RFLink<AppPrototypeRadioBox1> *rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
