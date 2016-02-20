@@ -28,7 +28,7 @@
  #error Platform not defined
 #endif
 
-#include "VirtualWire.h"
+#include "VirtualWireModified.h"
 #include <util/crc16.h>
 
 
@@ -342,8 +342,8 @@ void vw_setup(uint16_t speed)
 	// Set up digital IO pins
 	pinMode(vw_tx_pin, OUTPUT);
 	pinMode(vw_rx_pin, INPUT);
-	pinMode(vw_ptt_pin, OUTPUT);
-	digitalWrite(vw_ptt_pin, vw_ptt_inverted);
+	//pinMode(vw_ptt_pin, OUTPUT);
+	//digitalWrite(vw_ptt_pin, vw_ptt_inverted);
 }	
 
 #elif defined (ARDUINO) // Arduino specific
@@ -410,8 +410,8 @@ void vw_setup(uint16_t speed)
     // Set up digital IO pins
     pinMode(vw_tx_pin, OUTPUT);
     pinMode(vw_rx_pin, INPUT);
-    pinMode(vw_ptt_pin, OUTPUT);
-    digitalWrite(vw_ptt_pin, vw_ptt_inverted);
+    //pinMode(vw_ptt_pin, OUTPUT);
+    //digitalWrite(vw_ptt_pin, vw_ptt_inverted);
 }
 
 #endif // ARDUINO
@@ -425,7 +425,11 @@ void vw_tx_start()
     vw_tx_sample = 0;
 
     // Enable the transmitter hardware
-    digitalWrite(vw_ptt_pin, true ^ vw_ptt_inverted);
+    
+    // Disabled by Doug on 2016-02-19
+    // Seemingly no way to give a "do nothing" pin value to arduino
+    // such that this call can be effectively disabled.
+    //digitalWrite(vw_ptt_pin, true ^ vw_ptt_inverted);
 
     // Next tick interrupt will send the first bit
     vw_tx_enabled = true;
@@ -435,7 +439,7 @@ void vw_tx_start()
 void vw_tx_stop()
 {
     // Disable the transmitter hardware
-    digitalWrite(vw_ptt_pin, false ^ vw_ptt_inverted);
+    //digitalWrite(vw_ptt_pin, false ^ vw_ptt_inverted);
     digitalWrite(vw_tx_pin, false);
 
     // No more ticks for the transmitter

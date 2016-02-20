@@ -4,7 +4,7 @@
 
 #include "PAL.h"
 #include <IdleTimeEventHandler.h>
-#include <VirtualWire.h>
+#include <VirtualWireModified.h>
 
 
 // Notes about features:
