@@ -5,6 +5,7 @@
 
 // Debug
 #include <EvmEventHandlerUtils.h>
+#include <LEDFader.h>
 
 
 void loop()
@@ -49,7 +50,20 @@ void loop()
 
 
     // Debug
-    (new IdlePinToggler(cfg.pinNoLED))->RegisterForIdleTimeEvent();
+    //(new IdlePinToggler(cfg.pinNoLED))->RegisterForIdleTimeEvent();
+
+    LEDFader fader;
+
+    // Set up Attention LEDs
+    fader.AddLED(cfg.pinAttentionRedLED);
+    fader.AddLED(cfg.pinAttentionGreenLED, 90);
+    fader.AddLED(cfg.pinAttentionBlueLED, 180);
+
+    // Set up Free To Talk LEDs
+    //fader.AddLED(cfg.pinFreeToTalkLED, 270);
+
+    // Engage
+    //fader.FadeOnce(3000);
 
 
     app.Run();

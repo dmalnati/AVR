@@ -54,6 +54,8 @@ void PinToggle(uint8_t pin)
     PAL.DigitalWrite(pin, LOW);
 }
 
+
+/*
 void AppPrototypeRadioBox1::
 StartupLightShow()
 {
@@ -79,6 +81,23 @@ StartupLightShow()
     
     PAL.Delay(500);
 }
+*/
+
+void AppPrototypeRadioBox1::
+StartupLightShow()
+{
+    ledFader_.AddLED(cfg_.pinAttentionRedLED,     0);
+    ledFader_.AddLED(cfg_.pinAttentionGreenLED,  90);
+    ledFader_.AddLED(cfg_.pinAttentionBlueLED,  270);
+    
+    ledFader_.AddLED(cfg_.pinFreeToTalkLED);
+    ledFader_.AddLED(cfg_.pinYesLED);
+    ledFader_.AddLED(cfg_.pinNoLED);
+    
+    ledFader_.FadeOnce(5000);
+}
+
+
 
 void AppPrototypeRadioBox1::
 ShowRadioAddressRxTx()

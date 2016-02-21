@@ -4,6 +4,7 @@
 
 #include <Evm.h>
 #include <RFLink.h>
+#include <LedFader.h>
 
 
 struct AppPrototypeRadioBox1Config
@@ -101,6 +102,9 @@ private:
     RFLink<AppPrototypeRadioBox1> *rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
+    
+    // LED Control
+    LEDFader                       ledFader_;
 };
 
 
