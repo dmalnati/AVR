@@ -8,6 +8,15 @@
 #include <LEDFader.h>
 
 
+
+
+void setup()
+{
+    Serial.begin(9600);
+}
+
+
+
 void loop()
 {
     // Physical pins
@@ -41,8 +50,8 @@ void loop()
         .pinDipAddressTx2     = 26,
 
         // Radio Physical Layer
-        .pinRadioRX           =  3,
-        .pinRadioTX           =  2,
+        .pinRadioRX           =  2,
+        .pinRadioTX           =  3,
         .valBaud              = 2000
     };
     
@@ -58,12 +67,6 @@ void loop()
     app.Run();
 }
 
-
-
-void setup()
-{
-    // Nothing to do
-}
 
 
 

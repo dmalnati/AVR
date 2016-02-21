@@ -422,6 +422,11 @@ public:
             {
                 delete phaseDataActiveList_[i];
             }
+            
+            for (uint8_t i = 0; i < phaseDataPendingList_.Size(); ++i)
+            {
+                delete phaseDataPendingList_[i];
+            }
         }
     }
     
@@ -446,7 +451,6 @@ public:
         uint8_t stepOffset =
             (uint8_t)((double)phaseOffset / (double)360 *
                       (double)signalSource_.GetStepCount() * 2.0);
-        
         
         // Check if there is already a group set up for this phase
         PhaseData *pd = FindPhaseDataByStepOffset(stepOffset);
@@ -565,7 +569,6 @@ private:
     {
         uint32_t timeNowUs = PAL.Micros();
         
-
         // Check if the last step duration has expired
         if ((timeNowUs - timeLastUs_) >= pulseStepDurationUs_)
         {
@@ -589,28 +592,26 @@ private:
                     stepMaxReached_ = 1;
                 }
             }
+            
+            // Check for any pending phases which need to get moved
+            // to be active.
+            for (uint8_t i = 0; i < phaseDataPendingList_.Size(); /* nothing */)
+            {
+                if (stepMaxReached_ ||
+                    phaseDataPendingList_[i]->stepOffset <= step_)
+                {
+                    PhaseData *pd = phaseDataPendingList_[i];
+                    
+                    phaseDataPendingList_.Remove(pd);
+                    phaseDataActiveList_.Push(pd);
+                }
+                else
+                {
+                    ++i;
+                }
+            }
         }
 
-        
-        // Check for any pending phases which need to get moved
-        // to be active.
-        for (uint8_t i = 0; i < phaseDataPendingList_.Size(); /* nothing */)
-        {
-            if (stepMaxReached_ ||
-                phaseDataPendingList_[i]->stepOffset <= step_)
-            {
-                PhaseData *pd = NULL;
-                phaseDataPendingList_.Pop(pd);
-                
-                phaseDataActiveList_.Push(pd);
-            }
-            else
-            {
-                ++i;
-            }
-        }
-        
-        
         // Iterate over Phases to tick them
         uint8_t doneCount = 0;
         for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
@@ -624,7 +625,6 @@ private:
                 phaseDataActiveList_[i]->ssed.Tick();
             }
         }
-        
         
         // Check if every phased element has completed
         // and that there are no pending elements
@@ -683,7 +683,7 @@ private:
         
         return retVal;
     }
-
+    
     
     // State keeping for pulsing
     uint32_t pulseStepDurationUs_;

@@ -90,9 +90,9 @@ StartupLightShow()
     ledFader_.AddLED(cfg_.pinAttentionGreenLED, 210);
     ledFader_.AddLED(cfg_.pinAttentionBlueLED,  330);
     
-    ledFader_.AddLED(cfg_.pinFreeToTalkLED,  120);
-    ledFader_.AddLED(cfg_.pinYesLED,        180);
-    ledFader_.AddLED(cfg_.pinNoLED,         270);
+    ledFader_.AddLED(cfg_.pinFreeToTalkLED,   0);
+    ledFader_.AddLED(cfg_.pinYesLED,        120);
+    ledFader_.AddLED(cfg_.pinNoLED,         240);
     
     ledFader_.FadeForever(1000);
 }
