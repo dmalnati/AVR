@@ -53,7 +53,7 @@ public:
     }
     
 private:
-    static const uint8_t STEP_COUNT = 20;
+    static const uint8_t STEP_COUNT = 21;
 
     static uint8_t step__onOffCount_[][2];
 };
@@ -263,6 +263,136 @@ public:
 
 
 
+/*
+
+
+Holds many callback objects
+
+Does not check its own time, relies on external prompting
+
+Synchronous in the sense that it's driven by a signal
+- each Tick() increments step
+
+Has no idea about time at all
+
+*/
+
+
+class SynchronousSignalEventDistributor
+{
+public:
+    enum class Mode : uint8_t {
+        MODE_UP_THEN_DOWN,
+        MODE_FOREVER
+    };
+
+    static const Mode MODE_DEFAULT = Mode::MODE_UP_THEN_DOWN;
+
+    SynchronousSignalEventDistributor(
+        SignalSource *ss,
+        Mode          mode = MODE_DEFAULT)
+    : signalStepCount_(ss->GetStepCount())
+    , mode_(mode)
+    , ssr_(ss)
+    {
+        Reset();
+    }
+
+    void AddSignalEventHandler(SignalEventHandler *seh)
+    {
+        signalEventHandlerList_.Push(seh);
+    }
+    
+    void Reset()
+    {
+        stepCountCurrent_ = 0;
+        stepDirection_    = 1;
+        done_             = 0;
+        
+        DistributeLogicLevelToAllHandlers(0);
+    }
+    
+    void SetMode(Mode mode)
+    {
+        mode_ = mode;
+    }
+    
+    void Tick()
+    {
+        if (!done_)
+        {
+            uint8_t logicLevel = ssr_.GetNextLogicLevel();
+            
+            DistributeLogicLevelToAllHandlers(logicLevel);
+        }
+    }
+
+    void ChangeStep()
+    {
+        stepCountCurrent_ += stepDirection_;
+        
+        if (stepCountCurrent_ >= signalStepCount_)
+        {
+            if (stepDirection_ == 1)
+            {
+                // Hit the upper threshold, turn around.
+                // Do the last step again.
+                stepCountCurrent_ = signalStepCount_ - 1;
+                
+                stepDirection_ = -1;
+            }
+            else // (stepDirection_ == -1)
+            {
+                if (mode_ == Mode::MODE_UP_THEN_DOWN)
+                {
+                    done_ = 1;
+                }
+                else // (mode == MODE_FOREVER)
+                {
+                    // Hit the lower threshold, turn around.
+                    // Do the last step again.
+                    stepCountCurrent_ = 0;
+                    
+                    stepDirection_ = 1;
+                }
+            }
+        }
+        
+        ssr_.SetStep(stepCountCurrent_);
+    }
+    
+    uint8_t IsDone()
+    {
+        return done_;
+    }
+    
+    
+private:
+    void DistributeLogicLevelToAllHandlers(uint8_t logicLevel)
+    {
+        for (uint8_t i = 0; i < signalEventHandlerList_.Size(); ++i)
+        {
+            signalEventHandlerList_[i]->OnSignalEvent(logicLevel);
+        }
+    }
+    
+    
+    uint8_t                     signalStepCount_;
+    uint8_t                     stepCountCurrent_;
+    int8_t                      stepDirection_;
+    Mode                        mode_;
+    uint8_t                     done_;
+    
+    SignalSourceReader          ssr_;
+    Queue<SignalEventHandler*>  signalEventHandlerList_;
+};
+
+
+
+
+
+
+
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -278,7 +408,8 @@ public:
     static const uint8_t DEFAULT_PHASE_OFFSET = 0;
 
     PhaseOffsetSignalDistributor()
-    : stepMaster_(0)
+    : step_(0)
+    , stepMaxReached_(0)
     {
         // Nothing to do
     }
@@ -287,9 +418,9 @@ public:
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            for (uint8_t i = 0; i < phaseGroupList_.Size(); ++i)
+            for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
             {
-                delete phaseGroupList_[i];
+                delete phaseDataActiveList_[i];
             }
         }
     }
@@ -298,77 +429,56 @@ public:
         SignalEventHandler *seh,
         uint16_t            phaseOffset = DEFAULT_PHASE_OFFSET)
     {
-        // Check if there is already a group set up for this phase
-        PhaseGroup *pg = FindPhaseGroupByPhaseOffset(phaseOffset);
-        
-        if (!pg)
+        // We know the number of steps a signal source makes available.
+        // From that, we convert the phaseOffset into a step in the
+        // signal sequence.
+    
+        // Constrain input to acceptable range
+        if (phaseOffset >= 360)
         {
-            // Not found -- need to create new group
-            
-            // We know the number of steps a signal source makes available.
-            // From that, we convert the phaseOffset into a step in the
-            // signal sequence.
+            phaseOffset = 0;
+        }
         
-            // Constrain input to acceptable range
-            if (phaseOffset >= 360)
-            {
-                phaseOffset = 0;
-            }
-
-            // Calculate how many steps this phaseOffset translates into.
-            //
-            // Casting result to int truncates any floating remainder giving a
-            // zero-indexed number.
-            uint8_t stepOffset =
-                (uint8_t)((float)phaseOffset / (float)360 *
-                          (float)signalSource_.GetStepCount());
-            
-            // Calculate what step this handler should be on in terms of the
-            // master.
-            uint8_t step = stepMaster_ + stepOffset;
-            
-            if (step >= signalSource_.GetStepCount())
-            {
-                step = step - signalSource_.GetStepCount();
-            }
-            
-            // Create the group
+        // Calculate how many steps this phaseOffset translates into.
+        //
+        // Casting result to int truncates any floating remainder giving a
+        // zero-indexed number.
+        uint8_t stepOffset =
+            (uint8_t)((double)phaseOffset / (double)360 *
+                      (double)signalSource_.GetStepCount() * 2.0);
+        
+        
+        // Check if there is already a group set up for this phase
+        PhaseData *pd = FindPhaseDataByStepOffset(stepOffset);
+        
+        if (!pd)
+        {
+            // Not found -- need to create the group
             ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
             {
-                pg = new PhaseGroup(&signalSource_, step, phaseOffset);
+                // Create the group
+                pd = new PhaseData(&signalSource_, stepOffset);
             }
             
-            // Add the phase group to the list
-            phaseGroupList_.Push(pg);
+            // Add the phase group to the pending list, which
+            // will be detected later
+            phaseDataPendingList_.Push(pd);
         }
         
         // Add handler
-        pg->signalEventHandlerList.Push(seh);
-    }
-
-    
-    
-    
-    
-    void Stop()
-    {
-        // Stop getting idle callbacks
-        DeRegisterForIdleTimeEvent();
-        
-        // Distribute logicLevel 0 to all pins
-        DistributeLogicLevelToAllHandlers(0);
-        
-        // Reset back to initial state
-        ResetState();
+        pd->ssed.AddSignalEventHandler(seh);
     }
     
-    void PulseOnce(uint32_t pulseDurationMs)
+    
+    void PulseWithMode(
+        uint32_t pulseDurationMs,
+        SynchronousSignalEventDistributor::Mode mode)
     {
-        PAL.PinMode(11, OUTPUT);
-        PAL.DigitalWrite(11, HIGH);
-        
         // Stop whatever was going on before and get back to initial state
         Stop();
+        
+        // Set the distributors to operate in a given mode
+        SetDistributorMode(mode);
         
         // Calculate total microseconds this pulse will be active
         uint32_t pulseDurationUs = pulseDurationMs * 1000;
@@ -377,193 +487,195 @@ public:
         pulseStepDurationUs_ =
             pulseDurationUs / (signalSource_.GetStepCount() * 2);
         
-        // Calculate step count to the halfway point
-        pulseStepCountHalfway_ = (pulseDurationUs / pulseStepDurationUs_) / 2;
-        
-        // Keep a modifiable counter for steps remaining before half complete
-        pulseStepCountHalfwayRemaining_ = pulseStepCountHalfway_;
-        
         // Note the current time
         timeLastUs_ = PAL.Micros();
-        
-        // Note upward step direction
-        upDownDirection_ = 1;
         
         // Begin handling idle callbacks to drive signal distribution
         RegisterForIdleTimeEvent();
     }
     
+    void SetDistributorMode(SynchronousSignalEventDistributor::Mode mode)
+    {
+        // Set active list
+        for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
+        {
+            phaseDataActiveList_[i]->ssed.SetMode(mode);
+        }
+        
+        // Set pending list
+        for (uint8_t i = 0; i < phaseDataPendingList_.Size(); ++i)
+        {
+            phaseDataPendingList_[i]->ssed.SetMode(mode);
+        }
+    }
+
     
+    void PulseOnce(uint32_t pulseDurationMs)
+    {
+        PulseWithMode(
+            pulseDurationMs,
+            SynchronousSignalEventDistributor::Mode::MODE_UP_THEN_DOWN
+        );
+    }
     
-    void PulseForever() { }
+    void PulseForever(uint32_t pulseDurationMs)
+    {
+        PulseWithMode(
+            pulseDurationMs,
+            SynchronousSignalEventDistributor::Mode::MODE_FOREVER
+        );
+    }
     
+    void Stop()
+    {
+        // Stop getting idle callbacks
+        DeRegisterForIdleTimeEvent();
+        
+        ResetDistributors();
+        
+        // Reset state keeping for when we start again
+        step_           = 0;
+        stepMaxReached_ = 0;
+    }
+    
+    void OnPulseComplete()
+    {
+        Stop();
+    }
     
     
 private:
-    
-    
-    struct PhaseGroup
+    class PhaseData
     {
-        PhaseGroup(SignalSource *signalSource,
-                   uint8_t       step,
-                   uint16_t      phaseOffset)
-        : ssr(signalSource, step)
-        , phaseOffset(phaseOffset)
-        , stepToResetTo(step)
+    public:
+        PhaseData(SignalSource *ss, uint8_t stepOffset)
+        : stepOffset(stepOffset)
+        , ssed(ss)
         {
             // Nothing to do
         }
         
-        SignalSourceReader           ssr;
-        uint16_t                     phaseOffset;
-        uint8_t                      stepToResetTo;
-        Queue<SignalEventHandler *>  signalEventHandlerList;
+        uint8_t                            stepOffset;
+        SynchronousSignalEventDistributor  ssed;
     };
-    
-    
-    void OnPulseComplete()
-    {
-        PAL.DigitalWrite(11, LOW);
-        Stop();
-    }
-    
-    void ResetState()
-    {
-        stepMaster_ = 0;
-        
-        for (uint8_t i = 0; i < phaseGroupList_.Size(); ++i)
-        {
-            PhaseGroup *pg = phaseGroupList_[i];
-            
-            pg->ssr.SetStep(pg->stepToResetTo);
-        }
-    }
-    
-    void DistributeLogicLevelToAllHandlers(uint8_t logicLevel)
-    {
-        for (uint8_t i = 0; i < phaseGroupList_.Size(); ++i)
-        {
-            PhaseGroup *pg = phaseGroupList_[i];
-
-            // Distribute the logic level to the whole group
-            for (uint8_t j = 0; j < pg->signalEventHandlerList.Size(); ++j)
-            {
-                pg->signalEventHandlerList[j]->OnSignalEvent(logicLevel);
-            }
-        }
-    }
-    
     
     
     
     void OnIdleTimeEvent()
     {
-        uint8_t timeToMoveToNextStep = 0;
-        uint8_t pulseComplete        = 0;
-        
         uint32_t timeNowUs = PAL.Micros();
         
+
         // Check if the last step duration has expired
         if ((timeNowUs - timeLastUs_) >= pulseStepDurationUs_)
         {
-            // Time to move to the next step
-            timeToMoveToNextStep = 1;
-            
-            // First, check if we need to change directions or even if the
-            // pulse is complete
-            --pulseStepCountHalfwayRemaining_;
-            
-            if (!pulseStepCountHalfwayRemaining_)
-            {
-                // Half of the steps have been used.  Was it the first half
-                // or the second half?
-                if (upDownDirection_ == 1)
-                {
-                    // First half expired.  Time to count downward.
-                    
-                    upDownDirection_                = -1;
-                    pulseStepCountHalfwayRemaining_ = pulseStepCountHalfway_;
-                }
-                else // (upDownDirection_ == -1)
-                {
-                    // The second half expired.  This is the end.
-
-                    pulseComplete = 1;
-                }
-            }
-            
-            // Finished with calculation, record current time for next evaluation.
+            // Record current time for next evaluation.
             timeLastUs_ = timeNowUs;
-        }
-        
-        
-        // If the pulse isn't complete, then time to get and distribute the
-        // next logic level.
-        if (!pulseComplete)
-        {
-            // Maintain the master step
-            if (timeToMoveToNextStep)
+            
+            // Cause all Phases to take a step to the new signal data
+            for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
             {
-                stepMaster_ += upDownDirection_;
+                phaseDataActiveList_[i]->ssed.ChangeStep();
+            }
+            
+            // Keep track of how many steps you are in, up to
+            // a maximum
+            if (!stepMaxReached_)
+            {
+                ++step_;
                 
-                // You wind up above the max whether counting up, or
-                // counting down and wrapping around zero.
-                if (stepMaster_ >= signalSource_.GetStepCount())
+                if (step_ >= (signalSource_.GetStepCount() * 2))
                 {
-                    stepMaster_ = 0;
+                    stepMaxReached_ = 1;
                 }
             }
-        
-            DistributeLogicLevel(timeToMoveToNextStep, upDownDirection_);
         }
-        else
+
+        
+        // Check for any pending phases which need to get moved
+        // to be active.
+        for (uint8_t i = 0; i < phaseDataPendingList_.Size(); /* nothing */)
+        {
+            if (stepMaxReached_ ||
+                phaseDataPendingList_[i]->stepOffset <= step_)
+            {
+                PhaseData *pd = NULL;
+                phaseDataPendingList_.Pop(pd);
+                
+                phaseDataActiveList_.Push(pd);
+            }
+            else
+            {
+                ++i;
+            }
+        }
+        
+        
+        // Iterate over Phases to tick them
+        uint8_t doneCount = 0;
+        for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
+        {
+            if (phaseDataActiveList_[i]->ssed.IsDone())
+            {
+                ++doneCount;
+            }
+            else
+            {
+                phaseDataActiveList_[i]->ssed.Tick();
+            }
+        }
+        
+        
+        // Check if every phased element has completed
+        // and that there are no pending elements
+        if (doneCount == phaseDataActiveList_.Size() &&
+            !phaseDataPendingList_.Size())
         {
             OnPulseComplete();
         }
     }
     
-    void DistributeLogicLevel(uint8_t timeToMoveToNextStep,
-                              uint8_t stepDirection)
+    void ResetDistributors()
     {
-        // Determine and distribute a logic level to each group
-        for (uint8_t i = 0; i < phaseGroupList_.Size(); ++i)
+        // Move the contents of the active container into
+        // the pending list
+        while (phaseDataActiveList_.Size())
         {
-            PhaseGroup *pg = phaseGroupList_[i];
-
-            // If time to move to next step, do so
-            if (timeToMoveToNextStep)
-            {
-                // Tell the signal reader to advance to the next signal point
-                if (stepDirection == 1)
-                {
-                    pg->ssr.MoveToNextStep();
-                }
-                else // (stepDirection == -1)
-                {
-                    pg->ssr.MoveToPrevStep();
-                }
-            }
+            PhaseData *pd = NULL;
+            phaseDataActiveList_.Pop(pd);
             
-            // Determine the logic level which applies to the whole group
-            uint8_t logicLevel = pg->ssr.GetNextLogicLevel();
-            
-            // Distribute the logic level to the whole group
-            for (uint8_t j = 0; j < pg->signalEventHandlerList.Size(); ++j)
-            {
-                pg->signalEventHandlerList[j]->OnSignalEvent(logicLevel);
-            }
+            phaseDataPendingList_.Push(pd);
+        }
+        
+        // Reset everything, which is now in the pending list
+        for (uint8_t i = 0; i < phaseDataPendingList_.Size(); ++i)
+        {
+            phaseDataPendingList_[i]->ssed.Reset();
         }
     }
     
-    PhaseGroup *FindPhaseGroupByPhaseOffset(uint16_t phaseOffset)
+    
+    PhaseData *FindPhaseDataByStepOffset(uint8_t stepOffset)
     {
-        PhaseGroup *retVal = NULL;
+        PhaseData *retVal = NULL;
         
-        for (uint8_t i = 0; i < phaseGroupList_.Size(); ++i)
+        // Search active list
+        for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
         {
-            if (phaseGroupList_[i]->phaseOffset == phaseOffset)
+            if (phaseDataActiveList_[i]->stepOffset == stepOffset)
             {
-                retVal = phaseGroupList_[i];
+                retVal = phaseDataActiveList_[i];
+                
+                break;
+            }
+        }
+        
+        // Search pending list
+        for (uint8_t i = 0; i < phaseDataPendingList_.Size(); ++i)
+        {
+            if (phaseDataPendingList_[i]->stepOffset == stepOffset)
+            {
+                retVal = phaseDataPendingList_[i];
                 
                 break;
             }
@@ -574,31 +686,17 @@ private:
 
     
     // State keeping for pulsing
-    uint8_t  stepMaster_;
-    uint16_t pulseStepCountHalfway_;
-    uint16_t pulseStepCountHalfwayRemaining_;
     uint32_t pulseStepDurationUs_;
     uint32_t timeLastUs_;
-    uint8_t  upDownDirection_;
+    
+    uint8_t  step_;
+    uint8_t  stepMaxReached_;
     
     // Signal synchronizing structures
     SignalSource        signalSource_;
-    Queue<PhaseGroup *> phaseGroupList_;
+    Queue<PhaseData *>  phaseDataActiveList_;
+    Queue<PhaseData *>  phaseDataPendingList_;
 };
-
-
-
- 
-
-
- 
- 
- 
- 
- 
- 
- 
- 
  
  
  
@@ -608,8 +706,6 @@ private:
 // LED Fader
 //
 //////////////////////////////////////////////////////////////////////
-
- 
  
 class LEDFader
 {
@@ -646,6 +742,11 @@ public:
     void FadeOnce(uint32_t pulseDurationMs = DEFAULT_FADE_DURATION_MS)
     {
         posd_.PulseOnce(pulseDurationMs);
+    }
+    
+    void FadeForever(uint32_t pulseDurationMs = DEFAULT_FADE_DURATION_MS)
+    {
+        posd_.PulseForever(pulseDurationMs);
     }
     
     void Stop()

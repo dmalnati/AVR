@@ -86,15 +86,15 @@ StartupLightShow()
 void AppPrototypeRadioBox1::
 StartupLightShow()
 {
-    ledFader_.AddLED(cfg_.pinAttentionRedLED,     0);
-    ledFader_.AddLED(cfg_.pinAttentionGreenLED,  90);
-    ledFader_.AddLED(cfg_.pinAttentionBlueLED,  270);
+    ledFader_.AddLED(cfg_.pinAttentionRedLED,    90);
+    ledFader_.AddLED(cfg_.pinAttentionGreenLED, 210);
+    ledFader_.AddLED(cfg_.pinAttentionBlueLED,  330);
     
-    ledFader_.AddLED(cfg_.pinFreeToTalkLED);
-    ledFader_.AddLED(cfg_.pinYesLED);
-    ledFader_.AddLED(cfg_.pinNoLED);
+    ledFader_.AddLED(cfg_.pinFreeToTalkLED,  120);
+    ledFader_.AddLED(cfg_.pinYesLED,        180);
+    ledFader_.AddLED(cfg_.pinNoLED,         270);
     
-    ledFader_.FadeOnce(5000);
+    ledFader_.FadeForever(1000);
 }
 
 
