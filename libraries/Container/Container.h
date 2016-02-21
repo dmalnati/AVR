@@ -196,9 +196,9 @@ public:
             uint8_t elementsToShift = (Size() - idxLogical) - 1;
             
             // Shift everything remaining to the left
-            for (uint8_t i = idxLogical; i <= elementsToShift; ++i)
+            for (uint8_t i = 0; i < elementsToShift; ++i)
             {
-                (*this)[i] = (*this)[i + 1];
+                (*this)[idxLogical + i] = (*this)[idxLogical + i + 1];
             }
             
             T elementTmp;
@@ -471,6 +471,19 @@ public:
     {
         return RingBuffer<T>::operator[](idxLogical);
     }
+    
+    
+    /////////// Debug ///////////
+    
+#ifdef DEBUG
+
+    void PrintDebug(const char *msg)
+    {
+        RingBuffer<T>::PrintDebug(msg);
+    }
+    
+#endif // DEBUG
+
 };
 
 
