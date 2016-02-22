@@ -22,9 +22,28 @@ class Evm
 public:
     ~Evm() {}
     
-    void MainLoop();
-    
     static Evm &GetInstance();
+    
+    void MainLoop();
+    void EndMainLoop();
+    
+    // Functionality to allow nested MainLoops for the purpose of
+    // holding a given stack frame such that statics or other
+    // async state keeping by users is less necessary.
+    //
+    // Failure scenarios include:
+    // - The first nested stack sets a timer for 10ms to go off
+    // - Something else running holds the stack also, with a timeout
+    //   for 100ms.
+    // - The first 10ms timer goes off, breaking out of the second level
+    //   and leading to unpredictable results at both levels.
+    //
+    // The calling code must know exactly what is going on in order for
+    // this to not happen.
+    //
+    // The assertion code forces a correct statement about the stack
+    // level in order to fail earlier and more predictably.
+    void HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
     
     class CmpTimedEventHandler
     {
@@ -61,13 +80,34 @@ private:
     
     // Can't construct directly
     Evm()
-    : idleTimeEventHandlerList_(INITIAL_EVENT_CAPACITY)
+    : //stackLevel_(0)
+    //, abort_(0)
+    //, 
+    idleTimeEventHandlerList_(INITIAL_EVENT_CAPACITY)
     , timedEventHandlerList_(INITIAL_EVENT_CAPACITY)
     , interruptEventHandlerList_(INITIAL_EVENT_CAPACITY)
     {
         // nothing to do
     }
     
+    
+    //
+    // Supporting functionality for HoldStackDangerously
+    //
+    #if 0
+    void DecrementStack();
+    
+    class DecrementStackOnTimeout
+    : public TimedEventHandler
+    {
+    public:
+        virtual void OnTimedEvent()
+        {
+            Evm::GetInstance().DecrementStack();
+        }
+    };
+    #endif
+
     
     // Idle Events
     void RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh);
@@ -92,6 +132,9 @@ private:
 
     
     // Members
+    //uint8_t stackLevel_;
+    //uint8_t abort_;
+    
     Queue<IdleTimeEventHandler *>      idleTimeEventHandlerList_;
     SortedQueue<TimedEventHandler *,
                 CmpTimedEventHandler>  timedEventHandlerList_;

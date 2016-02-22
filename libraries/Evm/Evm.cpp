@@ -217,7 +217,42 @@ void Evm::MainLoop()
     }
 }
 
+#if 0
+void Evm::MainLoop()
+{
+    ++stackLevel_;
+    
+    uint8_t stackLevelCache = stackLevel_;
+    
+    while (stackLevel_ == stackLevelCache && !abort_)
+    {
+        ServiceIdleTimeEventHandlers();
+        ServiceTimedEventHandlers();
+        ServiceInterruptEventHandlers();
+    }
+}
 
+void Evm::DecrementStack()
+{
+    --stackLevel_;
+}
+
+void Evm::HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout)
+{
+    if (stackLevelAssertion == stackLevel_)
+    {
+        DecrementStackOnTimeout dsot;
+        
+        dsot.RegisterForTimedEvent(timeout);
+        
+        MainLoop();
+    }
+    else
+    {
+        abort_ = 1;
+    }
+}
+#endif
 
 
 //////////////////////////////////////////////////////////////////////

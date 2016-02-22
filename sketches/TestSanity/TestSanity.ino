@@ -1,20 +1,50 @@
+
 #include <Utl.h>
-#include <AppPrototypeRadioBox1.h>
-
-
-// Debug
 #include <Evm.h>
-#include <LedFader.h>
+#include <AppPrototypeRadioBox0.h>
+
+
+const uint8_t PIN_NO = 5;
+const uint8_t PIN_YES = 11;
+const uint8_t PIN_FTT = 12;
+
+
+class Test
+{
+public:
+    Test(AppPrototypeRadioBox0Config &cfg)
+    {
+        PinToggle(cfg.pinFreeToTalkLED);
+    }
+
+    void Run()
+    {
+        PinToggle(PIN_FTT);
+        Evm::GetInstance().MainLoop();
+    }
+
+private:
+
+};
+
+
 
 void setup()
 {
-}
 
+}
 
 void loop()
 {
+    PinToggle(PIN_NO);
+
+
+
+
+
+
     // Physical pins
-    AppPrototypeRadioBox1Config cfg = {
+    AppPrototypeRadioBox0Config cfg = {
 
         // Visual and Button Interface System
         .pinAttentionButton   = 18,
@@ -49,20 +79,26 @@ void loop()
         .valBaud              = 2000
     };
 
-    LEDFader fader;
 
-    fader.AddLED(cfg.pinNoLED);
-    fader.FadeForever();
-    Evm::GetInstance().MainLoop();
 
-    PinToggle(cfg.pinNoLED);
+
     
-    AppPrototypeRadioBox1 app(cfg);
     
-    PinToggle(cfg.pinNoLED);
-    
+    Test t(cfg);
+
+    PinToggle(PIN_NO);
+
+    AppPrototypeRadioBox0 app(cfg);
+
+    PinToggle(PIN_NO);
+
+    //t.Run();
     app.Run();
 }
+
+
+
+
 
 
 

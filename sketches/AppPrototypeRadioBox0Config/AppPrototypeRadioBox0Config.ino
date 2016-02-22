@@ -1,20 +1,20 @@
 #include <Utl.h>
-#include <AppPrototypeRadioBox1.h>
+#include <AppPrototypeRadioBox0.h>
 
 
-// Debug
-#include <Evm.h>
-#include <LedFader.h>
 
 void setup()
 {
+    // Nothing to do
 }
+
+
 
 
 void loop()
 {
     // Physical pins
-    AppPrototypeRadioBox1Config cfg = {
+    AppPrototypeRadioBox0Config cfg = {
 
         // Visual and Button Interface System
         .pinAttentionButton   = 18,
@@ -49,18 +49,10 @@ void loop()
         .valBaud              = 2000
     };
 
-    LEDFader fader;
-
-    fader.AddLED(cfg.pinNoLED);
-    fader.FadeForever();
-    Evm::GetInstance().MainLoop();
-
     PinToggle(cfg.pinNoLED);
-    
-    AppPrototypeRadioBox1 app(cfg);
-    
+    AppPrototypeRadioBox0 app(cfg);
     PinToggle(cfg.pinNoLED);
-    
+
     app.Run();
 }
 

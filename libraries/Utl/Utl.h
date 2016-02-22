@@ -1,5 +1,5 @@
-#ifndef __EVM_EVENT_HANDLER_UTILS_H__
-#define __EVM_EVENT_HANDLER_UTILS_H__
+#ifndef __UTL_H__
+#define __UTL_H__
 
 
 #include <PAL.h>
@@ -7,13 +7,9 @@
 #include <TimedEventHandler.h>
 
 
-/*
- * Misc classes that I keep implementing everywhere.
- *
- * Not part of the core libs
- *
- */
 
+
+extern void PinToggle(uint8_t pin);
 
 
 class TimedPinToggler : public TimedEventHandler
@@ -55,8 +51,22 @@ private:
 
 
 
+class DestructorToken
+{
+public:
+    DestructorToken(uint8_t pin) : pin_(pin) { }
+    ~DestructorToken()
+    {
+        PinToggle(pin_);
+    }
+    uint8_t pin_;
+};
 
-#endif // __EVM_EVENT_HANDLER_UTILS_H__
+
+
+
+
+#endif // __UTL_H__
 
 
 

@@ -13,7 +13,14 @@
 
 
 
-
+static void PinToggle2(uint8_t pin)
+{
+    PAL.PinMode(pin, OUTPUT);
+    
+    PAL.DigitalWrite(pin, HIGH);
+    PAL.Delay(500);
+    PAL.DigitalWrite(pin, LOW);
+}
 
 
 
@@ -229,21 +236,6 @@ private:
     uint8_t       signalPatternToRefreshFrom_[2];
     uint8_t       onOffState__quota_[2];
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -706,7 +698,31 @@ private:
 // LED Fader
 //
 //////////////////////////////////////////////////////////////////////
- 
+
+
+class LEDToggler
+: public SignalEventHandler
+{
+public:
+    LEDToggler(uint8_t pin)
+    : pin_(pin)
+    {
+        PAL.PinMode(pin_, OUTPUT);
+    }
+
+    virtual void OnSignalEvent(uint8_t logicLevel)
+    {
+        PAL.DigitalWrite(pin_, logicLevel);
+    }
+    
+private:
+    uint8_t pin_;
+};
+
+
+
+
+
 class LEDFader
 {
 public:
@@ -715,6 +731,8 @@ public:
     LEDFader() { }
     ~LEDFader()
     {
+        Stop();
+        
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             for (uint8_t i = 0; i < ledTogglerList_.Size(); ++i)
@@ -739,14 +757,14 @@ public:
         posd_.AddSignalEventHandler(lt, phaseOffset);
     }
     
-    void FadeOnce(uint32_t pulseDurationMs = DEFAULT_FADE_DURATION_MS)
+    void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
-        posd_.PulseOnce(pulseDurationMs);
+        posd_.PulseOnce(fadeDurationMs);
     }
     
-    void FadeForever(uint32_t pulseDurationMs = DEFAULT_FADE_DURATION_MS)
+    void FadeForever(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
-        posd_.PulseForever(pulseDurationMs);
+        posd_.PulseForever(fadeDurationMs);
     }
     
     void Stop()
@@ -755,27 +773,6 @@ public:
     }
     
 private:
-
-    class LEDToggler
-    : public SignalEventHandler
-    {
-    public:
-        LEDToggler(uint8_t pin)
-        : pin_(pin)
-        {
-            PAL.PinMode(pin_, OUTPUT);
-        }
-    
-        virtual void OnSignalEvent(uint8_t logicLevel)
-        {
-            PAL.DigitalWrite(pin_, logicLevel);
-        }
-        
-    private:
-        uint8_t pin_;
-    };
-
-
     
     PhaseOffsetSignalDistributor  posd_;
     Queue<LEDToggler *>           ledTogglerList_;
@@ -785,6 +782,46 @@ private:
  
  
  
+class RGBLEDFader
+{
+public:
+    RGBLEDFader() { }
+    ~RGBLEDFader()
+    {
+        PinToggle2(5);
+    }
+
+    void AddLED(
+        uint8_t pinRed,
+        uint8_t pinGreen,
+        uint8_t pinBlue,
+        uint16_t phaseOffset = PhaseOffsetSignalDistributor::DEFAULT_PHASE_OFFSET)
+    {
+        ledFader_.AddLED(pinRed,   (phaseOffset +  45) % 360);
+        ledFader_.AddLED(pinGreen, (phaseOffset + 225) % 360);
+        ledFader_.AddLED(pinBlue,  (phaseOffset +   0) % 360);
+    }
+    
+    void FadeOnce(uint32_t fadeDurationMs = LEDFader::DEFAULT_FADE_DURATION_MS)
+    {
+        ledFader_.FadeOnce(fadeDurationMs);
+    }
+    
+    void FadeForever(uint32_t fadeDurationMs = LEDFader::DEFAULT_FADE_DURATION_MS)
+    {
+        ledFader_.FadeForever(fadeDurationMs);
+    }
+    
+    void Stop()
+    {
+        ledFader_.Stop();
+    }
+
+private:
+
+    LEDFader ledFader_;
+};
+
  
  
  

@@ -3,8 +3,8 @@
 
 
 #include <Evm.h>
-#include <RFLink.h>
-#include <LedFader.h>
+//#include <RFLink.h>
+//#include <LedFader.h>
 
 
 struct AppPrototypeRadioBox1Config
@@ -49,7 +49,7 @@ public:
     AppPrototypeRadioBox1(AppPrototypeRadioBox1Config &cfg);
     ~AppPrototypeRadioBox1();
 
-    void Run() { Evm::GetInstance().MainLoop(); }
+    void Run();
 
 private:
 
@@ -99,12 +99,12 @@ private:
     
     // State keeping
     AppPrototypeRadioBox1Config   &cfg_;
-    RFLink<AppPrototypeRadioBox1> *rfLink_;
+    //RFLink<AppPrototypeRadioBox1> *rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
     
     // LED Control
-    LEDFader                       ledFader_;
+    //LEDFader                       ledFader_;
 };
 
 
