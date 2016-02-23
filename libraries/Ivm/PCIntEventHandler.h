@@ -28,14 +28,8 @@ public:
     uint8_t RegisterForPCIntEvent();
     uint8_t DeRegisterForPCIntEvent();
     
-    uint8_t GetPin()  const { return pin_;  }
-    MODE    GetMode() const { return mode_; }
-    
-    // This is unsafe since other code could be reading this value when
-    // an ISR fires.
-    //
-    // I'll deal with it later if I find a use case which is
-    // actually concerned with that scenario.
+    uint8_t GetPin()        const { return pin_;        }
+    MODE    GetMode()       const { return mode_;       }
     uint8_t GetLogicLevel() const { return logicLevel_; }
     
     
@@ -45,6 +39,8 @@ public:
     //
     // Care must be taken anywhere this code leads to prevent the firing of
     // ISRs while modifying structures which this callback also leads to.
+    //
+    // Interrupts should not be enabled along any code path this leads to.
     //
     virtual void OnPCIntEvent(uint8_t logicLevel) = 0;
     
