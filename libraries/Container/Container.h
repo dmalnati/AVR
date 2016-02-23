@@ -29,35 +29,25 @@
 
  
  
-template<typename T>
+template<typename T, uint8_t CAPACITY>
 class RingBuffer
 {
 private:
     static const uint8_t OVERFLOW_BOUNDARY = (uint8_t)-1;
     
 public:
-    static const uint8_t RING_BUFFER_DEFAULT_CAPACITY  = 4;
-    static const uint8_t RING_BUFFER_DEFAULT_GROW_SIZE = 4;
-
-    RingBuffer(uint8_t capacity = RING_BUFFER_DEFAULT_CAPACITY,
-               uint8_t growSize = RING_BUFFER_DEFAULT_GROW_SIZE)
-    : capacity_(capacity)
-    , growSize_(growSize)
-    , idxFront_(0)
+    RingBuffer()
+    : idxFront_(0)
     , idxBack_(0)
     , size_(0)
+    , capacity_(CAPACITY ? CAPACITY : 1)
     {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            table_ = (T *)malloc(sizeof(T) * capacity_);
-        }
+        // Nothing to do
     }
+    
     virtual ~RingBuffer()
     {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            free(table_);
-        }
+        // Nothing to do
     }
  
     /////////// Basic Getters / Setters ///////////
@@ -70,7 +60,7 @@ public:
     
     uint8_t PushFront(T element)
     {
-        uint8_t retVal = EnsureCapacityForOneMore();
+        uint8_t retVal = CanFitOneMore();
         
         if (retVal)
         {
@@ -123,7 +113,7 @@ public:
  
     uint8_t PushBack(T element)
     {
-        uint8_t retVal = EnsureCapacityForOneMore();
+        uint8_t retVal = CanFitOneMore();
         
         if (retVal)
         {
@@ -253,8 +243,7 @@ public:
     void PrintDebug(const char *msg)
     {
         printf("%s:\n", msg);
-        printf("capacity_: %i\n", capacity_);
-        printf("growSize_: %i\n", growSize_);
+        printf("capacity_ : %i\n", capacity_);
         printf("size_    : %i\n", size_);
         printf("idxFront_: %i\n", idxFront_);
         printf("idxBack_ : %i\n", idxBack_);
@@ -275,155 +264,29 @@ public:
 
    
 private:
-    uint8_t EnsureCapacityForOneMore()
+    uint8_t CanFitOneMore()
     {
-        uint8_t retVal = 1;
-        
-        // check to see if growing again is an int overflow
-        if (size_ + 1 > capacity_ &&
-            ((uint8_t)(capacity_ + growSize_) < capacity_))
-        {
-            retVal = 0;
-        }
-        else if (size_ + 1 > capacity_)
-        {
-            uint8_t  capacityNew = capacity_ + growSize_;
-            T       *tableNew    = NULL;
-            
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-            {
-                tableNew = (T *)realloc(table_, sizeof(T) * capacityNew);
-            }
-            
-            if (tableNew)
-            {
-                // Update table and capacity
-                table_    = tableNew;
-                capacity_ = capacityNew;
-                
-                // Shift all elements such that the beginning i
-                
-                // Check if allocation put new (empty) storage in the range
-                // of contiguous data between front and back.
-                // This happens when the data wraps around.
-                
-                if (idxBack_ <= idxFront_)
-                {
-                    // shift any data which is now separated by a gap.
-                    
-                    // Calc the amount of data wrapped around:
-                    // - Subtract 0 from idxBack_ (aka the value idxBack_)
-                    // - Since idxBack_ points at an empty slot, we discount 1.
-                    // - Since idxBack_ could have been zero in the first place,
-                    //   if it was, we check that 
-                    
-                    // Easier to check for special case of idxBack_ == 0
-                    if (idxBack_ == 0)
-                    {
-                        // No elements need to be shifted.
-                        // Simply adjusting idxBack_ will be required.
-                        // This is handled below.
-                    }
-                    else
-                    {
-                        // need to shift elements.
-                        // two sets:
-                        // - those which were wrapped and now don't need to be
-                        // - those which were wrapped, still have to be, but
-                        //   at a lower index.
-
-                        // Total number of wrapped elements:
-                        uint8_t wrappedElements = idxBack_;
-
-                        // Set 1
-                        uint8_t countUnwrapSet1 = 0;
-                        
-                        if (growSize_ >= wrappedElements)
-                        {
-                            countUnwrapSet1 = wrappedElements;
-                        }
-                        else // (growSize_ < wrappedElements)
-                        {
-                            countUnwrapSet1 = wrappedElements - growSize_;
-                        }
-                        
-                        // Shift the first set
-                        for (uint8_t i = 0; i < countUnwrapSet1; ++i)
-                        {
-                            table_[size_ + i] = table_[i];
-                        }
-                        
-                        
-                        // Set 2
-                        if (countUnwrapSet1 == wrappedElements)
-                        {
-                            // nothing to do, they all moved already
-                        }
-                        else
-                        {
-                            // Now move the second set
-                            uint8_t countShiftSet2 =
-                                wrappedElements - countUnwrapSet1;
-                         
-                            for (uint8_t i = 0; i < countShiftSet2; ++i)
-                            {
-                                table_[i] = table_[i + countUnwrapSet1];
-                            }
-                        }
-                    }
-                    
-                    // Set idxBack_ to new location
-                    // check for wrap by forcing uint8_t math, which would
-                    // otherwise get missed if it lived in the 'if' condition
-                    uint8_t idxBackNew = idxBack_ - growSize_;
-                    if (idxBackNew > idxBack_)
-                    {
-                        idxBack_ = idxFront_ + size_;
-                    }
-                    else
-                    {
-                        idxBack_ = idxBackNew;
-                    }
-                }
-                else
-                {
-                    // new memory was added outside of the contiguous range
-                    // of elements.  relative positions of idxFront_ and 
-                    // idxBack_ don't need to change.
-                }
-            }
-            else
-            {
-                // memory allocation failed.
-                // elements still where they were, but no capacity to fit
-                // new elements.
-                
-                retVal = 0;
-            }
-        }
-        
-        return retVal;
+        return (size_ != capacity_);
     }
- 
-    uint8_t capacity_;
-    uint8_t growSize_;
+
+    
     uint8_t idxFront_;
     uint8_t idxBack_;
     uint8_t size_;
+    uint8_t capacity_;
  
-    T *table_;
+    T table_[CAPACITY ? CAPACITY : 1];
 };
 
 
 
-template<typename T>
+template<typename T, uint8_t CAPACITY>
 class Queue
-: protected RingBuffer<T>
+: protected RingBuffer<T, CAPACITY>
 {
 public:
-    Queue(uint8_t capacity = RingBuffer<T>::RING_BUFFER_DEFAULT_CAPACITY,
-          uint8_t growSize = RingBuffer<T>::RING_BUFFER_DEFAULT_GROW_SIZE)
-    : RingBuffer<T>(capacity, growSize)
+    Queue()
+    : RingBuffer<T, CAPACITY>()
     {
         // nothing to do
     }
@@ -431,22 +294,22 @@ public:
     // virtual so SortedQueue can implement same function
     virtual uint8_t Push(T element)
     {
-        return RingBuffer<T>::PushBack(element);
+        return RingBuffer<T, CAPACITY>::PushBack(element);
     }
     
     uint8_t Pop(T &element)
     {
-        return RingBuffer<T>::PopFront(element);
+        return RingBuffer<T, CAPACITY>::PopFront(element);
     }
     
     uint8_t Peek(T &element)
     {
-        return RingBuffer<T>::PeekFront(element);
+        return RingBuffer<T, CAPACITY>::PeekFront(element);
     }
     
     uint8_t Size()
     {
-        return RingBuffer<T>::Size();
+        return RingBuffer<T, CAPACITY>::Size();
     }
     
     uint8_t HasElement(T element)
@@ -454,7 +317,7 @@ public:
         uint8_t retVal      = 0;
         uint8_t tmpRetParam;
         
-        if (RingBuffer<T>::FindIdxFirst(element, tmpRetParam))
+        if (RingBuffer<T, CAPACITY>::FindIdxFirst(element, tmpRetParam))
         {
             retVal = 1;
         }
@@ -464,12 +327,12 @@ public:
     
     uint8_t Remove(T element)
     {
-        return RingBuffer<T>::Remove(element);
+        return RingBuffer<T, CAPACITY>::Remove(element);
     }
     
     T &operator[](uint8_t idxLogical)
     {
-        return RingBuffer<T>::operator[](idxLogical);
+        return RingBuffer<T, CAPACITY>::operator[](idxLogical);
     }
     
     
@@ -479,7 +342,7 @@ public:
 
     void PrintDebug(const char *msg)
     {
-        RingBuffer<T>::PrintDebug(msg);
+        RingBuffer<T, CAPACITY>::PrintDebug(msg);
     }
     
 #endif // DEBUG
@@ -487,14 +350,13 @@ public:
 };
 
 
-template<typename T, typename CMP>
+template<typename T, uint8_t CAPACITY, typename CMP>
 class SortedQueue
-: public Queue<T>
+: public Queue<T, CAPACITY>
 {
 public:
-    SortedQueue(uint8_t capacity = RingBuffer<T>::RING_BUFFER_DEFAULT_CAPACITY,
-                uint8_t growSize = RingBuffer<T>::RING_BUFFER_DEFAULT_GROW_SIZE)
-    : Queue<T>(capacity, growSize)
+    SortedQueue()
+    : Queue<T, CAPACITY>()
     {
         // nothing to do
     }
@@ -507,7 +369,7 @@ public:
         uint8_t retVal = 0;
         
         // First, simply insert the element at the front.
-        if (RingBuffer<T>::PushFront(element))
+        if (RingBuffer<T, CAPACITY>::PushFront(element))
         {
             retVal = 1;
             
@@ -515,7 +377,7 @@ public:
             CMP cmp;
             
             // Only try to sort if there are more than one elements
-            uint8_t size = RingBuffer<T>::Size();
+            uint8_t size = RingBuffer<T, CAPACITY>::Size();
             if (size > 1)
             {
                 bool keepGoing = true;

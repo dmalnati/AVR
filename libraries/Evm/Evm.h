@@ -13,46 +13,46 @@
 
 
 
-
+template <
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
 class Evm
 {
-    friend class IdleTimeEventHandler;
-    friend class TimedEventHandler;
+    typedef
+    Evm<COUNT_IDLE_TIME_EVENT_HANDLER,
+        COUNT_TIMED_EVENT_HANDLER,
+        COUNT_INTERRUPT_EVENT_HANDLER
+    > EvmT;
+    
+    
+    friend class IdleTimeEventHandler<EvmT>;
+    friend class TimedEventHandler<EvmT>;
+    friend class InterruptEventHandler<EvmT>;
+    
     
 public:
-    ~Evm() {}
-    
-    static Evm &GetInstance();
-    
+    Evm()
+    : idleTimeEventHandlerList_()
+    , timedEventHandlerList_()
+    , interruptEventHandlerList_()
+    {
+        // nothing to do
+    }
+
     void MainLoop();
-    void EndMainLoop();
     
-    // Functionality to allow nested MainLoops for the purpose of
-    // holding a given stack frame such that statics or other
-    // async state keeping by users is less necessary.
-    //
-    // Failure scenarios include:
-    // - The first nested stack sets a timer for 10ms to go off
-    // - Something else running holds the stack also, with a timeout
-    //   for 100ms.
-    // - The first 10ms timer goes off, breaking out of the second level
-    //   and leading to unpredictable results at both levels.
-    //
-    // The calling code must know exactly what is going on in order for
-    // this to not happen.
-    //
-    // The assertion code forces a correct statement about the stack
-    // level in order to fail earlier and more predictably.
-    void HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
-    
+    template <typename EvmT>
     class CmpTimedEventHandler
     {
     public:
-        uint8_t operator()(TimedEventHandler *teh1, TimedEventHandler *teh2)
+        uint8_t operator()(TimedEventHandler<EvmT> *teh1,
+                           TimedEventHandler<EvmT> *teh2)
         {
             int8_t retVal;
             
-            uint32_t timeNow = millis();
+            uint32_t timeNow = PAL.Millis();
             
             uint32_t expiryOne = (timeNow + teh1->timeQueued_) + teh1->timeout_;
             uint32_t expiryTwo = (timeNow + teh2->timeQueued_) + teh2->timeout_;
@@ -73,72 +73,41 @@ public:
             return retVal;
         }
     };
+
     
 private:
-    static const uint8_t INITIAL_EVENT_CAPACITY = 4;
 
-    
-    // Can't construct directly
-    Evm()
-    : //stackLevel_(0)
-    //, abort_(0)
-    //, 
-    idleTimeEventHandlerList_(INITIAL_EVENT_CAPACITY)
-    , timedEventHandlerList_(INITIAL_EVENT_CAPACITY)
-    , interruptEventHandlerList_(INITIAL_EVENT_CAPACITY)
-    {
-        // nothing to do
-    }
-    
-    
-    //
-    // Supporting functionality for HoldStackDangerously
-    //
-    #if 0
-    void DecrementStack();
-    
-    class DecrementStackOnTimeout
-    : public TimedEventHandler
-    {
-    public:
-        virtual void OnTimedEvent()
-        {
-            Evm::GetInstance().DecrementStack();
-        }
-    };
-    #endif
-
-    
     // Idle Events
-    void RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh);
-    void DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh);
+    uint8_t RegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh);
+    uint8_t DeRegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh);
     
     void ServiceIdleTimeEventHandlers();
-    
-    
+
+
     // Timed Events
-    void RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout);
-    void DeRegisterTimedEventHandler(TimedEventHandler *teh);
+    uint8_t RegisterTimedEventHandler(TimedEventHandler<EvmT> *teh, uint32_t timeout);
+    uint8_t DeRegisterTimedEventHandler(TimedEventHandler<EvmT> *teh);
     
     void ServiceTimedEventHandlers();
     
-    
+
     // Interrupt Events
-public: // needed so ISR static functions can actually (de)register events
-    void RegisterInterruptEventHandler(InterruptEventHandler *ieh);
-    void DeRegisterInterruptEventHandler(InterruptEventHandler *ieh);
-private:    
+    uint8_t RegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh);
+    uint8_t DeRegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh);
+    
     void ServiceInterruptEventHandlers();
 
     
+    
     // Members
-    //uint8_t stackLevel_;
-    //uint8_t abort_;
-    
-    Queue<IdleTimeEventHandler *>      idleTimeEventHandlerList_;
-    SortedQueue<TimedEventHandler *,
-                CmpTimedEventHandler>  timedEventHandlerList_;
-    
+    Queue<IdleTimeEventHandler<EvmT> *,
+          COUNT_IDLE_TIME_EVENT_HANDLER>  idleTimeEventHandlerList_;
+         
+    SortedQueue<TimedEventHandler<EvmT> *,
+                COUNT_TIMED_EVENT_HANDLER,
+                CmpTimedEventHandler<EvmT>>  timedEventHandlerList_;
+
+
     // This is a data structure which needs to be carefully managed.
     //
     // It can be accessed both from ISR-driven code as well as typical
@@ -148,8 +117,17 @@ private:
     // written with a full appreciation of which code is driving
     // its execution and prevent corruption of its data
     // as well as any logic making use of its data.
-    Queue<InterruptEventHandler *> interruptEventHandlerList_;
+    Queue<InterruptEventHandler<EvmT> *,
+          COUNT_INTERRUPT_EVENT_HANDLER>  interruptEventHandlerList_;
 };
+
+
+
+
+
+#include "Evm.hpp"
+
+
 
 
 #endif  // __EVM_H__

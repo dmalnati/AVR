@@ -2,7 +2,6 @@
 
 #include <util/atomic.h>
 
-#include "Evm.h"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -11,17 +10,50 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-void Evm::RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::RegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh)
 {
-    idleTimeEventHandlerList_.Push(iteh);
+    return idleTimeEventHandlerList_.Push(iteh);
 }
 
-void Evm::DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::DeRegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh)
 {
-    idleTimeEventHandlerList_.Remove(iteh);
+    return idleTimeEventHandlerList_.Remove(iteh);
 }
 
-void Evm::ServiceIdleTimeEventHandlers()
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+void Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::ServiceIdleTimeEventHandlers()
 {
     // Have to deal with the fact that an idle event may cancel itself
     // or another idle event at any given time, as well as possibly add another,
@@ -47,7 +79,18 @@ void Evm::ServiceIdleTimeEventHandlers()
 //////////////////////////////////////////////////////////////////////
 
 
-void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::RegisterTimedEventHandler(TimedEventHandler<EvmT> *teh, uint32_t timeout)
 {
     // Note what time it is when timer requested
     uint32_t timeNow = PAL.Millis();
@@ -57,24 +100,46 @@ void Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
     teh->timeout_   = timeout;
 
     // Queue it
-    timedEventHandlerList_.Push(teh);
+    return timedEventHandlerList_.Push(teh);
 }
 
-void Evm::DeRegisterTimedEventHandler(TimedEventHandler *teh)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::DeRegisterTimedEventHandler(TimedEventHandler<EvmT> *teh)
 {
-    timedEventHandlerList_.Remove(teh);
+    return timedEventHandlerList_.Remove(teh);
 }
 
-void Evm::ServiceTimedEventHandlers()
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+void Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::ServiceTimedEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
     
     if (timedEventHandlerList_.Size())
     {
-        uint8_t            remainingEvents = MAX_EVENTS_HANDLED;
-        bool               keepGoing       = true;
-        TimedEventHandler *teh             = NULL;
-        TimedEventHandler *tehTmp          = NULL;
+        uint8_t                  remainingEvents = MAX_EVENTS_HANDLED;
+        bool                     keepGoing       = true;
+        TimedEventHandler<EvmT> *teh             = NULL;
+        TimedEventHandler<EvmT> *tehTmp          = NULL;
         
         do {
             timedEventHandlerList_.Peek(teh);
@@ -131,13 +196,28 @@ void Evm::ServiceTimedEventHandlers()
 // - going to break if interrupts are re-enabled here and another ISR fires
 //   before the whole operation completes.
 //
-void Evm::RegisterInterruptEventHandler(InterruptEventHandler *ieh)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::RegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh)
 {
+    uint8_t retVal = 1;
+    
     // Prevent this event from being added more than once
     if (!interruptEventHandlerList_.HasElement(ieh))
     {
-        interruptEventHandlerList_.Push(ieh);
+        retVal = interruptEventHandlerList_.Push(ieh);
     }
+    
+    return retVal;
 }
 
 //
@@ -146,13 +226,27 @@ void Evm::RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-void Evm::DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+uint8_t Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::DeRegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh)
 {
-    cli();
+    uint8_t retVal;
     
-    interruptEventHandlerList_.Remove(ieh);
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        retVal = interruptEventHandlerList_.Remove(ieh);
+    }
     
-    sei();
+    return retVal;
 }
 
 //
@@ -161,13 +255,24 @@ void Evm::DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-void Evm::ServiceInterruptEventHandlers()
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+void Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::ServiceInterruptEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
     
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
-    InterruptEventHandler *ieh = NULL;
+    InterruptEventHandler<EvmT> *ieh = NULL;
     
     // Suppress interrupts during critical sections of code
     cli();
@@ -180,7 +285,7 @@ void Evm::ServiceInterruptEventHandlers()
         // the interruptEventHandlerList_.
         //
         // Everything else behaves like normal.
-        ieh->OnInterruptEvent();
+        ieh->OnInterruptEventPrivate();
  
         // Keep track of remaining events willing to handle
         --remainingEvents;
@@ -207,7 +312,18 @@ void Evm::ServiceInterruptEventHandlers()
 //////////////////////////////////////////////////////////////////////
 
 
-void Evm::MainLoop()
+template
+<
+    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+    uint8_t COUNT_TIMED_EVENT_HANDLER,
+    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
+>
+void Evm
+<
+    COUNT_IDLE_TIME_EVENT_HANDLER,
+    COUNT_TIMED_EVENT_HANDLER,
+    COUNT_INTERRUPT_EVENT_HANDLER
+>::MainLoop()
 {
     while (1)
     {
@@ -216,69 +332,6 @@ void Evm::MainLoop()
         ServiceInterruptEventHandlers();
     }
 }
-
-#if 0
-void Evm::MainLoop()
-{
-    ++stackLevel_;
-    
-    uint8_t stackLevelCache = stackLevel_;
-    
-    while (stackLevel_ == stackLevelCache && !abort_)
-    {
-        ServiceIdleTimeEventHandlers();
-        ServiceTimedEventHandlers();
-        ServiceInterruptEventHandlers();
-    }
-}
-
-void Evm::DecrementStack()
-{
-    --stackLevel_;
-}
-
-void Evm::HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout)
-{
-    if (stackLevelAssertion == stackLevel_)
-    {
-        DecrementStackOnTimeout dsot;
-        
-        dsot.RegisterForTimedEvent(timeout);
-        
-        MainLoop();
-    }
-    else
-    {
-        abort_ = 1;
-    }
-}
-#endif
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Static Functions
-//
-//////////////////////////////////////////////////////////////////////
-
-
-Evm &
-Evm::GetInstance()
-{
-    static Evm *evm = NULL;
-    
-    if (!evm)
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            evm = new Evm();
-        }
-    }
-    
-    return *evm;
-}
-
-
 
 
 

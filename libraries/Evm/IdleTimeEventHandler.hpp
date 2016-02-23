@@ -1,5 +1,3 @@
-#include "Evm.h"
-#include "IdleTimeEventHandler.h"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -8,17 +6,19 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-void IdleTimeEventHandler::RegisterForIdleTimeEvent()
+template <typename EvmT>
+uint8_t IdleTimeEventHandler<EvmT>::RegisterForIdleTimeEvent()
 {
     // Don't allow yourself to be scheduled more than once
     DeRegisterForIdleTimeEvent();
     
-    Evm::GetInstance().RegisterIdleTimeEventHandler(this);
+    return evm_.RegisterIdleTimeEventHandler(this);
 }
 
-void IdleTimeEventHandler::DeRegisterForIdleTimeEvent()
+template <typename EvmT>
+uint8_t IdleTimeEventHandler<EvmT>::DeRegisterForIdleTimeEvent()
 {
-    Evm::GetInstance().DeRegisterIdleTimeEventHandler(this);
+    return evm_.DeRegisterIdleTimeEventHandler(this);
 }
 
 

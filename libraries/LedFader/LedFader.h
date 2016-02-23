@@ -13,17 +13,6 @@
 
 
 
-static void PinToggle2(uint8_t pin)
-{
-    PAL.PinMode(pin, OUTPUT);
-    
-    PAL.DigitalWrite(pin, HIGH);
-    PAL.Delay(500);
-    PAL.DigitalWrite(pin, LOW);
-}
-
-
-
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -704,9 +693,10 @@ class LEDToggler
 : public SignalEventHandler
 {
 public:
-    LEDToggler(uint8_t pin)
-    : pin_(pin)
+    void SetPin(uint8_t pin)
     {
+        pin_ = pin;
+        
         PAL.PinMode(pin_, OUTPUT);
     }
 
@@ -722,39 +712,35 @@ private:
 
 
 
-
+template <typename EvmT, uint8_t LED_COUNT>
 class LEDFader
 {
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
 
-    LEDFader() { }
+    LEDFader(EvmT &evm):
+    : posd_(evm)
+    {
+        
+    }
+    
     ~LEDFader()
     {
         Stop();
-        
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            for (uint8_t i = 0; i < ledTogglerList_.Size(); ++i)
-            {
-                delete ledTogglerList_[i];
-            }
-        }
     }
 
     void AddLED(
         uint8_t pin,
         uint16_t phaseOffset = PhaseOffsetSignalDistributor::DEFAULT_PHASE_OFFSET)
     {
-        LEDToggler *lt = NULL;
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            lt = new LEDToggler(pin);
-        }
-
+        // Create local copy
+        LEDToggler lt;
+        lt.SetPin(pin);
+        
+        // Push, which results in a copy
         ledTogglerList_.Push(lt);
         
-        posd_.AddSignalEventHandler(lt, phaseOffset);
+        posd_.AddSignalEventHandler(&lt, phaseOffset);
     }
     
     void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
@@ -775,21 +761,19 @@ public:
 private:
     
     PhaseOffsetSignalDistributor  posd_;
-    Queue<LEDToggler *>           ledTogglerList_;
+    Queue<LEDToggler, LED_COUNT>  ledTogglerList_;
 };
  
  
  
  
- 
+template <typename EvmT>
 class RGBLEDFader
 {
 public:
-    RGBLEDFader() { }
-    ~RGBLEDFader()
-    {
-        PinToggle2(5);
-    }
+    RGBLEDFader(EvmT &evm)
+    : ledFader_(evm)
+    { }
 
     void AddLED(
         uint8_t pinRed,
@@ -819,7 +803,7 @@ public:
 
 private:
 
-    LEDFader ledFader_;
+    LEDFader<EvmT> ledFader_;
 };
 
  

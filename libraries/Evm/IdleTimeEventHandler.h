@@ -8,16 +8,24 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+template <typename EvmT>
 class IdleTimeEventHandler
 {
 public:
+    IdleTimeEventHandler(EvmT &evm) : evm_(evm) { }
     virtual ~IdleTimeEventHandler() { DeRegisterForIdleTimeEvent(); }
     
-    void RegisterForIdleTimeEvent();
-    void DeRegisterForIdleTimeEvent();
+    uint8_t RegisterForIdleTimeEvent();
+    uint8_t DeRegisterForIdleTimeEvent();
     
     virtual void OnIdleTimeEvent() = 0;
+    
+private:
+    EvmT &evm_;
 };
+
+
+#include "IdleTimeEventHandler.hpp"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -26,13 +34,15 @@ public:
 //
 //////////////////////////////////////////////////////////////////////
 
-class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler
+template <typename EvmT>
+class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler<EvmT>
 {
     typedef void (*CallbackFn)(void *userData);
     
 public:
-    IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
-    : fn_(fn)
+    IdleTimeEventHandlerFnWrapper(EvmT &evm, CallbackFn fn, void *userData)
+    : IdleTimeEventHandler<EvmT>(evm)
+    , fn_(fn)
     , userData_(userData)
     {
         // nothing to do
