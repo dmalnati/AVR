@@ -10,6 +10,19 @@
 #include "PCIntEventHandler.h"
 
 
+// Forward declaration
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+      uint8_t COUNT_TIMED_EVENT_HANDLER,
+      uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+class EvmActual;
+
+
+
+#define LEVEL_FALLING             1
+#define LEVEL_RISING              2
+#define LEVEL_RISING_AND_FALLING  3
+
+
 /*
  * Main Principle of Interrupt Synchronization Architecture:
  * - ISR-invoked code can only add to Evm InterruptEventHandler list
@@ -33,42 +46,25 @@
  *
  */
 
-
-
+ 
 //////////////////////////////////////////////////////////////////////
 //
 // Interrupt Events
 //
 //////////////////////////////////////////////////////////////////////
 
-
-
-
-#define LEVEL_FALLING             1
-#define LEVEL_RISING              2
-#define LEVEL_RISING_AND_FALLING  3
-
-
-
-
-template <typename EvmT>
 class InterruptEventHandler
 : private PCIntEventHandler
 {
-    template
-    <
-        uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-        uint8_t COUNT_TIMED_EVENT_HANDLER,
-        uint8_t COUNT_INTERRUPT_EVENT_HANDLER
-    >
-    friend class Evm;
+    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    friend class EvmActual;
     
 public:
-    InterruptEventHandler(EvmT    &evm,
-                          uint8_t  pin,
+    InterruptEventHandler(uint8_t  pin,
                           uint8_t  mode = LEVEL_RISING)
     : PCIntEventHandler(pin, ConvertToPCIntEventHandlerMode(mode))
-    , evm_(evm)
     , mode_(mode)
     , logicLevel_(0)
     {
@@ -92,48 +88,16 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
 
-    uint8_t RegisterForInterruptEvent()
-    {
-        uint8_t retVal;
-
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            // Don't allow double registration
-            DeRegisterForInterruptEvent();
-            
-            retVal = RegisterForPCIntEvent();
-        }
-        
-        return retVal;
-    }
-
-    uint8_t DeRegisterForInterruptEvent()
-    {
-        uint8_t retVal;
-
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            uint8_t retVal1 = DeRegisterForPCIntEvent();
-            
-            uint8_t retVal2 = evm_.DeRegisterInterruptEventHandler(this);
-            
-            retVal = retVal1 && retVal2;
-        }
-        
-        return retVal;
-    }
+    uint8_t RegisterForInterruptEvent();
+    uint8_t DeRegisterForInterruptEvent();
     
     virtual void OnInterruptEvent(uint8_t logicLevel) = 0;
     
 private:
-    EvmT &evm_;
-    
-    
     void OnInterruptEventPrivate()
     {
         OnInterruptEvent(GetLogicLevel());
     }
-    
     
     PCIntEventHandler::MODE ConvertToPCIntEventHandlerMode(uint8_t mode) const
     {
@@ -160,18 +124,11 @@ private:
     }
     
 
-    
-    
     // Implement the PCIntEventHandler interface
     
     // This is only called from ISR code.  Must not enable interrupts here or
     // anywhere it leads to.
-    virtual void OnPCIntEvent(uint8_t logicLevel)
-    {
-        logicLevel_ = logicLevel;
-        
-        evm_.RegisterInterruptEventHandler(this);
-    }
+    virtual void OnPCIntEvent(uint8_t logicLevel);
     
     
     uint8_t mode_;
@@ -187,19 +144,18 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT, typename T>
+template <typename T>
 class InterruptEventHandlerObjectWrapper
-: public InterruptEventHandler<EvmT>
+: public InterruptEventHandler
 {
     typedef void (T::*MemberCallbackFn)(uint8_t logicLevel);
     
 public:
-    InterruptEventHandlerObjectWrapper(EvmT             &evm,
-                                       uint8_t           pin,
+    InterruptEventHandlerObjectWrapper(uint8_t           pin,
                                        T                *obj,
                                        MemberCallbackFn  func,
                                        uint8_t           mode = LEVEL_RISING)
-    : InterruptEventHandler<EvmT>(evm, pin, mode)
+    : InterruptEventHandler(pin, mode)
     , obj_(obj)
     , func_(func)
     {
@@ -216,38 +172,35 @@ private:
     MemberCallbackFn  func_;
 };
 
-template <typename EvmT, typename T>
-InterruptEventHandlerObjectWrapper<EvmT, T> *
-MapButNotStartInterrupt(EvmT     &evm,
-                        uint8_t   pin,
+template <typename T>
+InterruptEventHandlerObjectWrapper<T> *
+MapButNotStartInterrupt(uint8_t   pin,
                         T        *obj,
                         void      (T::*cbFn)(uint8_t logicLevel),
                         uint8_t   mode = LEVEL_RISING)
 {
-    InterruptEventHandlerObjectWrapper<EvmT, T> *iehow = NULL;
+    InterruptEventHandlerObjectWrapper<T> *iehow = NULL;
     
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        iehow = new InterruptEventHandlerObjectWrapper<EvmT, T>(evm,
-                                                                pin,
-                                                                obj,
-                                                                cbFn,
-                                                                mode);
+        iehow = new InterruptEventHandlerObjectWrapper<T>(pin,
+                                                          obj,
+                                                          cbFn,
+                                                          mode);
     }
     
     return iehow;
 }
 
-template <typename EvmT, typename T>
-InterruptEventHandlerObjectWrapper<EvmT, T> *
-MapAndStartInterrupt(EvmT    &evm,
-                     uint8_t  pin,
+template <typename T>
+InterruptEventHandlerObjectWrapper<T> *
+MapAndStartInterrupt(uint8_t  pin,
                      T       *obj,
                      void     (T::*cbFn)(uint8_t logicLevel),
                      uint8_t  mode = LEVEL_RISING)
 {
-    InterruptEventHandlerObjectWrapper<EvmT, T> * iehow =
-        MapButNotStartInterrupt(evm, pin, obj, cbFn, mode);
+    InterruptEventHandlerObjectWrapper<T> * iehow =
+        MapButNotStartInterrupt(pin, obj, cbFn, mode);
 
     iehow->RegisterForInterruptEvent();
     

@@ -2,17 +2,31 @@
 #define __IDLE_TIME_EVENT_HANDLER__
 
 
+#include <stdint.h>
+
+
+// Forward declaration
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+      uint8_t COUNT_TIMED_EVENT_HANDLER,
+      uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+class EvmActual;
+
+
 //////////////////////////////////////////////////////////////////////
 //
 // Idle Events
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT>
 class IdleTimeEventHandler
 {
+    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    friend class EvmActual;
+    
+    
 public:
-    IdleTimeEventHandler(EvmT &evm) : evm_(evm) { }
     virtual ~IdleTimeEventHandler() { DeRegisterForIdleTimeEvent(); }
     
     uint8_t RegisterForIdleTimeEvent();
@@ -21,11 +35,7 @@ public:
     virtual void OnIdleTimeEvent() = 0;
     
 private:
-    EvmT &evm_;
 };
-
-
-#include "IdleTimeEventHandler.hpp"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -34,14 +44,13 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT>
-class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler<EvmT>
+class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler
 {
     typedef void (*CallbackFn)(void *userData);
     
 public:
-    IdleTimeEventHandlerFnWrapper(EvmT &evm, CallbackFn fn, void *userData)
-    : IdleTimeEventHandler<EvmT>(evm)
+    IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
+    : IdleTimeEventHandler()
     , fn_(fn)
     , userData_(userData)
     {

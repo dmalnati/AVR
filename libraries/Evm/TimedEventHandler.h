@@ -5,25 +5,29 @@
 #include <stdint.h>
 
 
+// Forward declaration
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+      uint8_t COUNT_TIMED_EVENT_HANDLER,
+      uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+class EvmActual;
+
+
 //////////////////////////////////////////////////////////////////////
 //
 // Timed Events
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT>
 class TimedEventHandler
 {
-    template
-    <
-        uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-        uint8_t COUNT_TIMED_EVENT_HANDLER,
-        uint8_t COUNT_INTERRUPT_EVENT_HANDLER
-    >
-    friend class Evm;
+    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    friend class EvmActual;
+    
     
 public:
-    TimedEventHandler(EvmT &evm) : evm_(evm), isInterval_(0) { }
+    TimedEventHandler() : isInterval_(0) { }
     virtual ~TimedEventHandler() { DeRegisterForTimedEvent(); }
 
     uint8_t RegisterForTimedEvent(uint32_t timeout);
@@ -33,8 +37,6 @@ public:
     virtual void OnTimedEvent() = 0;
 
 private:
-    EvmT &evm_;
-    
     // Evm uses these for state keeping
     uint32_t timeQueued_;
     uint32_t timeout_;
@@ -43,23 +45,19 @@ private:
 };
 
 
-#include "TimedEventHandler.hpp"
-
-
 //////////////////////////////////////////////////////////////////////
 //
 // Function Wrappers
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT>
-class TimedEventHandlerFnWrapper : public TimedEventHandler<EvmT>
+class TimedEventHandlerFnWrapper : public TimedEventHandler
 {
     typedef void (*CallbackFn)(void *userData);
     
 public:
-    TimedEventHandlerFnWrapper(EvmT &sys, CallbackFn fn, void *userData)
-    : TimedEventHandler<EvmT>(sys)
+    TimedEventHandlerFnWrapper(CallbackFn fn, void *userData)
+    : TimedEventHandler()
     , fn_(fn)
     , userData_(userData)
     {

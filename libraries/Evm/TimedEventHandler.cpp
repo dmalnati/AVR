@@ -1,4 +1,5 @@
-
+#include "Evm.h"
+#include "TimedEventHandler.h"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -7,8 +8,8 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename EvmT>
-uint8_t TimedEventHandler<EvmT>::RegisterForTimedEvent(uint32_t timeout)
+uint8_t TimedEventHandler::
+RegisterForTimedEvent(uint32_t timeout)
 {
     // Don't allow yourself to be scheduled more than once.
     // Cache whether this is an interval callback since that
@@ -17,21 +18,21 @@ uint8_t TimedEventHandler<EvmT>::RegisterForTimedEvent(uint32_t timeout)
     DeRegisterForTimedEvent();
     isInterval_ = isIntervalCache;
     
-    return evm_.RegisterTimedEventHandler(this, timeout);
+    return Evm::GetInstance().RegisterTimedEventHandler(this, timeout);
 }
 
-template <typename EvmT>
-uint8_t TimedEventHandler<EvmT>::RegisterForTimedEventInterval(uint32_t timeout)
+uint8_t TimedEventHandler::
+RegisterForTimedEventInterval(uint32_t timeout)
 {
     isInterval_ = 1;
     
     return RegisterForTimedEvent(timeout);
 }
 
-template <typename EvmT>
-uint8_t TimedEventHandler<EvmT>::DeRegisterForTimedEvent()
+uint8_t TimedEventHandler::
+DeRegisterForTimedEvent()
 {
-    uint8_t retVal = evm_.DeRegisterTimedEventHandler(this);
+    uint8_t retVal = Evm::GetInstance().DeRegisterTimedEventHandler(this);
     
     // make sure this isn't re-scheduled if interval
     isInterval_ = 0;

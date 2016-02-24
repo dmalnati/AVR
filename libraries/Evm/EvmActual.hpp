@@ -10,50 +10,35 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::RegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
     return idleTimeEventHandlerList_.Push(iteh);
 }
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::DeRegisterIdleTimeEventHandler(IdleTimeEventHandler<EvmT> *iteh)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
     return idleTimeEventHandlerList_.Remove(iteh);
 }
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-void Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::ServiceIdleTimeEventHandlers()
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+               COUNT_TIMED_EVENT_HANDLER,
+               COUNT_INTERRUPT_EVENT_HANDLER>::
+ServiceIdleTimeEventHandlers()
 {
     // Have to deal with the fact that an idle event may cancel itself
     // or another idle event at any given time, as well as possibly add another,
@@ -79,67 +64,52 @@ void Evm
 //////////////////////////////////////////////////////////////////////
 
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::RegisterTimedEventHandler(TimedEventHandler<EvmT> *teh, uint32_t timeout)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
 {
     // Note what time it is when timer requested
     uint32_t timeNow = PAL.Millis();
     
     // Keep track of some useful state
     teh->timeQueued_ = timeNow;
-    teh->timeout_   = timeout;
+    teh->timeout_    = timeout;
 
     // Queue it
     return timedEventHandlerList_.Push(teh);
 }
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::DeRegisterTimedEventHandler(TimedEventHandler<EvmT> *teh)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+DeRegisterTimedEventHandler(TimedEventHandler *teh)
 {
     return timedEventHandlerList_.Remove(teh);
 }
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-void Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::ServiceTimedEventHandlers()
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+               COUNT_TIMED_EVENT_HANDLER,
+               COUNT_INTERRUPT_EVENT_HANDLER>::
+ServiceTimedEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
     
     if (timedEventHandlerList_.Size())
     {
-        uint8_t                  remainingEvents = MAX_EVENTS_HANDLED;
-        bool                     keepGoing       = true;
-        TimedEventHandler<EvmT> *teh             = NULL;
-        TimedEventHandler<EvmT> *tehTmp          = NULL;
+        uint8_t            remainingEvents = MAX_EVENTS_HANDLED;
+        bool               keepGoing       = true;
+        TimedEventHandler *teh             = NULL;
+        TimedEventHandler *tehTmp          = NULL;
         
         do {
             timedEventHandlerList_.Peek(teh);
@@ -196,18 +166,13 @@ void Evm
 // - going to break if interrupts are re-enabled here and another ISR fires
 //   before the whole operation completes.
 //
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::RegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
     uint8_t retVal = 1;
     
@@ -226,18 +191,13 @@ uint8_t Evm
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-uint8_t Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::DeRegisterInterruptEventHandler(InterruptEventHandler<EvmT> *ieh)
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+                 COUNT_TIMED_EVENT_HANDLER,
+                 COUNT_INTERRUPT_EVENT_HANDLER>::
+DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
     uint8_t retVal;
     
@@ -255,24 +215,19 @@ uint8_t Evm
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-void Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::ServiceInterruptEventHandlers()
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+              COUNT_TIMED_EVENT_HANDLER,
+              COUNT_INTERRUPT_EVENT_HANDLER>::
+ServiceInterruptEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
     
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
-    InterruptEventHandler<EvmT> *ieh = NULL;
+    InterruptEventHandler *ieh = NULL;
     
     // Suppress interrupts during critical sections of code
     cli();
@@ -312,18 +267,13 @@ void Evm
 //////////////////////////////////////////////////////////////////////
 
 
-template
-<
-    uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-    uint8_t COUNT_TIMED_EVENT_HANDLER,
-    uint8_t COUNT_INTERRUPT_EVENT_HANDLER
->
-void Evm
-<
-    COUNT_IDLE_TIME_EVENT_HANDLER,
-    COUNT_TIMED_EVENT_HANDLER,
-    COUNT_INTERRUPT_EVENT_HANDLER
->::MainLoop()
+template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
+          uint8_t COUNT_TIMED_EVENT_HANDLER,
+          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
+              COUNT_TIMED_EVENT_HANDLER,
+              COUNT_INTERRUPT_EVENT_HANDLER>::
+MainLoop()
 {
     while (1)
     {

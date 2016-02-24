@@ -6,6 +6,8 @@
 
 void loop()
 {
+    Evm::CreateInstance<1,1,1>();
+    
     Evm &evm = Evm::GetInstance();
 
 

@@ -740,6 +740,12 @@ public:
         // Push, which results in a copy
         ledTogglerList_.Push(lt);
         
+        
+        
+        // Placement new -- can we use this (everywhere?)
+        
+        
+        
         posd_.AddSignalEventHandler(&lt, phaseOffset);
     }
     
@@ -760,8 +766,8 @@ public:
     
 private:
     
-    PhaseOffsetSignalDistributor  posd_;
-    Queue<LEDToggler, LED_COUNT>  ledTogglerList_;
+    PhaseOffsetSignalDistributor<LED_COUNT>  posd_;
+    Queue<LEDToggler, LED_COUNT>             ledTogglerList_;
 };
  
  

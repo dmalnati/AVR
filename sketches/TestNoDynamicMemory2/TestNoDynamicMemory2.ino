@@ -5,12 +5,11 @@
 #include <InterruptEventHandler.h>
 
 
-template <typename EvmT>
 class MyTimedEvent
-: public TimedEventHandler<EvmT>
+: public TimedEventHandler
 {
 public:
-    MyTimedEvent(EvmT &evm, uint8_t pin) : TimedEventHandler<EvmT>(evm), pin_(pin) { }
+    MyTimedEvent(uint8_t pin) : pin_(pin) { }
 
 private:
     virtual void OnTimedEvent()
@@ -28,12 +27,11 @@ private:
 
 
 
-template <typename EvmT>
 class MyIdleEvent
-: public IdleTimeEventHandler<EvmT>
+: public IdleTimeEventHandler
 {
 public:
-    MyIdleEvent(EvmT &evm, uint8_t pin) : IdleTimeEventHandler<EvmT>(evm), pin_(pin) { }
+    MyIdleEvent(uint8_t pin) : pin_(pin) { }
 
 private:
     virtual void OnIdleTimeEvent()
@@ -49,13 +47,12 @@ private:
 
 
 
-template <typename EvmT>
 class MyPCInterEvent
-: public InterruptEventHandler<EvmT>
+: public InterruptEventHandler
 {
 public:
-    MyPCInterEvent(EvmT &evm, uint8_t pinInter, uint8_t pinToggle)
-    : InterruptEventHandler<EvmT>(evm, pinInter)
+    MyPCInterEvent(uint8_t pinInter, uint8_t pinToggle)
+    : InterruptEventHandler(pinInter)
     , pinToggle_(pinToggle)
     {
         PAL.PinMode(pinToggle_, OUTPUT);
@@ -81,18 +78,16 @@ class App
 {
 public:
     App()
-    : evm_()
-    , mte1_(evm_, 5)  // No LED
-    , mte2_(evm_, 11) // Yes LED
-    , mie1_(evm_, 15) // Attention Red LED
-    , mie2_(evm_, 17) // Attention Blue LED
-    , mpe1_(evm_, 27, 5) // Watch Clear button, toggle No LED
-    , mpe2_(evm_, 4, 17) // Watch No button, toggle Attention Blue LED
-    , mpe3_(evm_, 4, 17)
+    : evm_(Evm::CreateInstance<C_IDLE, C_TIMED, C_INTER>())
+    , mte1_(5)  // No LED
+    , mte2_(11) // Yes LED
+    , mie1_(15) // Attention Red LED
+    , mie2_(17) // Attention Blue LED
+    , mpe1_(27, 5) // Watch Clear button, toggle No LED
+    , mpe2_(4, 17) // Watch No button, toggle Attention Blue LED
     {
         // Nothing to do
 
-#if 0
         // Yes LED on error
         if (!mte1_.RegisterForTimedEventInterval(1000))
         {
@@ -135,8 +130,6 @@ public:
         
 
         PAL.DigitalWrite(11, LOW);
-#endif
-
 
 
 
@@ -160,7 +153,6 @@ public:
 
 
 
-
     }
  
     void Run()
@@ -170,13 +162,13 @@ public:
 
 
     // Accounting work
-    static const uint8_t COUNT_IDLE_TIME_EVENT_HANDLER = 
+    static const uint8_t C_IDLE = 
         1 + // mte1_
         1;  // mte2_
-    static const uint8_t COUNT_TIMED_EVENT_HANDLER     =
+    static const uint8_t C_TIMED =
         1 + // mie1_
         1;  // mie2_
-    static const uint8_t COUNT_INTERRUPT_EVENT_HANDLER = 
+    static const uint8_t C_INTER = 
         0 + // mpe1_
         0;  // mpe2_
 
@@ -192,27 +184,18 @@ public:
         
     
 private:
-    // Create statically-sized Evm
-    typedef
-    Evm<COUNT_IDLE_TIME_EVENT_HANDLER,
-        COUNT_TIMED_EVENT_HANDLER,
-        COUNT_INTERRUPT_EVENT_HANDLER
-    > EvmT;
-    
-    EvmT evm_;
+    Evm &evm_;
 
 
 
+    MyTimedEvent mte1_;
+    MyTimedEvent mte2_;
 
-    MyTimedEvent<EvmT> mte1_;
-    MyTimedEvent<EvmT> mte2_;
+    MyIdleEvent mie1_;
+    MyIdleEvent mie2_;
 
-    MyIdleEvent<EvmT> mie1_;
-    MyIdleEvent<EvmT> mie2_;
-
-    MyPCInterEvent<EvmT> mpe1_;
-    MyPCInterEvent<EvmT> mpe2_;
-    MyPCInterEvent<EvmT> mpe3_;
+    MyPCInterEvent mpe1_;
+    MyPCInterEvent mpe2_;
 
     RingBuffer<void *, 25> rb_;
 
