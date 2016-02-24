@@ -258,20 +258,20 @@ Has no idea about time at all
 
 */
 
+enum class SignalMode : uint8_t {
+    MODE_UP_THEN_DOWN,
+    MODE_FOREVER
+};
 
+template <uint8_t COUNT_SIGNAL_EVENT_HANDLER>
 class SynchronousSignalEventDistributor
 {
 public:
-    enum class Mode : uint8_t {
-        MODE_UP_THEN_DOWN,
-        MODE_FOREVER
-    };
-
-    static const Mode MODE_DEFAULT = Mode::MODE_UP_THEN_DOWN;
+    static const SignalMode MODE_DEFAULT = SignalMode::MODE_UP_THEN_DOWN;
 
     SynchronousSignalEventDistributor(
         SignalSource *ss,
-        Mode          mode = MODE_DEFAULT)
+        SignalMode    mode = MODE_DEFAULT)
     : signalStepCount_(ss->GetStepCount())
     , mode_(mode)
     , ssr_(ss)
@@ -293,7 +293,7 @@ public:
         DistributeLogicLevelToAllHandlers(0);
     }
     
-    void SetMode(Mode mode)
+    void SetMode(SignalMode mode)
     {
         mode_ = mode;
     }
@@ -324,7 +324,7 @@ public:
             }
             else // (stepDirection_ == -1)
             {
-                if (mode_ == Mode::MODE_UP_THEN_DOWN)
+                if (mode_ == SignalMode::MODE_UP_THEN_DOWN)
                 {
                     done_ = 1;
                 }
@@ -358,14 +358,15 @@ private:
     }
     
     
-    uint8_t                     signalStepCount_;
-    uint8_t                     stepCountCurrent_;
-    int8_t                      stepDirection_;
-    Mode                        mode_;
-    uint8_t                     done_;
+    uint8_t     signalStepCount_;
+    uint8_t     stepCountCurrent_;
+    int8_t      stepDirection_;
+    SignalMode  mode_;
+    uint8_t     done_;
     
     SignalSourceReader          ssr_;
-    Queue<SignalEventHandler*>  signalEventHandlerList_;
+    Queue<SignalEventHandler*, COUNT_SIGNAL_EVENT_HANDLER>
+                                signalEventHandlerList_;
 };
 
 
@@ -382,6 +383,7 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
+template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
 class PhaseOffsetSignalDistributor
 : private IdleTimeEventHandler
 {
@@ -393,22 +395,6 @@ public:
     , stepMaxReached_(0)
     {
         // Nothing to do
-    }
-    
-    virtual ~PhaseOffsetSignalDistributor()
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
-            {
-                delete phaseDataActiveList_[i];
-            }
-            
-            for (uint8_t i = 0; i < phaseDataPendingList_.Size(); ++i)
-            {
-                delete phaseDataPendingList_[i];
-            }
-        }
     }
     
     void AddSignalEventHandler(
@@ -439,25 +425,29 @@ public:
         if (!pd)
         {
             // Not found -- need to create the group
-            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-            {
-                // Create the group
-                pd = new PhaseData(&signalSource_, stepOffset);
-            }
+            // Create the group
+            pd = phaseDataList_.PushNew(&signalSource_, stepOffset);
             
             // Add the phase group to the pending list, which
             // will be detected later
-            phaseDataPendingList_.Push(pd);
+            
+            // Make sure allocation actually worked
+            if (pd)
+            {
+                phaseDataPendingList_.Push(pd);
+            }
         }
         
         // Add handler
-        pd->ssed.AddSignalEventHandler(seh);
+        // Make sure allocation actually worked
+        if (pd)
+        {
+            pd->ssed.AddSignalEventHandler(seh);
+        }
     }
     
     
-    void PulseWithMode(
-        uint32_t pulseDurationMs,
-        SynchronousSignalEventDistributor::Mode mode)
+    void PulseWithMode(uint32_t pulseDurationMs, SignalMode mode)
     {
         // Stop whatever was going on before and get back to initial state
         Stop();
@@ -479,7 +469,7 @@ public:
         RegisterForIdleTimeEvent();
     }
     
-    void SetDistributorMode(SynchronousSignalEventDistributor::Mode mode)
+    void SetDistributorMode(SignalMode mode)
     {
         // Set active list
         for (uint8_t i = 0; i < phaseDataActiveList_.Size(); ++i)
@@ -497,18 +487,12 @@ public:
     
     void PulseOnce(uint32_t pulseDurationMs)
     {
-        PulseWithMode(
-            pulseDurationMs,
-            SynchronousSignalEventDistributor::Mode::MODE_UP_THEN_DOWN
-        );
+        PulseWithMode(pulseDurationMs, SignalMode::MODE_UP_THEN_DOWN);
     }
     
     void PulseForever(uint32_t pulseDurationMs)
     {
-        PulseWithMode(
-            pulseDurationMs,
-            SynchronousSignalEventDistributor::Mode::MODE_FOREVER
-        );
+        PulseWithMode(pulseDurationMs, SignalMode::MODE_FOREVER);
     }
     
     void Stop()
@@ -540,8 +524,12 @@ private:
             // Nothing to do
         }
         
-        uint8_t                            stepOffset;
-        SynchronousSignalEventDistributor  ssed;
+        uint8_t  stepOffset;
+        
+        // This leads to probably more memory than required.
+        // Effectively the amount of storage SSED (total across all PhaseDatas)
+        // is COUNT_LED * COUNT_PHASE_OFFSET
+        SynchronousSignalEventDistributor<COUNT_LED>  ssed;
     };
     
     
@@ -674,9 +662,10 @@ private:
     uint8_t  stepMaxReached_;
     
     // Signal synchronizing structures
-    SignalSource        signalSource_;
-    Queue<PhaseData *>  phaseDataActiveList_;
-    Queue<PhaseData *>  phaseDataPendingList_;
+    SignalSource                               signalSource_;
+    ListInPlace<PhaseData, COUNT_PHASE_OFFSET> phaseDataList_;
+    Queue<PhaseData *, COUNT_PHASE_OFFSET>     phaseDataActiveList_;
+    Queue<PhaseData *, COUNT_PHASE_OFFSET>     phaseDataPendingList_;
 };
  
  
@@ -693,6 +682,12 @@ class LEDToggler
 : public SignalEventHandler
 {
 public:
+    LEDToggler(uint8_t pin)
+    : pin_(pin)
+    {
+        SetPin(pin_);
+    }
+    
     void SetPin(uint8_t pin)
     {
         pin_ = pin;
@@ -712,41 +707,26 @@ private:
 
 
 
-template <typename EvmT, uint8_t LED_COUNT>
+template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
 class LEDFader
 {
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
-
-    LEDFader(EvmT &evm):
-    : posd_(evm)
-    {
-        
-    }
     
     ~LEDFader()
     {
         Stop();
     }
 
-    void AddLED(
-        uint8_t pin,
-        uint16_t phaseOffset = PhaseOffsetSignalDistributor::DEFAULT_PHASE_OFFSET)
+    void AddLED(uint8_t pin, uint16_t phaseOffset = 0)
     {
-        // Create local copy
-        LEDToggler lt;
-        lt.SetPin(pin);
+        // Push in place
+        LEDToggler *lt = ledTogglerList_.PushNew(pin);
         
-        // Push, which results in a copy
-        ledTogglerList_.Push(lt);
-        
-        
-        
-        // Placement new -- can we use this (everywhere?)
-        
-        
-        
-        posd_.AddSignalEventHandler(&lt, phaseOffset);
+        if (lt)
+        {
+            posd_.AddSignalEventHandler(lt, phaseOffset);
+        }
     }
     
     void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
@@ -766,38 +746,33 @@ public:
     
 private:
     
-    PhaseOffsetSignalDistributor<LED_COUNT>  posd_;
-    Queue<LEDToggler, LED_COUNT>             ledTogglerList_;
+    PhaseOffsetSignalDistributor<COUNT_LED, COUNT_PHASE_OFFSET>  posd_;
+    ListInPlace<LEDToggler, COUNT_LED>                           ledTogglerList_;
 };
  
  
  
  
-template <typename EvmT>
+template <uint8_t COUNT_LED_TRIPLET>
 class RGBLEDFader
 {
 public:
-    RGBLEDFader(EvmT &evm)
-    : ledFader_(evm)
-    { }
-
-    void AddLED(
-        uint8_t pinRed,
-        uint8_t pinGreen,
-        uint8_t pinBlue,
-        uint16_t phaseOffset = PhaseOffsetSignalDistributor::DEFAULT_PHASE_OFFSET)
+    void AddLED(uint8_t pinRed,
+                uint8_t pinGreen,
+                uint8_t pinBlue,
+                uint16_t phaseOffset = 0)
     {
         ledFader_.AddLED(pinRed,   (phaseOffset +  45) % 360);
         ledFader_.AddLED(pinGreen, (phaseOffset + 225) % 360);
         ledFader_.AddLED(pinBlue,  (phaseOffset +   0) % 360);
     }
     
-    void FadeOnce(uint32_t fadeDurationMs = LEDFader::DEFAULT_FADE_DURATION_MS)
+    void FadeOnce(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeOnce(fadeDurationMs);
     }
     
-    void FadeForever(uint32_t fadeDurationMs = LEDFader::DEFAULT_FADE_DURATION_MS)
+    void FadeForever(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeForever(fadeDurationMs);
     }
@@ -809,7 +784,8 @@ public:
 
 private:
 
-    LEDFader<EvmT> ledFader_;
+    LEDFader<COUNT_LED_TRIPLET * 3,
+             COUNT_LED_TRIPLET * 3 * 3> ledFader_;
 };
 
  

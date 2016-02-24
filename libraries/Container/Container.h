@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <PlacementNew.h>
+
  
 //
 // Minimum valid: 1   elements (0th   index)
@@ -477,14 +479,12 @@ public:
     }
     
     template <typename ...Args>
-    uint8_t PushNew(Args &&... args)
+    T *PushNew(Args &&... args)
     {
-        uint8_t retVal = 0;
+        T *retVal = NULL;
 
         if (RingBuffer<T, CAPACITY>::CanFitOneMore())
         {
-            retVal = 1;
-            
             // Placement New invocation with Constructor argument passing
 
             new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
@@ -493,13 +493,14 @@ public:
             
             RingBuffer<T, CAPACITY>::IncrBack();
             RingBuffer<T, CAPACITY>::IncrSize();
+            
+            retVal = &((*this)[RingBuffer<T, CAPACITY>::Size() - 1]);
         }
 
         return retVal;
     }
     
 private:
-
 
     // I skipped all of the below after reading this
     // http://stackoverflow.com/questions/3582001/advantages-of-using-forward/3582313#3582313
@@ -514,9 +515,7 @@ private:
     template <class T2> T2&& forward(typename remove_reference<T2>::type&& t) noexcept;
 #endif
 
-    
-    // Placement new
-    void *operator new(size_t, void *buf) { return buf; }
+
 };
 
 
