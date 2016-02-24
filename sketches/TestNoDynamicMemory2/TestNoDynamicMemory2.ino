@@ -251,7 +251,7 @@ void TestPN2()
     new(ptr)Blinker(5);
 }
 
-App app;
+static App app;
 
 
 
