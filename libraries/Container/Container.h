@@ -41,6 +41,7 @@ public:
     , idxBack_(0)
     , size_(0)
     , capacity_(CAPACITY ? CAPACITY : 1)
+    , table_((T *)data_)
     {
         // Nothing to do
     }
@@ -64,12 +65,11 @@ public:
         
         if (retVal)
         {
-            --idxFront_;
-            if (idxFront_ >= capacity_) { idxFront_ = (capacity_ - 1); }
+            DecrFront();
             
             table_[idxFront_] = element;
             
-            ++size_;
+            IncrSize();
         }
         
         return retVal;
@@ -99,10 +99,9 @@ public:
             
             element = table_[idxFront_];
      
-            ++idxFront_;
-            if (idxFront_ >= capacity_) { idxFront_ = 0; }
+            IncrFront();
      
-            --size_;
+            DecrSize();
         }
         
         return retVal;
@@ -119,10 +118,9 @@ public:
         {
             table_[idxBack_] = element;
      
-            ++idxBack_;
-            if (idxBack_ >= capacity_) { idxBack_ = 0; }
+            IncrBack();
      
-            ++size_;
+            IncrSize();
         }
         
         return retVal;
@@ -136,12 +134,11 @@ public:
         {
             retVal = 1;
             
-            --idxBack_;
-            if (idxBack_ >= capacity_) { idxBack_ = (capacity_ - 1); }
+            DecrBack();
             
             element = table_[idxBack_];
             
-            --size_;
+            DecrSize();
         }
         
         return retVal;
@@ -234,8 +231,6 @@ public:
     }
     
     
-    
-    
     /////////// Debug ///////////
     
 #ifdef DEBUG
@@ -262,20 +257,56 @@ public:
 
 #endif
 
-   
-private:
+
+protected:
+
+    void DecrFront()
+    {
+        --idxFront_;
+        if (idxFront_ >= capacity_) { idxFront_ = (capacity_ - 1); }
+    }
+    
+    void IncrFront()
+    {
+        ++idxFront_;
+        if (idxFront_ >= capacity_) { idxFront_ = 0; }
+    }
+    
+    void IncrBack()
+    {
+        ++idxBack_;
+        if (idxBack_ >= capacity_) { idxBack_ = 0; }
+    }
+    
+    void DecrBack()
+    {
+        --idxBack_;
+        if (idxBack_ >= capacity_) { idxBack_ = (capacity_ - 1); }
+    }
+    
+    void IncrSize()
+    {
+        ++size_;
+    }
+    
+    void DecrSize()
+    {
+        --size_;
+    }
+
     uint8_t CanFitOneMore()
     {
         return (size_ != capacity_);
     }
-
+private:
     
     uint8_t idxFront_;
     uint8_t idxBack_;
     uint8_t size_;
     uint8_t capacity_;
  
-    T table_[CAPACITY ? CAPACITY : 1];
+    T       *table_;
+    uint8_t  data_[(CAPACITY ? CAPACITY : 1) * sizeof(T)];
 };
 
 
@@ -413,6 +444,80 @@ public:
 };
 
 
+
+template<typename T, uint8_t CAPACITY>
+class ListInPlace
+: private RingBuffer<T, CAPACITY>
+{
+public:
+    ListInPlace()
+    : RingBuffer<T, CAPACITY>()
+    {
+        // Nothing to do
+    }
+    
+    virtual ~ListInPlace()
+    {
+        // Delete elements in reverse order of construction
+        for (uint8_t i = RingBuffer<T, CAPACITY>::Size(); i > 0; --i)
+        {
+            // Call Destructor
+            ((T *)&((*this)[i - 1]))->~T();
+        }
+    }
+    
+    uint8_t Size()
+    {
+        return RingBuffer<T, CAPACITY>::Size();
+    }
+    
+    T &operator[](uint8_t idxLogical)
+    {
+        return RingBuffer<T, CAPACITY>::operator[](idxLogical);
+    }
+    
+    template <typename ...Args>
+    uint8_t NewBack(Args &&... args)
+    {
+        uint8_t retVal = 0;
+
+        if (RingBuffer<T, CAPACITY>::CanFitOneMore())
+        {
+            retVal = 1;
+            
+            // Placement New invocation with Constructor argument passing
+
+            new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
+                //T(forward<Args>(args)...);
+                T(static_cast<Args>(args)...);
+            
+            RingBuffer<T, CAPACITY>::IncrBack();
+            RingBuffer<T, CAPACITY>::IncrSize();
+        }
+
+        return retVal;
+    }
+    
+private:
+
+
+    // I skipped all of the below after reading this
+    // http://stackoverflow.com/questions/3582001/advantages-of-using-forward/3582313#3582313
+
+#if 0    
+    // Helpers for pass-through arguments to Placement new construction
+    template< class T2 > struct remove_reference       {typedef T2 type;};
+    template< class T2 > struct remove_reference<T2&>  {typedef T2 type;};
+    template< class T2 > struct remove_reference<T2&&> {typedef T2 type;};
+
+    template <class T2> T2&& forward(typename remove_reference<T2>::type& t) noexcept;
+    template <class T2> T2&& forward(typename remove_reference<T2>::type&& t) noexcept;
+#endif
+
+    
+    // Placement new
+    void *operator new(size_t, void *buf) { return buf; }
+};
 
 
 
