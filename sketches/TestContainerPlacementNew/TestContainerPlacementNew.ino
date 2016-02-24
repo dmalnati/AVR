@@ -142,21 +142,21 @@ void TestBlinker1(uint8_t pin)
 {
     ListInPlace<Blinker1, 1> lip;
 
-    lip.NewBack(pin);
+    lip.PushNew(pin);
 }
 
 void TestBlinker2(uint8_t pin1, uint8_t pin2)
 {
     ListInPlace<Blinker2, 1> lip;
 
-    lip.NewBack(pin1, pin2);
+    lip.PushNew(pin1, pin2);
 }
 
 void TestBlinker2WithObjects(PinHolder &phLed1, uint8_t led2)
 {
     ListInPlace<Blinker2WithObjects, 1> lip;
 
-    lip.NewBack(phLed1, led2);
+    lip.PushNew(phLed1, led2);
 }
 
 

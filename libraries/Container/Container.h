@@ -477,7 +477,7 @@ public:
     }
     
     template <typename ...Args>
-    uint8_t NewBack(Args &&... args)
+    uint8_t PushNew(Args &&... args)
     {
         uint8_t retVal = 0;
 
