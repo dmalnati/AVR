@@ -8,13 +8,14 @@
 class PCIntEventHandler
 {
 public:
-    enum class MODE : uint8_t { MODE_FALLING            = 0,
-                                MODE_RISING             = 1,
-                                MODE_RISING_AND_FALLING = 2 };
+    enum class MODE : uint8_t { MODE_UNDEFINED,
+                                MODE_FALLING,
+                                MODE_RISING,
+                                MODE_RISING_AND_FALLING };
 
-    PCIntEventHandler(uint8_t pin, MODE mode = MODE::MODE_RISING)
-    : pin_(pin)
-    , mode_(mode)
+    PCIntEventHandler()
+    : pin_(0)
+    , mode_(MODE::MODE_UNDEFINED)
     , logicLevel_(0)
     {
         // Nothing to do
@@ -25,7 +26,7 @@ public:
         DeRegisterForPCIntEvent();
     }
 
-    uint8_t RegisterForPCIntEvent();
+    uint8_t RegisterForPCIntEvent(uint8_t pin, MODE mode = MODE::MODE_RISING);
     uint8_t DeRegisterForPCIntEvent();
     
     uint8_t GetPin()        const { return pin_;        }
@@ -43,7 +44,6 @@ public:
     // Interrupts should not be enabled along any code path this leads to.
     //
     virtual void OnPCIntEvent(uint8_t logicLevel) = 0;
-    
     
 private:
     

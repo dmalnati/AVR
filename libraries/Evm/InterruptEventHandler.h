@@ -17,7 +17,7 @@ template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
 class EvmActual;
 
 
-
+#define LEVEL_UNDEFINED           0
 #define LEVEL_FALLING             1
 #define LEVEL_RISING              2
 #define LEVEL_RISING_AND_FALLING  3
@@ -56,16 +56,12 @@ class EvmActual;
 class InterruptEventHandler
 : private PCIntEventHandler
 {
-    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    template <uint8_t A, uint8_t B, uint8_t C>
     friend class EvmActual;
     
 public:
-    InterruptEventHandler(uint8_t  pin,
-                          uint8_t  mode = LEVEL_RISING)
-    : PCIntEventHandler(pin, ConvertToPCIntEventHandlerMode(mode))
-    , mode_(mode)
+    InterruptEventHandler()
+    : mode_(LEVEL_UNDEFINED)
     , logicLevel_(0)
     {
         // nothing to do
@@ -88,7 +84,8 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
 
-    uint8_t RegisterForInterruptEvent();
+    uint8_t RegisterForInterruptEvent(uint8_t pin,
+                                      uint8_t mode = LEVEL_RISING);
     uint8_t DeRegisterForInterruptEvent();
     
     virtual void OnInterruptEvent(uint8_t logicLevel) = 0;
@@ -117,7 +114,7 @@ private:
         }
         else
         {
-            retVal = PCIntEventHandler::MODE::MODE_RISING;
+            retVal = PCIntEventHandler::MODE::MODE_UNDEFINED;
         }
         
         return retVal;

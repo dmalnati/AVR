@@ -7,15 +7,14 @@ class TogglerOnInter
 {
 public:
     TogglerOnInter(uint8_t pinInter, uint8_t pinToggle)
-    : PCIntEventHandler(pinInter)
-    , pinToggle_(pinToggle)
+    : pinToggle_(pinToggle)
     {
-        Start();
+        Start(pinInter);
     }
 
-    void Start()
+    void Start(uint8_t pin)
     {
-        RegisterForPCIntEvent();
+        RegisterForPCIntEvent(pin);
     }
 
 private:

@@ -48,12 +48,19 @@ Ivm::DeRegisterPCIntEventHandler(PCIntEventHandler *pcieh)
     
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        retVal = 1;
-        
-        // Be sure there is a handler already active
-        if (InterruptIsActiveForPhysicalPin(pcieh->GetPin()))
+        if (pcieh->GetMode() != PCIntEventHandler::MODE::MODE_UNDEFINED)
         {
-            retVal = DetachInterruptForPhysicalPin(pcieh->GetPin());
+            retVal = 1;
+            
+            // Be sure there is a handler already active
+            if (InterruptIsActiveForPhysicalPin(pcieh->GetPin()))
+            {
+                retVal = DetachInterruptForPhysicalPin(pcieh->GetPin());
+            }
+        }
+        else
+        {
+            retVal = 0;
         }
     }
     
