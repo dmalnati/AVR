@@ -445,7 +445,7 @@ public:
 };
 
 
-inline void* operator new(size_t size, void* const buf) { return buf; }
+inline void* operator new(size_t, void* const buf) { return buf; }
 
 template<typename T, uint8_t CAPACITY>
 class ListInPlace
