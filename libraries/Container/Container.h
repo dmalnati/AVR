@@ -464,7 +464,7 @@ public:
         for (uint8_t i = RingBuffer<T, CAPACITY>::Size(); i > 0; --i)
         {
             // Call Destructor
-            //((T *)&((*this)[i - 1]))->~T();
+            ((T *)&((*this)[i - 1]))->~T();
         }
     }
     
@@ -486,12 +486,9 @@ public:
         if (RingBuffer<T, CAPACITY>::CanFitOneMore())
         {
             // Placement New invocation with Constructor argument passing
-#if 1
-            //new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
             new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
-                //T(forward<Args>(args)...);
                 T(static_cast<Args>(args)...);
-#endif
+
             RingBuffer<T, CAPACITY>::IncrBack();
             RingBuffer<T, CAPACITY>::IncrSize();
             
@@ -500,23 +497,6 @@ public:
 
         return retVal;
     }
-    
-private:
-
-    // I skipped all of the below after reading this
-    // http://stackoverflow.com/questions/3582001/advantages-of-using-forward/3582313#3582313
-
-#if 0    
-    // Helpers for pass-through arguments to Placement new construction
-    template< class T2 > struct remove_reference       {typedef T2 type;};
-    template< class T2 > struct remove_reference<T2&>  {typedef T2 type;};
-    template< class T2 > struct remove_reference<T2&&> {typedef T2 type;};
-
-    template <class T2> T2&& forward(typename remove_reference<T2>::type& t) noexcept;
-    template <class T2> T2&& forward(typename remove_reference<T2>::type&& t) noexcept;
-#endif
-
-
 };
 
 
