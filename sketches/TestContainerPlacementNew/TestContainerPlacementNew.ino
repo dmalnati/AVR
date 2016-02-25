@@ -121,15 +121,6 @@ public:
 };
 
 
-
-// Placement new
-void* operator new(size_t, void* const buf)
-{
-    return buf;
-}
-
-
-
 void TestPlacementNewDirectly(uint8_t led1, uint8_t led2)
 {
     // This works.  Blinks each LED twice each on Construction, again on Start().

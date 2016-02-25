@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <PlacementNew.h>
 
  
 //
@@ -446,6 +445,7 @@ public:
 };
 
 
+inline void* operator new(size_t size, void* const buf) { return buf; }
 
 template<typename T, uint8_t CAPACITY>
 class ListInPlace
@@ -464,7 +464,7 @@ public:
         for (uint8_t i = RingBuffer<T, CAPACITY>::Size(); i > 0; --i)
         {
             // Call Destructor
-            ((T *)&((*this)[i - 1]))->~T();
+            //((T *)&((*this)[i - 1]))->~T();
         }
     }
     
@@ -486,11 +486,12 @@ public:
         if (RingBuffer<T, CAPACITY>::CanFitOneMore())
         {
             // Placement New invocation with Constructor argument passing
-
+#if 1
+            //new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
             new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
                 //T(forward<Args>(args)...);
                 T(static_cast<Args>(args)...);
-            
+#endif
             RingBuffer<T, CAPACITY>::IncrBack();
             RingBuffer<T, CAPACITY>::IncrSize();
             

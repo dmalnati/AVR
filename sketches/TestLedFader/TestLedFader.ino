@@ -2,29 +2,31 @@
 #include <LedFader.h>
 
 
+static const uint8_t C_IDLE  = 1;
+static const uint8_t C_TIMED = 1;
+static const uint8_t C_INTER = 1;
 
+Evm::Instance<C_IDLE,C_TIMED,C_INTER> evm;
 
-
-const uint8_t C_IDLE  = 1;
-const uint8_t C_TIMED = 1;
-const uint8_t C_INTER = 1;
+RGBLEDFader<2> rgbLedFader;
 
 void loop()
 {
-    Evm::CreateInstance<C_IDLE,C_TIMED,C_INTER>();
-
-    RGBLEDFader<1> rgbLedFader;
-    
     uint8_t pinRed   = 15;
     uint8_t pinGreen = 16;
     uint8_t pinBlue  = 17;
 
+    uint8_t pinFtt = 12;
+    uint8_t pinYes = 11;
+    uint8_t pinNo  =  5;
+
     rgbLedFader.AddLED(pinRed, pinGreen, pinBlue);
+    rgbLedFader.AddLED(pinFtt, pinYes, pinNo);
     rgbLedFader.FadeForever();
 
 
-
-    Evm::GetInstance().MainLoop();
+    Evm::GetInstance().MainLoop();  // this works
+    //evm.MainLoop();   // this also works
 }
 
 
