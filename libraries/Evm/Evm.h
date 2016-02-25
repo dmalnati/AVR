@@ -15,9 +15,7 @@
  
  
 // Forward declaration
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+template <uint8_t A, uint8_t B, uint8_t C>
 class EvmActual;
  
  
@@ -25,10 +23,9 @@ class EvmActual;
 class Evm
 {
     // Declare EvmActual as a friend so it can construct
-    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    template <uint8_t A, uint8_t B, uint8_t C>
     friend class EvmActual;
+    
     friend class IdleTimeEventHandler;
     friend class TimedEventHandler;
     friend class InterruptEventHandler;
@@ -78,34 +75,12 @@ public:
     {
         return *evm_;
     }
- 
-    // This function must be called before any call to GetInstance.
-    // Typically this would be first member initializer to a local Evm reference
-    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-              uint8_t COUNT_TIMED_EVENT_HANDLER,
-              uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-    static Evm &CreateInstance()
-    {
-        // Create statically allocated template instance
-        static EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                         COUNT_TIMED_EVENT_HANDLER,
-                         COUNT_INTERRUPT_EVENT_HANDLER> evm;
- 
-        // Make available a pointer to this instance
-        //
-        // If this function is called more than once, it's a huge problem, but
-        // it can be limited by at least keeping only a single Evm instance
-        // available to the outside world.
-        if (!evm_)
-        {
-            evm_ = &evm;
-        }
- 
-        return *evm_;
-    }
+    
+    template <uint8_t A, uint8_t B, uint8_t C>
+    using Instance = EvmActual<A,B,C>;
  
  
-private:
+protected:
     // Can't instantiate directly, singleton
     Evm() { }
  

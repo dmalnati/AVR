@@ -25,7 +25,8 @@ public:
     , timedEventHandlerList_()
     , interruptEventHandlerList_()
     {
-        // nothing to do
+        // Store self
+        Evm::evm_ = this;
     }
 
     
