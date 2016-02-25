@@ -673,7 +673,7 @@ private:
  
 //////////////////////////////////////////////////////////////////////
 //
-// LED Fader
+// LED Toggler
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -705,10 +705,27 @@ private:
 };
 
 
+//////////////////////////////////////////////////////////////////////
+//
+// LED Fader interface and instances
+//
+//////////////////////////////////////////////////////////////////////
+
+
+
+class LEDFaderControl
+{
+public:
+    virtual void FadeOnce(uint32_t    fadeDurationMs = 1000) = 0;
+    virtual void FadeForever(uint32_t fadeDurationMs = 1000) = 0;
+    virtual void Stop()                                      = 0;
+};
+
 
 
 template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
 class LEDFader
+: public LEDFaderControl
 {
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
@@ -729,16 +746,19 @@ public:
         }
     }
     
+    virtual
     void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
         posd_.PulseOnce(fadeDurationMs);
     }
     
+    virtual
     void FadeForever(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
         posd_.PulseForever(fadeDurationMs);
     }
     
+    virtual
     void Stop()
     {
         posd_.Stop();
@@ -754,7 +774,8 @@ private:
  
  
 template <uint8_t COUNT_LED_TRIPLET>
-class RGBLEDFader
+class LEDFaderRGB
+: public LEDFaderControl
 {
 public:
     void AddLED(uint8_t pinRed,
@@ -767,16 +788,19 @@ public:
         ledFader_.AddLED(pinBlue,  (phaseOffset +   0) % 360);
     }
     
+    virtual
     void FadeOnce(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeOnce(fadeDurationMs);
     }
     
+    virtual
     void FadeForever(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeForever(fadeDurationMs);
     }
     
+    virtual
     void Stop()
     {
         ledFader_.Stop();
