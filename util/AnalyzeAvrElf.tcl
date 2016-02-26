@@ -21,6 +21,7 @@ proc GetMostRecentBuildDir { } {
 proc GetAvrNmOutput { } {
     global AVR_BIN_DIR
     global AVR_BUILD_DIR_ROOT
+    global VERBOSE
 
     cd $AVR_BUILD_DIR_ROOT/[GetMostRecentBuildDir]
 
@@ -29,6 +30,12 @@ proc GetAvrNmOutput { } {
     append cmd "$AVR_BIN_DIR/avr-nm.exe "
     append cmd "-C --size-sort --print-size -td "
     append cmd "*.elf"
+
+    if { $VERBOSE } {
+        puts ""
+        puts "cd $AVR_BUILD_DIR_ROOT/[GetMostRecentBuildDir]"
+        puts $cmd
+    }
 
     set output ""
     set fd [open "| $cmd"]
@@ -127,13 +134,6 @@ proc OnSymbolData { symbol type size special class templateArgs member } {
 
 
     lappend DATA $symbol $type $size $special $class $templateArgs $member
-
-
-#    if { $flag == "BSS" } {
-#    } elseif { $flag == "DATA" } {
-#    } elseif { $flag == "TEXT" } {
-#    } elseif { $flag == "WEAK" } {
-#    }
 }
 
 
@@ -194,6 +194,43 @@ proc GetTemplateArgsListByClass { classInput } {
 
     return $dataList
 }
+
+
+proc GetMemberListByClassAndTemplateArgs { classInput templateArgsInput } {
+    global DATA
+
+    set memberList [list]
+
+    foreach { symbol type size special class templateArgs member } $DATA {
+        if { $class        == $classInput &&
+             $templateArgs == $templateArgsInput &&
+             $member       != ""} {
+            set ul_dataList($member) ""
+        }
+    }
+
+    set memberList [lsort -dictionary [array names ul_dataList]]
+
+    return $memberList
+}
+
+
+proc GetSizeByClassTemplateArgsMember { classInput templateArgsInput memberInput } {
+    global DATA
+
+    set retVal 0
+
+    foreach { symbol type size special class templateArgs member } $DATA {
+        if { $class        == $classInput &&
+             $templateArgs == $templateArgsInput &&
+             $member       == $memberInput } {
+            incr retVal $size
+        }
+    }
+
+    return $retVal
+}
+
 
 proc GetCumulativeSizeByClass { classInput } {
     global DATA
@@ -323,6 +360,30 @@ proc GetSpecialArgsListBySpecial { specialInput } {
     return $dataList
 }
 
+
+proc GetSizeBySpecialSpecialArgs { specialInput specialArgsInput } {
+    global DATA
+
+    set retVal 0
+
+    foreach { symbol type size special class templateArgs member } $DATA {
+        if { $special == $specialInput } {
+            set idxFor [string first " for " $symbol]
+
+            if { $idxFor != -1 } {
+                set specialArgs [string range $symbol [expr $idxFor + 5] end]
+
+                if { $specialArgs == $specialArgsInput } {
+                    incr retVal $size
+                }
+            }
+        }
+    }
+
+    return $retVal
+}
+
+
 proc GetCumulativeSizeBySpecial { specialInput } {
     global DATA
 
@@ -336,9 +397,6 @@ proc GetCumulativeSizeBySpecial { specialInput } {
 
     return $sizeSpecial
 }
-
-
-
 
 
 
@@ -375,120 +433,6 @@ proc GetCumulativeSizeDataSpecial { } {
 
     return $size
 }
-
-
-
-proc Report { } {
-    global VERBOSE
-
-    set sizeTextTotal    [GetCumulativeSizeText]
-    set sizeVarTotal     [GetCumulativeSizeDataVariables]
-    set sizeSpecialTotal [GetCumulativeSizeDataSpecial]
-    set sizeSramTotal    [expr $sizeVarTotal + $sizeSpecialTotal]
-
-
-    puts ""
-
-
-    puts "---------------------------------"
-    puts [format "\[     TEXT:    %5i Bytes      \]" $sizeTextTotal]
-    puts "---------------------------------"
-
-
-    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of TEXT\]"
-    set formatStrHdrLen [string length $formatStrHdr]
-    set formatStr       "$formatStrHdr   %s"
-
-    set classList [GetClassList]
-    foreach { class } $classList {
-        set sizeText [GetCumulativeSizeByClass $class]
-
-        set sizePctTotal [expr int(double($sizeText) / double($sizeTextTotal) * 100.0)]
-
-        puts [format $formatStr $sizeText $sizePctTotal $class]
-
-        if { $VERBOSE } {
-            foreach { templateArgs } [GetTemplateArgsListByClass $class] {
-                puts [format "%${formatStrHdrLen}s    %s" "" $templateArgs]
-            }
-        }
-    }
-    puts ""
-    puts ""
-
-
-
-
-
-
-    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of Vars, %2i%% of DATA/BSS\]"
-    set formatStrHdrLen [string length $formatStrHdr]
-    set formatStr       "$formatStrHdr   %s"
-
-
-    puts "--------------------------------------------------"
-    puts [format "\[       DATA - Variables: %5i Bytes            \]" $sizeVarTotal]
-    puts "--------------------------------------------------"
-
-    set varList [GetVarList]
-    foreach { var } $varList {
-        set sizeVar [GetCumulativeSizeBySymbol $var]
-
-        set sizePctTotalVar  [expr int(double($sizeVar) / double($sizeVarTotal)  * 100.0)]
-        set sizePctTotalSram [expr int(double($sizeVar) / double($sizeSramTotal) * 100.0)]
-
-        puts [format $formatStr $sizeVar $sizePctTotalVar $sizePctTotalSram $var]
-    }
-    puts ""
-    puts ""
-
-
-    puts "--------------------------------------------------"
-    puts [format "\[       DATA - Special: %5i Bytes              \]" $sizeSpecialTotal]
-    puts "--------------------------------------------------"
-    set specialList [GetSpecialList]
-
-    foreach { special } $specialList {
-        set sizeSpecial [GetCumulativeSizeBySpecial $special]
-
-        set sizePctTotalSpecial [expr int(double($sizeSpecial) / double($sizeSpecialTotal) * 100.0)]
-        set sizePctTotalSram    [expr int(double($sizeSpecial) / double($sizeSramTotal)    * 100.0)]
-
-        puts [format $formatStr $sizeSpecial $sizePctTotalSpecial $sizePctTotalSram $special]
-
-        if { $VERBOSE } {
-            foreach { specialArgs } [GetSpecialArgsListBySpecial $special] {
-                puts [format "%${formatStrHdrLen}s    %s" "" $specialArgs]
-            }
-        }
-    }
-    puts ""
-    puts ""
-
-
-
-
-    puts "--------------------------------------------"
-    puts "\[       SUMMARY                            \]"
-    puts "--------------------------------------------"
-    set sizeVarPctTotalSram     [expr int(double($sizeVarTotal)     / double($sizeSramTotal) * 100.0)]
-    set sizeSpecialPctTotalSram [expr int(double($sizeSpecialTotal) / double($sizeSramTotal) * 100.0)]
-
-    puts "PROGMEM : [format "%5i Bytes" $sizeTextTotal]"
-    puts "DATA/BSS: [format "%5i Bytes, %2i%% Vars, %2i%% Special" \
-                            $sizeSramTotal \
-                            $sizeVarPctTotalSram \
-                            $sizeSpecialPctTotalSram]"
-
-    puts ""
-}
-
-
-
-
-
-
-
 
 
 
@@ -635,7 +579,119 @@ proc FlagType { line } {
 
 
 
+proc Report { } {
+    global VERBOSE
 
+    set sizeTextTotal    [GetCumulativeSizeText]
+    set sizeVarTotal     [GetCumulativeSizeDataVariables]
+    set sizeSpecialTotal [GetCumulativeSizeDataSpecial]
+    set sizeSramTotal    [expr $sizeVarTotal + $sizeSpecialTotal]
+
+
+    puts ""
+
+
+    puts "---------------------------------"
+    puts [format "\[     TEXT:    %5i Bytes      \]" $sizeTextTotal]
+    puts "---------------------------------"
+
+
+    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of TEXT\]"
+    set formatStrHdrLen [string length $formatStrHdr]
+    set formatStr       "$formatStrHdr   %s"
+
+    set classList [GetClassList]
+    foreach { class } $classList {
+        set sizeText [GetCumulativeSizeByClass $class]
+
+        set sizePctTotal [expr int(double($sizeText) / double($sizeTextTotal) * 100.0)]
+
+        puts [format $formatStr $sizeText $sizePctTotal $class]
+
+        if { $VERBOSE } {
+            foreach { templateArgs } [GetTemplateArgsListByClass $class] {
+                foreach { member } [GetMemberListByClassAndTemplateArgs $class $templateArgs] {
+                    set sizeText     [GetSizeByClassTemplateArgsMember $class $templateArgs $member]
+                    set sizePctTotal [expr int(double($sizeText) / double($sizeTextTotal) * 100.0)]
+
+                    puts [format $formatStr $sizeText $sizePctTotal "    ${templateArgs}::${member}"]
+                }
+            }
+        }
+    }
+    puts ""
+    puts ""
+
+
+
+    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of Vars, %2i%% of DATA/BSS\]"
+    set formatStrHdrLen [string length $formatStrHdr]
+    set formatStr       "$formatStrHdr   %s"
+
+
+    puts "--------------------------------------------------"
+    puts [format "\[       DATA - Variables: %5i Bytes            \]" $sizeVarTotal]
+    puts "--------------------------------------------------"
+
+    set varList [GetVarList]
+    foreach { var } $varList {
+        set sizeVar [GetCumulativeSizeBySymbol $var]
+
+        set sizePctTotalVar  [expr int(double($sizeVar) / double($sizeVarTotal)  * 100.0)]
+        set sizePctTotalSram [expr int(double($sizeVar) / double($sizeSramTotal) * 100.0)]
+
+        puts [format $formatStr $sizeVar $sizePctTotalVar $sizePctTotalSram $var]
+    }
+    puts ""
+    puts ""
+
+
+    puts "--------------------------------------------------"
+    puts [format "\[       DATA - Special: %5i Bytes              \]" $sizeSpecialTotal]
+    puts "--------------------------------------------------"
+    set specialList [GetSpecialList]
+
+    foreach { special } $specialList {
+        set sizeSpecial [GetCumulativeSizeBySpecial $special]
+
+        set sizePctTotalSpecial [expr int(double($sizeSpecial) / double($sizeSpecialTotal) * 100.0)]
+        set sizePctTotalSram    [expr int(double($sizeSpecial) / double($sizeSramTotal)    * 100.0)]
+
+        puts [format $formatStr $sizeSpecial $sizePctTotalSpecial $sizePctTotalSram $special]
+
+        if { $VERBOSE } {
+            foreach { specialArgs } [GetSpecialArgsListBySpecial $special] {
+                set sizeSpecial [GetSizeBySpecialSpecialArgs $special $specialArgs]
+
+                set sizePctTotalSpecial [expr int(double($sizeSpecial) / double($sizeSpecialTotal) * 100.0)]
+                set sizePctTotalSram    [expr int(double($sizeSpecial) / double($sizeSramTotal)    * 100.0)]
+
+                puts [format $formatStr \
+                             $sizeSpecial \
+                             $sizePctTotalSpecial \
+                             $sizePctTotalSram \
+                             "    $special $specialArgs"]
+            }
+        }
+    }
+    puts ""
+    puts ""
+
+
+
+
+    puts "--------------------------------------------"
+    puts "\[       SUMMARY                            \]"
+    puts "--------------------------------------------"
+    set sizeVarPctTotalSram     [expr int(double($sizeVarTotal)     / double($sizeSramTotal) * 100.0)]
+    set sizeSpecialPctTotalSram [expr int(double($sizeSpecialTotal) / double($sizeSramTotal) * 100.0)]
+
+    puts "PROGMEM : [format "%5i Bytes" $sizeTextTotal]"
+    puts "DATA/BSS: [format "%5i Bytes" $sizeSramTotal]"
+    puts " Vars   :[format " %5i Bytes ( %2i%% )"    $sizeVarTotal     $sizeVarPctTotalSram]"
+    puts " Special:[format " %5i Bytes ( %2i%% )" $sizeSpecialTotal $sizeSpecialPctTotalSram]"
+    puts ""
+}
 
 
 proc Analyze { } {
