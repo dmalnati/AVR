@@ -30,18 +30,32 @@ class RFLink_Raw
     typedef void (T::*OnTxCompleteCbFn)();
     
 public:
-    RFLink_Raw(T                 *obj,
-               int8_t             rxPin,
-               OnRxAvailableCbFn  rxCb,
-               int8_t             txPin,
-               OnTxCompleteCbFn   txCb,
-               uint16_t           baud = DEFAULT_BAUD)
-    : obj_(obj)
-    , rxCb_(rxPin != -1 ? rxCb : NULL)
-    , txCb_(txPin != -1 ? txCb : NULL)
+    RFLink_Raw()
+    : obj_(NULL)
+    , rxCb_(NULL)
+    , txCb_(NULL)
     , txActive_(0)
     , txActiveLast_(0)
     {
+        // Nothing to do
+    }
+    
+    virtual ~RFLink_Raw()
+    {
+        if (rxCb_) { vw_rx_stop(); }
+    }
+    
+    uint8_t Init(T                 *obj,
+                 int8_t             rxPin,
+                 OnRxAvailableCbFn  rxCb,
+                 int8_t             txPin,
+                 OnTxCompleteCbFn   txCb,
+                 uint16_t           baud = DEFAULT_BAUD)
+    {
+        obj_  = obj;
+        rxCb_ = (rxPin != -1 && obj_ ? rxCb : NULL);
+        txCb_ = (txPin != -1 && obj_ ? txCb : NULL);
+        
         // Determine Arduino pin for handoff to VirtualWire
         uint8_t arduinoRxPin = PAL.GetArduinoPinFromPhysicalPin(rxPin);
         uint8_t arduinoTxPin = PAL.GetArduinoPinFromPhysicalPin(txPin);
@@ -60,16 +74,13 @@ public:
         
         // Start Idle processing if necessary
         MaybeStartIdleProcessing();
-    }
-    
-    virtual ~RFLink_Raw()
-    {
-        if (rxCb_) { vw_rx_stop(); }
+        
+        return (rxCb_ || txCb_);
     }
     
     uint8_t Send(uint8_t* buf, uint8_t len)
     {
-        uint8_t retVal = !txActive_;
+        uint8_t retVal = !txActive_ && txCb_;
         
         // Only send if there are no ongoing transmissions.
         //
@@ -193,27 +204,47 @@ class RFLink
     typedef void (T::*OnTxCompleteCbFn)();
     
 public:
-    RFLink(uint8_t            realm,
-           uint8_t            srcAddr,
-           T                 *obj,
-           int8_t             rxPin,
-           OnRxAvailableCbFn  rxCb,
-           int8_t             txPin,
-           OnTxCompleteCbFn   txCb,
-           uint16_t           baud = RFLink_Raw<RFLink<T>>::DEFAULT_BAUD)
-    : RFLink_Raw<RFLink>(this,
-                         rxPin,
-                         rxCb ? &RFLink<T>::OnRxAvailable : NULL, // intercepted
-                         txPin,
-                         txCb ? &RFLink<T>::OnTxComplete : NULL, // intercepted
-                         baud)
-    , obj_(obj)
-    , realm_(realm)
-    , srcAddr_(srcAddr)
-    , rxCb_(rxCb)
-    , txCb_(txCb)
+    RFLink()
+    : obj_(NULL)
+    , realm_(0)
+    , srcAddr_(0)
+    , rxCb_(NULL)
+    , txCb_(NULL)
     {
         // Nothing to do
+    }
+
+    uint8_t Init(
+         uint8_t            realm,
+         uint8_t            srcAddr,
+         T                 *obj,
+         int8_t             rxPin,
+         OnRxAvailableCbFn  rxCb,
+         int8_t             txPin,
+         OnTxCompleteCbFn   txCb,
+         uint16_t           baud = RFLink_Raw<RFLink<T>>::DEFAULT_BAUD)
+    {
+        uint8_t retVal = RFLink_Raw<RFLink>::Init(
+            this,
+            rxPin,
+            rxCb ? &RFLink<T>::OnRxAvailable : NULL, // intercepted
+            txPin,
+            txCb ? &RFLink<T>::OnTxComplete : NULL, // intercepted
+            baud
+        );
+        
+        if (retVal)
+        {
+            obj_     = obj;
+            realm_   = realm;
+            srcAddr_ = srcAddr;
+            rxCb_    = rxCb;
+            txCb_    = txCb;
+            
+            retVal = (rxCb_ || txCb_);
+        }
+        
+        return retVal;
     }
     
     // Encapsulate
@@ -225,7 +256,7 @@ public:
         uint8_t retVal = 0;
         
         // First check to see if it can all fit
-        if ((sizeof(Header) + bufSize) <= VW_MAX_MESSAGE_LEN)
+        if (((sizeof(Header) + bufSize) <= VW_MAX_MESSAGE_LEN) && txCb_)
         {
             // Reserve space to craft outbound message
             uint8_t bufSizeNew = sizeof(Header) + bufSize;
@@ -240,7 +271,7 @@ public:
             hdr->protocolId = protocolId;
 
             // Copy in user data
-            memcpy(&(bufNew[sizeof(Header) - 1]), buf, bufSize);
+            memcpy(&(bufNew[sizeof(Header)]), buf, bufSize);
             
             // Hand off to RFLink_Raw, note success value
             retVal = RFLink_Raw<RFLink<T>>::Send(bufNew, bufSizeNew);
@@ -272,37 +303,6 @@ private:
         {
             Header *hdr = (Header *)buf;
 
-            // Signal that data was received
-            PAL.DigitalWrite(12, HIGH);
-            PAL.Delay(500);
-            PAL.DigitalWrite(12, LOW);
-            
-            PAL.Delay(500);
-            
-            
-            // Signal local address
-            for (uint8_t i = 0; i < srcAddr_; ++i)
-            {
-                PAL.DigitalWrite(12, HIGH);
-                PAL.Delay(100);
-                PAL.DigitalWrite(12, LOW);
-                PAL.Delay(100);
-            }
-            
-            PAL.Delay(500);
-            
-            // Signal where the data was addressed to
-            for (uint8_t i = 0; i < hdr->dstAddr; ++i)
-            {
-                PAL.DigitalWrite(12, HIGH);
-                PAL.Delay(100);
-                PAL.DigitalWrite(12, LOW);
-                PAL.Delay(100);
-            }
-            
-            PAL.Delay(500);
-
-             
             if (hdr->realm == realm_ && hdr->dstAddr == srcAddr_)
             {
                 // Filter criteria passed.
@@ -312,13 +312,6 @@ private:
                                  hdr->protocolId,
                                  &(buf[sizeof(Header) - 1]),
                                  bufSize - sizeof(Header));
-            }
-            else
-            {
-                PAL.DigitalWrite(12, HIGH);
-                PAL.Delay(3000);
-                PAL.DigitalWrite(12, LOW);
-                PAL.Delay(100);
             }
         }
     }
