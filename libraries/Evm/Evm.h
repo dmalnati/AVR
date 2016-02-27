@@ -39,7 +39,30 @@ public:
     virtual
     void MainLoop();
     
+    // Functionality to allow nested MainLoops for the purpose of
+    // holding a given stack frame such that statics or other
+    // async state keeping by users is less necessary.
+    //
+    // Failure scenarios include:
+    // - The first nested stack sets a timer for 10ms to go off
+    // - Something else running holds the stack also, with a timeout
+    //   for 100ms.
+    // - The first 10ms timer goes off, breaking out of the second level
+    //   and leading to unpredictable results at both levels.
+    //
+    // The calling code must know exactly what is going on in order for
+    // this to not happen.
+    //
+    // The assertion code forces a correct statement about the stack
+    // level in order to fail earlier and more predictably.
+    virtual
+    uint8_t HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
+    
 private:
+
+    virtual
+    void DecrementStack();
+    
 
     // Idle Events
     virtual

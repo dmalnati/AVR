@@ -10,34 +10,22 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 RegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
     return idleTimeEventHandlerList_.Push(iteh);
 }
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 DeRegisterIdleTimeEventHandler(IdleTimeEventHandler *iteh)
 {
     return idleTimeEventHandlerList_.Remove(iteh);
 }
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-               COUNT_TIMED_EVENT_HANDLER,
-               COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
 ServiceIdleTimeEventHandlers()
 {
     // Have to deal with the fact that an idle event may cancel itself
@@ -64,12 +52,8 @@ ServiceIdleTimeEventHandlers()
 //////////////////////////////////////////////////////////////////////
 
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
 {
     // Note what time it is when timer requested
@@ -83,23 +67,15 @@ RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
     return timedEventHandlerList_.Push(teh);
 }
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 DeRegisterTimedEventHandler(TimedEventHandler *teh)
 {
     return timedEventHandlerList_.Remove(teh);
 }
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-               COUNT_TIMED_EVENT_HANDLER,
-               COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
 ServiceTimedEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
@@ -166,12 +142,8 @@ ServiceTimedEventHandlers()
 // - going to break if interrupts are re-enabled here and another ISR fires
 //   before the whole operation completes.
 //
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
     uint8_t retVal = 1;
@@ -191,12 +163,8 @@ RegisterInterruptEventHandler(InterruptEventHandler *ieh)
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-uint8_t EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-                 COUNT_TIMED_EVENT_HANDLER,
-                 COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
 DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
 {
     uint8_t retVal;
@@ -215,12 +183,8 @@ DeRegisterInterruptEventHandler(InterruptEventHandler *ieh)
 // As a result, access to ISR-changeable structures must be protected,
 // as well as any logic which relies on those structures remaining static.
 //
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-              COUNT_TIMED_EVENT_HANDLER,
-              COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
 ServiceInterruptEventHandlers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 4;
@@ -267,15 +231,15 @@ ServiceInterruptEventHandlers()
 //////////////////////////////////////////////////////////////////////
 
 
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
-void EvmActual<COUNT_IDLE_TIME_EVENT_HANDLER,
-              COUNT_TIMED_EVENT_HANDLER,
-              COUNT_INTERRUPT_EVENT_HANDLER>::
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
 MainLoop()
 {
-    while (1)
+    ++stackLevel_;
+    
+    uint8_t stackLevelCache = stackLevel_;
+    
+    while (stackLevel_ == stackLevelCache && !abort_)
     {
         ServiceIdleTimeEventHandlers();
         ServiceTimedEventHandlers();
@@ -283,8 +247,30 @@ MainLoop()
     }
 }
 
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
+DecrementStack()
+{
+    --stackLevel_;
+}
 
-
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
+HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout)
+{
+    if (stackLevelAssertion == stackLevel_ && !abort_)
+    {
+        DecrementStackOnTimeout dsot(timeout);
+        
+        MainLoop();
+    }
+    else
+    {
+        abort_ = 1;
+    }
+    
+    return !abort_;
+}
 
 
 

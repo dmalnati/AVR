@@ -21,7 +21,9 @@ class EvmActual
     
 public:
     EvmActual()
-    : idleTimeEventHandlerList_()
+    : stackLevel_(0)
+    , abort_(0)
+    , idleTimeEventHandlerList_()
     , timedEventHandlerList_()
     , interruptEventHandlerList_()
     {
@@ -38,7 +40,28 @@ public:
     virtual
     void MainLoop();
     
+    virtual
+    uint8_t HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
+    
 private:
+
+    void DecrementStack();
+    
+    class DecrementStackOnTimeout
+    : private TimedEventHandler
+    {
+    public:
+        DecrementStackOnTimeout(uint32_t timeout)
+        {
+            RegisterForTimedEvent(timeout);
+        }
+    
+    private:
+        virtual void OnTimedEvent()
+        {
+            Evm::GetInstance().DecrementStack();
+        }
+    };
 
     // Idle Events
     virtual
@@ -108,7 +131,11 @@ private:
     };
 
     
-    // Members
+    // Main Loop members
+    uint8_t stackLevel_;
+    uint8_t abort_;
+    
+    // Event Members
     Queue<IdleTimeEventHandler *,
           COUNT_IDLE_TIME_EVENT_HANDLER>  idleTimeEventHandlerList_;
          
