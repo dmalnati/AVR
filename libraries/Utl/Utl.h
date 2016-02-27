@@ -9,7 +9,7 @@
 
 
 
-extern void PinToggle(uint8_t pin);
+extern void PinToggle(uint8_t pin, uint16_t delayMs = 500);
 
 
 class TimedPinToggler : public TimedEventHandler

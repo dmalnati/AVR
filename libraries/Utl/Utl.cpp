@@ -5,12 +5,12 @@
 
 
 
-void PinToggle(uint8_t pin)
+void PinToggle(uint8_t pin, uint16_t delayMs)
 {
     PAL.PinMode(pin, OUTPUT);
     
     PAL.DigitalWrite(pin, HIGH);
-    PAL.Delay(500);
+    PAL.Delay(delayMs);
     PAL.DigitalWrite(pin, LOW);
 }
 
