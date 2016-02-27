@@ -307,6 +307,14 @@ protected:
     {
         return (size_ != capacity_);
     }
+    
+    void Clear()
+    {
+        idxFront_ = 0;
+        idxBack_  = 0;
+        size_     = 0;
+    }
+    
 private:
     
     uint8_t idxFront_;
@@ -348,6 +356,11 @@ public:
     uint8_t Size()
     {
         return rb_.Size();
+    }
+    
+    void Clear()
+    {
+        rb_.Clear();
     }
     
     uint8_t HasElement(T element)
@@ -466,6 +479,11 @@ public:
         return rb_.Size();
     }
     
+    void Clear()
+    {
+        rb_.Clear();
+    }
+    
     uint8_t HasElement(T element)
     {
         uint8_t retVal      = 0;
@@ -508,17 +526,26 @@ public:
     
     ~ListInPlace()
     {
+        DestructElementsAndClear();
+    }
+    
+    uint8_t Size()
+    {
+        return rb_.Size();
+    }
+    
+    uint8_t DestructElementsAndClear()
+    {
         // Delete elements in reverse order of construction
         for (uint8_t i = rb_.Size(); i > 0; --i)
         {
             // Call Destructor
             ((T *)&(rb_[i - 1]))->~T();
         }
-    }
-    
-    uint8_t Size()
-    {
-        return rb_.Size();
+        
+        rb_.Clear();
+        
+        return 1;
     }
     
     T &operator[](uint8_t idxLogical)
