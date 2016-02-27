@@ -44,7 +44,7 @@ Ivm::RegisterPCIntEventHandler(PCIntEventHandler *pcieh)
 uint8_t
 Ivm::DeRegisterPCIntEventHandler(PCIntEventHandler *pcieh)
 {
-    uint8_t retVal;
+    uint8_t retVal = 0;
     
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {

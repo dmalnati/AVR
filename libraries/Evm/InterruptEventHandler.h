@@ -56,7 +56,7 @@ class EvmActual;
 class InterruptEventHandler
 : private PCIntEventHandler
 {
-    template <uint8_t A, uint8_t B, uint8_t C>
+    template <uint8_t, uint8_t, uint8_t>
     friend class EvmActual;
     
 public:
@@ -142,18 +142,15 @@ private:
 //////////////////////////////////////////////////////////////////////
 
 template <typename T>
-class InterruptEventHandlerObjectWrapper
+class InterruptEventHandlerDelegate
 : public InterruptEventHandler
 {
     typedef void (T::*MemberCallbackFn)(uint8_t logicLevel);
     
 public:
-    InterruptEventHandlerObjectWrapper(uint8_t           pin,
-                                       T                *obj,
-                                       MemberCallbackFn  func,
-                                       uint8_t           mode = LEVEL_RISING)
-    : InterruptEventHandler(pin, mode)
-    , obj_(obj)
+    InterruptEventHandlerDelegate(T                *obj,
+                                  MemberCallbackFn  func)
+    : obj_(obj)
     , func_(func)
     {
         // nothing to do
@@ -169,40 +166,6 @@ private:
     MemberCallbackFn  func_;
 };
 
-template <typename T>
-InterruptEventHandlerObjectWrapper<T> *
-MapButNotStartInterrupt(uint8_t   pin,
-                        T        *obj,
-                        void      (T::*cbFn)(uint8_t logicLevel),
-                        uint8_t   mode = LEVEL_RISING)
-{
-    InterruptEventHandlerObjectWrapper<T> *iehow = NULL;
-    
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        iehow = new InterruptEventHandlerObjectWrapper<T>(pin,
-                                                          obj,
-                                                          cbFn,
-                                                          mode);
-    }
-    
-    return iehow;
-}
-
-template <typename T>
-InterruptEventHandlerObjectWrapper<T> *
-MapAndStartInterrupt(uint8_t  pin,
-                     T       *obj,
-                     void     (T::*cbFn)(uint8_t logicLevel),
-                     uint8_t  mode = LEVEL_RISING)
-{
-    InterruptEventHandlerObjectWrapper<T> * iehow =
-        MapButNotStartInterrupt(pin, obj, cbFn, mode);
-
-    iehow->RegisterForInterruptEvent();
-    
-    return iehow;
-}
 
 
 

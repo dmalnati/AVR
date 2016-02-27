@@ -19,7 +19,7 @@ public:
 
 private:
 
-    virtual void OnPCIntEvent(uint8_t logicLevel)
+    virtual void OnPCIntEvent(uint8_t)
     {
         PAL.PinMode(pinToggle_, OUTPUT);
 
