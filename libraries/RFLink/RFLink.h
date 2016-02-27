@@ -207,10 +207,10 @@ public:
                          txPin,
                          txCb ? &RFLink<T>::OnTxComplete : NULL, // intercepted
                          baud)
-    , realm_(realm)
     , obj_(obj)
-    , rxCb_(rxCb)
+    , realm_(realm)
     , srcAddr_(srcAddr)
+    , rxCb_(rxCb)
     , txCb_(txCb)
     {
         // Nothing to do
