@@ -236,11 +236,9 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-class SignalEventHandler
-{
-public:
-    virtual void OnSignalEvent(uint8_t logicLevel) = 0;
-};
+class LEDToggler;
+using SignalEventHandler = LEDToggler;
+
 
 
 
@@ -278,10 +276,22 @@ public:
     {
         Reset();
     }
+    
+    ~SynchronousSignalEventDistributor()
+    {
+        ResetAndEmpty();
+    }
 
     void AddSignalEventHandler(SignalEventHandler *seh)
     {
         signalEventHandlerList_.Push(seh);
+    }
+    
+    void ResetAndEmpty()
+    {
+        Reset();
+        
+        signalEventHandlerList_.Clear();
     }
     
     void Reset()
@@ -395,6 +405,11 @@ public:
     , stepMaxReached_(0)
     {
         // Nothing to do
+    }
+    
+    ~PhaseOffsetSignalDistributor()
+    {
+        ResetAndEmpty();
     }
     
     void AddSignalEventHandler(
@@ -512,6 +527,15 @@ public:
         Stop();
     }
     
+    void ResetAndEmpty()
+    {
+        Stop();
+        
+        phaseDataActiveList_.Clear();
+        phaseDataPendingList_.Clear();
+        phaseDataList_.DestructElementsAndClear();
+    }
+    
     
 private:
     class PhaseData
@@ -522,6 +546,11 @@ private:
         , ssed(ss)
         {
             // Nothing to do
+        }
+        
+        ~PhaseData()
+        {
+            ssed.ResetAndEmpty();
         }
         
         uint8_t  stepOffset;
@@ -679,7 +708,6 @@ private:
 
 
 class LEDToggler
-: public SignalEventHandler
 {
 public:
     LEDToggler(uint8_t pin)
@@ -695,7 +723,7 @@ public:
         PAL.PinMode(pin_, OUTPUT);
     }
 
-    virtual void OnSignalEvent(uint8_t logicLevel)
+    void OnSignalEvent(uint8_t logicLevel)
     {
         PAL.DigitalWrite(pin_, logicLevel);
     }
@@ -712,27 +740,15 @@ private:
 //////////////////////////////////////////////////////////////////////
 
 
-
-class LEDFaderControl
-{
-public:
-    virtual void FadeOnce(uint32_t    fadeDurationMs = 1000) = 0;
-    virtual void FadeForever(uint32_t fadeDurationMs = 1000) = 0;
-    virtual void Stop()                                      = 0;
-};
-
-
-
 template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
 class LEDFader
-: public LEDFaderControl
 {
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
     
     ~LEDFader()
     {
-        Stop();
+        ResetAndEmpty();
     }
 
     void AddLED(uint8_t pin, uint16_t phaseOffset = 0)
@@ -746,22 +762,28 @@ public:
         }
     }
     
-    virtual
     void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
         posd_.PulseOnce(fadeDurationMs);
     }
     
-    virtual
     void FadeForever(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
         posd_.PulseForever(fadeDurationMs);
     }
     
-    virtual
     void Stop()
     {
         posd_.Stop();
+    }
+    
+    void ResetAndEmpty()
+    {
+        Stop();
+        
+        posd_.ResetAndEmpty();
+        
+        ledTogglerList_.DestructElementsAndClear();
     }
     
 private:
@@ -775,9 +797,13 @@ private:
  
 template <uint8_t COUNT_LED_TRIPLET>
 class LEDFaderRGB
-: public LEDFaderControl
 {
 public:
+    ~LEDFaderRGB()
+    {
+        ResetAndEmpty();
+    }
+
     void AddLED(uint8_t pinRed,
                 uint8_t pinGreen,
                 uint8_t pinBlue,
@@ -788,22 +814,26 @@ public:
         ledFader_.AddLED(pinBlue,  (phaseOffset +   0) % 360);
     }
     
-    virtual
     void FadeOnce(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeOnce(fadeDurationMs);
     }
     
-    virtual
     void FadeForever(uint32_t fadeDurationMs = 1000)
     {
         ledFader_.FadeForever(fadeDurationMs);
     }
     
-    virtual
     void Stop()
     {
         ledFader_.Stop();
+    }
+    
+    void ResetAndEmpty()
+    {
+        Stop();
+        
+        ledFader_.ResetAndEmpty();
     }
 
 private:
