@@ -5,6 +5,10 @@
 #include <InterruptEventHandler.h>
 
 
+
+
+
+
 class MyTimedEvent
 : public TimedEventHandler
 {
@@ -46,19 +50,25 @@ private:
 };
 
 
-
 class MyPCInterEvent
 : public InterruptEventHandler
 {
 public:
     MyPCInterEvent(uint8_t pinInter, uint8_t pinToggle)
-    : InterruptEventHandler(pinInter)
+    : pinInter_(pinInter)
     , pinToggle_(pinToggle)
     {
+        //Wow<sizeof(MyPCInterEvent)> wow;
+        
         PAL.PinMode(pinToggle_, OUTPUT);
     }
 
-    void OnInterruptEvent(uint8_t logicLevel)
+    uint8_t Register()
+    {
+        return RegisterForInterruptEvent(pinInter_);
+    }
+
+    void OnInterruptEvent(uint8_t)
     {
         PAL.DigitalWrite(pinToggle_, HIGH);
         PAL.Delay(500);
@@ -67,6 +77,7 @@ public:
     }
 
 private:
+    uint8_t pinInter_;
     uint8_t pinToggle_;
 };
 
@@ -78,7 +89,7 @@ class App
 {
 public:
     App()
-    : evm_(Evm::CreateInstance<C_IDLE, C_TIMED, C_INTER>())
+    : evm_()
     , mte1_(5)  // No LED
     , mte2_(11) // Yes LED
     , mie1_(15) // Attention Red LED
@@ -134,7 +145,7 @@ public:
 
 
         // FTT LED on error
-        if (!mpe1_.RegisterForInterruptEvent())
+        if (!mpe1_.Register())
         {
             PAL.PinMode(12, OUTPUT);
             PAL.DigitalWrite(12, HIGH);
@@ -143,7 +154,7 @@ public:
         }
         
         // FTT LED on error
-        if (!mpe2_.RegisterForInterruptEvent())
+        if (!mpe2_.Register())
         {
             PAL.PinMode(12, OUTPUT);
             PAL.DigitalWrite(12, HIGH);
@@ -157,6 +168,7 @@ public:
  
     void Run()
     {
+
         evm_.MainLoop();
     }
 
@@ -184,7 +196,7 @@ public:
         
     
 private:
-    Evm &evm_;
+    Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
 
 
@@ -233,13 +245,6 @@ public:
 };
 
 
-#if 1
-void* operator new(size_t, void* const buf){
-  return buf;
-}
-#endif
-
-
 
 void TestPN2()
 {
@@ -284,6 +289,90 @@ In c++, when you use a variable to size an array, where does that go?
             I have a reference to Evm as my first member and initilizer?
 
 */
+
+/////////////////////////////////////////////
+
+
+    struct TestStruct
+    {
+      int i1;
+      float f1;
+      const char* pchar1;
+      double d1;
+      char c1;
+      void* pv1;
+      bool b1;
+    };
+
+
+    template<unsigned int n>
+    struct PrintNum {
+        enum { value = n };
+    };
+
+    template<int number> 
+    struct _{ operator char() { return number + 256; } };
+
+    #define PRINT_AS_WARNING(constant) char(_<constant>())
+
+struct Whatever {
+    void TestFn()
+    {
+        //PRINT_AS_WARNING(PrintNum<sizeof(TestStruct)>::value);
+    }
+};
+
+
+/////////////////////////////////////////////
+
+template <uint8_t CAPACITY>
+class MeasureMe
+{
+    uint8_t buf_[(uint8_t)(CAPACITY * 1.7f)];
+};
+
+    template<unsigned int SIZEOF_T>
+    struct BecomeConstantValue {
+        enum { value = SIZEOF_T };
+    };
+
+    template<typename T, int SIZEOF_T> 
+    struct ObjectStorageMeasure { operator char() { return SIZEOF_T + 256; } };
+
+    #define PRINT_AS_WARNING3(type) char(ObjectStorageMeasure<type, BecomeConstantValue<sizeof(type)>::value>())
+
+
+struct SizeEvaluationContext {
+    void TestFn()
+    {
+        //PRINT_AS_WARNING3(MeasureMe<1>);
+    }
+};
+
+
+class IntrospectMyself
+{
+    IntrospectMyself()
+    {
+        //PRINT_AS_WARNING3(IntrospectMyself);
+    }
+};
+
+template <typename T>
+class IntrospectMyself2
+{
+    IntrospectMyself2()
+    {
+        PRINT_AS_WARNING3(IntrospectMyself2<T>);
+    }
+};
+
+IntrospectMyself2<int> *yeah;
+
+/////////////////////////////////////////////
+
+
+
 
 
 
