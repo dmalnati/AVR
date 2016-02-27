@@ -147,10 +147,10 @@ private:
     
     // Event Members
     Queue<IdleTimeEventHandler *,
-          1 +   // stack holder
           COUNT_IDLE_TIME_EVENT_HANDLER>  idleTimeEventHandlerList_;
          
     SortedQueue<TimedEventHandler *,
+                1 +   // stack holder
                 COUNT_TIMED_EVENT_HANDLER,
                 CmpTimedEventHandler>  timedEventHandlerList_;
 
