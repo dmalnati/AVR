@@ -56,12 +56,12 @@ public:
     // The assertion code forces a correct statement about the stack
     // level in order to fail earlier and more predictably.
     virtual
-    uint8_t HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
+    uint8_t HoldStackDangerously(uint32_t timeout);
     
 private:
 
     virtual
-    void DecrementStack();
+    void EndMainLoop();
     
 
     // Idle Events

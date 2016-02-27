@@ -21,8 +21,10 @@ class EvmActual
     
 public:
     EvmActual()
-    : stackLevel_(0)
-    , abort_(0)
+    : mainLoopStackLevel_(0)
+    , mainLoopStackLevelTemporary_(0)
+    , mainLoopKeepGoing_(1)
+    , mainLoopAbort_(0)
     , idleTimeEventHandlerList_()
     , timedEventHandlerList_()
     , interruptEventHandlerList_()
@@ -41,17 +43,20 @@ public:
     void MainLoop();
     
     virtual
-    uint8_t HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout);
+    uint8_t HoldStackDangerously(uint32_t timeout);
     
 private:
 
-    void DecrementStack();
+    void MainLoopInternal();
     
-    class DecrementStackOnTimeout
+    virtual
+    void EndMainLoop();
+    
+    class EndMainLoopOnTimeout
     : private TimedEventHandler
     {
     public:
-        DecrementStackOnTimeout(uint32_t timeout)
+        EndMainLoopOnTimeout(uint32_t timeout)
         {
             RegisterForTimedEvent(timeout);
         }
@@ -59,9 +64,11 @@ private:
     private:
         virtual void OnTimedEvent()
         {
-            Evm::GetInstance().DecrementStack();
+            Evm::GetInstance().EndMainLoop();
         }
     };
+    
+    
 
     // Idle Events
     virtual
@@ -132,11 +139,15 @@ private:
 
     
     // Main Loop members
-    uint8_t stackLevel_;
-    uint8_t abort_;
+    uint8_t mainLoopStackLevel_;
+    uint8_t mainLoopStackLevelTemporary_;
+    uint8_t mainLoopKeepGoing_;
+    uint8_t mainLoopAbort_;
+
     
     // Event Members
     Queue<IdleTimeEventHandler *,
+          1 +   // stack holder
           COUNT_IDLE_TIME_EVENT_HANDLER>  idleTimeEventHandlerList_;
          
     SortedQueue<TimedEventHandler *,

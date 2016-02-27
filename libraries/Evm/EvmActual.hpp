@@ -230,16 +230,38 @@ ServiceInterruptEventHandlers()
 //
 //////////////////////////////////////////////////////////////////////
 
-
 template <uint8_t A, uint8_t B, uint8_t C>
 void EvmActual<A,B,C>::
 MainLoop()
 {
-    ++stackLevel_;
-    
-    uint8_t stackLevelCache = stackLevel_;
-    
-    while (stackLevel_ == stackLevelCache && !abort_)
+    if (!mainLoopStackLevel_ && !mainLoopStackLevelTemporary_)
+    {
+        // One-way latch.  Not decremented later.
+        // No support for re-starting the MainLoop later.
+        ++mainLoopStackLevel_;
+        
+        MainLoopInternal();
+    }
+    else
+    {
+        // One of two possible problems:
+        // - MainLoop was called while another MainLoop was still on the stack.
+        //   - If that is desired, use HoldStackDangerously.
+        // - or that the MainLoop was called while HoldStackDangerously
+        //   was still on the stack.
+        //   - That simply isn't supported.
+        // 
+        // Either way it's an error.
+        
+        mainLoopAbort_ = 1;
+    }
+ }
+
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
+MainLoopInternal()
+{
+    while (mainLoopKeepGoing_ && !mainLoopAbort_)
     {
         ServiceIdleTimeEventHandlers();
         ServiceTimedEventHandlers();
@@ -249,27 +271,36 @@ MainLoop()
 
 template <uint8_t A, uint8_t B, uint8_t C>
 void EvmActual<A,B,C>::
-DecrementStack()
+EndMainLoop()
 {
-    --stackLevel_;
+    mainLoopKeepGoing_ = 0;
 }
 
 template <uint8_t A, uint8_t B, uint8_t C>
 uint8_t EvmActual<A,B,C>::
-HoldStackDangerously(uint8_t stackLevelAssertion, uint32_t timeout)
+HoldStackDangerously(uint32_t timeout)
 {
-    if (stackLevelAssertion == stackLevel_ && !abort_)
+    if (!mainLoopStackLevelTemporary_)
     {
-        DecrementStackOnTimeout dsot(timeout);
+        ++mainLoopStackLevelTemporary_;
         
-        MainLoop();
+        EndMainLoopOnTimeout emlot(timeout);
+        
+        MainLoopInternal();
+        mainLoopKeepGoing_ = 1;
+        
+        --mainLoopStackLevelTemporary_;
     }
     else
     {
-        abort_ = 1;
+        // Problem:
+        // - HoldStackDangerously was already on the stack when called again.
+        //   - Nested held stacks aren't supported.
+        
+        mainLoopAbort_ = 1;
     }
-    
-    return !abort_;
+
+    return !mainLoopAbort_;
 }
 
 
