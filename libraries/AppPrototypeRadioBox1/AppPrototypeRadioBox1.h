@@ -54,18 +54,30 @@ public:
 private:
 
     // Calculate sizing values for Evm
-    static const uint8_t C_IDLE  = 3;
+    static const uint8_t C_IDLE  = 4;
     static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 3;
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
 private:
-public:
+    const uint32_t DEFAULT_FADER_DURATION_MS            = 600;
+    const uint32_t DEFAULT_DELAY_BEFORE_ADDR_DISPLAY_MS = 150;
+
+
     // Visual Interface System
     void StartupLightShow();
     void ShowLedFadeStartupSequence();
     void ShowRadioAddressRxTx();
+    
+    enum class StartupFadeDirection : uint8_t {
+        LeftToRight,
+        RightToLeft
+    };
+    void AnimateFadeLeftToRight(uint32_t durationMs);
+    void AnimateFadeRightToLeft(uint32_t durationMs);
+    void AnimateFadeSweep(uint32_t             durationMs,
+                          StartupFadeDirection fadeDirection);
     
     // Button Interface System
     void OnAttentionButton(uint8_t logicLevel);
@@ -103,18 +115,51 @@ public:
     void OnRadioTXComplete();
     
     // External Event Monitoring
+    void StartAllMonitoring();
+    void StopAllMonitoring();
     void StartButtonMonitoring();
+    void StopButtonMonitoring();
     void StartRxTxAddressMonitoring();
+    void StopRxTxAddressMonitoring();
     
     
-    // State keeping
-    AppPrototypeRadioBox1Config   &cfg_;
+    
+    // Configuration
+    AppPrototypeRadioBox1Config &cfg_;
+    
+    // Radio Control
     RFLink<AppPrototypeRadioBox1> *rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
     
     // LED Control
-    LEDFader<3,3>                  ledFader_;
+    LEDFader<2,1>  ledFaderStartup1_;
+    LEDFader<2,1>  ledFaderStartup2_;
+    LEDFader<2,1>  ledFaderStartup3_;
+    
+    LEDFader<4,1>  ledFaderRadioAddress_;
+    
+    LEDFader<1,1>  ledFaderAttentionRedLED_;
+    LEDFader<1,1>  ledFaderAttentionGreenLED_;
+    LEDFader<1,1>  ledFaderAttentionBlueLED_;
+    LEDFader<1,1>  ledFaderFreeToTalkLED_;
+    LEDFader<1,1>  ledFaderYesLED_;
+    LEDFader<1,1>  ledFaderNoLED_;
+    
+    // Interrupt monitoring
+    using PinToFn = InterruptEventHandlerDelegate<AppPrototypeRadioBox1>;
+
+    PinToFn ptfAttention_;
+    PinToFn ptfFreeToTalk_;
+    PinToFn ptfYes_;
+    PinToFn ptfNo_;
+    PinToFn ptfClear_;
+    
+    PinToFn ptfDipAddressRx1_;
+    PinToFn ptfDipAddressRx2_;
+    PinToFn ptfDipAddressTx1_;
+    PinToFn ptfDipAddressTx2_;
+    
 };
 
 

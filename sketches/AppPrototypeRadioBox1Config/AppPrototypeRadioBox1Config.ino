@@ -38,18 +38,19 @@ static AppPrototypeRadioBox1Config cfg = {
 
 static AppPrototypeRadioBox1 app(cfg);
 
-void loop()
+
+void setup()
 {
     app.Run();
 }
 
 
-void setup()
+
+
+void loop()
 {
+    
 }
-
-
-
 
 
 
