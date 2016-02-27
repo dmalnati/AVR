@@ -3,8 +3,8 @@
 
 
 #include <Evm.h>
-//#include <RFLink.h>
-//#include <LedFader.h>
+#include <RFLink.h>
+#include <LedFader.h>
 
 
 struct AppPrototypeRadioBox1Config
@@ -53,8 +53,18 @@ public:
 
 private:
 
+    // Calculate sizing values for Evm
+    static const uint8_t C_IDLE  = 3;
+    static const uint8_t C_TIMED = 1;
+    static const uint8_t C_INTER = 3;
+
+    Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
+
+private:
+public:
     // Visual Interface System
     void StartupLightShow();
+    void ShowLedFadeStartupSequence();
     void ShowRadioAddressRxTx();
     
     // Button Interface System
@@ -99,12 +109,12 @@ private:
     
     // State keeping
     AppPrototypeRadioBox1Config   &cfg_;
-    //RFLink<AppPrototypeRadioBox1> *rfLink_;
+    RFLink<AppPrototypeRadioBox1> *rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
     
     // LED Control
-    //LEDFader                       ledFader_;
+    LEDFader<3,3>                  ledFader_;
 };
 
 

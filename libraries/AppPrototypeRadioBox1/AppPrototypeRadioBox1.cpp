@@ -17,28 +17,14 @@
 
 AppPrototypeRadioBox1::
 AppPrototypeRadioBox1(AppPrototypeRadioBox1Config &cfg)
-: cfg_(cfg)
-//, rfLink_(NULL)
+: evm_()
+, cfg_(cfg)
+, rfLink_(NULL)
 , radioAddressRx_(0)
 , radioAddressTx_(0)
+, ledFader_()
 {
-    // Read in dynamic configuration
-    ReadRadioAddressRxTx();
-    
-    // Dazzle
-    StartupLightShow();
-    
-    // Enable Radio
-    StartRadioSystem();
-    
-    // Start watching buttons
-    StartButtonMonitoring();
-    
-    
-    
-        PinToggle(cfg_.pinFreeToTalkLED);
-    
-
+    // Nothing to do
 }
 
 AppPrototypeRadioBox1::
@@ -46,7 +32,7 @@ AppPrototypeRadioBox1::
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        //delete rfLink_;
+        delete rfLink_;
     }
 }
 
@@ -61,9 +47,20 @@ AppPrototypeRadioBox1::
 void AppPrototypeRadioBox1::
 Run()
 {
-    PinToggle(cfg_.pinFreeToTalkLED);
+    // Read in dynamic configuration
+    ReadRadioAddressRxTx();
     
-    Evm::GetInstance().MainLoop();
+    // Dazzle
+    StartupLightShow();
+    
+    // Enable Radio
+    StartRadioSystem();
+    
+    // Start watching buttons
+    StartButtonMonitoring();
+    
+    // Begin application
+    evm_.MainLoop();
 }
 
 
@@ -77,16 +74,49 @@ Run()
 void AppPrototypeRadioBox1::
 StartupLightShow()
 {
-    PinToggle(cfg_.pinFreeToTalkLED);
+    ShowLedFadeStartupSequence();
     ShowRadioAddressRxTx();
+}
+
+void AppPrototypeRadioBox1::
+ShowLedFadeStartupSequence()
+{
+    
+    /*
+    
+    figure out min number of ledFaders you can use for every light sequence
+    intended in application.
+    
+     */
+    
+    LEDFader<6,1> fader;
+    
+    fader.AddLED(cfg_.pinAttentionRedLED);
+    fader.AddLED(cfg_.pinAttentionBlueLED);
+    fader.AddLED(cfg_.pinAttentionGreenLED);
+    fader.AddLED(cfg_.pinFreeToTalkLED);
+    fader.AddLED(cfg_.pinYesLED);
+    fader.AddLED(cfg_.pinNoLED);
+    
+    fader.FadeForever(500);
+    if (!evm_.HoldStackDangerously(0, 3000))
+    {
+        PinToggle(cfg_.pinNoButton, 50);
+        PAL.Delay(50);
+        PinToggle(cfg_.pinNoButton, 50);
+        PAL.Delay(50);
+        PinToggle(cfg_.pinNoButton, 50);
+        PAL.Delay(50);
+        PinToggle(cfg_.pinNoButton, 50);
+        PAL.Delay(50);
+        PinToggle(cfg_.pinNoButton, 50);
+    }
 }
 
 
 void AppPrototypeRadioBox1::
 ShowRadioAddressRxTx()
 {
-    PinToggle(cfg_.pinFreeToTalkLED);
-    
     PAL.DigitalWrite(cfg_.pinAttentionBlueLED,
                      radioAddressRx_ & 0x02 ? HIGH : LOW);
     PAL.DigitalWrite(cfg_.pinFreeToTalkLED,
@@ -96,14 +126,10 @@ ShowRadioAddressRxTx()
     PAL.DigitalWrite(cfg_.pinNoLED,
                      radioAddressTx_ & 0x01 ? HIGH : LOW);
     
-    PAL.Delay(500);
-    
     PAL.DigitalWrite(cfg_.pinAttentionBlueLED, LOW);
     PAL.DigitalWrite(cfg_.pinFreeToTalkLED,    LOW);
     PAL.DigitalWrite(cfg_.pinYesLED,           LOW);
     PAL.DigitalWrite(cfg_.pinNoLED,            LOW);
-    
-    PinToggle(cfg_.pinFreeToTalkLED);
 }
 
 
@@ -114,45 +140,45 @@ ShowRadioAddressRxTx()
 //////////////////////////////////////////////////////////////////////
 
 void AppPrototypeRadioBox1::
-OnAttentionButton(uint8_t logicLevel)
+OnAttentionButton(uint8_t)
 {
     CreateAndSendMessageByType(MessageType::MSG_ATTENTION);
 }
 
 
 void AppPrototypeRadioBox1::
-OnFreeToTalkButton(uint8_t logicLevel)
+OnFreeToTalkButton(uint8_t)
 {
     CreateAndSendMessageByType(MessageType::MSG_FREE_TO_TALK);
 }
 
 void AppPrototypeRadioBox1::
-OnYesButton(uint8_t logicLevel)
+OnYesButton(uint8_t)
 {
     CreateAndSendMessageByType(MessageType::MSG_YES);
 }
 
 void AppPrototypeRadioBox1::
-OnNoButton(uint8_t logicLevel)
+OnNoButton(uint8_t)
 {
-    CreateAndSendMessageByType(MessageType::MSG_NO);
+    PinToggle(cfg_.pinYesLED);
 }
 
 void AppPrototypeRadioBox1::
-OnClearButton(uint8_t logicLevel)
+OnClearButton(uint8_t)
 {
-    PinToggle(cfg_.pinNoButton);
+    PinToggle(cfg_.pinNoLED);
 }
 
 
-//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////  ////////////////////////
 //
 // Application Messaging System
 //
 //////////////////////////////////////////////////////////////////////
 
 void AppPrototypeRadioBox1::
-CreateAndSendMessageByType(MessageType msgType)
+CreateAndSendMessageByType(MessageType /* msgType */)
 {
     Message msg = { .msgType = MessageType::MSG_ATTENTION };
     
@@ -189,15 +215,9 @@ OnMessageReceived(Message &msg)
 void AppPrototypeRadioBox1::
 StartRadioSystem()
 {
-    
-    return;
-    
-    
-    
     // Monitor for changes to the RX or TX Address
     StartRxTxAddressMonitoring();
     
-    #if 0
     // Start Radio Handler
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
@@ -213,7 +233,6 @@ StartRadioSystem()
                 cfg_.valBaud
             );
     }
-    #endif
 }
 
 void AppPrototypeRadioBox1::
@@ -222,13 +241,11 @@ OnRxTxAddressChange(uint8_t /* logicLevel */)
     ReadRadioAddressRxTx();
     ShowRadioAddressRxTx();
     
-    #if 0
     // Keep the radio system aware of the local address
     if (rfLink_)
     {
         rfLink_->SetSrcAddr(radioAddressRx_);
     }
-    #endif
 }
 
 void AppPrototypeRadioBox1::
@@ -248,7 +265,7 @@ ReadRadioAddressRxTx()
 }
 
 void AppPrototypeRadioBox1::
-OnRadioRXAvailable(uint8_t  srcAddr,
+OnRadioRXAvailable(uint8_t  /*srcAddr */,
                    uint8_t  protocolId,
                    uint8_t *buf,
                    uint8_t  bufSize)
@@ -267,12 +284,10 @@ OnRadioRXAvailable(uint8_t  srcAddr,
 void AppPrototypeRadioBox1::
 RadioTX(uint8_t *buf, uint8_t bufSize)
 {
-    #if 0
     rfLink_->SendTo(radioAddressTx_,
                     cfg_.valProtocolId,
                     buf,
                     bufSize);
-    #endif
 }
 
 void AppPrototypeRadioBox1::
@@ -291,32 +306,19 @@ OnRadioTXComplete()
 void AppPrototypeRadioBox1::
 StartButtonMonitoring()
 {
+    using BtnToFn = InterruptEventHandlerDelegate<AppPrototypeRadioBox1>;
     
-    
-    
-        MapAndStartInterrupt(cfg_.pinClearButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnClearButton);
-    
-    
-    
-    #if 0
-    MapAndStartInterrupt(cfg_.pinAttentionButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnAttentionButton);
-    MapAndStartInterrupt(cfg_.pinFreeToTalkButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnFreeToTalkButton);
-    MapAndStartInterrupt(cfg_.pinYesButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnYesButton);
-    MapAndStartInterrupt(cfg_.pinNoButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnNoButton);
-    MapAndStartInterrupt(cfg_.pinClearButton,
-                         this,
-                         &AppPrototypeRadioBox1::OnClearButton);
-    #endif
+    static BtnToFn btfAttention (this, &AppPrototypeRadioBox1::OnAttentionButton);
+    static BtnToFn btfFreeToTalk(this, &AppPrototypeRadioBox1::OnFreeToTalkButton);
+    static BtnToFn btfYes       (this, &AppPrototypeRadioBox1::OnYesButton);
+    static BtnToFn btfNo        (this, &AppPrototypeRadioBox1::OnNoButton);
+    static BtnToFn btfClear     (this, &AppPrototypeRadioBox1::OnClearButton);
+
+    btfAttention.RegisterForInterruptEvent(cfg_.pinAttentionButton);
+    btfFreeToTalk.RegisterForInterruptEvent(cfg_.pinFreeToTalkButton);
+    btfYes.RegisterForInterruptEvent(cfg_.pinYesButton);
+    btfNo.RegisterForInterruptEvent(cfg_.pinNoButton);
+    btfClear.RegisterForInterruptEvent(cfg_.pinClearButton);
 }
 
 void AppPrototypeRadioBox1::
@@ -339,6 +341,7 @@ StartRxTxAddressMonitoring()
                          this,
                          &AppPrototypeRadioBox1::OnRxTxAddressChange,
                          LEVEL_RISING_AND_FALLING);
+                         
     #endif
 }
 
