@@ -28,11 +28,19 @@
 // idxBack_  points to the next free slot.
  
 
+// Forward Declarations
+template <typename, uint8_t>           class Queue;
+template <typename, uint8_t, typename> class SortedQueue;
+template <typename, uint8_t>           class ListInPlace;
  
- 
+
 template<typename T, uint8_t CAPACITY>
 class RingBuffer
 {
+    template <typename, uint8_t>           friend class Queue;
+    template <typename, uint8_t, typename> friend class SortedQueue;
+    template <typename, uint8_t>           friend class ListInPlace;
+    
 private:
     static const uint8_t OVERFLOW_BOUNDARY = (uint8_t)-1;
     
@@ -47,7 +55,7 @@ public:
         // Nothing to do
     }
     
-    virtual ~RingBuffer()
+    ~RingBuffer()
     {
         // Nothing to do
     }
@@ -314,34 +322,32 @@ private:
 
 template<typename T, uint8_t CAPACITY>
 class Queue
-: protected RingBuffer<T, CAPACITY>
 {
 public:
     Queue()
-    : RingBuffer<T, CAPACITY>()
+    : rb_()
     {
         // nothing to do
     }
     
-    // virtual so SortedQueue can implement same function
-    virtual uint8_t Push(T element)
+    uint8_t Push(T element)
     {
-        return RingBuffer<T, CAPACITY>::PushBack(element);
+        return rb_.PushBack(element);
     }
     
     uint8_t Pop(T &element)
     {
-        return RingBuffer<T, CAPACITY>::PopFront(element);
+        return rb_.PopFront(element);
     }
     
     uint8_t Peek(T &element)
     {
-        return RingBuffer<T, CAPACITY>::PeekFront(element);
+        return rb_.PeekFront(element);
     }
     
     uint8_t Size()
     {
-        return RingBuffer<T, CAPACITY>::Size();
+        return rb_.Size();
     }
     
     uint8_t HasElement(T element)
@@ -349,7 +355,7 @@ public:
         uint8_t retVal      = 0;
         uint8_t tmpRetParam;
         
-        if (RingBuffer<T, CAPACITY>::FindIdxFirst(element, tmpRetParam))
+        if (rb_.FindIdxFirst(element, tmpRetParam))
         {
             retVal = 1;
         }
@@ -359,12 +365,12 @@ public:
     
     uint8_t Remove(T element)
     {
-        return RingBuffer<T, CAPACITY>::Remove(element);
+        return rb_.Remove(element);
     }
     
     T &operator[](uint8_t idxLogical)
     {
-        return RingBuffer<T, CAPACITY>::operator[](idxLogical);
+        return rb_[idxLogical];
     }
     
     
@@ -374,21 +380,23 @@ public:
 
     void PrintDebug(const char *msg)
     {
-        RingBuffer<T, CAPACITY>::PrintDebug(msg);
+        rb_.PrintDebug(msg);
     }
     
 #endif // DEBUG
 
+
+private:
+    RingBuffer<T, CAPACITY> rb_;
 };
 
 
 template<typename T, uint8_t CAPACITY, typename CMP>
 class SortedQueue
-: public Queue<T, CAPACITY>
 {
 public:
     SortedQueue()
-    : Queue<T, CAPACITY>()
+    : rb_()
     {
         // nothing to do
     }
@@ -396,12 +404,12 @@ public:
     // inserts before the first element greater than it.
     // only applies to this element.
     // for a sorted list, strictly use this function from start to finish.
-    virtual uint8_t Push(T element)
+    uint8_t Push(T element)
     {
         uint8_t retVal = 0;
         
         // First, simply insert the element at the front.
-        if (RingBuffer<T, CAPACITY>::PushFront(element))
+        if (rb_.PushFront(element))
         {
             retVal = 1;
             
@@ -409,7 +417,7 @@ public:
             CMP cmp;
             
             // Only try to sort if there are more than one elements
-            uint8_t size = RingBuffer<T, CAPACITY>::Size();
+            uint8_t size = rb_.Size();
             if (size > 1)
             {
                 bool keepGoing = true;
@@ -418,8 +426,8 @@ public:
                      idxSecond < size && keepGoing;
                      ++idxFirst, ++idxSecond)
                 {
-                    T valFirst  = (*this)[idxFirst];
-                    T valSecond = (*this)[idxSecond];
+                    T valFirst  = rb_[idxFirst];
+                    T valSecond = rb_[idxSecond];
                     
                     int8_t cmpVal = cmp(valFirst, valSecond);
                     
@@ -433,8 +441,8 @@ public:
                     {
                         // element to the right is lower, swap places
                         
-                        (*this)[idxFirst]  = valSecond;
-                        (*this)[idxSecond] = valFirst;
+                        rb_[idxFirst]  = valSecond;
+                        rb_[idxSecond] = valFirst;
                     }
                 }
             }
@@ -442,6 +450,47 @@ public:
         
         return retVal;
     }
+    
+    uint8_t Pop(T &element)
+    {
+        return rb_.PopFront(element);
+    }
+    
+    uint8_t Peek(T &element)
+    {
+        return rb_.PeekFront(element);
+    }
+    
+    uint8_t Size()
+    {
+        return rb_.Size();
+    }
+    
+    uint8_t HasElement(T element)
+    {
+        uint8_t retVal      = 0;
+        uint8_t tmpRetParam;
+        
+        if (rb_.FindIdxFirst(element, tmpRetParam))
+        {
+            retVal = 1;
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t Remove(T element)
+    {
+        return rb_.Remove(element);
+    }
+    
+    T &operator[](uint8_t idxLogical)
+    {
+        return rb_[idxLogical];
+    }
+    
+private:
+    RingBuffer<T, CAPACITY> rb_;
 };
 
 
@@ -449,33 +498,32 @@ inline void* operator new(size_t, void* const buf) { return buf; }
 
 template<typename T, uint8_t CAPACITY>
 class ListInPlace
-: private RingBuffer<T, CAPACITY>
 {
 public:
     ListInPlace()
-    : RingBuffer<T, CAPACITY>()
+    : rb_()
     {
         // Nothing to do
     }
     
-    virtual ~ListInPlace()
+    ~ListInPlace()
     {
         // Delete elements in reverse order of construction
-        for (uint8_t i = RingBuffer<T, CAPACITY>::Size(); i > 0; --i)
+        for (uint8_t i = rb_.Size(); i > 0; --i)
         {
             // Call Destructor
-            ((T *)&((*this)[i - 1]))->~T();
+            ((T *)&(rb_[i - 1]))->~T();
         }
     }
     
     uint8_t Size()
     {
-        return RingBuffer<T, CAPACITY>::Size();
+        return rb_.Size();
     }
     
     T &operator[](uint8_t idxLogical)
     {
-        return RingBuffer<T, CAPACITY>::operator[](idxLogical);
+        return rb_[idxLogical];
     }
     
     template <typename ...Args>
@@ -483,20 +531,23 @@ public:
     {
         T *retVal = NULL;
 
-        if (RingBuffer<T, CAPACITY>::CanFitOneMore())
+        if (rb_.CanFitOneMore())
         {
             // Placement New invocation with Constructor argument passing
-            new ((void *)&((*this)[RingBuffer<T, CAPACITY>::Size()]))
+            new ((void *)&(rb_[rb_.Size()]))
                 T(static_cast<Args>(args)...);
 
-            RingBuffer<T, CAPACITY>::IncrBack();
-            RingBuffer<T, CAPACITY>::IncrSize();
+            rb_.IncrBack();
+            rb_.IncrSize();
             
-            retVal = &((*this)[RingBuffer<T, CAPACITY>::Size() - 1]);
+            retVal = &(rb_[rb_.Size() - 1]);
         }
 
         return retVal;
     }
+    
+private:
+    RingBuffer<T, CAPACITY> rb_;
 };
 
 
