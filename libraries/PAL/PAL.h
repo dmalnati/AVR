@@ -2,6 +2,8 @@
 #define __PAL_H__
 
 
+#include <avr/wdt.h>
+
 #include <Arduino.h>
 
 
@@ -17,10 +19,17 @@
  *   
  */
 
+// Necessary to allow Watchdog to be disabled after soft reboot.
+void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 
 class PlatformAbstractionLayer
 {
 public:
+    PlatformAbstractionLayer()
+    {
+        DisableWatchdogAfterSoftReset();
+    }
+
     void PinMode(uint8_t physicalPin, uint8_t mode)
     {
         uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
@@ -68,6 +77,18 @@ public:
         uint8_t arduinoClockPin = GetArduinoPinFromPhysicalPin(clockPin);
         
         return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
+    }
+    
+    void DisableWatchdogAfterSoftReset()
+    {
+        MCUSR = 0;
+        wdt_disable();
+    }
+    
+    void SoftReset()
+    {
+        wdt_enable(WDTO_15MS);
+        for(;;) { }
     }
 
     static int8_t GetArduinoPinFromPhysicalPin(uint8_t physicalPin);
