@@ -54,13 +54,38 @@ public:
     
     
 private:
+    using RstOnTimeout = TimedEventHandlerDelegate<PlatformAbstractionLayer>;
+    using PinToFn      = InterruptEventHandlerDelegate<AppPrototypeRadioBox1>;
+
+
+private:
 
     // Calculate sizing values for Evm
-    static const uint8_t C_IDLE  = 15;
-    static const uint8_t C_TIMED = 15 +
-         1; // for hold-to-reset
-    static const uint8_t C_INTER = 3;
-
+    static const uint8_t C_IDLE  = 
+        (LEDFader<1,1>::C_IDLE * 6)             +
+        (RFLink<AppPrototypeRadioBox1>::C_IDLE) +
+        (LEDFader<2,1>::C_IDLE * 3)             +
+        (LEDFader<4,1>::C_IDLE * 1)             +
+        0 /* (RstOnTimeout) */                  +
+        0 /* (PinToFn) */;
+    static const uint8_t C_TIMED =
+        (LEDFader<1,1>::C_TIMED * 6)             +
+        (RFLink<AppPrototypeRadioBox1>::C_TIMED) +
+        (LEDFader<2,1>::C_TIMED * 3)             +
+        (LEDFader<4,1>::C_TIMED * 1)             +
+        1 /* (RstOnTimeout) */                   +
+        0 /* (PinToFn) */;
+    static const uint8_t C_INTER =
+        (LEDFader<1,1>::C_INTER * 6)             +
+        (RFLink<AppPrototypeRadioBox1>::C_INTER) +
+        (LEDFader<2,1>::C_INTER * 3)             +
+        (LEDFader<4,1>::C_INTER * 1)             +
+        0 /* (RstOnTimeout) */                   +
+        9 /* (PinToFn) */;
+    
+    
+    
+    
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
     
@@ -106,7 +131,6 @@ private:
     void OnClearButtonPressed();
     void OnClearButton(uint8_t logicLevel);
     
-    using RstOnTimeout = TimedEventHandlerDelegate<PlatformAbstractionLayer>;
     RstOnTimeout rot_;
     
     
@@ -214,7 +238,6 @@ private:
     void StartRxTxAddressMonitoring();
     void StopRxTxAddressMonitoring();
     
-    using PinToFn = InterruptEventHandlerDelegate<AppPrototypeRadioBox1>;
 
     PinToFn ptfAttention_;
     PinToFn ptfFreeToTalk_;
