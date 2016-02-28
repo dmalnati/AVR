@@ -310,7 +310,7 @@ private:
                 // Pass data upward, but stripping off the header data
                 ((*obj_).*rxCb_)(hdr->srcAddr,
                                  hdr->protocolId,
-                                 &(buf[sizeof(Header) - 1]),
+                                 &(buf[sizeof(Header)]),
                                  bufSize - sizeof(Header));
             }
         }
