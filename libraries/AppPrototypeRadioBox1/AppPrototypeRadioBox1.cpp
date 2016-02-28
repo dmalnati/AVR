@@ -114,13 +114,20 @@ void AppPrototypeRadioBox1::
 OnFreeToTalkButton(uint8_t)
 {
     // If already blinking, then pressing does nothing.
-    // Otherwise, send message and blink to indicate action
     
-    if (!IsActiveFreeToTalk())
+    // If a yes/no answer is still displayed, don't send, must clear first.
+    
+    if (!IsActiveYes() && !IsActiveNo())
     {
-        StartFreeToTalkFadersOnce();
+        StopYesFaders();
+        StopNoFaders();
         
-        CreateAndSendMessageByType(MessageType::MSG_FREE_TO_TALK);
+        if (!IsActiveFreeToTalk())
+        {
+            StartFreeToTalkFadersOnce();
+            
+            CreateAndSendMessageByType(MessageType::MSG_FREE_TO_TALK);
+        }
     }
 }
 
@@ -139,13 +146,14 @@ OnMsgFreeToTalk()
 void AppPrototypeRadioBox1::
 OnYesButton(uint8_t)
 {
-    if (IsActiveYes())
+    if (IsActiveYes() || IsActiveNo())
     {
         // Do nothing
     }
     else
     {
         StopFreeToTalkFaders();
+        StopNoFaders();
         StartYesFadersOnce();
         
         CreateAndSendMessageByType(MessageType::MSG_YES);
@@ -175,13 +183,14 @@ OnMsgYes()
 void AppPrototypeRadioBox1::
 OnNoButton(uint8_t)
 {
-    if (IsActiveNo())
+    if (IsActiveNo() || IsActiveYes())
     {
         // Do nothing
     }
     else
     {
         StopFreeToTalkFaders();
+        StopYesFaders();
         StartNoFadersOnce();
         
         CreateAndSendMessageByType(MessageType::MSG_NO);
