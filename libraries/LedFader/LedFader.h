@@ -71,6 +71,7 @@ public:
     SignalSourceReader(SignalSource *ss, uint8_t step = DEFAULT_STEP)
     : ss_(ss)
     , step_(step)
+    , stepToResetTo_(step)
     , onOffState_(0)
     {
         SetStep(step_);
@@ -109,6 +110,11 @@ public:
         }
         
         SetStep(step_);
+    }
+    
+    void Reset()
+    {
+        SetStep(stepToResetTo_);
     }
     
     //
@@ -221,6 +227,7 @@ private:
  
     SignalSource *ss_;
     uint8_t       step_;
+    uint8_t       stepToResetTo_;
     uint8_t       onOffState_;
     uint8_t       signalPatternToRefreshFrom_[2];
     uint8_t       onOffState__quota_[2];
@@ -299,6 +306,8 @@ public:
         stepCountCurrent_ = 0;
         stepDirection_    = 1;
         done_             = 0;
+        
+        ssr_.Reset();
         
         DistributeLogicLevelToAllHandlers(0);
     }
@@ -393,7 +402,7 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
+template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET, typename T>
 class PhaseOffsetSignalDistributor
 : private IdleTimeEventHandler
 {
@@ -401,7 +410,8 @@ public:
     static const uint8_t DEFAULT_PHASE_OFFSET = 0;
 
     PhaseOffsetSignalDistributor()
-    : step_(0)
+    : cbObj_(NULL)
+    , step_(0)
     , stepMaxReached_(0)
     {
         // Nothing to do
@@ -525,6 +535,13 @@ public:
     void OnPulseComplete()
     {
         Stop();
+        
+        if (cbObj_) { cbObj_->OnPulseComplete(); }
+    }
+    
+    void RegisterForPulseCompleteEvent(T *cbObj)
+    {
+        cbObj_ = cbObj;
     }
     
     void ResetAndEmpty()
@@ -682,6 +699,8 @@ private:
         return retVal;
     }
     
+    // Callback handler
+    T *cbObj_;
     
     // State keeping for pulsing
     uint32_t pulseStepDurationUs_;
@@ -749,7 +768,7 @@ public:
     LEDFader()
     : active_(0)
     {
-        // Nothing to do
+        posd_.RegisterForPulseCompleteEvent(this);
     }
     
     ~LEDFader()
@@ -786,9 +805,14 @@ public:
         active_ = 1;
     }
     
-    void IsActive() const
+    uint8_t IsActive() const
     {
         return active_;
+    }
+    
+    void OnPulseComplete()
+    {
+        active_ = 0;
     }
     
     void Stop()
@@ -809,9 +833,13 @@ public:
     
 private:
     
-    uint8_t                                                      active_;
-    PhaseOffsetSignalDistributor<COUNT_LED, COUNT_PHASE_OFFSET>  posd_;
-    ListInPlace<LEDToggler, COUNT_LED>                           ledTogglerList_;
+    uint8_t active_;
+    
+    PhaseOffsetSignalDistributor<COUNT_LED,
+                                 COUNT_PHASE_OFFSET,
+                                 LEDFader<COUNT_LED, COUNT_PHASE_OFFSET> > posd_;
+                                 
+    ListInPlace<LEDToggler, COUNT_LED> ledTogglerList_;
 };
  
  
