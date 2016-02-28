@@ -68,7 +68,8 @@ private:
     // Visual Interface System
     void StartupLightShow();
     void ShowLedFadeStartupSequence();
-    void ShowRadioAddressRxTx();
+    void ShowConfiguredRadioAddressRxTx();
+    void ShowRadioAddressRxTx(uint8_t addressRx, uint8_t addressTx);
     
     enum class StartupFadeDirection : uint8_t {
         LeftToRight,
@@ -87,11 +88,13 @@ private:
     void OnClearButton(uint8_t logicLevel);
     
     // Application Messaging System
+    void ApplicationSetup();
+    
     enum class MessageType : uint8_t {
-        MSG_ATTENTION,
-        MSG_FREE_TO_TALK,
-        MSG_YES,
-        MSG_NO
+        MSG_ATTENTION    = 1,
+        MSG_FREE_TO_TALK = 2,
+        MSG_YES          = 3,
+        MSG_NO           = 4
     };
 
     struct Message
@@ -128,7 +131,7 @@ private:
     AppPrototypeRadioBox1Config &cfg_;
     
     // Radio Control
-    RFLink<AppPrototypeRadioBox1> *rfLink_;
+    RFLink<AppPrototypeRadioBox1>  rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
     
