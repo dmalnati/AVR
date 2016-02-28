@@ -408,6 +408,10 @@ class PhaseOffsetSignalDistributor
 {
 public:
     static const uint8_t DEFAULT_PHASE_OFFSET = 0;
+    
+    static const uint8_t C_IDLE  = 1;
+    static const uint8_t C_TIMED = 0;
+    static const uint8_t C_INTER = 0;
 
     PhaseOffsetSignalDistributor()
     : cbObj_(NULL)
@@ -762,8 +766,18 @@ private:
 template <uint8_t COUNT_LED, uint8_t COUNT_PHASE_OFFSET>
 class LEDFader
 {
+private:
+
+    using POSD = PhaseOffsetSignalDistributor<COUNT_LED,
+                                 COUNT_PHASE_OFFSET,
+                                 LEDFader<COUNT_LED, COUNT_PHASE_OFFSET> >;
+    
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
+    
+    static const uint8_t C_IDLE  = POSD::C_IDLE;
+    static const uint8_t C_TIMED = POSD::C_TIMED;
+    static const uint8_t C_INTER = POSD::C_INTER;
     
     LEDFader()
     : active_(0)
@@ -833,12 +847,8 @@ public:
     
 private:
     
-    uint8_t active_;
-    
-    PhaseOffsetSignalDistributor<COUNT_LED,
-                                 COUNT_PHASE_OFFSET,
-                                 LEDFader<COUNT_LED, COUNT_PHASE_OFFSET> > posd_;
-                                 
+    uint8_t                            active_;
+    POSD                               posd_;
     ListInPlace<LEDToggler, COUNT_LED> ledTogglerList_;
 };
  

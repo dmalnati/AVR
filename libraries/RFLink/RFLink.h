@@ -30,6 +30,10 @@ class RFLink_Raw
     typedef void (T::*OnTxCompleteCbFn)();
     
 public:
+    static const uint8_t C_IDLE  = 1;
+    static const uint8_t C_TIMED = 0;
+    static const uint8_t C_INTER = 0;
+
     RFLink_Raw()
     : obj_(NULL)
     , rxCb_(NULL)
@@ -204,6 +208,12 @@ class RFLink
     typedef void (T::*OnTxCompleteCbFn)();
     
 public:
+
+    static const uint8_t C_IDLE  = RFLink_Raw<RFLink<T>>::C_IDLE;
+    static const uint8_t C_TIMED = RFLink_Raw<RFLink<T>>::C_TIMED;
+    static const uint8_t C_INTER = RFLink_Raw<RFLink<T>>::C_INTER;
+
+
     RFLink()
     : obj_(NULL)
     , realm_(0)
