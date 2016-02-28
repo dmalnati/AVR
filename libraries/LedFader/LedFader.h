@@ -746,6 +746,12 @@ class LEDFader
 public:
     static const uint32_t DEFAULT_FADE_DURATION_MS = 1000;
     
+    LEDFader()
+    : active_(0)
+    {
+        // Nothing to do
+    }
+    
     ~LEDFader()
     {
         ResetAndEmpty();
@@ -764,17 +770,32 @@ public:
     
     void FadeOnce(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
+        Stop();
+        
         posd_.PulseOnce(fadeDurationMs);
+        
+        active_ = 1;
     }
     
     void FadeForever(uint32_t fadeDurationMs = DEFAULT_FADE_DURATION_MS)
     {
+        Stop();
+        
         posd_.PulseForever(fadeDurationMs);
+        
+        active_ = 1;
+    }
+    
+    void IsActive() const
+    {
+        return active_;
     }
     
     void Stop()
     {
         posd_.Stop();
+        
+        active_ = 0;
     }
     
     void ResetAndEmpty()
@@ -788,75 +809,10 @@ public:
     
 private:
     
+    uint8_t                                                      active_;
     PhaseOffsetSignalDistributor<COUNT_LED, COUNT_PHASE_OFFSET>  posd_;
     ListInPlace<LEDToggler, COUNT_LED>                           ledTogglerList_;
 };
- 
- 
- 
- 
-template <uint8_t COUNT_LED_TRIPLET>
-class LEDFaderRGB
-{
-public:
-    ~LEDFaderRGB()
-    {
-        ResetAndEmpty();
-    }
-
-    void AddLED(uint8_t pinRed,
-                uint8_t pinGreen,
-                uint8_t pinBlue,
-                uint16_t phaseOffset = 0)
-    {
-        ledFader_.AddLED(pinRed,   (phaseOffset +  45) % 360);
-        ledFader_.AddLED(pinGreen, (phaseOffset + 225) % 360);
-        ledFader_.AddLED(pinBlue,  (phaseOffset +   0) % 360);
-    }
-    
-    void FadeOnce(uint32_t fadeDurationMs = 1000)
-    {
-        ledFader_.FadeOnce(fadeDurationMs);
-    }
-    
-    void FadeForever(uint32_t fadeDurationMs = 1000)
-    {
-        ledFader_.FadeForever(fadeDurationMs);
-    }
-    
-    void Stop()
-    {
-        ledFader_.Stop();
-    }
-    
-    void ResetAndEmpty()
-    {
-        Stop();
-        
-        ledFader_.ResetAndEmpty();
-    }
-
-private:
-
-    LEDFader<COUNT_LED_TRIPLET * 3,
-             COUNT_LED_TRIPLET * 3 * 3> ledFader_;
-};
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
  
  
  

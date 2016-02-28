@@ -53,6 +53,13 @@ class TimedEventHandlerDelegate
     typedef void (T::*MemberCallbackFn)();
     
 public:
+    TimedEventHandlerDelegate()
+    : obj_(NULL)
+    , func_(NULL)
+    {
+        
+    }
+
     void SetCallback(T *obj, MemberCallbackFn func)
     {
         obj_  = obj;

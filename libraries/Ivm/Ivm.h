@@ -16,9 +16,7 @@ class Ivm
 public:
     static Ivm &GetInstance()
     {
-        static Ivm ivm;
-        
-        return ivm;
+        return ivm_;
     }
     
     ~Ivm() { }
@@ -52,7 +50,8 @@ public:
           uint8_t bitmapPortPinStateLast);
     
 private:
-
+    static Ivm ivm_;
+    
     // Cannot instantiate directly -- singleton
     Ivm() { }
     

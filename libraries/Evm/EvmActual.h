@@ -24,9 +24,6 @@ public:
     : mainLoopStackLevel_(0)
     , mainLoopStackLevelTemporary_(0)
     , mainLoopKeepGoing_(1)
-    , idleTimeEventHandlerList_()
-    , timedEventHandlerList_()
-    , interruptEventHandlerList_()
     {
         // Store self
         Evm::evm_ = this;

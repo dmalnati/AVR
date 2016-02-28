@@ -6,9 +6,7 @@
 
 
 // Forward declaration
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-      uint8_t COUNT_TIMED_EVENT_HANDLER,
-      uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+template <uint8_t, uint8_t, uint8_t>
 class EvmActual;
 
 
@@ -20,11 +18,8 @@ class EvmActual;
 
 class IdleTimeEventHandler
 {
-    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    template <uint8_t, uint8_t, uint8_t>
     friend class EvmActual;
-    
     
 public:
     virtual ~IdleTimeEventHandler() { DeRegisterForIdleTimeEvent(); }
@@ -44,14 +39,14 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-class IdleTimeEventHandlerFnWrapper : public IdleTimeEventHandler
+class IdleTimeEventHandlerFnWrapper
+: public IdleTimeEventHandler
 {
     typedef void (*CallbackFn)(void *userData);
     
 public:
     IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
-    : IdleTimeEventHandler()
-    , fn_(fn)
+    : fn_(fn)
     , userData_(userData)
     {
         // nothing to do

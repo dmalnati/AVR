@@ -473,6 +473,9 @@ ISR(PCINT2_vect)
 
 
 
+// Storage for Ivm instance
+Ivm Ivm::ivm_;
+        
 
 
 
