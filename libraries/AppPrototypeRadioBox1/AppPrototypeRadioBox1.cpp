@@ -1,12 +1,4 @@
-#include <util/atomic.h>
-
-#include "Utl.h"
 #include "AppPrototypeRadioBox1.h"
-
-
-
-
-
 
 
 //////////////////////////////////////////////////////////////////////
@@ -17,20 +9,9 @@
 
 AppPrototypeRadioBox1::
 AppPrototypeRadioBox1(AppPrototypeRadioBox1Config &cfg)
-: evm_()
-, cfg_(cfg)
-, rfLink_()
+: cfg_(cfg)
 , radioAddressRx_(0)
 , radioAddressTx_(0)
-, ptfAttention_    (this, &AppPrototypeRadioBox1::OnAttentionButton)
-, ptfFreeToTalk_   (this, &AppPrototypeRadioBox1::OnFreeToTalkButton)
-, ptfYes_          (this, &AppPrototypeRadioBox1::OnYesButton)
-, ptfNo_           (this, &AppPrototypeRadioBox1::OnNoButton)
-, ptfClear_        (this, &AppPrototypeRadioBox1::OnClearButton)
-, ptfDipAddressRx1_(this, &AppPrototypeRadioBox1::OnRxTxAddressChange)
-, ptfDipAddressRx2_(this, &AppPrototypeRadioBox1::OnRxTxAddressChange)
-, ptfDipAddressTx1_(this, &AppPrototypeRadioBox1::OnRxTxAddressChange)
-, ptfDipAddressTx2_(this, &AppPrototypeRadioBox1::OnRxTxAddressChange)
 {
     // Nothing to do
 }
@@ -76,22 +57,306 @@ Run()
 
 //////////////////////////////////////////////////////////////////////
 //
-// Application Messaging System
+// Application Logic
 //
 //////////////////////////////////////////////////////////////////////
-
 
 void AppPrototypeRadioBox1::
 ApplicationSetup()
 {
+    // Set up timeout object for long-press on Clear button to Reset
+    rot_.SetCallback(&PAL, &PlatformAbstractionLayer::SoftReset);
+    
     // Associate the LED pins to the Faders
     ledFaderAttentionRedLED_.  AddLED(cfg_.pinAttentionRedLED,     0);
     ledFaderAttentionGreenLED_.AddLED(cfg_.pinAttentionGreenLED, 120);
     ledFaderAttentionBlueLED_. AddLED(cfg_.pinAttentionBlueLED,  240);
+    
     ledFaderFreeToTalkLED_.    AddLED(cfg_.pinFreeToTalkLED);
     ledFaderYesLED_.           AddLED(cfg_.pinYesLED);
     ledFaderNoLED_.            AddLED(cfg_.pinNoLED);
 }
+
+
+
+
+void AppPrototypeRadioBox1::
+OnRxTxAddressChange(uint8_t /* logicLevel */)
+{
+    PAL.SoftReset();
+}
+
+
+
+
+//
+// Attention
+//
+void AppPrototypeRadioBox1::
+OnAttentionButton(uint8_t)
+{
+    StopAttentionFaders();
+    
+    CreateAndSendMessageByType(MessageType::MSG_ATTENTION);
+}
+
+void AppPrototypeRadioBox1::
+OnMsgAttention()
+{
+    StartAttentionFadersForever();
+}
+
+//
+// Free to talk
+//
+void AppPrototypeRadioBox1::
+OnFreeToTalkButton(uint8_t)
+{
+    // If already blinking, then pressing does nothing.
+    // Otherwise, send message and blink to indicate action
+    
+    if (!IsActiveFreeToTalk())
+    {
+        StartFreeToTalkFadersOnce();
+        
+        CreateAndSendMessageByType(MessageType::MSG_FREE_TO_TALK);
+    }
+}
+
+void AppPrototypeRadioBox1::
+OnMsgFreeToTalk()
+{
+    StopYesFaders();
+    StopNoFaders();
+    
+    StartFreeToTalkFadersForever();
+}
+
+//
+// Yes
+//
+void AppPrototypeRadioBox1::
+OnYesButton(uint8_t)
+{
+    if (IsActiveYes())
+    {
+        // Do nothing
+    }
+    else
+    {
+        StopFreeToTalkFaders();
+        StartYesFadersOnce();
+        
+        CreateAndSendMessageByType(MessageType::MSG_YES);
+    }
+}
+
+void AppPrototypeRadioBox1::
+OnMsgYes()
+{
+    // If FreeToTalk is active, then this message inbound doesn'table
+    // make sense, ignore it.
+    if (!IsActiveFreeToTalk())
+    {
+        // The other side is allowed to change their answer.
+        if (IsActiveNo())
+        {
+            StopNoFaders();
+        }
+        
+        StartYesFadersForever();
+    }
+}
+
+//
+// No
+//
+void AppPrototypeRadioBox1::
+OnNoButton(uint8_t)
+{
+    if (IsActiveNo())
+    {
+        // Do nothing
+    }
+    else
+    {
+        StopFreeToTalkFaders();
+        StartNoFadersOnce();
+        
+        CreateAndSendMessageByType(MessageType::MSG_NO);
+    }
+}
+
+void AppPrototypeRadioBox1::
+OnMsgNo()
+{
+    // If FreeToTalk is active, then this message inbound doesn't
+    // make sense, ignore it.
+    if (!IsActiveFreeToTalk())
+    {
+        if (IsActiveYes())
+        {
+            StopYesFaders();
+        }
+        
+        StartNoFadersForever();
+    }
+}
+    
+
+//
+// Clear
+//
+void AppPrototypeRadioBox1::
+OnClearButtonPressed()
+{
+    // Stop all faders
+    StopAttentionFaders();
+    StopFreeToTalkFaders();
+    StopYesFaders();
+    StopNoFaders();
+}
+
+void AppPrototypeRadioBox1::
+OnClearButton(uint8_t logicLevel)
+{
+    if (logicLevel == 1)
+    {
+        // Queue timer to reset if this is in fact a reset
+        rot_.RegisterForTimedEvent(DEFAULT_HOLD_TO_RESET_DURATION_MS);
+        
+        OnClearButtonPressed();
+    }
+    else
+    {
+        // I guess it wasn't a reset.  Cancel timeout.
+        rot_.DeRegisterForTimedEvent();
+    }
+}
+
+
+
+
+
+
+
+//
+// Start / Stop of Faders
+//
+void AppPrototypeRadioBox1::
+StartAttentionFadersForever()
+{
+    ledFaderAttentionRedLED_.  FadeForever(DEFAULT_FADER_DURATION_MS);
+    ledFaderAttentionGreenLED_.FadeForever(DEFAULT_FADER_DURATION_MS);
+    ledFaderAttentionBlueLED_. FadeForever(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StopAttentionFaders()
+{
+    ledFaderAttentionRedLED_.  Stop();
+    ledFaderAttentionGreenLED_.Stop();
+    ledFaderAttentionBlueLED_. Stop();
+}
+
+void AppPrototypeRadioBox1::
+StartFreeToTalkFadersForever()
+{
+    ledFaderFreeToTalkLED_.FadeForever(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StartFreeToTalkFadersOnce()
+{
+    ledFaderFreeToTalkLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StopFreeToTalkFaders()
+{
+    ledFaderFreeToTalkLED_.Stop();
+}
+
+void AppPrototypeRadioBox1::
+StartYesFadersForever()
+{
+    ledFaderYesLED_.FadeForever(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StartYesFadersOnce()
+{
+    ledFaderYesLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StopYesFaders()
+{
+    ledFaderYesLED_.Stop();
+}
+
+void AppPrototypeRadioBox1::
+StartNoFadersForever()
+{
+    ledFaderNoLED_.FadeForever(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StartNoFadersOnce()
+{
+    ledFaderNoLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StopNoFaders()
+{
+    ledFaderNoLED_.Stop();
+}
+
+
+//
+// Blink state checking
+//
+uint8_t AppPrototypeRadioBox1::
+IsActiveFreeToTalk()
+{
+    return ledFaderFreeToTalkLED_.IsActive();
+}
+
+uint8_t AppPrototypeRadioBox1::
+IsActiveYes()
+{
+    return ledFaderYesLED_.IsActive();
+}
+
+uint8_t AppPrototypeRadioBox1::
+IsActiveNo()
+{
+    return ledFaderNoLED_.IsActive();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// Application Messaging Layer
+//
+//////////////////////////////////////////////////////////////////////
 
 void AppPrototypeRadioBox1::
 CreateAndSendMessageByType(MessageType msgType)
@@ -112,32 +377,10 @@ OnMessageReceived(Message &msg)
 {
     switch (msg.msgType)
     {
-        case MessageType::MSG_ATTENTION:
-        {
-            ledFaderAttentionRedLED_.  FadeOnce(DEFAULT_FADER_DURATION_MS);
-            ledFaderAttentionGreenLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
-            ledFaderAttentionBlueLED_. FadeOnce(DEFAULT_FADER_DURATION_MS);
-            
-            break;
-        }
-        case MessageType::MSG_FREE_TO_TALK:
-        {
-            ledFaderFreeToTalkLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
-            
-            break;
-        }
-        case MessageType::MSG_YES:
-        {
-            ledFaderYesLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
-            
-            break;
-        }
-        case MessageType::MSG_NO:
-        {
-            ledFaderNoLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
-            
-            break;
-        }
+        case MessageType::MSG_ATTENTION:    { OnMsgAttention();   break; }
+        case MessageType::MSG_FREE_TO_TALK: { OnMsgFreeToTalk();  break; }
+        case MessageType::MSG_YES:          { OnMsgYes();         break; }
+        case MessageType::MSG_NO:           { OnMsgNo();          break; }
         
         default: break;
     }
@@ -165,12 +408,6 @@ StartRadioSystem()
         &AppPrototypeRadioBox1::OnRadioTXComplete,
         cfg_.valBaud
     );
-}
-
-void AppPrototypeRadioBox1::
-OnRxTxAddressChange(uint8_t /* logicLevel */)
-{
-    PAL.SoftReset();
 }
 
 void AppPrototypeRadioBox1::
@@ -340,43 +577,6 @@ ShowRadioAddressRxTx(uint8_t addressRx, uint8_t addressTx)
 
 
 
-//////////////////////////////////////////////////////////////////////
-//
-// Button Interface System
-//
-//////////////////////////////////////////////////////////////////////
-
-void AppPrototypeRadioBox1::
-OnAttentionButton(uint8_t)
-{
-    CreateAndSendMessageByType(MessageType::MSG_ATTENTION);
-}
-
-void AppPrototypeRadioBox1::
-OnFreeToTalkButton(uint8_t)
-{
-    CreateAndSendMessageByType(MessageType::MSG_FREE_TO_TALK);
-}
-
-void AppPrototypeRadioBox1::
-OnYesButton(uint8_t)
-{
-    CreateAndSendMessageByType(MessageType::MSG_YES);
-}
-
-void AppPrototypeRadioBox1::
-OnNoButton(uint8_t)
-{
-    CreateAndSendMessageByType(MessageType::MSG_NO);
-}
-
-void AppPrototypeRadioBox1::
-OnClearButton(uint8_t)
-{
-    ShowConfiguredRadioAddressRxTx();
-}
-
-
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -401,11 +601,18 @@ StopAllMonitoring()
 void AppPrototypeRadioBox1::
 StartButtonMonitoring()
 {
+    ptfAttention_.    SetCallback(this, &AppPrototypeRadioBox1::OnAttentionButton);
+    ptfFreeToTalk_.   SetCallback(this, &AppPrototypeRadioBox1::OnFreeToTalkButton);
+    ptfYes_.          SetCallback(this, &AppPrototypeRadioBox1::OnYesButton);
+    ptfNo_.           SetCallback(this, &AppPrototypeRadioBox1::OnNoButton);
+    ptfClear_.        SetCallback(this, &AppPrototypeRadioBox1::OnClearButton);
+    
     ptfAttention_. RegisterForInterruptEvent(cfg_.pinAttentionButton);
     ptfFreeToTalk_.RegisterForInterruptEvent(cfg_.pinFreeToTalkButton);
     ptfYes_.       RegisterForInterruptEvent(cfg_.pinYesButton);
     ptfNo_.        RegisterForInterruptEvent(cfg_.pinNoButton);
-    ptfClear_.     RegisterForInterruptEvent(cfg_.pinClearButton);
+    ptfClear_.     RegisterForInterruptEvent(cfg_.pinClearButton,
+                                             LEVEL_RISING_AND_FALLING);
 }
 
 void AppPrototypeRadioBox1::
@@ -421,6 +628,11 @@ StopButtonMonitoring()
 void AppPrototypeRadioBox1::
 StartRxTxAddressMonitoring()
 {
+    ptfDipAddressRx1_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
+    ptfDipAddressRx2_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
+    ptfDipAddressTx1_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
+    ptfDipAddressTx2_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
+    
     ptfDipAddressRx1_.RegisterForInterruptEvent(cfg_.pinDipAddressRx1,
                                                 LEVEL_RISING_AND_FALLING);
     ptfDipAddressRx2_.RegisterForInterruptEvent(cfg_.pinDipAddressRx2,

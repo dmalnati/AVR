@@ -51,45 +51,88 @@ public:
 
     void Run();
 
+    
+    
 private:
 
     // Calculate sizing values for Evm
-    static const uint8_t C_IDLE  = 4;
-    static const uint8_t C_TIMED = 1;
+    static const uint8_t C_IDLE  = 15;
+    static const uint8_t C_TIMED = 15 +
+         1; // for hold-to-reset
     static const uint8_t C_INTER = 3;
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
+    
+    
+    
 private:
     const uint32_t DEFAULT_FADER_DURATION_MS            = 600;
     const uint32_t DEFAULT_DELAY_BEFORE_ADDR_DISPLAY_MS = 150;
+    const uint32_t DEFAULT_HOLD_TO_RESET_DURATION_MS    = 1000;
 
+    
+    
+    // Configuration
+    AppPrototypeRadioBox1Config &cfg_;
 
-    // Visual Interface System
-    void StartupLightShow();
-    void ShowLedFadeStartupSequence();
-    void ShowConfiguredRadioAddressRxTx();
-    void ShowRadioAddressRxTx(uint8_t addressRx, uint8_t addressTx);
     
-    enum class StartupFadeDirection : uint8_t {
-        LeftToRight,
-        RightToLeft
-    };
-    void AnimateFadeLeftToRight(uint32_t durationMs);
-    void AnimateFadeRightToLeft(uint32_t durationMs);
-    void AnimateFadeSweep(uint32_t             durationMs,
-                          StartupFadeDirection fadeDirection);
     
-    // Button Interface System
+    
+    // Application Logic
+    void ApplicationSetup();
+
+    LEDFader<1,1> ledFaderAttentionRedLED_;
+    LEDFader<1,1> ledFaderAttentionGreenLED_;
+    LEDFader<1,1> ledFaderAttentionBlueLED_;
+    LEDFader<1,1> ledFaderFreeToTalkLED_;
+    LEDFader<1,1> ledFaderYesLED_;
+    LEDFader<1,1> ledFaderNoLED_;
+    
+    void OnRxTxAddressChange(uint8_t logicLevel);
+    
     void OnAttentionButton(uint8_t logicLevel);
+    void OnMsgAttention();
+    
     void OnFreeToTalkButton(uint8_t logicLevel);
+    void OnMsgFreeToTalk();
+    
     void OnYesButton(uint8_t logicLevel);
+    void OnMsgYes();
+    
     void OnNoButton(uint8_t logicLevel);
+    void OnMsgNo();
+    
+    void OnClearButtonPressed();
     void OnClearButton(uint8_t logicLevel);
     
-    // Application Messaging System
-    void ApplicationSetup();
+    using RstOnTimeout = TimedEventHandlerDelegate<PlatformAbstractionLayer>;
+    RstOnTimeout rot_;
     
+    
+    void StartAttentionFadersForever();
+    void StartFreeToTalkFadersOnce();
+    void StopAttentionFaders();
+    
+    void StartFreeToTalkFadersForever();
+    void StopFreeToTalkFaders();
+    
+    void StartYesFadersForever();
+    void StartYesFadersOnce();
+    void StopYesFaders();
+    
+    void StartNoFadersForever();
+    void StartNoFadersOnce();
+    void StopNoFaders();
+
+    uint8_t IsActiveFreeToTalk();
+    uint8_t IsActiveYes();
+    uint8_t IsActiveNo();
+
+    
+    
+    
+    // Application Messaging Layer
     enum class MessageType : uint8_t {
         MSG_ATTENTION    = 1,
         MSG_FREE_TO_TALK = 2,
@@ -106,9 +149,14 @@ private:
     void SendMessage(Message &msg);
     void OnMessageReceived(Message &msg);
     
-    // Radio Control System
+
+
+
+    
+    
+    
+    // Radio Link Layer
     void StartRadioSystem();
-    void OnRxTxAddressChange(uint8_t logicLevel);
     void ReadRadioAddressRxTx();
     void OnRadioRXAvailable(uint8_t  srcAddr,
                             uint8_t  protocolId,
@@ -117,39 +165,55 @@ private:
     void RadioTX(uint8_t *buf, uint8_t bufSize);
     void OnRadioTXComplete();
     
-    // External Event Monitoring
-    void StartAllMonitoring();
-    void StopAllMonitoring();
-    void StartButtonMonitoring();
-    void StopButtonMonitoring();
-    void StartRxTxAddressMonitoring();
-    void StopRxTxAddressMonitoring();
-    
-    
-    
-    // Configuration
-    AppPrototypeRadioBox1Config &cfg_;
-    
-    // Radio Control
     RFLink<AppPrototypeRadioBox1>  rfLink_;
     uint8_t                        radioAddressRx_;
     uint8_t                        radioAddressTx_;
     
-    // LED Control
+    
+    
+    
+    
+    
+    
+    // Visual Interface System
+    void StartupLightShow();
+    void ShowLedFadeStartupSequence();
+    void ShowConfiguredRadioAddressRxTx();
+    void ShowRadioAddressRxTx(uint8_t addressRx, uint8_t addressTx);
+    
+    enum class StartupFadeDirection : uint8_t {
+        LeftToRight,
+        RightToLeft
+    };
+    
+    void AnimateFadeLeftToRight(uint32_t durationMs);
+    void AnimateFadeRightToLeft(uint32_t durationMs);
+    void AnimateFadeSweep(uint32_t             durationMs,
+                          StartupFadeDirection fadeDirection);
+    
     LEDFader<2,1>  ledFaderStartup1_;
     LEDFader<2,1>  ledFaderStartup2_;
     LEDFader<2,1>  ledFaderStartup3_;
     
     LEDFader<4,1>  ledFaderRadioAddress_;
     
-    LEDFader<1,1>  ledFaderAttentionRedLED_;
-    LEDFader<1,1>  ledFaderAttentionGreenLED_;
-    LEDFader<1,1>  ledFaderAttentionBlueLED_;
-    LEDFader<1,1>  ledFaderFreeToTalkLED_;
-    LEDFader<1,1>  ledFaderYesLED_;
-    LEDFader<1,1>  ledFaderNoLED_;
     
-    // Interrupt monitoring
+    
+    
+    
+    
+    
+    
+    // External Event Monitoring
+    void StartAllMonitoring();
+    void StopAllMonitoring();
+    
+    void StartButtonMonitoring();
+    void StopButtonMonitoring();
+
+    void StartRxTxAddressMonitoring();
+    void StopRxTxAddressMonitoring();
+    
     using PinToFn = InterruptEventHandlerDelegate<AppPrototypeRadioBox1>;
 
     PinToFn ptfAttention_;
