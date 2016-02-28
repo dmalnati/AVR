@@ -80,7 +80,7 @@ public:
 
     void    StartGreenFaderForever() { faderGreen_.FadeForever(fadeDuration_); }
     void    StartGreenFaderOnce()    { faderGreen_.FadeOnce(fadeDuration_);    }
-    void    StopGreemFader()         { faderGreen_.Stop();                     }
+    void    StopGreenFader()         { faderGreen_.Stop();                     }
     uint8_t IsActiveGreenFader()     { return faderGreen_.IsActive();          }
     
 private:
