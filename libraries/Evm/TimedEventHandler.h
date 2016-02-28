@@ -6,9 +6,7 @@
 
 
 // Forward declaration
-template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-      uint8_t COUNT_TIMED_EVENT_HANDLER,
-      uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+template <uint8_t, uint8_t, uint8_t>
 class EvmActual;
 
 
@@ -20,11 +18,8 @@ class EvmActual;
 
 class TimedEventHandler
 {
-    template <uint8_t COUNT_IDLE_TIME_EVENT_HANDLER,
-          uint8_t COUNT_TIMED_EVENT_HANDLER,
-          uint8_t COUNT_INTERRUPT_EVENT_HANDLER>
+    template <uint8_t, uint8_t, uint8_t>
     friend class EvmActual;
-    
     
 public:
     TimedEventHandler() : isInterval_(0) { }
@@ -47,30 +42,32 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// Function Wrappers
+// Object Wrappers
 //
 //////////////////////////////////////////////////////////////////////
 
-class TimedEventHandlerFnWrapper : public TimedEventHandler
+template <typename T>
+class TimedEventHandlerDelegate
+: public TimedEventHandler
 {
-    typedef void (*CallbackFn)(void *userData);
+    typedef void (T::*MemberCallbackFn)();
     
 public:
-    TimedEventHandlerFnWrapper(CallbackFn fn, void *userData)
-    : TimedEventHandler()
-    , fn_(fn)
-    , userData_(userData)
+    void SetCallback(T *obj, MemberCallbackFn func)
     {
-        // nothing to do
+        obj_  = obj;
+        func_ = func;
     }
-    void OnTimedEvent() { fn_(userData_); }
 
 private:
-    CallbackFn  fn_;
-    void       *userData_;
+    virtual void OnTimedEvent()
+    {
+        if (obj_ && func_) { ((*obj_).*func_)(); }
+    }
+
+    T                *obj_;
+    MemberCallbackFn  func_;
 };
-
-
 
 
 

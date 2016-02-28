@@ -148,18 +148,16 @@ class InterruptEventHandlerDelegate
     typedef void (T::*MemberCallbackFn)(uint8_t logicLevel);
     
 public:
-    InterruptEventHandlerDelegate(T                *obj,
-                                  MemberCallbackFn  func)
-    : obj_(obj)
-    , func_(func)
+    void SetCallback(T *obj, MemberCallbackFn func)
     {
-        // nothing to do
+        obj_  = obj;
+        func_ = func;
     }
 
 private:
     virtual void OnInterruptEvent(uint8_t logicLevel)
     {
-        ((*obj_).*func_)(logicLevel);
+        if (obj_ && func_) { ((*obj_).*func_)(logicLevel); }
     }
 
     T                *obj_;
