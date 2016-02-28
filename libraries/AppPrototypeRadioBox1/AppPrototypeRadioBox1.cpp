@@ -96,6 +96,7 @@ void AppPrototypeRadioBox1::
 OnAttentionButton(uint8_t)
 {
     StopAttentionFaders();
+    StartAttentionFadersOnce();
     
     CreateAndSendMessageByType(MessageType::MSG_ATTENTION);
 }
@@ -249,6 +250,14 @@ StartAttentionFadersForever()
     ledFaderAttentionRedLED_.  FadeForever(DEFAULT_FADER_DURATION_MS);
     ledFaderAttentionGreenLED_.FadeForever(DEFAULT_FADER_DURATION_MS);
     ledFaderAttentionBlueLED_. FadeForever(DEFAULT_FADER_DURATION_MS);
+}
+
+void AppPrototypeRadioBox1::
+StartAttentionFadersOnce()
+{
+    ledFaderAttentionRedLED_.  FadeOnce(DEFAULT_FADER_DURATION_MS);
+    ledFaderAttentionGreenLED_.FadeOnce(DEFAULT_FADER_DURATION_MS);
+    ledFaderAttentionBlueLED_. FadeOnce(DEFAULT_FADER_DURATION_MS);
 }
 
 void AppPrototypeRadioBox1::

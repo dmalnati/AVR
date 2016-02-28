@@ -135,6 +135,8 @@ private:
     
     
     void StartAttentionFadersForever();
+    void StartAttentionFadersOnce();
+    
     void StartFreeToTalkFadersOnce();
     void StopAttentionFaders();
     
