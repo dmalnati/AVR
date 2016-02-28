@@ -24,7 +24,6 @@ public:
     : mainLoopStackLevel_(0)
     , mainLoopStackLevelTemporary_(0)
     , mainLoopKeepGoing_(1)
-    , mainLoopAbort_(0)
     , idleTimeEventHandlerList_()
     , timedEventHandlerList_()
     , interruptEventHandlerList_()
@@ -43,7 +42,7 @@ public:
     void MainLoop();
     
     virtual
-    uint8_t HoldStackDangerously(uint32_t timeout);
+    void HoldStackDangerously(uint32_t timeout);
     
 private:
 
@@ -142,7 +141,6 @@ private:
     uint8_t mainLoopStackLevel_;
     uint8_t mainLoopStackLevelTemporary_;
     uint8_t mainLoopKeepGoing_;
-    uint8_t mainLoopAbort_;
 
     
     // Event Members

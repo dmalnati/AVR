@@ -253,7 +253,7 @@ MainLoop()
         // 
         // Either way it's an error.
         
-        mainLoopAbort_ = 1;
+        PAL.SoftReset();
     }
  }
 
@@ -261,7 +261,7 @@ template <uint8_t A, uint8_t B, uint8_t C>
 void EvmActual<A,B,C>::
 MainLoopInternal()
 {
-    while (mainLoopKeepGoing_ && !mainLoopAbort_)
+    while (mainLoopKeepGoing_)
     {
         ServiceIdleTimeEventHandlers();
         ServiceTimedEventHandlers();
@@ -277,7 +277,7 @@ EndMainLoop()
 }
 
 template <uint8_t A, uint8_t B, uint8_t C>
-uint8_t EvmActual<A,B,C>::
+void EvmActual<A,B,C>::
 HoldStackDangerously(uint32_t timeout)
 {
     if (!mainLoopStackLevelTemporary_)
@@ -296,11 +296,9 @@ HoldStackDangerously(uint32_t timeout)
         // Problem:
         // - HoldStackDangerously was already on the stack when called again.
         //   - Nested held stacks aren't supported.
-        
-        mainLoopAbort_ = 1;
-    }
 
-    return !mainLoopAbort_;
+        PAL.SoftReset();
+    }
 }
 
 

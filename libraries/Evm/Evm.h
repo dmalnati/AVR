@@ -56,7 +56,7 @@ public:
     // The assertion code forces a correct statement about the stack
     // level in order to fail earlier and more predictably.
     virtual
-    uint8_t HoldStackDangerously(uint32_t timeout);
+    void HoldStackDangerously(uint32_t timeout);
     
 private:
 
