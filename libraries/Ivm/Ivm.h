@@ -5,9 +5,11 @@
 #include <util/atomic.h>
 
 #include "PCIntEventHandler.h"
+#include "BADISREventHandler.h"
 
 
 class PCIntEventHandler;
+class BADISREventHandler;
 
 class Ivm
 {
@@ -32,11 +34,7 @@ public:
 
     uint8_t RegisterPCIntEventHandler(PCIntEventHandler *pcieh);
     uint8_t DeRegisterPCIntEventHandler(PCIntEventHandler *pcieh);
-    
-    
-    
-    
-    
+
 
     //
     // This one is directly called by ISRs, and routes to OnPortPinStateChange
@@ -48,6 +46,32 @@ public:
     OnISR(uint8_t port,
           uint8_t bitmapPortPinState,
           uint8_t bitmapPortPinStateLast);
+    
+    
+    
+    
+    
+    //////////////////////////////////////////////////////////////////////
+    //
+    // These functions are only called from "Main Thread" code.
+    //
+    // They require protection from reentrant effects since they access
+    // and lead to data structures which are also accessible from ISRs.
+    //
+    //////////////////////////////////////////////////////////////////////
+    uint8_t RegisterBADISREventHandler(BADISREventHandler *beh);
+    uint8_t DeRegisterBADISREventHandler(BADISREventHandler *beh);
+    
+    
+    //
+    // Static function for handling BADISR
+    //
+    // Should be private but how do you make an actual ISR a friend?
+    //
+    static void
+    OnBADISR();
+    
+    
     
 private:
     static Ivm ivm_;
@@ -88,6 +112,17 @@ private:
                                      uint8_t *port,
                                      uint8_t *portPin);
 
+                                     
+                                     
+    uint8_t
+    AttachBADISREventHandler(BADISREventHandler *beh);
+    
+    uint8_t
+    DetachBADISREventHandler();
+    
+    BADISREventHandler *
+    GetBADISREventHandler();
+                                     
 };
 
 

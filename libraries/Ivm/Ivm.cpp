@@ -151,6 +151,86 @@ Ivm::OnISR(uint8_t port,
  
  
  
+ 
+ 
+ 
+uint8_t
+Ivm::RegisterBADISREventHandler(BADISREventHandler *beh)
+{
+    uint8_t retVal = 0;
+    
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        BADISREventHandler *behCurrent = GetBADISREventHandler();
+        
+        if (beh)
+        {
+            if (behCurrent != NULL || behCurrent == beh)
+            {
+                retVal = 1;
+                
+                AttachBADISREventHandler(beh);
+            }
+        }
+    }
+    
+    return retVal;
+}
+ 
+ 
+uint8_t
+Ivm::DeRegisterBADISREventHandler(BADISREventHandler *beh)
+{
+    uint8_t retVal = 0;
+    
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        BADISREventHandler *behCurrent = GetBADISREventHandler();
+        
+        if (beh == behCurrent)
+        {
+            retVal = 1;
+            
+            DetachBADISREventHandler();
+        }
+    }
+    
+    return retVal;
+}
+ 
+/*
+ * Static function.
+ *
+ * Single function called from only the BADISR ISR.
+ *
+ * Does not try to hand off event to Evm or anything else.  All code paths
+ * are executed within an ISR.
+ *
+ * This function effectively signals doomsday so feel free to clobber whatever.
+ *
+ */
+void
+Ivm::OnBADISR()
+{
+    BADISREventHandler *beh = Ivm::GetInstance().GetBADISREventHandler();
+    
+    if (beh)
+    {
+        beh->OnBADISREvent();
+    }
+}
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
 //////////////////////////////////////////////////////////////////////
 //
 // API Implementation for specific architectures.
@@ -263,6 +343,10 @@ static volatile uint8_t *port__ddrPtr[3]   = { &DDRB,   &DDRC,   &DDRD   };
 static volatile uint8_t *port__pinStatePtr[3]  = { &PINB, &PINC, &PIND };
 static volatile uint8_t  port__pinStateLast[3] = { 0,     0,     0     };
 
+// Storage for BADISREventHandler
+static BADISREventHandler *behPtr = NULL;
+
+
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -287,8 +371,8 @@ Ivm::AttachInterruptForPhysicalPin(uint8_t            physicalPin,
         // Store this handler in the lookup table
         port_portPin__pcieh[port][portPin] = pcieh;
         
-        // Default to explicitly setting this pin to be an output
-        *port__ddrPtr[port] |= (uint8_t)_BV(portPin);
+        // Default to explicitly setting this pin to be an input
+        *port__ddrPtr[port] &= (uint8_t)~_BV(portPin);
         
         // Enable interrupts for this specific pin on this port
         *port__pcmskPtr[port] |= (uint8_t)_BV(portPin);
@@ -431,7 +515,39 @@ Ivm::GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
     return retVal;
 }
 
+uint8_t
+Ivm::AttachBADISREventHandler(BADISREventHandler *beh)
+{
+    uint8_t retVal = 0;
+    
+    if (beh && !behPtr)
+    {
+        behPtr = beh;
+    }
+    
+    return retVal;
+}
 
+uint8_t
+Ivm::DetachBADISREventHandler()
+{
+    uint8_t retVal = 0;
+    
+    if (behPtr)
+    {
+        retVal = 1;
+        
+        behPtr = NULL;
+    }
+    
+    return retVal;
+}
+
+BADISREventHandler *
+Ivm::GetBADISREventHandler()
+{
+    return behPtr;
+}
 
 
 // ISR for Port B
@@ -461,8 +577,11 @@ ISR(PCINT2_vect)
     port__pinStateLast[EVM_ISR_PORT_D] = PIND;
 }
 
-
-
+// ISR for uncaught ISR
+ISR(BADISR_vect)
+{
+    Ivm::OnBADISR();
+}
 
 
 

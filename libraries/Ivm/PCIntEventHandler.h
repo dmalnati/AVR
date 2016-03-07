@@ -21,7 +21,7 @@ public:
         // Nothing to do
     }
     
-    ~PCIntEventHandler()
+    virtual ~PCIntEventHandler()
     {
         DeRegisterForPCIntEvent();
     }
