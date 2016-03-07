@@ -67,7 +67,7 @@ public:
         // nothing to do
     }
     
-    ~InterruptEventHandler()
+    virtual ~InterruptEventHandler()
     {
         DeRegisterForInterruptEvent();
     }
