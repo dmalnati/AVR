@@ -26,7 +26,11 @@ class PlatformAbstractionLayer
 {
 public:
     PlatformAbstractionLayer()
+    : mcusrCache_(MCUSR)
     {
+        // Clear reset flag register value now that copy has been taken
+        MCUSR = 0;
+        
         DisableWatchdogAfterSoftReset();
     }
 
@@ -81,7 +85,6 @@ public:
     
     void DisableWatchdogAfterSoftReset()
     {
-        MCUSR = 0;
         wdt_disable();
     }
     
@@ -90,12 +93,50 @@ public:
         wdt_enable(WDTO_15MS);
         for(;;) { }
     }
+    
+    enum class StartupMode : uint8_t {
+        UNKNOWN,
+        NORMAL,
+        RESET_WATCHDOG,
+        RESET_BROWNOUT,
+        RESET_EXTERNAL,
+        RESET_POWER_ON
+    };
+    
+    StartupMode GetStartupMode()
+    {
+        StartupMode retVal = StartupMode::UNKNOWN;
+        
+        if (mcusrCache_ == 0)
+        {
+            retVal = StartupMode::NORMAL;
+        }
+        else if (mcusrCache_ & _BV(WDRF))
+        {
+            retVal = StartupMode::RESET_WATCHDOG;
+        }
+        else if (mcusrCache_ & _BV(BORF))
+        {
+            retVal = StartupMode::RESET_BROWNOUT;
+        }
+        else if (mcusrCache_ & _BV(EXTRF))
+        {
+            retVal = StartupMode::RESET_EXTERNAL;
+        }
+        else if (mcusrCache_ & _BV(PORF))
+        {
+            retVal = StartupMode::RESET_POWER_ON;
+        }
+        
+        return retVal;
+    }
+    
 
     static int8_t GetArduinoPinFromPhysicalPin(uint8_t physicalPin);
     
     
 private:
-
+    uint8_t mcusrCache_;
 };
 
 
