@@ -55,9 +55,12 @@ public:
         ptfButton2_.SetCallback(this, &ThisClass::OnButton2Private);
         ptfButton3_.SetCallback(this, &ThisClass::OnButton3Private);
         
+        PAL.PinMode(pinButton1, INPUT_PULLUP);
         ptfButton1_.RegisterForInterruptEvent(pinButton1,
                                               LEVEL_RISING_AND_FALLING);
+        PAL.PinMode(pinButton2, INPUT_PULLUP);
         ptfButton2_.RegisterForInterruptEvent(pinButton2);
+        PAL.PinMode(pinButton3, INPUT_PULLUP);
         ptfButton3_.RegisterForInterruptEvent(pinButton3);
 
         // Set up ResetOnTimeout handler
@@ -86,7 +89,7 @@ public:
 private:
     void OnButton1Private(uint8_t logicLevel)
     {
-        if (logicLevel == 1)
+        if (logicLevel == 0)
         {
             // Queue timer to reset if this is in fact a reset
             rot_.RegisterForTimedEvent(DEFAULT_HOLD_TO_RESET_DURATION_MS);
