@@ -59,9 +59,9 @@ public:
         ptfButton1_.RegisterForInterruptEvent(pinButton1,
                                               LEVEL_RISING_AND_FALLING);
         PAL.PinMode(pinButton2, INPUT_PULLUP);
-        ptfButton2_.RegisterForInterruptEvent(pinButton2);
+        ptfButton2_.RegisterForInterruptEvent(pinButton2, LEVEL_FALLING);
         PAL.PinMode(pinButton3, INPUT_PULLUP);
-        ptfButton3_.RegisterForInterruptEvent(pinButton3);
+        ptfButton3_.RegisterForInterruptEvent(pinButton3, LEVEL_FALLING);
 
         // Set up ResetOnTimeout handler
         rot_.SetCallback(&PAL, &PlatformAbstractionLayer::SoftReset);
