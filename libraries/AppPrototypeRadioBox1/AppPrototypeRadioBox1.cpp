@@ -22,8 +22,6 @@ AppPrototypeRadioBox1::
     // Nothing to do
 }
 
-
-
 //////////////////////////////////////////////////////////////////////
 //
 // Run
@@ -230,7 +228,7 @@ OnClearButtonPressed()
 void AppPrototypeRadioBox1::
 OnClearButton(uint8_t logicLevel)
 {
-    if (logicLevel == 1)
+    if (logicLevel == 0)
     {
         // Queue timer to reset if this is in fact a reset
         rot_.RegisterForTimedEvent(DEFAULT_HOLD_TO_RESET_DURATION_MS);
@@ -432,16 +430,16 @@ void AppPrototypeRadioBox1::
 ReadRadioAddressRxTx()
 {
     // Set up DIP pins for reading
-    PAL.PinMode(cfg_.pinDipAddressRx1, INPUT);
-    PAL.PinMode(cfg_.pinDipAddressRx2, INPUT);
-    PAL.PinMode(cfg_.pinDipAddressTx1, INPUT);
-    PAL.PinMode(cfg_.pinDipAddressTx2, INPUT);
+    PAL.PinMode(cfg_.pinDipAddressRx1, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressRx2, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressTx1, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressTx2, INPUT_PULLUP);
     
-    radioAddressRx_ = (PAL.DigitalRead(cfg_.pinDipAddressRx1) << 1)|
-                      (PAL.DigitalRead(cfg_.pinDipAddressRx2) << 0);
+    radioAddressRx_ = (!PAL.DigitalRead(cfg_.pinDipAddressRx1) << 1)|
+                      (!PAL.DigitalRead(cfg_.pinDipAddressRx2) << 0);
                       
-    radioAddressTx_ = (PAL.DigitalRead(cfg_.pinDipAddressTx1) << 1) |
-                      (PAL.DigitalRead(cfg_.pinDipAddressTx2) << 0);
+    radioAddressTx_ = (!PAL.DigitalRead(cfg_.pinDipAddressTx1) << 1) |
+                      (!PAL.DigitalRead(cfg_.pinDipAddressTx2) << 0);
 }
 
 void AppPrototypeRadioBox1::
@@ -619,18 +617,30 @@ StopAllMonitoring()
 void AppPrototypeRadioBox1::
 StartButtonMonitoring()
 {
-    ptfAttention_.    SetCallback(this, &AppPrototypeRadioBox1::OnAttentionButton);
-    ptfFreeToTalk_.   SetCallback(this, &AppPrototypeRadioBox1::OnFreeToTalkButton);
-    ptfYes_.          SetCallback(this, &AppPrototypeRadioBox1::OnYesButton);
-    ptfNo_.           SetCallback(this, &AppPrototypeRadioBox1::OnNoButton);
-    ptfClear_.        SetCallback(this, &AppPrototypeRadioBox1::OnClearButton);
+    ptfAttention_. SetCallback(this, &AppPrototypeRadioBox1::OnAttentionButton);
+    ptfFreeToTalk_.SetCallback(this, &AppPrototypeRadioBox1::OnFreeToTalkButton);
+    ptfYes_.       SetCallback(this, &AppPrototypeRadioBox1::OnYesButton);
+    ptfNo_.        SetCallback(this, &AppPrototypeRadioBox1::OnNoButton);
+    ptfClear_.     SetCallback(this, &AppPrototypeRadioBox1::OnClearButton);
     
-    ptfAttention_. RegisterForInterruptEvent(cfg_.pinAttentionButton);
-    ptfFreeToTalk_.RegisterForInterruptEvent(cfg_.pinFreeToTalkButton);
-    ptfYes_.       RegisterForInterruptEvent(cfg_.pinYesButton);
-    ptfNo_.        RegisterForInterruptEvent(cfg_.pinNoButton);
-    ptfClear_.     RegisterForInterruptEvent(cfg_.pinClearButton,
-                                             LEVEL_RISING_AND_FALLING);
+    //
+    // Button event logic is implemented as the signal going low.
+    //
+    // This saves components on the board by instead using the internal
+    // pullup resistors on each pin.
+    //
+    
+    PAL.PinMode(cfg_.pinAttentionButton,  INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinFreeToTalkButton, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinYesButton,        INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinNoButton,         INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinClearButton,      INPUT_PULLUP);
+    
+    ptfAttention_. RegisterForInterruptEvent(cfg_.pinAttentionButton,  LEVEL_FALLING);
+    ptfFreeToTalk_.RegisterForInterruptEvent(cfg_.pinFreeToTalkButton, LEVEL_FALLING);
+    ptfYes_.       RegisterForInterruptEvent(cfg_.pinYesButton,        LEVEL_FALLING);
+    ptfNo_.        RegisterForInterruptEvent(cfg_.pinNoButton,         LEVEL_FALLING);
+    ptfClear_.     RegisterForInterruptEvent(cfg_.pinClearButton,      LEVEL_RISING_AND_FALLING);
 }
 
 void AppPrototypeRadioBox1::
@@ -650,6 +660,19 @@ StartRxTxAddressMonitoring()
     ptfDipAddressRx2_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
     ptfDipAddressTx1_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
     ptfDipAddressTx2_.SetCallback(this, &AppPrototypeRadioBox1::OnRxTxAddressChange);
+    
+    
+    //
+    // Button event logic is implemented as the signal going low.
+    //
+    // This saves components on the board by instead using the internal
+    // pullup resistors on each pin.
+    //
+    
+    PAL.PinMode(cfg_.pinDipAddressRx1, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressRx2, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressTx1, INPUT_PULLUP);
+    PAL.PinMode(cfg_.pinDipAddressTx2, INPUT_PULLUP);
     
     ptfDipAddressRx1_.RegisterForInterruptEvent(cfg_.pinDipAddressRx1,
                                                 LEVEL_RISING_AND_FALLING);
