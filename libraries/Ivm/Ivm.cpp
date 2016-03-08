@@ -553,28 +553,40 @@ Ivm::GetBADISREventHandler()
 // ISR for Port B
 ISR(PCINT0_vect)
 {
-    Ivm::OnISR(EVM_ISR_PORT_B, PINB, port__pinStateLast[EVM_ISR_PORT_B]);
+    // Cache prior value for handoff
+    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_B];
     
     // Store current state for next time
     port__pinStateLast[EVM_ISR_PORT_B] = PINB;
+    
+    // Pass upward
+    Ivm::OnISR(EVM_ISR_PORT_B, PINB, pinStateLast);
 }
 
 // ISR for Port C
 ISR(PCINT1_vect)
 {
-    Ivm::OnISR(EVM_ISR_PORT_C, PINC, port__pinStateLast[EVM_ISR_PORT_C]);
+    // Cache prior value for handoff
+    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_C];
     
     // Store current state for next time
     port__pinStateLast[EVM_ISR_PORT_C] = PINC;
+    
+    // Pass upward
+    Ivm::OnISR(EVM_ISR_PORT_C, PINC, pinStateLast);
 }
 
 // ISR for Port D
 ISR(PCINT2_vect)
 {
-    Ivm::OnISR(EVM_ISR_PORT_D, PIND, port__pinStateLast[EVM_ISR_PORT_D]);
+    // Cache prior value for handoff
+    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_D];
     
     // Store current state for next time
     port__pinStateLast[EVM_ISR_PORT_D] = PIND;
+    
+    // Pass upward
+    Ivm::OnISR(EVM_ISR_PORT_D, PIND, pinStateLast);
 }
 
 // ISR for uncaught ISR
