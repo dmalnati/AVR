@@ -26,7 +26,7 @@ public:
         DeRegisterForPCIntEvent();
     }
 
-    uint8_t RegisterForPCIntEvent(uint8_t pin, MODE mode = MODE::MODE_RISING);
+    uint8_t RegisterForPCIntEvent(uint8_t pin, MODE mode);
     uint8_t DeRegisterForPCIntEvent();
     
     uint8_t GetPin()        const { return pin_;        }

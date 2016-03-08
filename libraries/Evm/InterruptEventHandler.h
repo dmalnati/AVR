@@ -84,8 +84,7 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
 
-    uint8_t RegisterForInterruptEvent(uint8_t pin,
-                                      uint8_t mode = LEVEL_RISING);
+    uint8_t RegisterForInterruptEvent(uint8_t pin, uint8_t mode);
     uint8_t DeRegisterForInterruptEvent();
     
     virtual void OnInterruptEvent(uint8_t logicLevel) = 0;
