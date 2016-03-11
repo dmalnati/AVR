@@ -21,10 +21,10 @@ static AppPrototypeRadioBox1Config cfg = {
     .pinClearButton       = 27,
 
     // Application Messaging System
-    .valProtocolId        =  1,
+    .valProtocolId        = 240,
 
     // Radio Link Layer
-    .valRealm             =  1,
+    .valRealm             = 24,
     .pinDipAddressRx1     = 23,
     .pinDipAddressRx2     = 24,
     .pinDipAddressTx1     = 25,
