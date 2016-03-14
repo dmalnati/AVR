@@ -118,7 +118,7 @@ private:
         
         srand(PAL.Millis());
         
-        retVal = rangeLow + (rand() % rangeHigh);
+        retVal = rangeLow + (rand() % (rangeHigh - rangeLow + 1));
         
         return retVal;
     }
