@@ -2,22 +2,28 @@
 
 
 static AppHeartBlinkerConfig cfg = {
-    .pinLED1  =  5,
-    .pinLED2  =  4,
-    .pinLED3  =  3,
-    .pinLED4  =  6,
-    .pinLED5  = 13,
-    .pinLED6  = 14,
-    .pinLED7  = 15,
-    .pinLED8  =  2,
-    .pinLED9  = 28,
-    .pinLED10 = 16,
-    .pinLED11 = 17,
-    .pinLED12 = 27,
-    .pinLED13 = 26,
-    .pinLED14 = 23,
-    .pinLED15 = 18,
-    .pinLED16 = 19
+    //
+    // During Eagle placement, resistors and LEDs wound up out of sequence to original intent.
+    //
+    // The correct logical numbering scheme starts with LED1 being the top middle heart
+    // LED, and going clockwise from there.
+    //
+    .pinLED1  =  6,
+    .pinLED2  = 13,
+    .pinLED3  = 14,
+    .pinLED4  = 15,
+    .pinLED5  = 16,
+    .pinLED6  = 17,
+    .pinLED7  = 18,
+    .pinLED8  = 19,
+    .pinLED9  = 23,
+    .pinLED10 = 26,
+    .pinLED11 = 27,
+    .pinLED12 = 28,
+    .pinLED13 =  2,
+    .pinLED14 =  3,
+    .pinLED15 =  4,
+    .pinLED16 =  5
 };
 
 static AppHeartBlinker app(cfg);
