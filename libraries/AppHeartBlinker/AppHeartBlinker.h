@@ -37,10 +37,20 @@ public:
     
     void Run()
     {
+        uint8_t pattern     = 0;
+        uint8_t patternLast = 0;
+        
         while (1)
         {
-            uint32_t pattern = GetRandomInRange(1, 5);
-            
+            // Get next pattern, but don't let it be the last one again
+            pattern = (uint8_t)GetRandomInRange(1, 5);
+            while (pattern == patternLast)
+            {
+                pattern = (uint8_t)GetRandomInRange(1, 5);
+            }
+            patternLast = pattern;
+
+            // Run pattern
             switch (pattern)
             {
                 case 1: PatternLoopRight();           break;
@@ -75,7 +85,7 @@ private:
     static const uint32_t DEFAULT_FADER_DURATION_RANGE_LOW_MS  = 500;
     static const uint32_t DEFAULT_FADER_DURATION_RANGE_HIGH_MS = 750;
     static const uint32_t DEFAULT_LAP_DURATION_RANGE_LOW_MS    = 1000;
-    static const uint32_t DEFAULT_LAP_DURATION_RANGE_HIGH_MS   = 3000;
+    static const uint32_t DEFAULT_LAP_DURATION_RANGE_HIGH_MS   = 2500;
     
     void Setup()
     {
