@@ -48,7 +48,9 @@ private:
 
 private:
 
-    void OnSerialRxAvailable(uint8_t */*buf*/, uint8_t /*len*/)
+    void OnSerialRxAvailable(SerialLink<ThisClass>::Header */*hdr*/,
+                             uint8_t */*buf*/,
+                             uint8_t /*len*/)
     {
         
     }

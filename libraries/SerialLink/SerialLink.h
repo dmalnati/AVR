@@ -5,17 +5,27 @@
 #include "IdleTimeEventHandler.h"
 
 
-template <typename T, uint8_t DATA_LENGTH = 32>
+template <typename T, uint8_t PAYLOAD_CAPACITY = 32>
 class SerialLink
 : public IdleTimeEventHandler
 {
+public:
+    struct Header
+    {
+        uint8_t preamble;
+        uint8_t dataLength;
+        uint8_t checksum;
+        uint8_t protocolId;
+    };
+
 private:
-    typedef void (T::*OnRxAvailableCbFn)(uint8_t *buf, uint8_t bufSize);
+    typedef void (T::*OnRxAvailableCbFn)(Header  *hdr,
+                                         uint8_t *buf,
+                                         uint8_t  bufSize);
     
-    static const uint16_t BAUD              = 9600;
-    static const uint8_t  PREAMBLE_BYTE     = 0x55;
-    static const uint8_t  PROTOCOL_OVERHEAD = 3;
-    static const uint8_t  BUF_CAPACITY      = DATA_LENGTH + PROTOCOL_OVERHEAD;
+    static const uint16_t BAUD          = 9600;
+    static const uint8_t  PREAMBLE_BYTE = 0x55;
+    static const uint8_t  BUF_CAPACITY  = sizeof(Header) + PAYLOAD_CAPACITY;
 
     enum class State : uint8_t
     {
@@ -31,7 +41,7 @@ public:
     {
         obj_     = NULL;
         rxCb_    = NULL;
-        bufSize_ = 0;
+        bufRxSize_ = 0;
         state_   = State::LOOKING_FOR_PREAMBLE_BYTE;
         
         Serial.end();
@@ -60,11 +70,38 @@ public:
         return retVal;
     }
     
-    uint8_t Send(uint8_t *buf, uint8_t len)
+    uint8_t Send(uint8_t protocolId, uint8_t *buf, uint8_t bufSize)
     {
-        uint8_t lenWritten = Serial.write(buf, len);
+        uint8_t retVal = 0;
         
-        return (len == lenWritten);
+        // First check to see if it can all fit
+        if (bufSize <= PAYLOAD_CAPACITY)
+        {
+            // Fill out header
+            Header *hdr = (Header *)bufTx_;
+            
+            hdr->preamble   = PREAMBLE_BYTE;
+            hdr->dataLength = bufSize;
+            hdr->checksum   = 0;
+            hdr->protocolId = protocolId;
+        
+            // Copy in user data
+            memcpy(&(bufTx_[sizeof(Header)]), buf, bufSize);
+            
+            // Calculate checksum
+            uint8_t checksum = Crc8(bufTx_, sizeof(Header) + bufSize);
+            
+            // Store checksum in header
+            hdr->checksum = checksum;
+            
+            // Send via Serial connection
+            uint8_t lenWritten = Serial.write(bufTx_, sizeof(Header) + bufSize);
+            
+            // Success if data fully sent
+            retVal = (lenWritten == (sizeof(Header) + bufSize));
+        }
+        
+        return retVal;
     }
     
 
@@ -110,8 +147,8 @@ private:
                 cont = 0;
                 
                 // store data
-                buf_[0] = firstByte;
-                bufSize_ = 1;
+                bufRx_[0]  = firstByte;
+                bufRxSize_ = 1;
                 
                 // change state to now look for rest of message
                 state_ = State::LOOKING_FOR_END_OF_MESSAGE;
@@ -130,12 +167,12 @@ private:
     {
         uint8_t bytesAdded = 0;
         
-        while (Serial.available() && bufSize_ != BUF_CAPACITY)
+        while (Serial.available() && bufRxSize_ != BUF_CAPACITY)
         {
             uint8_t nextByte = Serial.read();
             
-            buf_[bufSize_] = nextByte;
-            ++bufSize_;
+            bufRx_[bufRxSize_] = nextByte;
+            ++bufRxSize_;
             
             ++bytesAdded;
         }
@@ -148,10 +185,10 @@ private:
         // Want to remove the given number of bytes.  Also discard any
         // subsequent bytes which aren't the PREAMBLE_BYTE.
         // Also set the state of processing as a result.
-        if (len <= bufSize_)
+        if (len <= bufRxSize_)
         {
-            uint8_t *remainingData = &(buf_[len]);
-            uint8_t  remainingDataLen = bufSize_ - len;
+            uint8_t *remainingData    = &(bufRx_[len]);
+            uint8_t  remainingDataLen = bufRxSize_ - len;
             
             // Search for preamble byte
             uint8_t found       = 0;
@@ -177,18 +214,18 @@ private:
                 // Shift it
                 for (uint8_t i = 0; i < dataToShiftLen; ++i)
                 {
-                    buf_[i] = dataToShift[i];
+                    bufRx_[i] = dataToShift[i];
                 }
                 
                 // Set the buffer size and state
-                bufSize_ = dataToShiftLen;
-                state_   = State::LOOKING_FOR_END_OF_MESSAGE;
+                bufRxSize_ = dataToShiftLen;
+                state_     = State::LOOKING_FOR_END_OF_MESSAGE;
             }
             else
             {
                 // Couldn't find it.  Zero out the buffer.
-                bufSize_ = 0;
-                state_   = State::LOOKING_FOR_PREAMBLE_BYTE;
+                bufRxSize_ = 0;
+                state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
             }
         }
     }
@@ -197,28 +234,40 @@ private:
     {
         uint8_t retVal = 0;
         
-        // Check if there is enough data to know the message length
-        if (bufSize_ >= 2)
+        // Check if there is enough data to examine the header
+        if (bufRxSize_ >= sizeof(Header))
         {
             // Yes, check the message self-declared data length
-            uint8_t msgDataLen = buf_[1];
+            Header *hdr = (Header *)bufRx_;
             
             // Check if we have that much
-            if (bufSize_ >= msgDataLen + PROTOCOL_OVERHEAD)
+            if (bufRxSize_ >= sizeof(Header) + hdr->dataLength)
             {
                 // We do, confirm checksum before passing up.
-                uint8_t msgChecksum = buf_[2 + msgDataLen];
                 
-                // Calculate a checksum of everything but the msgChecksum
-                uint8_t checksum = Crc8(buf_,
-                                        msgDataLen + (PROTOCOL_OVERHEAD - 1));
+                // First, take a copy of the message checksum so that you can
+                // restore it after the checksum calculation, which demands that
+                // the checksum field be zero.
+                uint8_t checksumTmp = hdr->checksum;
                 
-                if (checksum == msgChecksum)
+                // Zero out the message checksum
+                hdr->checksum = 0;
+                
+                // Calculate checksum of the message
+                uint8_t checksum = Crc8(bufRx_, sizeof(Header) + hdr->dataLength);
+                
+                // Restore the message checksum
+                hdr->checksum = checksumTmp;
+                
+                // Validate whether checksums match
+                if (checksum == hdr->checksum)
                 {
                     retVal = 1;
                     
                     // Call back with complete message
-                    ((*obj_).*rxCb_)(&(buf_[2]), msgDataLen);
+                    ((*obj_).*rxCb_)(hdr,
+                                     &(bufRx_[sizeof(Header)]),
+                                     hdr->dataLength);
                 }
                 else
                 {
@@ -227,14 +276,15 @@ private:
                 }
                 
                 // Destroy data and move on.
-                ClearLeadingBufferBytesAndRecalibrate(msgDataLen + PROTOCOL_OVERHEAD);
+                ClearLeadingBufferBytesAndRecalibrate(sizeof(Header) +
+                                                      hdr->dataLength);
             }
             
             return retVal;
         }
         
         // Try to add more data if there is space to do so
-        if (bufSize_ != BUF_CAPACITY)
+        if (bufRxSize_ != BUF_CAPACITY)
         {
             TryToAddMoreData();
         }
@@ -268,14 +318,17 @@ private:
     }
     
     
-
+    // Callback members
     T                 *obj_;
     OnRxAvailableCbFn  rxCb_;
     
-    uint8_t buf_[BUF_CAPACITY];
-    uint8_t bufSize_;
-    
+    // RX Buffer members
+    uint8_t bufRx_[BUF_CAPACITY];
+    uint8_t bufRxSize_;
     State state_;
+    
+    // TX Buffer members
+    uint8_t bufTx_[BUF_CAPACITY];
 };
 
 
