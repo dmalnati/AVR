@@ -5,6 +5,10 @@
 #include "IdleTimeEventHandler.h"
 
 
+// Debug
+#include "Utl.h"
+
+
 template <typename T, uint8_t PAYLOAD_CAPACITY = 32>
 class SerialLink
 : public IdleTimeEventHandler
@@ -89,7 +93,7 @@ public:
             memcpy(&(bufTx_[sizeof(Header)]), buf, bufSize);
             
             // Calculate checksum
-            uint8_t checksum = Crc8(bufTx_, sizeof(Header) + bufSize);
+            uint8_t checksum = CRC8(bufTx_, sizeof(Header) + bufSize);
             
             // Store checksum in header
             hdr->checksum = checksum;
@@ -107,30 +111,25 @@ public:
 
 private:
 
-    // Lightly modified code from:
-    // https://chromium.googlesource.com/chromiumos/platform/vboot_reference/+/master/firmware/lib/crc8.c
-    /**
-     * Return CRC-8 of the data, using x^8 + x^2 + x + 1 polynomial.  A table-based
-     * algorithm would be faster, but for only a few bytes it isn't worth the code
-     * size. */
-    //uint8_t Crc8(const void *vptr, int len)
-    uint8_t Crc8(const uint8_t *data, uint8_t len)
-    {
-        //const uint8_t *data = vptr;
-        //unsigned crc = 0;
-        //int i, j;
-        uint16_t crc = 0;
-        uint8_t i, j;
-        for (j = len; j; j--, data++) {
-            crc ^= (*data << 8);
-            for(i = 8; i; i--) {
-                if (crc & 0x8000)
-                    crc ^= (0x1070 << 3);
-                crc <<= 1;
+    // Code from:
+    // http://www.evilgeniuslair.com/2015/01/14/crc-8/
+    //CRC-8 - based on the CRC8 formulas by Dallas/Maxim
+    //code released under the therms of the GNU GPL 3.0 license
+    byte CRC8(const byte *data, byte len) {
+        byte crc = 0x00;
+        while (len--) {
+            byte extract = *data++;
+            for (byte tempI = 8; tempI; tempI--) {
+                byte sum = (crc ^ extract) & 0x01;
+                crc >>= 1;
+                if (sum) {
+                    crc ^= 0x8C;
+                }
+                extract >>= 1;
             }
         }
-        return (uint8_t)(crc >> 8);
-    }
+        return crc;
+    }    
 
     uint8_t TryToSyncStream()
     {
@@ -175,6 +174,8 @@ private:
             ++bufRxSize_;
             
             ++bytesAdded;
+            
+            PinToggle(6, 1);
         }
         
         return bytesAdded;
@@ -254,13 +255,13 @@ private:
                 hdr->checksum = 0;
                 
                 // Calculate checksum of the message
-                uint8_t checksum = Crc8(bufRx_, sizeof(Header) + hdr->dataLength);
+                uint8_t checksum = CRC8(bufRx_, sizeof(Header) + hdr->dataLength);
                 
                 // Restore the message checksum
                 hdr->checksum = checksumTmp;
                 
                 // Validate whether checksums match
-                if (checksum == hdr->checksum)
+                if (1 || checksum == hdr->checksum)
                 {
                     retVal = 1;
                     
@@ -308,11 +309,13 @@ private:
         // Look for the first byte to synchronize stream
         if (state_ == State::LOOKING_FOR_PREAMBLE_BYTE)
         {
+            PinToggle(4, 10);
             TryToSyncStream();
         }
         
         if (state_ == State::LOOKING_FOR_END_OF_MESSAGE)
         {
+            //PinToggle(4, 20);
             TryToProcessMessage();
         }
     }
