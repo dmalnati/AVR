@@ -39,10 +39,10 @@ public:
     
     void Reset()
     {
-        obj_     = NULL;
-        rxCb_    = NULL;
+        obj_       = NULL;
+        rxCb_      = NULL;
         bufRxSize_ = 0;
-        state_   = State::LOOKING_FOR_PREAMBLE_BYTE;
+        state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
         
         Serial.end();
         
@@ -325,7 +325,7 @@ private:
     // RX Buffer members
     uint8_t bufRx_[BUF_CAPACITY];
     uint8_t bufRxSize_;
-    State state_;
+    State   state_;
     
     // TX Buffer members
     uint8_t bufTx_[BUF_CAPACITY];
