@@ -2,18 +2,31 @@
 #define __SERIAL_LINK_H__
 
 
-#include "IdleTimeEventHandler.h"
+#include "TimedEventHandler.h"
 
 
-// Debug
-#include "Utl.h"
-
+/*
+ * Not protected:
+ * - bad bytes lead a good message.
+ *  - a preamble byte is first
+ *  - a large dataLength byte is next
+ *  - a legitimate message, smaller than the bad dataLength byte prior, follows
+ *
+ * That can be overcome by timing out unfinished messages and clearing the
+ * leading preamble byte.  Too complex for now, especially given the very low
+ * likelihood of this particular failure.
+ *
+ */
 
 template <typename T, uint8_t PAYLOAD_CAPACITY = 32>
 class SerialLink
-: public IdleTimeEventHandler
+: private TimedEventHandler
 {
 public:
+    static const uint8_t C_IDLE  = 0;
+    static const uint8_t C_TIMED = 1;
+    static const uint8_t C_INTER = 0;
+
     struct Header
     {
         uint8_t preamble;
@@ -27,9 +40,10 @@ private:
                                          uint8_t *buf,
                                          uint8_t  bufSize);
     
-    static const uint16_t BAUD          = 9600;
-    static const uint8_t  PREAMBLE_BYTE = 0x55;
-    static const uint8_t  BUF_CAPACITY  = sizeof(Header) + PAYLOAD_CAPACITY;
+    static const uint8_t  POLL_PERIOD_MS = 100;
+    static const uint16_t BAUD           = 9600;
+    static const uint8_t  PREAMBLE_BYTE  = 0x55;
+    static const uint8_t  BUF_CAPACITY   = sizeof(Header) + PAYLOAD_CAPACITY;
 
     enum class State : uint8_t
     {
@@ -50,7 +64,7 @@ public:
         
         Serial.end();
         
-        DeRegisterForIdleTimeEvent();
+        DeRegisterForTimedEvent();
     }
     
     uint8_t Init(T *obj, OnRxAvailableCbFn rxCb)
@@ -68,7 +82,7 @@ public:
             
             Serial.begin(BAUD);
             
-            RegisterForIdleTimeEvent();
+            RegisterForTimedEventInterval(POLL_PERIOD_MS);
         }
         
         return retVal;
@@ -129,9 +143,9 @@ private:
             }
         }
         return crc;
-    }    
+    }
 
-    uint8_t TryToSyncStream()
+    uint8_t TryToSyncStreamFromSerial()
     {
         uint8_t retVal = 0;
         
@@ -139,17 +153,18 @@ private:
         while (cont)
         {
             uint8_t firstByte = Serial.read();
+            // printf("SL Sync: read %i\n", firstByte);
             
             if (firstByte == PREAMBLE_BYTE)
             {
                 retVal = 1;
                 cont = 0;
                 
-                // store data
+                // Store data
                 bufRx_[0]  = firstByte;
                 bufRxSize_ = 1;
                 
-                // change state to now look for rest of message
+                // Indicate state change
                 state_ = State::LOOKING_FOR_END_OF_MESSAGE;
             }
 
@@ -162,7 +177,7 @@ private:
         return retVal;
     }
     
-    uint8_t TryToAddMoreData()
+    uint8_t TryToAddMoreDataFromSerial()
     {
         uint8_t bytesAdded = 0;
         
@@ -172,10 +187,9 @@ private:
             
             bufRx_[bufRxSize_] = nextByte;
             ++bufRxSize_;
+            // printf("SL Add: read %i, now have %i total\n", nextByte, bufRxSize_);
             
             ++bytesAdded;
-            
-            PinToggle(6, 1);
         }
         
         return bytesAdded;
@@ -183,6 +197,7 @@ private:
     
     void ClearLeadingBufferBytesAndRecalibrate(uint8_t len)
     {
+        // printf("Clearing %i bytes\n", len);
         // Want to remove the given number of bytes.  Also discard any
         // subsequent bytes which aren't the PREAMBLE_BYTE.
         // Also set the state of processing as a result.
@@ -208,6 +223,7 @@ private:
             // front of the buffer.
             if (found)
             {
+                // printf("SL: Clear -- found preamble at idx %i\n", idxPreamble);
                 // Calculate where the data is and its size
                 uint8_t *dataToShift    = &(remainingData[idxPreamble]);
                 uint8_t  dataToShiftLen = remainingDataLen - idxPreamble;
@@ -224,29 +240,63 @@ private:
             }
             else
             {
+                // printf("SL: Clear -- NO preamble\n");
                 // Couldn't find it.  Zero out the buffer.
                 bufRxSize_ = 0;
                 state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
             }
+            
+            // printf("SL: Clear -- %i bytes remain, state: %s\n",
+                   // bufRxSize_,
+                   // state_ == State::LOOKING_FOR_PREAMBLE_BYTE ?
+                       // "LOOKING_FOR_PREAMBLE_BYTE"            :
+                       // "LOOKING_FOR_END_OF_MESSAGE");
+        }
+        else
+        {
+            // Should never happen.  Zero out the buffer.
+            bufRxSize_ = 0;
+            state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
         }
     }
     
-    uint8_t TryToProcessMessage()
+    uint8_t TryToProcessMessageFromCachedData()
     {
         uint8_t retVal = 0;
         
         // Check if there is enough data to examine the header
         if (bufRxSize_ >= sizeof(Header))
         {
+            // printf("bufRxSize_ >= sizeof(Header)\n");
             // Yes, check the message self-declared data length
             Header *hdr = (Header *)bufRx_;
             
-            // Check if we have that much
-            if (bufRxSize_ >= sizeof(Header) + hdr->dataLength)
+            // Check for mangled size or simply oversized message
+            uint8_t oversized =
+                (uint16_t)((uint16_t)sizeof(Header) + (uint16_t)hdr->dataLength) !=
+                (uint8_t) ((uint8_t) sizeof(Header) + (uint8_t) hdr->dataLength);
+            
+            // printf("16: %i\n",
+                // (uint16_t)((uint16_t)sizeof(Header) + (uint16_t)hdr->dataLength)
+            // );
+            // printf(" 8: %i\n",
+                // (uint8_t)((uint8_t)sizeof(Header) + (uint8_t)hdr->dataLength)
+            // );
+            
+            if (oversized)
             {
-                // We do, confirm checksum before passing up.
+                // printf("Oversized!!!\n");
+                // Can be mangled, oversized, or just not the start of an
+                // actual message due to a prior mangle.  Either way,
+                // let's skip it by resyncing after dropping the preamble byte.
+                ClearLeadingBufferBytesAndRecalibrate(1);
+            }
+            else if (bufRxSize_ >= sizeof(Header) + hdr->dataLength)
+            {
+                // We have enough data, confirm checksum before passing up.
+                // printf("bufRxSize_ >= sizeof(Header) + hdr->dataLength\n");
                 
-                // First, take a copy of the message checksum so that you can
+                // Take a copy of the message checksum so that you can
                 // restore it after the checksum calculation, which demands that
                 // the checksum field be zero.
                 uint8_t checksumTmp = hdr->checksum;
@@ -261,62 +311,60 @@ private:
                 hdr->checksum = checksumTmp;
                 
                 // Validate whether checksums match
-                if (1 || checksum == hdr->checksum)
+                if (checksum == hdr->checksum)
                 {
-                    retVal = 1;
+                    retVal = sizeof(Header) + hdr->dataLength;
+
+                    // printf("Doing callback\n");
                     
                     // Call back with complete message
                     ((*obj_).*rxCb_)(hdr,
                                      &(bufRx_[sizeof(Header)]),
                                      hdr->dataLength);
+
+                    // Destroy data and move on.
+                    ClearLeadingBufferBytesAndRecalibrate(sizeof(Header) +
+                                                          hdr->dataLength);
                 }
                 else
                 {
-                    // Error, destroy data and move on.
-                    // This is required anyway, so do nothing here.
+                    // printf("Checksum failed\n");
+                    // Checksum failed, but the first byte was a preamble byte.
+                    // Could be that it was a false positive or some other
+                    // error.
+                    // Discard the preamble byte and resync against the next
+                    // preamble byte to be found, which may be within what
+                    // was within the body of this message.
+                    ClearLeadingBufferBytesAndRecalibrate(1);
                 }
-                
-                // Destroy data and move on.
-                ClearLeadingBufferBytesAndRecalibrate(sizeof(Header) +
-                                                      hdr->dataLength);
             }
-            
-            return retVal;
         }
         
-        // Try to add more data if there is space to do so
-        if (bufRxSize_ != BUF_CAPACITY)
+        // Check if the buffer is filled.  This would indicate that the
+        // message is corrupted and a resync is required.
+        // Drop the first preamble byte and resync.
+        if (bufRxSize_ == BUF_CAPACITY)
         {
-            TryToAddMoreData();
-        }
-        else
-        {
-            // Error -- should have found a message if the buffer is filled.
-            // Possibly corruption mangled the msgDataLen value.
-            
-            // Destroy existing preamble byte, which should be at the start
-            // of the buffer, which will also trigger a re-scan for the next
-            // preamble byte.
             ClearLeadingBufferBytesAndRecalibrate(1);
         }
         
         return retVal;
     }
 
-    // Implement IdleTimeEventHandler callback
-    virtual void OnIdleTimeEvent()
+    // Implement callback
+    virtual void OnTimedEvent()
     {
         // Look for the first byte to synchronize stream
         if (state_ == State::LOOKING_FOR_PREAMBLE_BYTE)
         {
-            PinToggle(4, 10);
-            TryToSyncStream();
+            TryToSyncStreamFromSerial();
         }
         
         if (state_ == State::LOOKING_FOR_END_OF_MESSAGE)
         {
-            //PinToggle(4, 20);
-            TryToProcessMessage();
+            TryToAddMoreDataFromSerial();
+            
+            TryToProcessMessageFromCachedData();
         }
     }
     
