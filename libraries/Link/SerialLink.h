@@ -18,6 +18,14 @@
  *
  */
 
+struct SerialLinkHeader
+{
+    uint8_t preamble;
+    uint8_t dataLength;
+    uint8_t checksum;
+    uint8_t protocolId;
+};
+ 
 template <typename T, uint8_t PAYLOAD_CAPACITY = 32>
 class SerialLink
 : private TimedEventHandler
@@ -27,23 +35,15 @@ public:
     static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 0;
 
-    struct Header
-    {
-        uint8_t preamble;
-        uint8_t dataLength;
-        uint8_t checksum;
-        uint8_t protocolId;
-    };
-
 private:
-    typedef void (T::*OnRxAvailableCbFn)(Header  *hdr,
-                                         uint8_t *buf,
-                                         uint8_t  bufSize);
+    typedef void (T::*OnRxAvailableCbFn)(SerialLinkHeader  *hdr,
+                                         uint8_t           *buf,
+                                         uint8_t            bufSize);
     
     static const uint8_t  POLL_PERIOD_MS = 100;
     static const uint16_t BAUD           = 9600;
     static const uint8_t  PREAMBLE_BYTE  = 0x55;
-    static const uint8_t  BUF_CAPACITY   = sizeof(Header) + PAYLOAD_CAPACITY;
+    static const uint8_t  BUF_CAPACITY   = sizeof(SerialLinkHeader) + PAYLOAD_CAPACITY;
 
     enum class State : uint8_t
     {
@@ -96,7 +96,7 @@ public:
         if (bufSize <= PAYLOAD_CAPACITY)
         {
             // Fill out header
-            Header *hdr = (Header *)bufTx_;
+            SerialLinkHeader *hdr = (SerialLinkHeader *)bufTx_;
             
             hdr->preamble   = PREAMBLE_BYTE;
             hdr->dataLength = bufSize;
@@ -104,19 +104,19 @@ public:
             hdr->protocolId = protocolId;
         
             // Copy in user data
-            memcpy(&(bufTx_[sizeof(Header)]), buf, bufSize);
+            memcpy(&(bufTx_[sizeof(SerialLinkHeader)]), buf, bufSize);
             
             // Calculate checksum
-            uint8_t checksum = CRC8(bufTx_, sizeof(Header) + bufSize);
+            uint8_t checksum = CRC8(bufTx_, sizeof(SerialLinkHeader) + bufSize);
             
             // Store checksum in header
             hdr->checksum = checksum;
             
             // Send via Serial connection
-            uint8_t lenWritten = Serial.write(bufTx_, sizeof(Header) + bufSize);
+            uint8_t lenWritten = Serial.write(bufTx_, sizeof(SerialLinkHeader) + bufSize);
             
             // Success if data fully sent
-            retVal = (lenWritten == (sizeof(Header) + bufSize));
+            retVal = (lenWritten == (sizeof(SerialLinkHeader) + bufSize));
         }
         
         return retVal;
@@ -153,7 +153,6 @@ private:
         while (cont)
         {
             uint8_t firstByte = Serial.read();
-            // printf("SL Sync: read %i\n", firstByte);
             
             if (firstByte == PREAMBLE_BYTE)
             {
@@ -187,7 +186,6 @@ private:
             
             bufRx_[bufRxSize_] = nextByte;
             ++bufRxSize_;
-            // printf("SL Add: read %i, now have %i total\n", nextByte, bufRxSize_);
             
             ++bytesAdded;
         }
@@ -197,7 +195,6 @@ private:
     
     void ClearLeadingBufferBytesAndRecalibrate(uint8_t len)
     {
-        // printf("Clearing %i bytes\n", len);
         // Want to remove the given number of bytes.  Also discard any
         // subsequent bytes which aren't the PREAMBLE_BYTE.
         // Also set the state of processing as a result.
@@ -223,7 +220,6 @@ private:
             // front of the buffer.
             if (found)
             {
-                // printf("SL: Clear -- found preamble at idx %i\n", idxPreamble);
                 // Calculate where the data is and its size
                 uint8_t *dataToShift    = &(remainingData[idxPreamble]);
                 uint8_t  dataToShiftLen = remainingDataLen - idxPreamble;
@@ -240,17 +236,10 @@ private:
             }
             else
             {
-                // printf("SL: Clear -- NO preamble\n");
                 // Couldn't find it.  Zero out the buffer.
                 bufRxSize_ = 0;
                 state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
             }
-            
-            // printf("SL: Clear -- %i bytes remain, state: %s\n",
-                   // bufRxSize_,
-                   // state_ == State::LOOKING_FOR_PREAMBLE_BYTE ?
-                       // "LOOKING_FOR_PREAMBLE_BYTE"            :
-                       // "LOOKING_FOR_END_OF_MESSAGE");
         }
         else
         {
@@ -265,36 +254,26 @@ private:
         uint8_t retVal = 0;
         
         // Check if there is enough data to examine the header
-        if (bufRxSize_ >= sizeof(Header))
+        if (bufRxSize_ >= sizeof(SerialLinkHeader))
         {
-            // printf("bufRxSize_ >= sizeof(Header)\n");
             // Yes, check the message self-declared data length
-            Header *hdr = (Header *)bufRx_;
+            SerialLinkHeader *hdr = (SerialLinkHeader *)bufRx_;
             
             // Check for mangled size or simply oversized message
             uint8_t oversized =
-                (uint16_t)((uint16_t)sizeof(Header) + (uint16_t)hdr->dataLength) !=
-                (uint8_t) ((uint8_t) sizeof(Header) + (uint8_t) hdr->dataLength);
-            
-            // printf("16: %i\n",
-                // (uint16_t)((uint16_t)sizeof(Header) + (uint16_t)hdr->dataLength)
-            // );
-            // printf(" 8: %i\n",
-                // (uint8_t)((uint8_t)sizeof(Header) + (uint8_t)hdr->dataLength)
-            // );
+                (uint16_t)((uint16_t)sizeof(SerialLinkHeader) + (uint16_t)hdr->dataLength) !=
+                (uint8_t) ((uint8_t) sizeof(SerialLinkHeader) + (uint8_t) hdr->dataLength);
             
             if (oversized)
             {
-                // printf("Oversized!!!\n");
                 // Can be mangled, oversized, or just not the start of an
                 // actual message due to a prior mangle.  Either way,
                 // let's skip it by resyncing after dropping the preamble byte.
                 ClearLeadingBufferBytesAndRecalibrate(1);
             }
-            else if (bufRxSize_ >= sizeof(Header) + hdr->dataLength)
+            else if (bufRxSize_ >= sizeof(SerialLinkHeader) + hdr->dataLength)
             {
                 // We have enough data, confirm checksum before passing up.
-                // printf("bufRxSize_ >= sizeof(Header) + hdr->dataLength\n");
                 
                 // Take a copy of the message checksum so that you can
                 // restore it after the checksum calculation, which demands that
@@ -305,7 +284,7 @@ private:
                 hdr->checksum = 0;
                 
                 // Calculate checksum of the message
-                uint8_t checksum = CRC8(bufRx_, sizeof(Header) + hdr->dataLength);
+                uint8_t checksum = CRC8(bufRx_, sizeof(SerialLinkHeader) + hdr->dataLength);
                 
                 // Restore the message checksum
                 hdr->checksum = checksumTmp;
@@ -313,22 +292,19 @@ private:
                 // Validate whether checksums match
                 if (checksum == hdr->checksum)
                 {
-                    retVal = sizeof(Header) + hdr->dataLength;
+                    retVal = sizeof(SerialLinkHeader) + hdr->dataLength;
 
-                    // printf("Doing callback\n");
-                    
                     // Call back with complete message
                     ((*obj_).*rxCb_)(hdr,
-                                     &(bufRx_[sizeof(Header)]),
+                                     &(bufRx_[sizeof(SerialLinkHeader)]),
                                      hdr->dataLength);
 
                     // Destroy data and move on.
-                    ClearLeadingBufferBytesAndRecalibrate(sizeof(Header) +
+                    ClearLeadingBufferBytesAndRecalibrate(sizeof(SerialLinkHeader) +
                                                           hdr->dataLength);
                 }
                 else
                 {
-                    // printf("Checksum failed\n");
                     // Checksum failed, but the first byte was a preamble byte.
                     // Could be that it was a false positive or some other
                     // error.

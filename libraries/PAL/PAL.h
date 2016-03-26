@@ -83,6 +83,17 @@ public:
         return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
     }
     
+    // 8-bit AVRs are Little Endian
+    uint16_t htons(uint16_t val)
+    {
+        return (((val & 0x00FF) << 8) | ((val & 0xFF00) >> 8));
+    }
+    
+    uint16_t ntohs(uint16_t val)
+    {
+        return htons(val);
+    }
+    
     void DisableWatchdogAfterSoftReset()
     {
         wdt_disable();
