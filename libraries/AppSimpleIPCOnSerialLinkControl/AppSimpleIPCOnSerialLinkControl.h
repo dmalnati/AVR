@@ -1,5 +1,5 @@
-#ifndef __APP_SERIAL_CONTROL_H__
-#define __APP_SERIAL_CONTROL_H__
+#ifndef __APP_SIMPLE_IPC_ON_SERIAL_LINK_CONTROL_H__
+#define __APP_SIMPLE_IPC_ON_SERIAL_LINK_CONTROL_H__
 
 
 #include "Evm.h"
@@ -7,7 +7,7 @@
 #include "PinState.h"
 #include "PinStateSimpleIPCController.h"
 
-class AppSerialControl
+class AppSimpleIPCOnSerialLinkControl
 {
 public:
 
@@ -43,4 +43,4 @@ private:
 };
 
 
-#endif  // __APP_SERIAL_CONTROL_H__
+#endif  // __APP_SIMPLE_IPC_ON_SERIAL_LINK_CONTROL_H__
