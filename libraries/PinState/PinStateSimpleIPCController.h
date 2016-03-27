@@ -13,9 +13,9 @@ private:
 
     enum MessageType
     {
-        PIN_STATE_GET_STATE = 1,
-        PIN_STATE_SET_STATE = 2,
-        PIN_STATE_VALUE     = 3
+        GET_PIN_STATE = 1,
+        SET_PIN_STATE = 2,
+        PIN_STATE     = 3
     };
 
     struct MessageGetPinState
@@ -31,6 +31,7 @@ private:
 
     struct MessagePinStateValue
     {
+        uint8_t pin;
         uint8_t value;
     };
     
@@ -52,6 +53,7 @@ public:
     uint8_t OnMessageGetPinState(MessageGetPinState   *msgReq,
                                  MessagePinStateValue *msgRep)
     {
+        msgRep->pin   = msgReq->pin;
         msgRep->value = ps_->GetPinState(msgReq->pin);
         
         return 1;
@@ -73,7 +75,7 @@ public:
         {
             switch (msgIn->messageType)
             {
-                case MessageType::PIN_STATE_GET_STATE:
+                case MessageType::GET_PIN_STATE:
                 {
                     if (msgIn->bufLen >= sizeof(MessageGetPinState))
                     {
@@ -82,7 +84,7 @@ public:
                         
                         if (OnMessageGetPinState(msgReq, msgRep))
                         {
-                            msgOut->messageType = MessageType::PIN_STATE_VALUE;
+                            msgOut->messageType = MessageType::PIN_STATE;
                             msgOut->bufLen      = sizeof(MessagePinStateValue);
                         }
                     }
@@ -90,7 +92,7 @@ public:
                     break;
                 }
                 
-                case MessageType::PIN_STATE_SET_STATE:
+                case MessageType::SET_PIN_STATE:
                 {
                     if (msgIn->bufLen >= sizeof(MessageSetPinState))
                     {

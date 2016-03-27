@@ -38,9 +38,9 @@ private:
     }
 
     void
-    OnSerialRxAvailable(SerialLink<TestSerialLink>::Header *hdr,
-                        uint8_t *buf,
-                        uint8_t  bufSize)
+    OnSerialRxAvailable(SerialLinkHeader *hdr,
+                        uint8_t          *buf,
+                        uint8_t           bufSize)
     {
         // ping pong
         PinToggle(4, 100);

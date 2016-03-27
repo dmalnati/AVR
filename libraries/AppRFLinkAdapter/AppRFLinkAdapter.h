@@ -12,7 +12,6 @@ struct AppRFLinkAdapterConfig
 {
     uint8_t pinSerialRX;
     uint8_t pinSerialTX;
-    uint8_t serialProtocolId;
     
     uint8_t pinRFRX;
     uint8_t pinRFTX;
@@ -23,6 +22,8 @@ struct AppRFLinkAdapterConfig
 
 class AppRFLinkAdapter
 {
+    const uint8_t RAW_DATA_PROTOCOL_ID = 0;
+    
     using ThisClass = AppRFLinkAdapter;
     
 public:
@@ -43,12 +44,15 @@ public:
         rfLinkRaw_.Init(this,
                         cfg_.pinRFRX,
                         &ThisClass::OnRFRxAvailable,
-                        cfg_.pinRFTX,
-                        &ThisClass::OnRFTxComplete);
+                        cfg_.pinRFTX);
                      
         // Set up LedFaders
         ledFaderRx_.AddLED(cfg_.pinLEDRX);
         ledFaderTx_.AddLED(cfg_.pinLEDTX);
+        
+        // Flash to show power on
+        ledFaderRx_.FadeOnce();
+        ledFaderTx_.FadeOnce();
         
         // Handle events
         evm_.MainLoop();
@@ -73,21 +77,20 @@ private:
 
 private:
 
-    void OnSerialRxAvailable(SerialLink<ThisClass>::Header */*hdr*/,
-                             uint8_t                       *buf,
-                             uint8_t                        bufSize)
+    void OnSerialRxAvailable(SerialLinkHeader */*hdr*/,
+                             uint8_t          *buf,
+                             uint8_t           bufSize)
     {
         rfLinkRaw_.Send(buf, bufSize);
+        
+        ledFaderTx_.FadeOnce();
     }
     
     void OnRFRxAvailable(uint8_t *buf, uint8_t bufSize)
     {
-        serialLink_.Send(cfg_.serialProtocolId, buf, bufSize);
-    }
-    
-    void OnRFTxComplete()
-    {
-        // Nothing to do
+        serialLink_.Send(RAW_DATA_PROTOCOL_ID, buf, bufSize);
+        
+        ledFaderRx_.FadeOnce();
     }
 
     AppRFLinkAdapterConfig &cfg_;

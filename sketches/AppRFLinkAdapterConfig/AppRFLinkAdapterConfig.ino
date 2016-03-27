@@ -2,8 +2,14 @@
 
 
 static AppRFLinkAdapterConfig cfg = {
-    // just to make it compile
-    1, 2, 3, 4, 5, 6, 7
+    .pinSerialRX = 2,
+    .pinSerialTX = 3,
+
+    .pinRFRX = 14,
+    .pinRFTX = 15,
+
+    .pinLEDRX = 13,
+    .pinLEDTX = 16
 };
 
 static AppRFLinkAdapter app(cfg);

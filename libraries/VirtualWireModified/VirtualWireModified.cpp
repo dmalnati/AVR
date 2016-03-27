@@ -556,7 +556,7 @@ uint8_t vw_have_message()
 // Get the last message received (without byte count or FCS)
 // Copy at most *len bytes, set *len to the actual number copied
 // Return true if there is a message and the FCS is OK
-uint8_t vw_get_message(uint8_t* buf, uint8_t* len)
+uint8_t vw_get_message(uint8_t** buf, uint8_t* len)
 {
     uint8_t rxlen;
     
@@ -569,14 +569,20 @@ uint8_t vw_get_message(uint8_t* buf, uint8_t* len)
     rxlen = vw_rx_len - 3;
     
     // Copy message (good or bad)
-    if (*len > rxlen)
+    //if (*len > rxlen)
 	*len = rxlen;
-    memcpy(buf, vw_rx_buf + 1, *len);
+    //memcpy(buf, vw_rx_buf + 1, *len);
+    *buf = (vw_rx_buf + 1);
     
-    vw_rx_done = false; // OK, got that message thanks
+    //vw_rx_done = false; // OK, got that message thanks
     
     // Check the FCS, return goodness
     return (vw_crc(vw_rx_buf, vw_rx_len) == 0xf0b8); // FCS OK?
+}
+
+void vw_get_message_completed()
+{
+    vw_rx_done = false; // OK, got that message thanks
 }
 
 // This is the interrupt service routine called when timer1 overflows

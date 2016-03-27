@@ -7,7 +7,6 @@
 #include "PinState.h"
 #include "PinStateSimpleIPCController.h"
 
-
 class AppSerialControl
 {
 public:

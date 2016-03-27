@@ -17,7 +17,7 @@
  * likelihood of this particular failure.
  *
  */
-
+ 
 struct SerialLinkHeader
 {
     uint8_t preamble;
