@@ -2,7 +2,7 @@
 #define __LINK_TO_PROTOCOL_HANDLER_ADAPTER_RF_LINK_H__
 
 
-#include "SerialLink.h"
+#include "RFLink.h"
 #include "ProtocolHandler.h"
 #include "LinkToProtocolHandlerAdapter.h"
 
@@ -24,14 +24,14 @@ public:
                  int8_t  txPin)
     {
         uint8_t retVal =
-            rfLink_.Init(realm,
-                         srcAddr,
-                         this,
+            rfLink_.Init(this,
                          rxPin,
                          &ThisClass::OnRxAvailable,
                          txPin);
 
-        // Bind to a specific dst addr so Send (not SendTo) works
+        // Bind addressing Send (not SendTo) works
+        rfLink_.SetRealm(realm);
+        rfLink_.SetSrcAddr(srcAddr);
         rfLink_.SetDstAddr(dstAddr);
         
         return retVal;
@@ -49,9 +49,9 @@ public:
 
 
 private:
-    void OnRxAvailable(SerialLinkHeader *hdr,
-                       uint8_t          *buf,
-                       uint8_t           bufSize)
+    void OnRxAvailable(RFLinkHeader *hdr,
+                       uint8_t      *buf,
+                       uint8_t       bufSize)
    {
        uint8_t *bufReply     = NULL;
        uint8_t  bufReplySize = 0;
