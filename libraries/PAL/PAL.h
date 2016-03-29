@@ -3,6 +3,9 @@
 
 
 #include <avr/wdt.h>
+#include <util/atomic.h>
+
+#include "Pin.h"
 
 #include <Arduino.h>
 
@@ -25,6 +28,10 @@ void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 class PlatformAbstractionLayer
 {
 public:
+    static const uint8_t PORT_B = 0;
+    static const uint8_t PORT_C = 1;
+    static const uint8_t PORT_D = 2;
+    
     PlatformAbstractionLayer()
     : mcusrCache_(MCUSR)
     {
@@ -33,49 +40,130 @@ public:
         
         DisableWatchdogAfterSoftReset();
     }
+    
+    static void PinMode(Pin pin, uint8_t mode)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            if (mode == INPUT)
+            {
+                // Set the DDRX register to input
+                *port__ddrxPtr[pin.port_] &= (uint8_t)~pin.pinMask_;
+                
+                
+                /*
+                 * This was a copy of the functionality from Arduino.
+                 *
+                 * However, this line seems to screw up the Ivm processing
+                 * and was seeming to cause lots of random interrupts.
+                 * (Notably the Ivm processing only originally included the
+                 *  line above, so the line below was actually a change to
+                 *  the logic.)
+                 *
+                 * Didn't investigate a lot, but commenting this out sorted the
+                 * issue for now.  Can look into it more deeply later.
+                 *
+                 */
+                // Set PORTX bit to indicate non-PULLUP
+                //*port__portxPtr[pin.port_] &= (uint8_t)~pin.pinMask_;
+            }
+            else if (mode == INPUT_PULLUP)
+            {
+                // Set the DDRX register to input
+                *port__ddrxPtr[pin.port_] &= (uint8_t)~pin.pinMask_;
+                
+                // Set PORTX bit to indicate PULLUP
+                *port__portxPtr[pin.port_] |= pin.pinMask_;
+            }
+            else // (mode == OUTPUT) // (or an error we handle with a default)
+            {
+                // Set the DDRX register to output
+                *port__ddrxPtr[pin.port_] |= pin.pinMask_;
+            }
+        }
+    }
 
-    void PinMode(uint8_t physicalPin, uint8_t mode)
+    static inline uint8_t DigitalRead(Pin pin)
+    {
+        return (*port__pinxPtr[pin.port_] & pin.pinMask_) ? 1 : 0;
+    }
+
+    static inline void DigitalWrite(Pin pin, uint8_t value)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            if (value == HIGH)
+            {
+                *port__portxPtr[pin.port_] |= pin.pinMask_;
+            }
+            else
+            {
+                *port__portxPtr[pin.port_] &= (uint8_t)~pin.pinMask_;
+            }
+        }
+    }
+    
+    static inline uint8_t GetPortValueFromPhysicalPin(uint8_t physicalPin)
+    {
+        uint8_t retVal = 0;
+        
+        uint8_t port;
+        uint8_t portPin;
+        
+        if (GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+        {
+            retVal = *port__pinxPtr[port];
+        }
+        
+        return retVal;
+    }
+    
+    
+    
+    /*
+    static inline void PinMode(uint8_t physicalPin, uint8_t mode)
     {
         uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
         
         pinMode(arduinoPin, mode);
     }
     
-    uint8_t DigitalRead(uint8_t physicalPin)
+    static inline uint8_t DigitalRead(uint8_t physicalPin)
     {
         uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
         
         return digitalRead(arduinoPin);
     }
     
-    void DigitalWrite(uint8_t physicalPin, uint8_t value)
+    static inline void DigitalWrite(uint8_t physicalPin, uint8_t value)
     {
         uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
         
         digitalWrite(arduinoPin, value);
     }
+    */
     
-    void Delay(uint32_t ms)
+    static inline void Delay(uint32_t ms)
     {
         delay(ms);
     }
     
-    uint32_t Millis()
+    static inline uint32_t Millis()
     {
         return millis();
     }
     
-    uint32_t Micros()
+    static inline uint32_t Micros()
     {
         return micros();
     }
     
-    void DelayMicroseconds(uint32_t delay)
+    static inline void DelayMicroseconds(uint32_t delay)
     {
         return delayMicroseconds(delay);
     }
     
-    uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
+    static inline uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
     {
         uint8_t arduinoDataPin  = GetArduinoPinFromPhysicalPin(dataPin);
         uint8_t arduinoClockPin = GetArduinoPinFromPhysicalPin(clockPin);
@@ -84,17 +172,17 @@ public:
     }
     
     // 8-bit AVRs are Little Endian
-    uint16_t htons(uint16_t val)
+    static inline uint16_t htons(uint16_t val)
     {
         return (((val & 0x00FF) << 8) | ((val & 0xFF00) >> 8));
     }
     
-    uint16_t ntohs(uint16_t val)
+    static inline uint16_t ntohs(uint16_t val)
     {
         return htons(val);
     }
     
-    void DisableWatchdogAfterSoftReset()
+    static inline void DisableWatchdogAfterSoftReset()
     {
         wdt_disable();
     }
@@ -145,8 +233,15 @@ public:
 
     static int8_t GetArduinoPinFromPhysicalPin(uint8_t physicalPin);
     
-    
+    static uint8_t GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
+                                                    uint8_t *port,
+                                                    uint8_t *portPin);
+
 private:
+    static volatile uint8_t *port__ddrxPtr[3];
+    static volatile uint8_t *port__pinxPtr[3];
+    static volatile uint8_t *port__portxPtr[3];
+
     uint8_t mcusrCache_;
 };
 

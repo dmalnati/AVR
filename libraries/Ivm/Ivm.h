@@ -4,6 +4,7 @@
 
 #include <util/atomic.h>
 
+#include "PAL.h"
 #include "PCIntEventHandler.h"
 #include "BADISREventHandler.h"
 
@@ -107,13 +108,6 @@ private:
     uint8_t
     InterruptIsActiveForPhysicalPin(uint8_t physicalPin);
 
-    uint8_t
-    GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
-                                     uint8_t *port,
-                                     uint8_t *portPin);
-
-                                     
-                                     
     uint8_t
     AttachBADISREventHandler(BADISREventHandler *beh);
     

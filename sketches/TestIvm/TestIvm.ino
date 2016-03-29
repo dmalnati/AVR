@@ -14,7 +14,7 @@ public:
 
     void Start(uint8_t pin)
     {
-        RegisterForPCIntEvent(pin);
+        RegisterForPCIntEvent(pin, PCIntEventHandler::MODE::MODE_RISING);
     }
 
 private:

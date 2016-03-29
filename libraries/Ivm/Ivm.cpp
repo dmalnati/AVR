@@ -147,13 +147,6 @@ Ivm::OnISR(uint8_t port,
 
  
  
- 
- 
- 
- 
- 
- 
- 
 uint8_t
 Ivm::RegisterBADISREventHandler(BADISREventHandler *beh)
 {
@@ -292,31 +285,9 @@ Ivm::OnBADISR()
  * AREF   |     21      
  * GND    |     22      
  *
- *
- *
- * Registers:
- * - This chip has 3 ports - B, C, D
- * - Where X is used below, use one of B, C, D for relevant operation
- *
- * DDRX - Data Direction - control whether a pin is input or output
- *        (0 = INPUT, 1 = OUTPUT)
- * 
- * When DDR indicates a pin is input:
- * - PORTX dictates whether there is an internal pullup
- * - PINX  reads from the pin
- * 
- * When DDR indicates a pin is output:
- * - PORTX writes to the pin
- * - PINX  ...
- *
  */
  
  
-#define EVM_ISR_PORT_B 0
-#define EVM_ISR_PORT_C 1
-#define EVM_ISR_PORT_D 2
-
-
 //////////////////////////////////////////////////////////////////////
 //
 // Local Storage
@@ -336,11 +307,9 @@ static PCIntEventHandler *port_portPin__pcieh[3][8] = { NULL };
 // Lookup tables for access to port-specific data in an abstracted way
 static          uint8_t  port__refCount[3] = { 0,       0,       0       };
 static volatile uint8_t *port__pcmskPtr[3] = { &PCMSK0, &PCMSK1, &PCMSK2 };
-static volatile uint8_t *port__ddrPtr[3]   = { &DDRB,   &DDRC,   &DDRD   };
 
 // Lookup tables for access to port-specific pin values
 // in an abstracted way
-static volatile uint8_t *port__pinStatePtr[3]  = { &PINB, &PINC, &PIND };
 static volatile uint8_t  port__pinStateLast[3] = { 0,     0,     0     };
 
 // Storage for BADISREventHandler
@@ -364,7 +333,7 @@ Ivm::AttachInterruptForPhysicalPin(uint8_t            physicalPin,
     uint8_t portPin;
     
     // Find the port and portPin to register handler on
-    if (GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+    if (PAL.GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
     {
         retVal = 1;
         
@@ -372,7 +341,7 @@ Ivm::AttachInterruptForPhysicalPin(uint8_t            physicalPin,
         port_portPin__pcieh[port][portPin] = pcieh;
         
         // Default to explicitly setting this pin to be an input
-        *port__ddrPtr[port] &= (uint8_t)~_BV(portPin);
+        PAL.PinMode(physicalPin, INPUT);
         
         // Enable interrupts for this specific pin on this port
         *port__pcmskPtr[port] |= (uint8_t)_BV(portPin);
@@ -391,8 +360,8 @@ Ivm::AttachInterruptForPhysicalPin(uint8_t            physicalPin,
         //   has been filtered through
         //
         port__pinStateLast[port] = (uint8_t)
-            ((  port__pinStateLast[port] & (uint8_t)~_BV(portPin) )  | // zero out bit
-             ( *port__pinStatePtr[port]  & (uint8_t) _BV(portPin) ));  // combine live bit
+            (( port__pinStateLast[port]                     & (uint8_t)~_BV(portPin) )  | // zero out bit
+             ( PAL.GetPortValueFromPhysicalPin(physicalPin) & (uint8_t) _BV(portPin) ));  // combine live bit
         
         // If there were previously no interrupts registered for this port
         // then enable interrupts for this port
@@ -417,7 +386,7 @@ Ivm::DetachInterruptForPhysicalPin(uint8_t physicalPin)
     uint8_t portPin;
     
     // Find the port and portPin to register handler on
-    if (GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+    if (PAL.GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
     {
         retVal = 1;
         
@@ -459,57 +428,9 @@ Ivm::InterruptIsActiveForPhysicalPin(uint8_t physicalPin)
     uint8_t port;
     uint8_t portPin;
     
-    if (GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
+    if (PAL.GetPortAndPortPinFromPhysicalPin(physicalPin, &port, &portPin))
     {
         retVal = (GetPCIntEventHandlerByPortAndPortPin(port, portPin) != NULL);
-    }
-    
-    return retVal;
-}
-
-
-
-// Return 1 for successfully found, 0 for failure
-uint8_t
-Ivm::GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
-                                      uint8_t *port,
-                                      uint8_t *portPin)
-{
-    uint8_t retVal = 1;
-    
-    switch (physicalPin)
-    {
-        case  0: retVal = 0;
-        case  1: *port = EVM_ISR_PORT_C; *portPin = PINC6; break;
-        case  2: *port = EVM_ISR_PORT_D; *portPin = PIND0; break;
-        case  3: *port = EVM_ISR_PORT_D; *portPin = PIND1; break;
-        case  4: *port = EVM_ISR_PORT_D; *portPin = PIND2; break;
-        case  5: *port = EVM_ISR_PORT_D; *portPin = PIND3; break;
-        case  6: *port = EVM_ISR_PORT_D; *portPin = PIND4; break;
-        case  7: retVal = 0;                               break;
-        case  8: retVal = 0;                               break;
-        case  9: *port = EVM_ISR_PORT_B; *portPin = PINB6; break;
-        case 10: *port = EVM_ISR_PORT_B; *portPin = PINB7; break;
-        case 11: *port = EVM_ISR_PORT_D; *portPin = PIND5; break;
-        case 12: *port = EVM_ISR_PORT_D; *portPin = PIND6; break;
-        case 13: *port = EVM_ISR_PORT_D; *portPin = PIND7; break;
-        case 14: *port = EVM_ISR_PORT_B; *portPin = PINB0; break;
-        case 15: *port = EVM_ISR_PORT_B; *portPin = PINB1; break;
-        case 16: *port = EVM_ISR_PORT_B; *portPin = PINB2; break;
-        case 17: *port = EVM_ISR_PORT_B; *portPin = PINB3; break;
-        case 18: *port = EVM_ISR_PORT_B; *portPin = PINB4; break;
-        case 19: *port = EVM_ISR_PORT_B; *portPin = PINB5; break;
-        case 20: retVal = 0;                               break;
-        case 21: retVal = 0;                               break;
-        case 22: retVal = 0;                               break;
-        case 23: *port = EVM_ISR_PORT_C; *portPin = PINC0; break;
-        case 24: *port = EVM_ISR_PORT_C; *portPin = PINC1; break;
-        case 25: *port = EVM_ISR_PORT_C; *portPin = PINC2; break;
-        case 26: *port = EVM_ISR_PORT_C; *portPin = PINC3; break;
-        case 27: *port = EVM_ISR_PORT_C; *portPin = PINC4; break;
-        case 28: *port = EVM_ISR_PORT_C; *portPin = PINC5; break;
-        
-        default: retVal = 0;
     }
     
     return retVal;
@@ -554,39 +475,39 @@ Ivm::GetBADISREventHandler()
 ISR(PCINT0_vect)
 {
     // Cache prior value for handoff
-    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_B];
+    uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_B];
     
     // Store current state for next time
-    port__pinStateLast[EVM_ISR_PORT_B] = PINB;
+    port__pinStateLast[PlatformAbstractionLayer::PORT_B] = PINB;
     
     // Pass upward
-    Ivm::OnISR(EVM_ISR_PORT_B, PINB, pinStateLast);
+    Ivm::OnISR(PlatformAbstractionLayer::PORT_B, PINB, pinStateLast);
 }
 
 // ISR for Port C
 ISR(PCINT1_vect)
 {
     // Cache prior value for handoff
-    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_C];
+    uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_C];
     
     // Store current state for next time
-    port__pinStateLast[EVM_ISR_PORT_C] = PINC;
+    port__pinStateLast[PlatformAbstractionLayer::PORT_C] = PINC;
     
     // Pass upward
-    Ivm::OnISR(EVM_ISR_PORT_C, PINC, pinStateLast);
+    Ivm::OnISR(PlatformAbstractionLayer::PORT_C, PINC, pinStateLast);
 }
 
 // ISR for Port D
 ISR(PCINT2_vect)
 {
     // Cache prior value for handoff
-    uint8_t pinStateLast = port__pinStateLast[EVM_ISR_PORT_D];
+    uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_D];
     
     // Store current state for next time
-    port__pinStateLast[EVM_ISR_PORT_D] = PIND;
+    port__pinStateLast[PlatformAbstractionLayer::PORT_D] = PIND;
     
     // Pass upward
-    Ivm::OnISR(EVM_ISR_PORT_D, PIND, pinStateLast);
+    Ivm::OnISR(PlatformAbstractionLayer::PORT_D, PIND, pinStateLast);
 }
 
 // ISR for uncaught ISR
