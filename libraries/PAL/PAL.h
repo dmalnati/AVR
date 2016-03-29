@@ -103,7 +103,7 @@ public:
         }
     }
     
-    static inline uint8_t GetPortValueFromPhysicalPin(uint8_t physicalPin)
+    static uint8_t GetPortValueFromPhysicalPin(uint8_t physicalPin)
     {
         uint8_t retVal = 0;
         
@@ -118,52 +118,27 @@ public:
         return retVal;
     }
     
-    
-    
-    /*
-    static inline void PinMode(uint8_t physicalPin, uint8_t mode)
-    {
-        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
-        
-        pinMode(arduinoPin, mode);
-    }
-    
-    static inline uint8_t DigitalRead(uint8_t physicalPin)
-    {
-        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
-        
-        return digitalRead(arduinoPin);
-    }
-    
-    static inline void DigitalWrite(uint8_t physicalPin, uint8_t value)
-    {
-        uint8_t arduinoPin = GetArduinoPinFromPhysicalPin(physicalPin);
-        
-        digitalWrite(arduinoPin, value);
-    }
-    */
-    
-    static inline void Delay(uint32_t ms)
+    static void Delay(uint32_t ms)
     {
         delay(ms);
     }
     
-    static inline uint32_t Millis()
+    static uint32_t Millis()
     {
         return millis();
     }
     
-    static inline uint32_t Micros()
+    static uint32_t Micros()
     {
         return micros();
     }
     
-    static inline void DelayMicroseconds(uint32_t delay)
+    static void DelayMicroseconds(uint32_t delay)
     {
         return delayMicroseconds(delay);
     }
     
-    static inline uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
+    static uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
     {
         uint8_t arduinoDataPin  = GetArduinoPinFromPhysicalPin(dataPin);
         uint8_t arduinoClockPin = GetArduinoPinFromPhysicalPin(clockPin);
@@ -182,7 +157,7 @@ public:
         return htons(val);
     }
     
-    static inline void DisableWatchdogAfterSoftReset()
+    static void DisableWatchdogAfterSoftReset()
     {
         wdt_disable();
     }
