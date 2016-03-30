@@ -3,10 +3,10 @@
 
 static const uint8_t PIN_SENSOR = 11;
 
+static SensorTemperatureDHTXX s;
 
 void setup()
 {
-    SensorTemperatureDHTXX s;
     s.Init(PIN_SENSOR);
 
     while (1)
