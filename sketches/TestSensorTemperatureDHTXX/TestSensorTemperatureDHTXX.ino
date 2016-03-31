@@ -21,7 +21,7 @@ void setup()
 
         // This is about as low as it went.
         // The only other lower number tried was 100ms.
-        PAL.Delay(3150);
+        PAL.Delay(150);
     }
 }
 
