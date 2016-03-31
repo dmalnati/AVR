@@ -68,7 +68,7 @@ PlatformAbstractionLayer::GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
     
     switch (physicalPin)
     {
-        case  0: retVal = 0;
+        case  0: retVal = 0;                       break;
         case  1: *port = PORT_C; *portPin = PINC6; break;
         case  2: *port = PORT_D; *portPin = PIND0; break;
         case  3: *port = PORT_D; *portPin = PIND1; break;
