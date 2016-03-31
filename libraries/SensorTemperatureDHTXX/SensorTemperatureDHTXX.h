@@ -5,326 +5,113 @@
 #include "PAL.h"
 
 
-// Debug
-#include "Utl.h"
-
-
-
-template <uint8_t BIT_COUNT>
-class BitList
-{
-public:
-    BitList()
-    {
-        Reset();
-    }
-
-    void Reset()
-    {
-        for (uint8_t i = 0; i < BYTE_COUNT; ++i)
-        {
-            byteList_[i] = 0;
-        }
-        
-        bitMask_     = 0x80;
-        byteListIdx_ = 0;
-    }
-    
-    inline uint8_t PushBack(uint8_t bitVal)
-    {
-        uint8_t retVal = 0;
-        
-        if (byteListIdx_ < BYTE_COUNT)
-        {
-            retVal = 1;
-            
-            if (bitVal)
-            {
-                byteList_[byteListIdx_] |= _BV(bitMask_);
-            }
-            else
-            {
-                byteList_[byteListIdx_] &= ~_BV(bitMask_);
-            }
-            
-            bitMask_ >>= 1;
-            
-            if (!bitMask_)
-            {
-                bitMask_ = 0x80;
-                
-                ++byteListIdx_;
-            }
-        }
-        
-        return retVal;
-    }
-    
-    inline uint8_t operator[](uint8_t bitIdx)
-    {
-        uint8_t retVal = 0;
-        
-        if (bitIdx < BIT_COUNT)
-        {
-            uint8_t byteListIdxTmp = (bitIdx >> 3);
-            uint8_t bitMaskTmp     = (0x80 >> (bitIdx - (byteListIdxTmp << 3)));
-            
-            retVal = (byteList_[byteListIdxTmp] & bitMaskTmp) ? 1 : 0;
-        }
-        
-        return retVal;
-    }
-    
-    inline static uint8_t Size()
-    {
-        return BIT_COUNT;
-    }
-
-private:
-    static const uint8_t BYTE_COUNT =
-        (BIT_COUNT % 8 == 0 ?
-         (BIT_COUNT / 8)    :
-         (BIT_COUNT / 8) + 1);
-
-    uint8_t byteList_[BYTE_COUNT];
-    
-    uint8_t bitMask_;
-    uint8_t byteListIdx_;
-};
-
+// Only works for DHT11 at the moment.
 
 
 class SensorTemperatureDHTXX
 {
+    static const uint32_t CALIBRATION_LOOP_COUNT       = 10000;
+    static const uint32_t DURATION_US_BIT_ZERO_CEILING = 50;
+    static const uint32_t DURATION_US_LONG_PULSE       = 8000;
+    static const uint32_t DURATION_US_SHORT_PULSE      = 100;
+    static const uint8_t  DEFAULT_ATTEMPT_COUNT        = 3;
+    
 public:
-    SensorTemperatureDHTXX() : pin_(0), D1(12), D2(13) { }
+    SensorTemperatureDHTXX(uint8_t pin)
+    : pin_(pin)
+    {
+        PAL.PinMode(pin_, INPUT_PULLUP);
+    }
+    
     ~SensorTemperatureDHTXX() { }
     
-    uint8_t Init(uint8_t pin)
+    void Init()
     {
-        pin_ = pin;
-        
-        PAL.PinMode(pin_, INPUT_PULLUP);
-
-        return 1;
+        CalibrateTiming();
     }
-
-    /*
-    uint8_t SpeedTest(uint8_t pin)
-    {
-        pin_ = pin;
-        
-        // Bring line HIGH as default state
-        PAL.PinMode(pin_, INPUT_PULLUP);
-        
-        
-        // Test new Pin interface
-        Pin p1(5);
-        
-        PAL.DigitalRead(3);
-        
-        
-        // Speed test
-        
-        
-        uint8_t level = (uint8_t)(PIND & _BV(PD5));
-        
-        // set pin 12 as output
-        DDRD  |= _BV(PD6);
-        PORTD &= ~_BV(PD6); // off
-        
-        volatile uint8_t *portPtr = &PORTD;
-        uint8_t  pinMask = _BV(PD6);
-
-        while (1)
-        {
-            // Mark beginning
-            PAL.DigitalWrite(12, HIGH);
-            PAL.DelayMicroseconds(50);
-            PAL.DigitalWrite(12, LOW);
-            
-            PAL.DelayMicroseconds(20);
-
-            
-            
-            
-            // Read a digital value the slow way
-            PORTD |= _BV(PD6);  // on
-            uint8_t value1 = PAL.DigitalRead(pin_);
-            PORTD &= ~_BV(PD6);  // off
-            
-            PAL.DelayMicroseconds(20);
-            
-            
-            // Read a digital value the Pin prototype way
-            PORTD |= _BV(PD6);  // on
-            PAL.DigitalRead(p1);
-            PORTD &= ~_BV(PD6);  // off
-            
-            PAL.DelayMicroseconds(20);
-            
-            
-            
-            // Read a digital value the fast way
-            PORTD |= _BV(PD6);  // on
-            uint8_t value2 = PORTD & _BV(PD5);
-            PORTD &= ~_BV(PD6);  // off
-            
-            PAL.DelayMicroseconds(20);
-
-
-            
-            
-            
-            
-            // Write a digital value the slow way
-            PAL.DigitalWrite(12, HIGH);
-            PAL.DigitalWrite(12, LOW);
-            
-            PAL.DelayMicroseconds(20);
-            
-            
-            // Write a digital value the Pin prototype way
-            PAL.DigitialWrite(p1, 1);
-            PAL.DigitialWrite(p1, 0);
-            
-            PAL.DelayMicroseconds(20);
-
-
-            
-            // Write Indirect
-            *portPtr |= pinMask;  // on
-            *portPtr &= ~pinMask; // off
-            
-            PAL.DelayMicroseconds(20);
-            
-
-
-            // Write Direct
-            PORTD |= _BV(PD6);  // on
-            PORTD &= ~_BV(PD6); // off
-            
-            PAL.DelayMicroseconds(20);
-            
-            
-            
-            
-            
-            // Calculate time diff slow
-            PORTD |= _BV(PD6);  // on
-            uint32_t timeStart = PAL.Micros();
-            uint32_t timeEnd   = PAL.Micros();
-            uint32_t timeDiff  = timeEnd - timeStart;
-            PORTD &= ~_BV(PD6); // off
-            
-            PAL.DelayMicroseconds(20);
-            
-            
-            
-            
-            
-            // Calculate time diff prototype
-            PORTD |= _BV(PD6);  // on
-            uint8_t timeStartProto = (uint8_t)PAL.Micros();
-            uint8_t timeEndProto   = (uint8_t)PAL.Micros();
-            uint8_t timeDiffProto  = timeEndProto - timeStartProto;
-            PORTD &= ~_BV(PD6); // off
-            
-            PAL.DelayMicroseconds(20);
-
-
-
-
-
-            // Mark end
-            PAL.DigitalWrite(12, HIGH);
-            PAL.DelayMicroseconds(50);
-            PAL.DigitalWrite(12, LOW);
-            
-            PAL.DelayMicroseconds(20);
-        }
-        
-        
-        
-        
-        return 1;
-    }
-    */
 
     struct Measurement
     {
-        uint8_t temperature;
+        uint8_t tempF;
+        uint8_t tempC;
+        uint8_t pctHumidity;
+        uint8_t heatIndex;
     };
     
-    Measurement GetMeasurement()
+    uint8_t GetMeasurement(Measurement *m,
+                           uint8_t      attemptCount = DEFAULT_ATTEMPT_COUNT)
     {
-        Measurement m = GetDefaultMeasurement();
+        uint8_t retVal = 0;
         
-        
-        
-        // Step 1 - Request data from sensor:
-        // (from spec for DHT22)
-        // - Default state of line should be HIGH
-        // - Bring LOW for at least 500us or 18ms (which?)
-        // - Bring HIGH for at least 18us
-        
-        PAL.PinMode(pin_, OUTPUT);
-        
-        PAL.DigitalWrite(pin_, LOW);
-        PAL.Delay(1);
-        
-        // Restore pin to INPUT_PULLUP in order to:
-        // - Allow sensor to now adjust the level
-        // - Be able to read from the pin
-        // - Set initial state for next time
-        
-        PAL.DigitalWrite(pin_, HIGH);
-        PAL.DelayMicroseconds(20);
-        
-        PAL.PinMode(pin_, INPUT_PULLUP);
-        
-        
-        // Debug
-        PAL.PinMode(D1, OUTPUT);
-        PAL.DigitalWrite(D1, HIGH);
-        PAL.DigitalWrite(D1, LOW);
-        
-        PAL.PinMode(D2, OUTPUT);
-        PAL.DigitalWrite(D2, HIGH);
-        PAL.DigitalWrite(D2, LOW);
+        if (m)
+        {
+            for (uint8_t i = 0; i < attemptCount && !retVal; ++i)
+            {
+                retVal = GetMeasurementInternal(m);
+            }
+        }
+    
+        return retVal;
+    }
+    
 
+private:
+
+    uint8_t GetMeasurementInternal(Measurement *m)
+    {
+        uint8_t byteArray[5] = { 0 };
         
         uint8_t cont = 1;
+
         
-        // Try to lock on to bit stream
-        // 3 transitions -- HIGH to LOW, LOW to HIGH, HIGH to LOW
-        for (uint8_t i = 0; i < 3 && cont; ++i)
+        // Suspend all interrupts for timing-sensitive areas.
+        // Unfortunately this also screws up time keeping.
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            cont = WaitForLevelChange();
-        }
-        
-        if (cont)
-        {
-            uint8_t byteArray[5] = { 0 };
+            // Step 1 - Request data from sensor:
+            // (from spec for DHT22)
+            // - Default state of line should be HIGH
+            // - Bring LOW for at least 500us or 18ms (which?)
+            // - Bring HIGH for at least 18us
             
-            // Now read bit stream
+            PAL.PinMode(pin_, OUTPUT);
+            
+            PAL.DigitalWrite(pin_, LOW);
+            PAL.Delay(1);
+            
+            // Restore pin to INPUT_PULLUP in order to:
+            // - Allow sensor to now adjust the level
+            // - Be able to read from the pin
+            // - Set initial state for next time
+            
+            PAL.PinMode(pin_, INPUT_PULLUP);
+            
+            // Step 2 - Read response bit stream
+            // Watch for 3 transitions to indicate incoming bit stream:
+            // - HIGH to LOW, LOW to HIGH, HIGH to LOW
+            cont = WaitForLevelChange(loopCountLongDelay_);
+            for (uint8_t i = 0; i < 2 && cont; ++i)
+            {
+                cont = WaitForLevelChange(loopCountShortDelay_);
+            }
+            
+            // Now read in bit stream
             for (uint8_t i = 0; i < 40 && cont; ++i)
             {
-                uint8_t bitValue;
-                
-                static const uint16_t DURATION_US_BIT_ZERO_CEILING = 65;
-                
                 // Skip low period
-                if (WaitForLevelChange())
+                cont = WaitForLevelChange(loopCountShortDelay_);
+                if (cont)
                 {
                     // Observe high period duration
-                    if (CalculateBitValueByPulseHighDuration(&bitValue,
-                                                             DURATION_US_BIT_ZERO_CEILING))
+                    uint8_t bitValue;
+                    
+                    cont = CalculateBitValueByPulseHighDuration(&bitValue);
+                    if (cont)
                     {
                         uint8_t byteArrayIdx = i >> 3;
                         
-                        // Shift everything in the accumulator byte left, which
-                        // defaults the lowest bit to zero.
+                        // Shift everything in the accumulator byte left,
+                        // which defaults the lowest bit to zero.
                         byteArray[byteArrayIdx] <<= 1;
                         
                         // Conditionally set the lowest bit to 1
@@ -333,100 +120,112 @@ public:
                             byteArray[byteArrayIdx] |= 0x01;
                         }
                     }
-                    else
-                    {
-                        cont = 0;
-                    }
-                }
-                else
-                {
-                    cont = 0;
                 }
             }
+        }
+        
+        // Timing-sensitive area finished
+        
+        // Step 3 - Process collected bit stream
+        if (cont)
+        {
+            // Apply checksum.
+            // Bytes 1-4 are data.
+            // Byte  5 is the sum of bytes 1-4.
+            cont = (byteArray[0] +
+                    byteArray[1] +
+                    byteArray[2] +
+                    byteArray[3]) == byteArray[4];
             
             if (cont)
             {
+                // Calculate Temperature
+                m->tempC = byteArray[2];
+                m->tempF = (uint8_t)(((float)m->tempC * (9.0 / 5.0)) + 32.0);
                 
-                // Read all the bits and reproduce the signal for visual inspection
-                for (uint8_t i = 0; i < 40; ++i)
-                {
-                    PAL.DigitalWrite(D1, HIGH);
-                    
-            uint8_t byteListIdxTmp = (i >> 3);
-            uint8_t bitMaskTmp     = (0x80 >> (i - (byteListIdxTmp << 3)));
-            
-            uint8_t bitVal = (byteArray[byteListIdxTmp] & bitMaskTmp) ? 1 : 0;
-                    
-                    
-                    if (bitVal)
-                    {
-                        PAL.DelayMicroseconds(60);
-                    }
-                    else
-                    {
-                        PAL.DelayMicroseconds(12);
-                    }
-                    
-                    PAL.DigitalWrite(D1, LOW);
-                    
-                    PAL.DelayMicroseconds(55);
-                }
+                // Calculate Humidity
+                m->pctHumidity = byteArray[0];
                 
-                
-                
-                // Let's check the checksum
-                uint8_t total = byteArray[0] + byteArray[1] + byteArray[2] + byteArray[3];
-                
-                
-                
-                // first, does this checksum math make sense?
-                
-                PAL.DigitalWrite(D2, HIGH);
-                
-                PAL.DigitalWrite(D1, HIGH);
-                PAL.DigitalWrite(D1, LOW);
-                
-                if (byteArray[4] == total)
-                {
-                    PAL.DigitalWrite(D1, HIGH);
-                    PAL.DigitalWrite(D1, LOW);
-                }
-                
-                PAL.DigitalWrite(D2, LOW);
-                
+                // Calculate Heat Index
+                m->heatIndex = ComputeHeatIndex(m->tempF, m->pctHumidity);
             }
-            else
-            {
-                // Couldn't read all the bits
-            }
-        }
-        else
-        {
-            // Didn't lock on to bit stream
         }
         
-        return m;
+        return cont;
     }
 
-private:
-    Measurement GetDefaultMeasurement()
+    // Lightly tweaked implementation taken from:
+    // https://github.com/adafruit/DHT-sensor-library/blob/master/DHT.cpp
+    //
+    // See http://www.srh.noaa.gov/ama/?n=heatindex for a table of values.
+    //
+    //float DHT::computeHeatIndex(float temperature, float percentHumidity, bool isFahrenheit) {
+    static uint8_t ComputeHeatIndex(float temperature, float percentHumidity)
     {
-        Measurement m;
+      // Using both Rothfusz and Steadman's equations
+      // http://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml
+      float hi;
+
+      // if (!isFahrenheit)
+        // temperature = convertCtoF(temperature);
+
+      hi = 0.5 * (temperature + 61.0 + ((temperature - 68.0) * 1.2) + (percentHumidity * 0.094));
+
+      if (hi > 79) {
+        hi = -42.379 +
+                 2.04901523 * temperature +
+                10.14333127 * percentHumidity +
+                -0.22475541 * temperature*percentHumidity +
+                -0.00683783 * pow(temperature, 2) +
+                -0.05481717 * pow(percentHumidity, 2) +
+                 0.00122874 * pow(temperature, 2) * percentHumidity +
+                 0.00085282 * temperature*pow(percentHumidity, 2) +
+                -0.00000199 * pow(temperature, 2) * pow(percentHumidity, 2);
+
+        if((percentHumidity < 13) && (temperature >= 80.0) && (temperature <= 112.0))
+          hi -= ((13.0 - percentHumidity) * 0.25) * sqrt((17.0 - abs(temperature - 95.0)) * 0.05882);
+
+        else if((percentHumidity > 85.0) && (temperature >= 80.0) && (temperature <= 87.0))
+          hi += ((percentHumidity - 85.0) * 0.1) * ((87.0 - temperature) * 0.2);
+      }
+
+      //return isFahrenheit ? hi : convertFtoC(hi);
+      return (uint8_t)hi;
+    }
+
+    void CalibrateTiming()
+    {
+        // Measure duration of time taken to loop a known number of times.
+        uint32_t timeStart = PAL.Micros();
+        WaitForLevelChange(CALIBRATION_LOOP_COUNT);
+        uint32_t timeEnd = PAL.Micros();
         
-        m.temperature = 0;
+        uint32_t usPerLoopSet = timeEnd - timeStart;
         
-        return m;
+        // Calculate delay loop counts
+        loopCountLongDelay_ =
+            (uint32_t)((double)DURATION_US_LONG_PULSE *
+                       (double)CALIBRATION_LOOP_COUNT /
+                       (double)usPerLoopSet);
+        loopCountShortDelay_ =
+            (uint32_t)((double)DURATION_US_SHORT_PULSE *
+                       (double)CALIBRATION_LOOP_COUNT  /
+                       (double)usPerLoopSet);
+        loopCountBitZeroCeiling_ = 
+            (uint32_t)((double)DURATION_US_BIT_ZERO_CEILING *
+                       (double)CALIBRATION_LOOP_COUNT       /
+                       (double)usPerLoopSet);
     }
     
-    uint8_t WaitForLevelChange()
+    uint8_t WaitForLevelChange(uint32_t  loopCountLimit,
+                               uint32_t *loopCountRet = NULL)
     {
         uint8_t level        = PAL.DigitalRead(pin_);
         uint8_t levelChanged = 0;
         
         uint8_t cont = 1;
         
-        uint16_t loopCount      = 0;
-        uint16_t loopCountLimit = 10000;
+        uint32_t loopCount = 0;
         
         while (cont)
         {
@@ -443,31 +242,29 @@ private:
                 if (loopCount >= loopCountLimit)
                 {
                     cont = 0;
-                    
-                    PAL.DigitalWrite(D2, HIGH);
-                    PAL.DigitalWrite(D2, LOW);
                 }
             }
+        }
+        
+        if (loopCountRet)
+        {
+            *loopCountRet = loopCount;
         }
         
         return levelChanged;
     }
     
-    uint8_t CalculateBitValueByPulseHighDuration(uint8_t  *bitValue,
-                                                 uint16_t  bitZeroCeilingDuration)
+    uint8_t CalculateBitValueByPulseHighDuration(uint8_t *bitValue)
     {
         uint8_t retVal = 0;
         
-        uint16_t timeStart = (uint16_t)PAL.Micros();
+        uint32_t loopCount = 0;
         
-        if (WaitForLevelChange())
+        if (WaitForLevelChange(loopCountShortDelay_, &loopCount))
         {
             retVal = 1;
             
-            uint16_t timeEnd  = (uint16_t)PAL.Micros();
-            uint16_t timeDiff = timeEnd - timeStart;
-            
-            if (timeDiff <= bitZeroCeilingDuration)
+            if (loopCount <= loopCountBitZeroCeiling_)
             {
                 *bitValue = 0;
             }
@@ -476,27 +273,16 @@ private:
                 *bitValue = 1;
             }
         }
-        
-        
-        // PAL.DigitalWrite(D1, HIGH);
-        // PAL.DigitalWrite(D1, LOW);
-        
-        /*
-        if (*bitValue)
-        {
-            PAL.DigitalWrite(D1, HIGH);
-            PAL.DigitalWrite(D1, LOW);
-        }
-        */
-        
-        
+
         return retVal;
     }
 
 
     Pin pin_;
-    Pin D1;
-    Pin D2;
+    
+    uint32_t loopCountLongDelay_;
+    uint32_t loopCountShortDelay_;
+    uint32_t loopCountBitZeroCeiling_;
 };
 
 
