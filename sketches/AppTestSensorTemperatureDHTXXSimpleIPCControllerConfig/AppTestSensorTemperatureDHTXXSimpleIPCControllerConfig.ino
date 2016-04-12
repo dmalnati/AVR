@@ -9,7 +9,7 @@ static AppTestSensorTemperatureDHTXXSimpleIPCControllerConfig cfg = {
     .pinRFRX = 14,
     .pinRFTX = 15,
     
-    .pinSensor = 11
+    .pinSensor = 18
 };
 
 
