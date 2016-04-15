@@ -20,7 +20,7 @@
 // - Lots of comments as I tried to figure out how it worked
 //
 
-#define FUNCTION_STORAGE_REQUIREMENT_MAX 16
+#define FUNCTION_STORAGE_REQUIREMENT_MAX (sizeof(void *) * 4)
 
 
 /*
@@ -186,7 +186,9 @@ public:
         if (rhs.functorIsSet_)
         {
             // Clone into buf
-            ((FCBType *)rhs.buf_)->CloneInto((void *)buf_);
+            FCBType *fcb = (FCBType *)&(buf_[0]);
+
+            fcb->CloneInto((void *)buf_);
             
             // Note that we have a working functor now
             functorIsSet_ = 1;
@@ -232,7 +234,9 @@ public:
             DestructFunctor();
             
             // Clone into buf
-            ((FCBType *)rhs.buf_)->CloneInto((void *)buf_);
+            FCBType *fcb = (FCBType *)&(rhs.buf_[0]);
+
+            fcb->CloneInto((void *)buf_);
             
             // Note that we have a working functor now
             functorIsSet_ = 1;
@@ -256,8 +260,12 @@ public:
     ReturnType operator()(FunctorArgParamTypeList &&... args)
     {
         if (functorIsSet_)
+        {
             // Forward arguments to object we have in memory
-            return ((FCBType *)buf_)->operator()(static_cast<FunctorArgParamTypeList>(args)...);
+            FCBType *fcb = (FCBType *)&(buf_[0]);
+        
+            return fcb->operator()(static_cast<FunctorArgParamTypeList>(args)...);
+        }
         else
             // We don't throw exceptions, so just return a default value for the
             // given return type.
@@ -279,7 +287,9 @@ private:
         if (functorIsSet_)
         {
             // Destroy using base class' virtual destructor, manually
-            ((FCBType *)buf_)->~FCBType();
+            FCBType *fcb = (FCBType *)&(buf_[0]);
+            
+            fcb->~FCBType();
         }
         
         InitState();
