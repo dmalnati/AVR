@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "New.h"
 
  
 //
@@ -512,7 +513,6 @@ private:
 };
 
 
-inline void* operator new(size_t, void* const buf) { return buf; }
 
 template<typename T, uint8_t CAPACITY>
 class ListInPlace
