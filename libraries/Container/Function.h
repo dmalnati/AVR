@@ -186,7 +186,7 @@ public:
         if (rhs.functorIsSet_)
         {
             // Clone into buf
-            FCBType *fcb = (FCBType *)&(buf_[0]);
+            FCBType *fcb = (FCBType *)&(rhs.buf_[0]);
 
             fcb->CloneInto((void *)buf_);
             
