@@ -14,7 +14,6 @@
 // Differences include:
 // - Placement new instead of dynamic memory allocation
 //   - Capacity set statically but enforced with static_assert
-// - Used argument forwarding
 // - Renamed template params and classes to highlight how I think they work
 // - Rearranged order of some class elements to my taste
 // - Lots of comments as I tried to figure out how it worked
@@ -33,9 +32,9 @@
 template<typename ReturnType, typename ...FunctorArgParamTypeList>
 struct FunctorCarrierBase
 {
-    virtual ReturnType  operator()(FunctorArgParamTypeList &&... args) = 0;
-    virtual void        CloneInto(void *buf) const                     = 0;
-    virtual            ~FunctorCarrierBase()                           = default;
+    virtual ReturnType  operator()(FunctorArgParamTypeList ... args) = 0;
+    virtual void        CloneInto(void *buf) const                   = 0;
+    virtual            ~FunctorCarrierBase()                         = default;
 };
 
 /*
@@ -66,10 +65,10 @@ public:
                       "Functor size too large");
     }
     
-    virtual ReturnType operator()(FunctorArgParamTypeList &&... args) override
+    virtual ReturnType operator()(FunctorArgParamTypeList ... args) override
     {
-        // Forward arguments
-        return f_(static_cast<FunctorArgParamTypeList>(args)...);
+        // Pass arguments
+        return f_(args...);
     }
     
     virtual void CloneInto(void *buf) const override
@@ -256,15 +255,14 @@ public:
         return *this;
     }
     
-    
-    ReturnType operator()(FunctorArgParamTypeList &&... args)
+    ReturnType operator()(FunctorArgParamTypeList ... args)
     {
         if (functorIsSet_)
         {
-            // Forward arguments to object we have in memory
+            // Pass arguments to object we have in memory
             FCBType *fcb = (FCBType *)&(buf_[0]);
         
-            return fcb->operator()(static_cast<FunctorArgParamTypeList>(args)...);
+            return fcb->operator()(args...);
         }
         else
             // We don't throw exceptions, so just return a default value for the
