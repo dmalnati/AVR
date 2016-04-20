@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "Function.h"
+
 
 // Forward declaration
 template <uint8_t, uint8_t, uint8_t>
@@ -36,44 +38,42 @@ private:
     uint32_t timeQueued_;
     uint32_t timeout_;
     uint8_t  isInterval_;
-    
 };
 
 
 //////////////////////////////////////////////////////////////////////
 //
-// Object Wrappers
+// Helpers
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename T>
+
 class TimedEventHandlerDelegate
 : public TimedEventHandler
 {
-    typedef void (T::*MemberCallbackFn)();
-    
 public:
     TimedEventHandlerDelegate()
-    : obj_(NULL)
-    , func_(NULL)
     {
-        
+        // Nothing to do
+    }
+    
+    TimedEventHandlerDelegate(function<void()> cbFn)
+    {
+        SetCallback(cbFn);
     }
 
-    void SetCallback(T *obj, MemberCallbackFn func)
+    void SetCallback(function<void()> cbFn)
     {
-        obj_  = obj;
-        func_ = func;
+        cbFn_ = cbFn;
     }
 
 private:
     virtual void OnTimedEvent()
     {
-        if (obj_ && func_) { ((*obj_).*func_)(); }
+        cbFn_();
     }
 
-    T                *obj_;
-    MemberCallbackFn  func_;
+    function<void()> cbFn_;
 };
 
 
