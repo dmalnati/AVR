@@ -51,8 +51,9 @@ public:
         //   period.
         // - A timer going off within the period to end the duty cycle.
         
-        // Calculate duty cycle time in microseconds
-        uint32_t dutyCycleExpireUs = (1.0 + ((double)deg / 180.0)) * 1000.0;
+        // Calculate duty cycle time in microseconds.
+        // Range between 0.5ms - 2.5ms to cover a 180 degree range of motion.
+        uint32_t dutyCycleExpireUs = (0.5 + (((double)deg / 180.0) * 2)) * 1000.0;
         
         // Set up the end-of-duty-cycle callback
         auto cbFnOnDutyCycleEnd = [&]() {
@@ -61,7 +62,7 @@ public:
         timerDutyCycle_.SetCallback(cbFnOnDutyCycleEnd);
         
         // Set up the callback to fire when the period starts
-        auto cbFnOnPeriodStart = [&]() {
+        auto cbFnOnPeriodStart = [&, dutyCycleExpireUs]() {
             // Re-start timer to end duty cycle.  Should have expired by now.
             timerDutyCycle_.RegisterForIdleTimeHiResTimedEvent(dutyCycleExpireUs);
             
