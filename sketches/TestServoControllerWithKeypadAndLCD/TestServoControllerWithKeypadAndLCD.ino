@@ -17,7 +17,7 @@ public:
     })
     , sc_(PIN_SERVO)
     {
-        ClearBuf();
+        // Nothing to do
     }
 
     void Run()
@@ -25,8 +25,11 @@ public:
         // Set up LCD
         lcd_.Init();
 
+        // Set up initial display
         lcd_.PrintAt(0,  0, "MoveTo: ");
         lcd_.PrintAt(0,  1, "Last  : ");
+        
+        ClearBuf();
 
         // Set up Keypad
         kpad_.Init([&](char c) {
@@ -131,12 +134,11 @@ private:
 };
 
 
-
+static KeypadMonitor km;
 
 
 void setup()
 {
-    KeypadMonitor km;    // wasn't working before in static global scope... why?
     km.Run();
 }
 
