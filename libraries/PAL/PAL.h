@@ -146,15 +146,54 @@ public:
         return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
     }
     
+    static void Swap2(uint8_t *buf)
+    {
+        uint8_t b = buf[0];
+        
+        buf[0] = buf[1];
+        buf[1] = b;
+    }
+    
+    static void Swap4(uint8_t *buf)
+    {
+        uint8_t b = buf[0];
+        
+        buf[0] = buf[3];
+        buf[3] = b;
+        
+        b = buf[1];
+        
+        buf[1] = buf[2];
+        buf[2] = b;
+    }
+    
     // 8-bit AVRs are Little Endian
     static inline uint16_t htons(uint16_t val)
     {
-        return (((val & 0x00FF) << 8) | ((val & 0xFF00) >> 8));
+        uint16_t retVal = val;
+        
+        Swap2((uint8_t *)&retVal);
+        
+        return retVal;
     }
     
     static inline uint16_t ntohs(uint16_t val)
     {
         return htons(val);
+    }
+    
+    static inline uint32_t htonl(uint32_t val)
+    {
+        uint32_t retVal = val;
+        
+        Swap4((uint8_t *)&retVal);
+        
+        return retVal;
+    }
+    
+    static inline uint32_t ntohl(uint32_t val)
+    {
+        return htonl(val);
     }
     
     static void DisableWatchdogAfterSoftReset()
