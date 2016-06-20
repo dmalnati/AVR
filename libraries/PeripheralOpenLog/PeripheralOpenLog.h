@@ -48,9 +48,18 @@ public:
         // Start serial comms
         ss_.begin(baud_);
         
-        // Issue a Flush and Reset command in the event that this program
+        Reset();
+    }
+    
+    void Reset()
+    {
+        // Sync and reset in the event that this system was
         // restarted but the logger kept running in an unknown state.
+        Cmd("sync");
         Cmd("reset");
+        EnterCommandMode();
+        
+        fileHandleActive_ = NULL;
     }
     
     void Cmd(const char *cmd)

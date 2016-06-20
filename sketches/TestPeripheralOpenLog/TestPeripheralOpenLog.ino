@@ -27,7 +27,7 @@ void setup()
     ted.SetCallback([&]() {
         ++count;
 
-        if (!(count % 2))
+        if ((count % 2))
         {
             fhOne->Append(count);
             fhOne->Append(" ");
