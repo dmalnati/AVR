@@ -103,6 +103,14 @@ public:
         }
     }
     
+    static inline void DigitalToggle(Pin pin)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            *port__pinxPtr[pin.port_] |= pin.pinMask_;
+        }
+    }
+    
     static uint8_t GetPortValueFromPhysicalPin(uint8_t physicalPin)
     {
         uint8_t retVal = 0;
@@ -194,6 +202,16 @@ public:
     static inline uint32_t ntohl(uint32_t val)
     {
         return htonl(val);
+    }
+    
+    static uint8_t GetCpuPrescalerValue()
+    {
+        return (uint8_t)(1 << (uint8_t)(CLKPR & 0x0F));
+    }
+
+    static uint32_t GetCpuFreq()
+    {
+        return (uint32_t)F_CPU / GetCpuPrescalerValue();
     }
     
     static void DisableWatchdogAfterSoftReset()
