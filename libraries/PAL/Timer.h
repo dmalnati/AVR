@@ -74,6 +74,12 @@ public:
         *ocr_ = value;
     }
     
+    //////////////////////////////////////////////////////////////////////////
+    //
+    // Output pin control modes
+    //
+    //////////////////////////////////////////////////////////////////////////
+    
     enum class CTCModeBehavior : uint8_t
     {
         NONE = 0,
@@ -112,6 +118,12 @@ public:
     {
         SetConfigurationBits((uint8_t)b);
     }
+    
+    //////////////////////////////////////////////////////////////////////////
+    //
+    // Interrupt control
+    //
+    //////////////////////////////////////////////////////////////////////////
     
     void SetInterruptHandler(function<void()> cbFn)
     {
@@ -159,16 +171,6 @@ private:
         *comreg_ = (uint8_t)((uint8_t) (*comreg_ & mask) | 
                              (uint8_t)((com1bit << com1bitLoc_) |
                                        (com0bit << com0bitLoc_)));
-                                       
-        Serial.println("Setting configuration");
-        Serial.print("cfg: 0x");
-        Serial.println(cfg, HEX);
-        Serial.print("com1bit: ");
-        Serial.println(com1bit);
-        Serial.print("com0bit: ");
-        Serial.println(com0bit);
-        Serial.print("mask: 0x");
-        Serial.println(mask, HEX);
     }
     
 
@@ -186,6 +188,22 @@ private:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Timer1
 {
     static const uint8_t PIN_CHANNEL_A = 15;
@@ -193,7 +211,8 @@ class Timer1
     
 public:
     Timer1()
-    : channelA_(&OCR1A, &TCCR1A, COM1A1, COM1A0, &TIMSK1, OCIE1A, &TIFR1, OCF1A, PIN_CHANNEL_A)
+    : timerPrescaler_(GetTimerPrescalerFromRegister())
+    , channelA_(&OCR1A, &TCCR1A, COM1A1, COM1A0, &TIMSK1, OCIE1A, &TIFR1, OCF1A, PIN_CHANNEL_A)
     , channelB_(&OCR1B, &TCCR1A, COM1B1, COM1B0, &TIMSK1, OCIE1B, &TIFR1, OCF1B, PIN_CHANNEL_B)
     {
         // Set up static members
@@ -204,6 +223,8 @@ public:
         // Care if more than one instance created of mostly-static class?
         
         // What state should this object be in at creation?
+            // power down, configure, set up to not run and all regs cleared
+            // and then power up again?
         
         // which parts should be atomic?
     }
@@ -213,45 +234,21 @@ public:
         // ???
     }
     
-    static void PowerUpTimer()
+    void PowerUpTimer()
     {
         // Turn off power saving
         PRR &= (uint8_t)~_BV(PRTIM1);
     }
     
-    static void PowerDownTimer()
+    void PowerDownTimer()
     {
         // Turn on power saving
         PRR |= _BV(PRTIM1);
     }
     
-    static void StopTimer()
+    uint16_t GetTimerPrescalerValue()
     {
-        SetTimerPrescaler(TimerPrescaler::DISABLE_TIMER);
-    }
-    
-    static uint16_t GetTimerPrescalerValue()
-    {
-        uint16_t retVal = 0;
-        
-        uint8_t cs12 = TCCR1B & _BV(CS12);
-        uint8_t cs11 = TCCR1B & _BV(CS11);
-        uint8_t cs10 = TCCR1B & _BV(CS10);
-        
-        // Unfortunately the scaling is not as simple as the CPU prescaler, so
-        // bit shifting isn't sufficient.
-        //
-        // Any other logic is more convoluted than just enumerating the few
-        // actual combinations.
-        //
-        // Look only for actual prescale values, everything else call zero
-        if      (!cs12 && !cs11 &&  cs10)  retVal =    1;
-        else if (!cs12 &&  cs11 && !cs10)  retVal =    8;
-        else if (!cs12 &&  cs11 &&  cs10)  retVal =   64;
-        else if ( cs12 && !cs11 && !cs10)  retVal =  256;
-        else if ( cs12 && !cs11 &&  cs10)  retVal = 1024;
-        
-        return retVal;
+        return ConvertTimerPrescalerToValue(timerPrescaler_);
     }
     
     enum class TimerPrescaler : uint8_t
@@ -266,17 +263,63 @@ public:
         EXTERNAL_CLOCK_RISING_EDGE
     };
     
-    static void SetTimerPrescaler(TimerPrescaler p)
+    uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
     {
-        uint8_t cs12bit = (uint8_t)p & 0x04 ? 1 : 0;
-        uint8_t cs11bit = (uint8_t)p & 0x02 ? 1 : 0;
-        uint8_t cs10bit = (uint8_t)p & 0x01 ? 1 : 0;
+        uint16_t retVal = 0;
+        
+        switch (p)
+        {
+            case TimerPrescaler::DIV_BY_1:    retVal = 1;    break;
+            case TimerPrescaler::DIV_BY_8:    retVal = 8;    break;
+            case TimerPrescaler::DIV_BY_64:   retVal = 64;   break;
+            case TimerPrescaler::DIV_BY_256:  retVal = 256;  break;
+            case TimerPrescaler::DIV_BY_1024: retVal = 1024; break;
+            
+            default: break;
+        }
+        
+        return retVal;
+    }
+    
+    TimerPrescaler GetTimerPrescalerFromRegister()
+    {
+        uint8_t cs12bit = TCCR1B & _BV(CS12) ? 1 : 0;
+        uint8_t cs11bit = TCCR1B & _BV(CS11) ? 1 : 0;
+        uint8_t cs10bit = TCCR1B & _BV(CS10) ? 1 : 0;
+        
+        return (TimerPrescaler)(uint8_t)(cs12bit << CS12 |
+                                         cs11bit << CS11 |
+                                         cs10bit << CS10);
+    }
+    
+    TimerPrescaler GetTimerPrescaler()
+    {
+        return timerPrescaler_;
+    }
+    
+    void SetTimerPrescaler(TimerPrescaler p)
+    {
+        timerPrescaler_ = p;
+    }
+    
+    void StopTimer()
+    {
+        TCCR1B &= 0xF8;
+    }
+    
+    void StartTimer()
+    {
+        uint8_t cs12bit = (uint8_t)timerPrescaler_ & 0x04 ? 1 : 0;
+        uint8_t cs11bit = (uint8_t)timerPrescaler_ & 0x02 ? 1 : 0;
+        uint8_t cs10bit = (uint8_t)timerPrescaler_ & 0x01 ? 1 : 0;
         
         TCCR1B = (uint8_t)((uint8_t) (TCCR1B & 0xF8) | 
                            (uint8_t)((cs12bit << CS12) |
                                      (cs11bit << CS11) |
                                      (cs10bit << CS10)));
     }
+    
+
     
     enum class TimerMode : uint8_t
     {
@@ -298,7 +341,7 @@ public:
         FAST_PWM_TOP_OCRNA
     };
     
-    static void SetTimerMode(TimerMode m)
+    void SetTimerMode(TimerMode m)
     {
         // Get integer value of TimerMode and extract bits from it
         uint8_t wgm13bit = (uint8_t)m & 0x08 ? 1 : 0;
@@ -333,20 +376,97 @@ public:
         return &channelB_;
     }
     
-    static uint16_t GetTimerValue()
+    uint16_t GetTimerValue()
     {
         return TCNT1;
     }
     
-    static void SetTimerValue(uint16_t value)
+    void SetTimerValue(uint16_t value)
     {
         TCNT1 = value;
     }
     
     
     
+    struct FastPWMTimerConfig
+    {
+        // Actual configuration params
+        TimerPrescaler                     timerPrescaler;
+        TimerMode                          timerMode;
+        uint16_t                           channelAValue;
+        TimerChannel::FastPWMModeBehavior  channelAFastPWMModeBehavior;
+        TimerChannel::FastPWMModeBehavior  channelBFastPWMModeBehavior;
+        
+        // Useful for debugging and logging
+        uint16_t  periodUsecCalculated;
+        uint16_t  timerPrescalerValue;
+        double    tickDurationUsec;
+    };
     
-    
+    // Return 1 if possible, 0 if not
+    uint8_t DetermineFastPWMTimerParams(uint16_t            periodUsecRequired,
+                                        FastPWMTimerConfig *cfg)
+    {
+        // Assume 10-bit counter (why not)
+        
+        // How to calculate
+        // Determine PWM period you need to work within
+        // Iterate prescalers until you find a period >= required
+        // Calculate duration of each tick
+        // Set TOP = period / tickDuration
+        // Duty cycle is then = pct * TOP
+        // Let it rip
+        
+        const uint32_t MAX_VALUES = 65536;
+        
+        TimerPrescaler prescalerList[] = {
+            TimerPrescaler::DIV_BY_1,
+            TimerPrescaler::DIV_BY_8,
+            TimerPrescaler::DIV_BY_64,
+            TimerPrescaler::DIV_BY_256,
+            TimerPrescaler::DIV_BY_1024
+        };
+        uint8_t prescalerListLen = sizeof(prescalerList) /
+                                   sizeof(TimerPrescaler);
+        
+        uint8_t  minimumPrescalerFound = 0;
+        for (uint8_t i = 0;
+             i < prescalerListLen && !minimumPrescalerFound;
+             ++i)
+        {
+            TimerPrescaler prescaler      = prescalerList[i];
+            uint16_t       prescalerValue = ConvertTimerPrescalerToValue(prescaler);
+            
+            uint32_t cpuFreq          = PAL.GetCpuFreq();
+            double   ticksPerSec      = (double)cpuFreq /
+                                        (double)prescalerValue;
+            double   tickDurationUsec = 1000000.0 / ticksPerSec;
+            uint32_t periodUsecMax    = (double)MAX_VALUES *
+                                        tickDurationUsec;
+            
+            if (periodUsecMax >= periodUsecRequired)
+            {
+                minimumPrescalerFound = 1;
+                
+                // Fill out return config
+                cfg->timerPrescaler      = prescaler;
+                cfg->timerMode           = TimerMode::FAST_PWM_TOP_OCRNA;
+                cfg->channelAValue       = ((double)periodUsecRequired /
+                                            tickDurationUsec) - 1;
+                cfg->channelAFastPWMModeBehavior =
+                    TimerChannel::FastPWMModeBehavior::NONE;
+                cfg->channelBFastPWMModeBehavior =
+                    TimerChannel::FastPWMModeBehavior::CLEAR;
+                
+                cfg->periodUsecCalculated = (cfg->channelAValue + 1) * 
+                                             tickDurationUsec;
+                cfg->timerPrescalerValue  = prescalerValue;
+                cfg->tickDurationUsec     = tickDurationUsec;
+            }
+        }
+        
+        return minimumPrescalerFound;
+    }    
     
     
     
@@ -396,6 +516,8 @@ public:
     
     
 private:
+
+    TimerPrescaler timerPrescaler_;
 
     TimerChannel channelA_;
     TimerChannel channelB_;

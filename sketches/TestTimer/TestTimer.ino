@@ -31,7 +31,9 @@ void setup()
     t.PowerDownTimer();
     t.PowerUpTimer();
     t.StopTimer();
-    t.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
+    //t.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
+    t.StopTimer();
+    t.StartTimer();
 
     a = t.GetTimerChannelA();
     b = t.GetTimerChannelB();
@@ -39,7 +41,9 @@ void setup()
     //TestPHASE_CORRECT_PWM_8_BIT_PinDriver();
     //TestPHASE_CORRECT_PWM_8_BIT_PinDriver_and_InterruptDriver();
     //TestPHASE_CORRECT_PWM_8_BIT_InterruptDriver();
-    TestPHASE_CORRECT_PWM_8_BIT_Half_and_Half();
+    //TestPHASE_CORRECT_PWM_8_BIT_Half_and_Half();
+    //TestFAST_PWM_8_BIT();
+    TestFAST_PWM_TOP_OCRNA();
 
     tedMain.SetCallback([](){ OnTimeout(); });
     tedMain.RegisterForTimedEventInterval(3000);
@@ -174,6 +178,45 @@ void TestPHASE_CORRECT_PWM_8_BIT_Half_and_Half()
         stateB = !stateB;
     });
     tedB.RegisterForTimedEventInterval(330);
+}
+
+void TestFAST_PWM_8_BIT()
+{
+    t.SetTimerMode(Timer1::TimerMode::FAST_PWM_8_BIT);
+
+    a->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SET);
+    a->SetValue(150);
+    b->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SET);
+    b->SetValue(10);
+
+    tedA.SetCallback([&](){
+        PAL.DigitalToggle(pinSignalA);
+        a->SetValue(a->GetValue() + 1);
+    });
+    tedA.RegisterForTimedEventInterval(1);
+    
+
+    b->SetInterruptHandler([&](){
+        PAL.DigitalToggle(pinSignalB);
+        b->SetValue(b->GetValue() + 1);
+    });
+    b->RegisterForInterrupt();
+}
+
+void TestFAST_PWM_TOP_OCRNA()
+{
+    t.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
+
+    a->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
+    a->SetValue(150);
+    b->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SET);
+    b->SetValue(100);
+
+    tedA.SetCallback([&](){
+        PAL.DigitalToggle(pinSignalA);
+        a->SetValue(a->GetValue() + 1);
+    });
+    tedA.RegisterForTimedEventInterval(1);
 }
 
 
