@@ -12,6 +12,7 @@
 #include "IdleTimeEventHandler.h"
 #include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
+#include "IdleTimeHiResTimedEventHandler.h"
  
  
 // Forward declaration
