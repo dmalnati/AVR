@@ -14,26 +14,29 @@ Pin pinSignalB(PIN_SIGNAL_B);
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
 static IdleTimeHiResTimedEventHandlerDelegate hrted;
-static Signal s;
+
+
+static const uint8_t SINE_WAVE_STEP_COUNT = 8;
+static SignalSourceSineWave<SINE_WAVE_STEP_COUNT> sineWave;
+//static SignalDAC s(&sineWave);
 
 void setup()
 {
     Serial.begin(9600);
 
-    uint16_t periodUsec = 10;
+    PAL.PinMode(pinSignalA, OUTPUT);
+    PAL.PinMode(pinSignalB, OUTPUT);
 
-    s.SetPeriod(periodUsec);
-    s.DebugSetDutyCycle(50);
+    //uint16_t periodUsec = 10000;
+    //s.SetPeriod(periodUsec);
+    //s.DebugSetDutyCycle(50);
+
+    SignalDAC s(&sineWave);
+    //s.SetPeriod(833);
+    s.SetPeriod(454);
     s.Start();
 
-    
-    //uint8_t tedState = 0;
-    //ted.SetCallback([&](){
-    //    if (!tedState) s.Stop(), tedState = 1;
-    //    else s.Start(), tedState = 0;
-    //});
-    //ted.RegisterForTimedEventInterval(1300);
-
+    #if 0
     uint8_t pct = 0;
     int8_t  dir = 1;
     hrted.SetCallback([&](){
@@ -53,6 +56,7 @@ void setup()
         }
     });
     hrted.RegisterForIdleTimeHiResTimedEventInterval(10000);
+    #endif
 
     evm.MainLoop();
 }

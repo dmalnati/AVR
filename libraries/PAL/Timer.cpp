@@ -2,23 +2,17 @@
 
 
 // Storage for static members
-TimerChannel *Timer1::channelAPtr_ = NULL;
-TimerChannel *Timer1::channelBPtr_ = NULL;
+function<void()> Timer1::cbFnA_;
+function<void()> Timer1::cbFnB_;
 
 
 ISR(TIMER1_COMPA_vect)
 {
-    if (Timer1::channelAPtr_)
-    {
-        Timer1::channelAPtr_->OnISR();
-    }
+    Timer1::cbFnA_();
 }
 
 ISR(TIMER1_COMPB_vect)
 {
-    if (Timer1::channelBPtr_)
-    {
-        Timer1::channelBPtr_->OnISR();
-    }
+    Timer1::cbFnB_();
 }
 

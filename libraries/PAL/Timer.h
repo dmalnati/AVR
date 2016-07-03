@@ -35,7 +35,8 @@ It draws data, not fed data(?)
 class TimerChannel
 {
 public:
-    TimerChannel(volatile uint16_t *ocr,
+    TimerChannel(function<void()>  *cbFn,
+                 volatile uint16_t *ocr,
                  volatile uint8_t  *comreg,
                           uint8_t   com1bitLoc,
                           uint8_t   com0bitLoc,
@@ -44,7 +45,8 @@ public:
                  volatile uint8_t  *tifr,
                           uint8_t   ocfbitLoc,
                           uint8_t   pin)
-    : ocr_(ocr)
+    : cbFn_(cbFn)
+    , ocr_(ocr)
     , comreg_(comreg)
     , com1bitLoc_(com1bitLoc)
     , com0bitLoc_(com0bitLoc)
@@ -127,18 +129,12 @@ public:
     
     void SetInterruptHandler(function<void()> cbFn)
     {
-        cbFn_ = cbFn;
+        *cbFn_ = cbFn;
     }
     
     void UnSetInterruptHandler()
     {
-        cbFn_ = [](){};
-    }
-    
-    // Should be private but public for the sake of the ISR
-    void OnISR()
-    {
-        cbFn_();
+        *cbFn_ = [](){};
     }
     
     void RegisterForInterrupt()
@@ -173,6 +169,8 @@ private:
                                        (com0bit << com0bitLoc_)));
     }
     
+    
+    function<void()> *cbFn_;
 
     volatile uint16_t *ocr_;
     volatile uint8_t  *comreg_;
@@ -182,8 +180,6 @@ private:
              uint8_t ociebitLoc_;
     volatile uint8_t  *tifr_;
              uint8_t   ocfbitLoc_;
-             
-    function<void()> cbFn_;
 };
 
 
@@ -212,14 +208,9 @@ class Timer1
 public:
     Timer1()
     : timerPrescaler_(GetTimerPrescalerFromRegister())
-    , channelA_(&OCR1A, &TCCR1A, COM1A1, COM1A0, &TIMSK1, OCIE1A, &TIFR1, OCF1A, PIN_CHANNEL_A)
-    , channelB_(&OCR1B, &TCCR1A, COM1B1, COM1B0, &TIMSK1, OCIE1B, &TIFR1, OCF1B, PIN_CHANNEL_B)
+    , channelA_(&cbFnA_, &OCR1A, &TCCR1A, COM1A1, COM1A0, &TIMSK1, OCIE1A, &TIFR1, OCF1A, PIN_CHANNEL_A)
+    , channelB_(&cbFnB_, &OCR1B, &TCCR1A, COM1B1, COM1B0, &TIMSK1, OCIE1B, &TIFR1, OCF1B, PIN_CHANNEL_B)
     {
-        // Set up static members
-        channelAPtr_ = &channelA_;
-        channelBPtr_ = &channelB_;
-
-        
         // Care if more than one instance created of mostly-static class?
         
         // What state should this object be in at creation?
@@ -398,24 +389,26 @@ public:
         TimerChannel::FastPWMModeBehavior  channelBFastPWMModeBehavior;
         
         // Useful for debugging and logging
-        uint16_t  periodUsecCalculated;
+        uint32_t  periodUsecCalculated;
         uint16_t  timerPrescalerValue;
         double    tickDurationUsec;
     };
     
+    // Get back configuration which will drive the timer at the specified
+    // period.
+    // It involves using channel A as the TOP.
+    // Up to the user to decide to use B as duty cycle, set interrupt handlers,
+    // etc.
+    //
     // Return 1 if possible, 0 if not
-    uint8_t DetermineFastPWMTimerParams(uint16_t            periodUsecRequired,
+    uint8_t DetermineFastPWMTimerParams(uint32_t            periodUsecRequired,
                                         FastPWMTimerConfig *cfg)
     {
-        // Assume 10-bit counter (why not)
-        
-        // How to calculate
-        // Determine PWM period you need to work within
-        // Iterate prescalers until you find a period >= required
-        // Calculate duration of each tick
-        // Set TOP = period / tickDuration
-        // Duty cycle is then = pct * TOP
-        // Let it rip
+        // How to calculate:
+        // - Iterate prescalers until you find a period >= required
+        // - Calculate duration of each tick
+        // - Set TOP = period / tickDuration
+        // - Duty cycle is then = pct * TOP (user has to do this)
         
         const uint32_t MAX_VALUES = 65536;
         
@@ -453,8 +446,9 @@ public:
                 cfg->timerMode           = TimerMode::FAST_PWM_TOP_OCRNA;
                 cfg->channelAValue       = ((double)periodUsecRequired /
                                             tickDurationUsec) - 1;
+                // this is just for debug, should be NONE
                 cfg->channelAFastPWMModeBehavior =
-                    TimerChannel::FastPWMModeBehavior::NONE;
+                    TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE;
                 cfg->channelBFastPWMModeBehavior =
                     TimerChannel::FastPWMModeBehavior::CLEAR;
                 
@@ -466,7 +460,19 @@ public:
         }
         
         return minimumPrescalerFound;
-    }    
+    }
+    
+    // Caller still needs to set B channel value to represent duty cycle.
+    void ApplyFastPWMTimerParams(FastPWMTimerConfig *cfg)
+    {
+        SetTimerPrescaler(cfg->timerPrescaler);
+        SetTimerMode(cfg->timerMode);
+        
+        channelA_.SetValue(cfg->channelAValue);
+        channelA_.SetFastPWMModeBehavior(cfg->channelAFastPWMModeBehavior);
+        
+        channelB_.SetFastPWMModeBehavior(cfg->channelBFastPWMModeBehavior);
+    }
     
     
     
@@ -511,9 +517,8 @@ public:
     }
     
     // Should be private but public for the sake of the ISR
-    static TimerChannel *channelAPtr_;
-    static TimerChannel *channelBPtr_;
-    
+    static function<void()> cbFnA_;
+    static function<void()> cbFnB_;
     
 private:
 

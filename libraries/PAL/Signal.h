@@ -50,64 +50,269 @@ Implementation phases:
 */
 
 
+#include <math.h>
 
-class Signal
+
+
+
+
+class SignalSource
 {
-    static const uint16_t DEFAULT_PERIOD_USEC = 1000;
 public:
-    Signal()
-    : Signal(DEFAULT_PERIOD_USEC)
+    SignalSource() {}
+    virtual ~SignalSource() {}
+    
+    virtual uint8_t GetStepCount() = 0;
+    virtual void    Reset()        = 0;
+    virtual uint8_t NextStep()     = 0;
+};
+
+
+
+
+
+
+// must be >= 4 and even (balanced up and down)
+template <uint8_t STEP_COUNT>
+class SignalSourceSineWave
+: public SignalSource
+{
+public:
+    SignalSourceSineWave()
+    {
+        CalculateDutyCyclePctList();
+        
+        Reset();
+    }
+    
+    virtual ~SignalSourceSineWave()
     {
         // Nothing to do
     }
     
-    Signal(uint16_t periodUsec)
-    : periodUsec_(periodUsec)
+    virtual uint8_t GetStepCount()
+    {
+        return STEP_COUNT;
+    }
+    
+    virtual void Reset()
+    {
+        dutyCycleListIdx_ = 0;
+    }
+    
+    virtual uint8_t NextStep()
+    {
+        uint8_t retVal = dutyCycleList_[dutyCycleListIdx_];
+        
+        ++dutyCycleListIdx_;
+        if (dutyCycleListIdx_ == STEP_COUNT)
+        {
+            dutyCycleListIdx_ = 0;
+        }
+        
+        return retVal;
+    }
+    
+private:
+    void CalculateDutyCyclePctList()
+    {
+        // Example 8 step
+        // 0 25 50 75 100 75 50 25
+        
+        // the 0 and 100 are a given
+        // figure out the step size of all in between
+        
+        uint8_t stepCountRemaining        = STEP_COUNT - 2;
+        uint8_t stepCountRemainingPerSide = stepCountRemaining / 2;
+        
+        double stepSize = 100.0 / (double)(stepCountRemainingPerSide + 1);
+        
+        
+        // Actually calculate and store values
+        
+        uint8_t i = 0;
+        
+        // add 0
+        dutyCycleList_[i] = 0;
+        ++i;
+        
+        // add upward steps
+        for (uint8_t j = 1; j <= stepCountRemainingPerSide; ++i, ++j)
+        {
+            dutyCycleList_[i] = MapPctOfHalfCycleToDutyCycle(j * stepSize);
+        }
+        
+        // add 100
+        dutyCycleList_[i] = 100;
+        ++i;
+        
+        // add downward steps
+        for (uint8_t j = stepCountRemainingPerSide; j; ++i, --j)
+        {
+            dutyCycleList_[i] = MapPctOfHalfCycleToDutyCycle(j * stepSize);
+        }        
+    }
+    
+    // range of 0 - 100
+    uint8_t MapPctOfHalfCycleToDutyCycle(double pctOfHalfCycle)
+    {
+        uint8_t retVal = pctOfHalfCycle;
+        
+        if (pctOfHalfCycle != 0 && pctOfHalfCycle != 100)
+        {
+            // Convert to radians
+            double radians = pctOfHalfCycle / 100.0 * M_PI;
+            
+            // We want our sine wave to crest at the mid-way point, so
+            // 100 percent of our half-cycle is the mid-way point.
+            //
+            // The sine wave is transformed as follows:
+            // - Pulled positive by adding 1
+            // - Shifted 90 degrees right so origin is zero
+            // - Scaled to be 0-100
+            retVal = (sin(radians - (0.5 * M_PI)) + 1) * 50.0;
+        }
+        
+        return retVal;
+    }
+
+
+    uint8_t dutyCycleList_[STEP_COUNT];
+    uint8_t dutyCycleListIdx_;
+};
+
+
+class SignalDAC
+{
+    static const uint32_t DEFAULT_PERIOD_USEC = 1000000;
+    
+public:
+    SignalDAC(SignalSource *ss)
+    : ss_(ss)
     , timerChannelA_(timer_.GetTimerChannelA())
     , timerChannelB_(timer_.GetTimerChannelB())
     {
-        // Nothing to do
+        // Set up default period configuration and apply
+        SetPeriod(DEFAULT_PERIOD_USEC);
     }
     
-    ~Signal()
+    ~SignalDAC()
     {
         Stop();
     }
     
-    uint8_t SetPeriod(uint16_t periodUsec)
+    
+    
+    // Opaque to the caller
+    struct SignalDACPeriodConfig
+    {
+        // Actually useful config
+        Timer1::FastPWMTimerConfig fastPWMTimerConfig;
+        
+        // Useful for debugging
+        uint32_t periodUsecRequested;
+    };
+    
+    uint8_t GetPeriodConfig(uint32_t periodUsec, SignalDACPeriodConfig *cfg)
     {
         uint8_t retVal = 0;
         
-        Timer1::FastPWMTimerConfig cfg;
+        // Keep track of requested period
+        cfg->periodUsecRequested = periodUsec;
         
-        Serial.print("SetPeriod to ");
+        uint32_t periodPerStepUsec = periodUsec / ss_->GetStepCount();
+        
+        Serial.print("GetPeriodConfig for ");
         Serial.println(periodUsec);
-        if (timer_.DetermineFastPWMTimerParams(periodUsec, &cfg))
+        Serial.print("Step count: ");
+        Serial.println(ss_->GetStepCount());
+        Serial.print("Period per-step: ");
+        Serial.println(periodPerStepUsec);
+        
+        // Attempt to get timer configuration for this period
+        if (timer_.DetermineFastPWMTimerParams(periodPerStepUsec,
+                                               &cfg->fastPWMTimerConfig))
         {
-            Serial.println("It worked!");
-            Serial.print("timerPrescalerValue: ");
-            Serial.println(cfg.timerPrescalerValue);
-            Serial.print("tickDurationUsec: ");
-            Serial.println(cfg.tickDurationUsec);
-            Serial.print("periodUsecCalculated: ");
-            Serial.println(cfg.periodUsecCalculated);
-            Serial.print("channelAValue: ");
-            Serial.println(cfg.channelAValue);
-            
-            
-            
             retVal = 1;
             
-            timer_.SetTimerPrescaler(cfg.timerPrescaler);
-            timer_.SetTimerMode(cfg.timerMode);
             
-            timerChannelA_->SetValue(cfg.channelAValue);
-            timerChannelA_->SetFastPWMModeBehavior(
-                cfg.channelAFastPWMModeBehavior);
-                
-            timerChannelB_->SetValue(0);
-            timerChannelB_->SetFastPWMModeBehavior(
-                cfg.channelBFastPWMModeBehavior);
+            Timer1::FastPWMTimerConfig &c = cfg->fastPWMTimerConfig;
+            Serial.println("It worked!");
+            Serial.print("timerPrescalerValue: ");
+            Serial.println(c.timerPrescalerValue);
+            Serial.print("tickDurationUsec: ");
+            Serial.println(c.tickDurationUsec);
+            Serial.print("periodUsecCalculated: ");
+            Serial.println(c.periodUsecCalculated);
+            Serial.print("channelAValue: ");
+            Serial.println(c.channelAValue);
+        }
+
+        return retVal;
+    }
+    
+    
+    
+    // Refers to the period of time where the signal will have completed
+    // one entire cycle and will start again.
+    //
+    // Does not change the location of the signal, simply adjusts the rate of
+    // movement through it.
+    void SetPeriod(SignalDACPeriodConfig *cfgDac)
+    {
+
+    
+        // Period refers to entire signal having completed a cycle.
+        // We need to slice that period into as many chunks as we have steps.
+        
+        // Approx each step in 2200Hz cycle = 454us, with steps:
+        // 0 25 50 75 100 75 50 25 (8 steps)
+        // Each step is ~57us
+        // But our callback on step takes ~12us
+        // So maybe we just factor that in?  Call 57s really 45 in the math?
+        
+        
+        
+        // make atomic?
+        // de-register for interrupts during this?  Or clear them?
+        // stop the timer during this?  probably a bit expensive so maybe not
+        // a good idea?  How to keep it doing the right thing but not mess up
+        // state?
+        
+        
+        // Take out the timer configuration
+        Timer1::FastPWMTimerConfig &cfg = cfgDac->fastPWMTimerConfig;
+
+        // Set up timer to actually drive at the rate configured.
+        timer_.ApplyFastPWMTimerParams(&cfg);
+            
+        // Set channel B to represent Duty cycle
+        timerChannelB_->SetValue(ss_->NextStep());
+            
+        // Attach interrupt to channel A to know when a given period ends
+        Pin pinSignalA(27);
+        timerChannelA_->SetInterruptHandler([=, &PAL](){
+            this->DebugSetDutyCycle(ss_->NextStep());
+            this->timer_.SetTimerValue(0);
+            PAL.DigitalToggle(pinSignalA);
+        });
+        timerChannelA_->RegisterForInterrupt();
+    }
+    
+    
+    // Convenience function for times when performance isn't an issue
+    // when setting the period.
+    uint8_t SetPeriod(uint32_t periodUsec)
+    {
+        uint8_t retVal = 0;
+        
+        SignalDACPeriodConfig cfg;
+        
+        if (GetPeriodConfig(periodUsec, &cfg))
+        {
+            retVal = 1;
+            
+            SetPeriod(&cfg);
         }
         
         return retVal;
@@ -121,14 +326,19 @@ public:
     
     void DebugSetDutyCycle(uint8_t pct)
     {
-        uint16_t value = (double)pct / 100.0 * timerChannelA_->GetValue();
+        //uint16_t value = (double)pct / 100.0 * timerChannelA_->GetValue();
+        
+        uint16_t value = pct << 3;
         
         timerChannelB_->SetValue(value);
-    }
-    
-    void ChangePeriod()
-    {
         
+        /*
+        Serial.println("Changing Duty Cycle: ");
+        Serial.print("pct: ");
+        Serial.println(pct);
+        Serial.print("value: ");
+        Serial.println(value);
+        */
     }
     
     void Stop()
@@ -204,8 +414,8 @@ public:
     
 
 private:
-    uint16_t periodUsec_;
-    
+    SignalSource *ss_;
+
     Timer1        timer_;
     TimerChannel *timerChannelA_;
     TimerChannel *timerChannelB_;
