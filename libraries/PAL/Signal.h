@@ -50,138 +50,117 @@ Implementation phases:
 */
 
 
-#include <math.h>
 
+// Assume all signal-related things are using an 8-bit timer in FastPWM mode.
 
-
-
-
+/*
 class SignalSource
 {
 public:
     SignalSource() {}
     virtual ~SignalSource() {}
     
-    virtual uint8_t GetStepCount() = 0;
-    virtual void    Reset()        = 0;
-    virtual uint8_t NextStep()     = 0;
+    // Phase Offset in the range of 0 - 359
+    // Phase Step   in the range of 0 - 359
+    
+    // SetPhaseOffset is an absolute movement of the cursor.  Good for reset.
+    // SetPhaseStep dictates where the next sample comes from offset from the
+    //              prior sample.
+    
+    virtual void    SetPhaseOffset(uint16_t phaseOffset) = 0;
+    virtual void    SetPhaseStep(uint16_t phaseStep)     = 0;
+    virtual uint8_t NextSample()                         = 0;
 };
+*/
 
 
+#include <avr/pgmspace.h>
 
 
+extern const uint8_t SINE_TABLE[] PROGMEM;
 
 
-// must be >= 4 and even (balanced up and down)
-template <uint8_t STEP_COUNT>
 class SignalSourceSineWave
-: public SignalSource
 {
+    static const uint16_t SAMPLE_COUNT = 512;
+    
+    static const uint16_t DEFAULT_PHASE_OFFSET = 0;
+    static const uint16_t DEFAULT_PHASE_STEP   = 1;
+    
+    constexpr static const double SCALING_RATIO = (double)SAMPLE_COUNT / 360.0;
+    
 public:
     SignalSourceSineWave()
     {
-        CalculateDutyCyclePctList();
+        Reset(DEFAULT_PHASE_STEP, DEFAULT_PHASE_OFFSET);
+    }
+    
+    // Usage:
+    // - Reset()
+    // - GetSample(), GetNextSampleReady(), ...
+    // - ChangePhaseStep(), GetSample(), GetNextSampleReady(), ...
+    //
+    // Doing Reset(), ChangePhaseStep() won't work!
+    
+    
+    inline void Reset(uint8_t phaseStep, uint16_t phaseOffset = 0)
+    {
+        // Set up so that when GetNextSampleReady is complete, the value of
+        // idxCurrent is equal to the phaseOffset specified and the sample
+        // there is ready to be read.
+        idxStep_    = phaseStep * SCALING_RATIO;
+        idxCurrent_ = (phaseOffset * SCALING_RATIO);
+        idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
-        Reset();
+        // Acquire sample
+        GetNextSampleReady();
     }
     
-    virtual ~SignalSourceSineWave()
+    inline void ChangePhaseStep(uint16_t phaseStep)
     {
-        // Nothing to do
-    }
-    
-    virtual uint8_t GetStepCount()
-    {
-        return STEP_COUNT;
-    }
-    
-    virtual void Reset()
-    {
-        dutyCycleListIdx_ = 0;
-    }
-    
-    virtual uint8_t NextStep()
-    {
-        uint8_t retVal = dutyCycleList_[dutyCycleListIdx_];
+        // Rewind a step
+        idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
-        ++dutyCycleListIdx_;
-        if (dutyCycleListIdx_ == STEP_COUNT)
-        {
-            dutyCycleListIdx_ = 0;
-        }
+        // Prepare new step size
+        idxStep_ = phaseStep * SCALING_RATIO;
         
-        return retVal;
+        // Acquire sample
+        GetNextSampleReady();
+    }
+    
+    inline uint8_t GetSample()
+    {
+        return sample_;
+    }
+    
+    inline void GetNextSampleReady()
+    {
+        idxCurrent_ = (idxCurrent_ + idxStep_) % SAMPLE_COUNT;
+        
+        uint16_t pgmByteLocation = (uint16_t)SINE_TABLE + idxCurrent_;
+        
+        sample_ = pgm_read_byte_near(pgmByteLocation);
     }
     
 private:
-    void CalculateDutyCyclePctList()
-    {
-        // Example 8 step
-        // 0 25 50 75 100 75 50 25
-        
-        // the 0 and 100 are a given
-        // figure out the step size of all in between
-        
-        uint8_t stepCountRemaining        = STEP_COUNT - 2;
-        uint8_t stepCountRemainingPerSide = stepCountRemaining / 2;
-        
-        double stepSize = 100.0 / (double)(stepCountRemainingPerSide + 1);
-        
-        
-        // Actually calculate and store values
-        
-        uint8_t i = 0;
-        
-        // add 0
-        dutyCycleList_[i] = 0;
-        ++i;
-        
-        // add upward steps
-        for (uint8_t j = 1; j <= stepCountRemainingPerSide; ++i, ++j)
-        {
-            dutyCycleList_[i] = MapPctOfHalfCycleToDutyCycle(j * stepSize);
-        }
-        
-        // add 100
-        dutyCycleList_[i] = 100;
-        ++i;
-        
-        // add downward steps
-        for (uint8_t j = stepCountRemainingPerSide; j; ++i, --j)
-        {
-            dutyCycleList_[i] = MapPctOfHalfCycleToDutyCycle(j * stepSize);
-        }        
-    }
+
+    uint8_t sample_;
     
-    // range of 0 - 100
-    uint8_t MapPctOfHalfCycleToDutyCycle(double pctOfHalfCycle)
-    {
-        uint8_t retVal = pctOfHalfCycle;
-        
-        if (pctOfHalfCycle != 0 && pctOfHalfCycle != 100)
-        {
-            // Convert to radians
-            double radians = pctOfHalfCycle / 100.0 * M_PI;
-            
-            // We want our sine wave to crest at the mid-way point, so
-            // 100 percent of our half-cycle is the mid-way point.
-            //
-            // The sine wave is transformed as follows:
-            // - Pulled positive by adding 1
-            // - Shifted 90 degrees right so origin is zero
-            // - Scaled to be 0-100
-            retVal = (sin(radians - (0.5 * M_PI)) + 1) * 50.0;
-        }
-        
-        return retVal;
-    }
-
-
-    uint8_t dutyCycleList_[STEP_COUNT];
-    uint8_t dutyCycleListIdx_;
+    uint16_t idxCurrent_;
+    uint16_t idxStep_;
 };
 
 
+
+
+
+
+
+
+
+
+
+template <typename SignalSource>
 class SignalDAC
 {
     static const uint32_t DEFAULT_PERIOD_USEC = 1000000;

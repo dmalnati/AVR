@@ -16,8 +16,7 @@ static TimedEventHandlerDelegate ted;
 static IdleTimeHiResTimedEventHandlerDelegate hrted;
 
 
-static const uint8_t SINE_WAVE_STEP_COUNT = 8;
-static SignalSourceSineWave<SINE_WAVE_STEP_COUNT> sineWave;
+//static SignalSourceSineWave<SINE_WAVE_STEP_COUNT> sineWave;
 //static SignalDAC s(&sineWave);
 
 void setup()
@@ -27,36 +26,86 @@ void setup()
     PAL.PinMode(pinSignalA, OUTPUT);
     PAL.PinMode(pinSignalB, OUTPUT);
 
+
+    // All relates to speed of timer, actually...
+    // Max speed is 31,250 Hz
+    // That's 0.125us per tick
+    // That's 32us per loop
+    // 1200 Hz signal needs one sine wave per 1000 / 1200 = 833usec
+    // So 833us / 32 = 26 iterations.
+    // 360 degrees / 26 iterations = 360 / 26 = 13.8 degrees per iteration
+    uint8_t phaseStep1200 = 13;
+
+    // 2200 Hz signal needs one sine wave per 1000 / 2200 = 454usec
+    // So 454us / 32 = 14 iterations = 360 / 14 = 25.7 degrees per iteration
+    uint8_t phaseStep2200 = 25;
+
+    // Baud = 1200Hz
+    // So that's the same count of iterations as the 1200Hz signal
+    // So 1 bit time == 26 iterations
+
+    uint8_t bitList[] = { 0, 1, 1, 0, 1, 0, 0, 0, 1 };
+    uint8_t bitListLen = sizeof(bitList);
+    int8_t  bitValLast = -1;
+
+    SignalSourceSineWave ss;
+    ss.Reset(bitList[0] ? phaseStep1200 : phaseStep2200);
+
+    uint32_t count = 1;
+    uint8_t  bitSeparator = 1;
+    for (uint8_t i = 0; i < bitListLen; ++i)
+    {
+        uint8_t bitVal = bitList[i];
+
+        if (bitVal != bitValLast)
+        {
+            ss.ChangePhaseStep(bitVal ? phaseStep1200 : phaseStep2200);
+        }
+
+        for (uint8_t j = 0; j < 26; ++j)
+        {
+            uint8_t sample = ss.GetSample();
+            ss.GetNextSampleReady();
+
+            // columns: count, bitSeparator, 0-val, 1-val
+            Serial.print(count);
+            Serial.print(",");
+            Serial.print(bitSeparator * 255);
+            Serial.print(",");
+            Serial.print(!bitVal ? sample : 0);
+            Serial.print(",");
+            Serial.print(bitVal ? sample : 0);
+            Serial.println();
+
+            ++count;
+        }
+        bitSeparator = !bitSeparator;
+        
+        bitValLast = bitVal;
+    }
+
+
+
+    #if 0
+    Serial.println("Sine Wave Samples:");
+    for (uint16_t i = 0; i < 100; ++i)
+    {
+        Serial.println(ss.GetSample());
+        ss.GetNextSampleReady();
+    }
+    Serial.println();
+    #endif
+    
+
     //uint16_t periodUsec = 10000;
     //s.SetPeriod(periodUsec);
     //s.DebugSetDutyCycle(50);
 
-    SignalDAC s(&sineWave);
+    //SignalDAC s(&sineWave);
     //s.SetPeriod(833);
-    s.SetPeriod(454);
-    s.Start();
+    //s.SetPeriod(454);
+    //s.Start();
 
-    #if 0
-    uint8_t pct = 0;
-    int8_t  dir = 1;
-    hrted.SetCallback([&](){
-        PAL.DigitalWrite(pinSignalB, HIGH);
-        s.DebugSetDutyCycle(pct);
-        PAL.DigitalWrite(pinSignalB, LOW);
-
-        if (dir)
-        {
-            if (pct == 100) pct = 99, dir = 0;
-            else pct += 1;
-        }
-        else
-        {
-            if (pct == 0) pct = 1, dir = 1;
-            else pct -= 1;
-        }
-    });
-    hrted.RegisterForIdleTimeHiResTimedEventInterval(10000);
-    #endif
 
     evm.MainLoop();
 }
