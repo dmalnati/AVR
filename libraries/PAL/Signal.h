@@ -80,6 +80,15 @@ public:
 extern const uint8_t SINE_TABLE[] PROGMEM;
 
 
+// Todo
+// -- swap out modulo (though maybe compiler recognizes 512)
+//    (http://stackoverflow.com/questions/48053/is-there-an-alternative-to-using-modulus-in-c-c)
+//   - can do if-then
+//   - or mask
+// -- put in any atomics before speed testing
+
+
+
 class SignalSourceSineWave
 {
     static const uint16_t SAMPLE_COUNT = 512;
@@ -103,7 +112,7 @@ public:
     // Doing Reset(), ChangePhaseStep() won't work!
     
     
-    inline void Reset(uint8_t phaseStep, uint16_t phaseOffset = 0)
+    inline void Reset(uint16_t phaseStep, uint16_t phaseOffset = 0)
     {
         // Set up so that when GetNextSampleReady is complete, the value of
         // idxCurrent is equal to the phaseOffset specified and the sample
@@ -155,24 +164,28 @@ private:
 
 
 
+// Opaque to the caller
+struct SignalDACFrequencyConfig
+{
+    // Actually useful configuration
+    uint16_t phaseStep;
 
+    // Useful for debugging
+    uint16_t frequencyRequested;
+};
 
-
-
+#include <util/atomic.h>
 
 template <typename SignalSource>
 class SignalDAC
 {
-    static const uint32_t DEFAULT_PERIOD_USEC = 1000000;
-    
 public:
     SignalDAC(SignalSource *ss)
     : ss_(ss)
     , timerChannelA_(timer_.GetTimerChannelA())
     , timerChannelB_(timer_.GetTimerChannelB())
     {
-        // Set up default period configuration and apply
-        SetPeriod(DEFAULT_PERIOD_USEC);
+        // Nothing to do
     }
     
     ~SignalDAC()
@@ -181,215 +194,139 @@ public:
     }
     
     
-    
-    // Opaque to the caller
-    struct SignalDACPeriodConfig
+    // Configure frequency of signal
+    uint8_t GetFrequencyConfig(uint16_t                  frequency,
+                               SignalDACFrequencyConfig *cfg)
     {
-        // Actually useful config
-        Timer1::FastPWMTimerConfig fastPWMTimerConfig;
+        uint8_t retVal = 1;
         
-        // Useful for debugging
-        uint32_t periodUsecRequested;
-    };
-    
-    uint8_t GetPeriodConfig(uint32_t periodUsec, SignalDACPeriodConfig *cfg)
-    {
-        uint8_t retVal = 0;
+        // frequency = 1200;
         
-        // Keep track of requested period
-        cfg->periodUsecRequested = periodUsec;
+        // We know we're using FastPWM on an 8-bit timer.
+        // Let's say we hand-configure it for simplicity in logic below.
+        // (subject to change)
+        // Figure out frequency of the timer overflow.
         
-        uint32_t periodPerStepUsec = periodUsec / ss_->GetStepCount();
-        
-        Serial.print("GetPeriodConfig for ");
-        Serial.println(periodUsec);
-        Serial.print("Step count: ");
-        Serial.println(ss_->GetStepCount());
-        Serial.print("Period per-step: ");
-        Serial.println(periodPerStepUsec);
-        
-        // Attempt to get timer configuration for this period
-        if (timer_.DetermineFastPWMTimerParams(periodPerStepUsec,
-                                               &cfg->fastPWMTimerConfig))
-        {
-            retVal = 1;
-            
-            
-            Timer1::FastPWMTimerConfig &c = cfg->fastPWMTimerConfig;
-            Serial.println("It worked!");
-            Serial.print("timerPrescalerValue: ");
-            Serial.println(c.timerPrescalerValue);
-            Serial.print("tickDurationUsec: ");
-            Serial.println(c.tickDurationUsec);
-            Serial.print("periodUsecCalculated: ");
-            Serial.println(c.periodUsecCalculated);
-            Serial.print("channelAValue: ");
-            Serial.println(c.channelAValue);
-        }
+        double cpuFrequency = PAL.GetCpuFreq();
+        double timerPrescaler = 1;
+        double timerTickCount = 256;
+        double timerFrequency = (double)cpuFrequency /
+                                  (double)timerPrescaler / 
+                                  (double)timerTickCount;
 
+        // timerFrequency = 31,250Hz
+
+
+        double timerTickDurationUs = 1.0 / (double)timerFrequency * 
+                                     1000000.0 / (timerTickCount * timerPrescaler);
+
+        // timerTickDurationUs = 0.125
+
+        double timerOverflowPeriodUs =
+            (double)(timerTickCount * timerPrescaler) /
+            (double) cpuFrequency *
+            1000000.0;
+
+        // timerOverflowPeriodUs = 32
+            
+        double frequencyPeriodUs = 1.0 / (double)frequency * 1000000.0;
+        
+        // frequencyPeriodUs = 833
+        
+        double timerOverflowsPerFrequencyPeriod =
+            (double)frequencyPeriodUs / (double)timerOverflowPeriodUs;
+        
+        // timerOverflowsPerFrequencyPeriod = 26
+        
+        
+        double phaseStep = 360.0 / (double)timerOverflowsPerFrequencyPeriod;
+        
+        // phaseStep = 13
+        
+        
+        
+        // fill out configuration
+        cfg->phaseStep          = ceil(phaseStep);
+        cfg->frequencyRequested = frequency;
+        
+        Serial.print("frequencyRequested: ");
+        Serial.println(cfg->frequencyRequested);
+        Serial.print("phaseStepDouble: ");
+        Serial.println(phaseStep);
+        Serial.print("phaseStep: ");
+        Serial.println(cfg->phaseStep);
+        
         return retVal;
     }
     
     
-    
-    // Refers to the period of time where the signal will have completed
-    // one entire cycle and will start again.
-    //
-    // Does not change the location of the signal, simply adjusts the rate of
-    // movement through it.
-    void SetPeriod(SignalDACPeriodConfig *cfgDac)
+    // Expected to happen at beginning of transmission
+    void SetInitialFrequency(SignalDACFrequencyConfig *cfg)
     {
-
-    
-        // Period refers to entire signal having completed a cycle.
-        // We need to slice that period into as many chunks as we have steps.
-        
-        // Approx each step in 2200Hz cycle = 454us, with steps:
-        // 0 25 50 75 100 75 50 25 (8 steps)
-        // Each step is ~57us
-        // But our callback on step takes ~12us
-        // So maybe we just factor that in?  Call 57s really 45 in the math?
-        
-        
-        
-        // make atomic?
-        // de-register for interrupts during this?  Or clear them?
-        // stop the timer during this?  probably a bit expensive so maybe not
-        // a good idea?  How to keep it doing the right thing but not mess up
-        // state?
-        
-        
-        // Take out the timer configuration
-        Timer1::FastPWMTimerConfig &cfg = cfgDac->fastPWMTimerConfig;
-
-        // Set up timer to actually drive at the rate configured.
-        timer_.ApplyFastPWMTimerParams(&cfg);
-            
-        // Set channel B to represent Duty cycle
-        timerChannelB_->SetValue(ss_->NextStep());
-            
-        // Attach interrupt to channel A to know when a given period ends
-        Pin pinSignalA(27);
-        timerChannelA_->SetInterruptHandler([=, &PAL](){
-            this->DebugSetDutyCycle(ss_->NextStep());
-            this->timer_.SetTimerValue(0);
-            PAL.DigitalToggle(pinSignalA);
-        });
-        timerChannelA_->RegisterForInterrupt();
+        ss_->Reset(cfg->phaseStep);
     }
     
-    
-    // Convenience function for times when performance isn't an issue
-    // when setting the period.
-    uint8_t SetPeriod(uint32_t periodUsec)
+    // Expected to happen during run
+    inline void ChangeFrequency(SignalDACFrequencyConfig *cfg)
     {
-        uint8_t retVal = 0;
-        
-        SignalDACPeriodConfig cfg;
-        
-        if (GetPeriodConfig(periodUsec, &cfg))
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            retVal = 1;
-            
-            SetPeriod(&cfg);
+            ss_->ChangePhaseStep(cfg->phaseStep);
         }
-        
-        return retVal;
     }
 
     void Start()
     {
+        // Stop any ongoing timer
+        Stop();
+        
+        
+        
+        // Hand set-up the timer
+        timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
+        timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_8_BIT);
         timer_.SetTimerValue(0);
+
+        
+        timerChannelB_->SetFastPWMModeBehavior(
+            TimerChannel::FastPWMModeBehavior::CLEAR
+        );
+        
+        
+        // Set channel B to first sample, and prepare subsequent sample
+        timerChannelB_->SetValue(ss_->GetSample());
+        ss_->GetNextSampleReady();
+        
+        
+        
+        
+        
+        // Attach interrupt to channel A to know when a given period ends
+        // so that you can transition to next sequence
+        // TODO -- use overflow interrupt instead of this
+        timerChannelA_->SetValue(255);
+        Pin pinSignalA(27);
+        timerChannelA_->SetInterruptHandler([=, &PAL](){
+            
+            PAL.DigitalToggle(pinSignalA);
+            
+            timerChannelB_->SetValue(ss_->GetSample());
+            ss_->GetNextSampleReady();
+            
+        });
+        timerChannelA_->RegisterForInterrupt();
+        
+        
+        
+        
+        // Begin timer counting
         timer_.StartTimer();
-    }
-    
-    void DebugSetDutyCycle(uint8_t pct)
-    {
-        //uint16_t value = (double)pct / 100.0 * timerChannelA_->GetValue();
-        
-        uint16_t value = pct << 3;
-        
-        timerChannelB_->SetValue(value);
-        
-        /*
-        Serial.println("Changing Duty Cycle: ");
-        Serial.print("pct: ");
-        Serial.println(pct);
-        Serial.print("value: ");
-        Serial.println(value);
-        */
     }
     
     void Stop()
     {
         timer_.StopTimer();
     }
-    
-    
-    
-    
-    
-    #if 0
-    void SetPeriodThoughts(uint16_t periodUsec)
-    {
-        
-        
-        // We know this is 0, ..., 100
-        uint8_t signalSourceDiscretePointsCount = 21;
-        
-        // In a single period, we're only going to touch on 0 and 100 once, so
-        // subtract those two numbers from the second count of discrete points.
-        uint8_t stepsPerPeriod =
-            signalSourceDiscretePointsCount +
-            signalSourceDiscretePointsCount -
-            2;
-        
-        // This will equal 40 in our case
-        
-        // What does that mean for our frequencies?  How long is each step
-        // in a given period?
-        // - 1200Hz (833us period sin)
-        //   - so 833 / 40 = 20.8 usec
-        // - 2200Hz (454us period sin)
-        //   - so 454 / 40 = 11.3 usec
-        
-        // This isn't going to work at that many samples.  Have to step
-        // bigger steps.
-        
-        // What if it was just 4 steps (0, 35, 65, 100)
-        // Then total up+down = 6
-        // 1200Hz = 833us; 833 / 6 = 138us
-        // 2200Hz = 454us; 454 / 6 =  75us
-        
-        // So, a single step in that case can be as low as 75us
-        //
-        // During that time, we have to achieve an actual PWM.
-        // Let's say that the 35% which is 4+7=11 pulse durations is the longest.
-        //
-        // (75us / 11 steps = ~7us / pulse)
-        //
-        // If we wanted a given duty cycle:
-        // - set just set that proportion of the
-        
-        // probably can know max sample count, and work downward based on
-        // known timings (empirically found)
-        
-        // 35%
-        uint8_t onOffCount[][2] = { { 4, 7 } };
-        
-        uint8_t onCount  = onOffCount[0][0];
-        uint8_t offCount = onOffCount[0][1];
-    }    
-    #endif
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
 
 private:

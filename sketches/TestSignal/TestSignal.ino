@@ -16,8 +16,9 @@ static TimedEventHandlerDelegate ted;
 static IdleTimeHiResTimedEventHandlerDelegate hrted;
 
 
-//static SignalSourceSineWave<SINE_WAVE_STEP_COUNT> sineWave;
-//static SignalDAC s(&sineWave);
+static SignalSourceSineWave sineWave;
+static SignalDAC<SignalSourceSineWave> dac(&sineWave);
+
 
 void setup()
 {
@@ -26,7 +27,43 @@ void setup()
     PAL.PinMode(pinSignalA, OUTPUT);
     PAL.PinMode(pinSignalB, OUTPUT);
 
+    TestSignalDAC();
 
+    evm.MainLoop();
+}
+
+void TestSignalDAC()
+{
+    SignalDACFrequencyConfig cfg1200;
+    SignalDACFrequencyConfig cfg2200;
+
+    dac.GetFrequencyConfig(1200, &cfg1200);
+    dac.GetFrequencyConfig(2200, &cfg2200);
+
+    dac.SetInitialFrequency(&cfg2200);
+    dac.Start();
+
+    uint8_t bitVal = 0;
+
+    uint32_t timeStart     = PAL.Micros();
+    uint16_t bitDurationUs = 833;
+    while (1)
+    {
+        // Wait for a bit duration to go by
+        while (PAL.Micros() - timeStart < bitDurationUs * 8) { }
+
+        // flip bit every time
+        bitVal = !bitVal;
+
+        if   (bitVal) dac.ChangeFrequency(&cfg1200);
+        else          dac.ChangeFrequency(&cfg2200);
+        
+        timeStart = PAL.Micros();
+    }
+}
+
+void TestSignalSource()
+{
     // All relates to speed of timer, actually...
     // Max speed is 31,250 Hz
     // That's 0.125us per tick
@@ -83,32 +120,10 @@ void setup()
         
         bitValLast = bitVal;
     }
-
-
-
-    #if 0
-    Serial.println("Sine Wave Samples:");
-    for (uint16_t i = 0; i < 100; ++i)
-    {
-        Serial.println(ss.GetSample());
-        ss.GetNextSampleReady();
-    }
-    Serial.println();
-    #endif
-    
-
-    //uint16_t periodUsec = 10000;
-    //s.SetPeriod(periodUsec);
-    //s.DebugSetDutyCycle(50);
-
-    //SignalDAC s(&sineWave);
-    //s.SetPeriod(833);
-    //s.SetPeriod(454);
-    //s.Start();
-
-
-    evm.MainLoop();
 }
+
+
+
 
 void loop() {}
 
