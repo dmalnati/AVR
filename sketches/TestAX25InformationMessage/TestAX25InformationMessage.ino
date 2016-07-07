@@ -2,7 +2,7 @@
 
 #include "PAL.h"
 #include "UtlStreamBlob.h"
-#include "ModemBell202.h"
+#include "AX25UIMessage.h"
 
 static const uint8_t PIN = 15;
 
@@ -10,7 +10,7 @@ static const uint8_t BUF_SIZE = 60;
 static uint8_t bufShared[BUF_SIZE] = { 0 };
 
 static AX25UIMessage msg;
-static ModemBell202<BUF_SIZE> modem;
+
 
 void setup()
 {
@@ -31,8 +31,8 @@ void setup()
     StreamBlob(Serial, buf, bufSize, 1);
 
 
-    const char *info1 = "heynow";
-    const char *info2 = "sup";
+    const char *info1 = "hi ";
+    const char *info2 = "mom!";
     
     msg.AppendInfo((uint8_t *)info1, strlen(info1));
 
@@ -54,12 +54,8 @@ void setup()
     Serial.println("Container buffer");
     StreamBlob(Serial, buf, bufSize, 1);
 
-    Serial.println("Used parts of buffer");
+    Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
-
-
-    msg.Finalize();
-    // buf now filled out
 
     
 

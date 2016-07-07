@@ -1,322 +1,10 @@
+#ifndef __MODEM_BELL_202_H__
+#define __MODEM_BELL_202_H__
 
 
 #include "PAL.h"
-
-
-
-
-class APRSMessage
-{
-public:
-
-
-private:
-};
-
-
-
-
-// Designed to work within a buffer that it does not own.
-// Must be used in a certain specific way, since data is appended to the
-// buffer and field reordering won't be taken into consideration.
-// That way is to fill out the fields in the order they appear in the message.
-//
-// Usage:
-// - Init (can be done once regardless of number of times messages constructed)
-// - Reset (each time a new message is to be created)
-// - SetAddress
-// - AppendInfo (as many times as you want)
-// - Finalize (buffer now a valid AX.25 UI message)
-//            (provided the buffer was large enough)
-class AX25UIMessage
-{
-    static const uint8_t AX25_CHAR_FLAG = 0x7E;
-    
-    // We are sending a UI message, with no P/F request-for-response
-    static const uint8_t AX25_CHAR_CONTROL = 0x03;
-    
-    // No Layer 3 protocol
-    static const uint8_t AX25_CHAR_PID = 0xF0;
-    
-    static const uint16_t CRC16_INITIAL_VALUE    = 0xFFFF;
-    static const uint16_t CRC16_CCITT_POLYNOMIAL = 0x8408;
-    
-public:
-    AX25UIMessage()
-    : buf_(NULL)
-    , bufIdxNextByte_(1)
-    , bufIdxControl_(0)
-    , bufIdxPID_(0)
-    {
-        // Nothing to do
-    }
-    
-    ~AX25UIMessage() {}
-
-    void Init(uint8_t *buf)
-    {
-        SetBuf(buf);
-    }
-    
-    void SetBuf(uint8_t *buf)
-    {
-        buf_ = buf;
-        
-        Reset();
-    }
-    
-    void Reset()
-    {
-        // get ready for a new message to be created
-        bufIdxNextByte_ = 1;
-        
-        // These aren't correct, they will need to be calculated later.
-        bufIdxControl_ = 0;
-        bufIdxPID_     = 0;
-    }
-
-    // src and dst are 7 char, space padded between callsign and SSID
-    void SetAddress(const char *addrDst7char,
-                    const char *addrSrc7char,
-                    const char *addrRepeaterStr = NULL)
-    {
-        // affects where Control, PID, Info data goes
-        
-        const char *p = NULL;
-        
-        // encode dst
-        p = addrDst7char;
-        while (*p)
-        {
-            buf_[bufIdxNextByte_] = (*p << 1);
-            
-            ++bufIdxNextByte_;
-            ++p;
-        }
-        
-        // encode src
-        p = addrSrc7char;
-        while (*p)
-        {
-            buf_[bufIdxNextByte_] = (*p << 1);
-            
-            ++bufIdxNextByte_;
-            ++p;
-        }
-        
-        // encode repeater (optional)
-        if (addrRepeaterStr)
-        {
-            p = addrRepeaterStr;
-            while (*p)
-            {
-                buf_[bufIdxNextByte_] = (*p << 1);
-                
-                ++bufIdxNextByte_;
-                ++p;
-            }            
-        }
-        
-        // set stop-bit on final byte of address
-        buf_[bufIdxNextByte_ - 1] |= 0x01;
-        
-        
-        // calculate location of control field
-        // (already pointed to by bufIdxNextByte_)
-        bufIdxControl_ = bufIdxNextByte_;
-        
-        // calculate location of pid field
-        ++bufIdxNextByte_;
-        bufIdxPID_ = bufIdxNextByte_;
-        
-        // calculate starting location of data
-        ++bufIdxNextByte_;
-        
-        
-        
-        // each byte needs to be shifted left 1 bit to indicate either:
-        // 0 - another byte follows
-        // 1 - end of bytes
-        
-        // Indicate 1 only after dst
-        
-        // 14 bytes for non-repeater point-to-point transmission.
-        // online doc shows typical format.
-        
-        // each callsign must space separate itself from the SSID.
-        // (consider using 4 params to this fn?)
-        
-        // Unclear how repeater-based transmission should look
-        // (such as how they know the end of the repeater vs src
-        //  since the field widths aren't 7 and 7 for dst and src anymore)
-        
-        /*
-        
-          Wait, clearer now.
-          Unconditionally encode the 14 bytes as described above.
-          If repeaters are being used, they are appended to the end of the
-          address field contiguously.
-          This also means that the stop-bit on the end of the src address is not
-          used in this case, and instead is used at the end of the repeater
-          addressing data.
-          
-          The most-significant bit in the final octet of the SSID of the last
-          repeater is set to 0 on initial transmission, and 1 once repeated.
-          (this doesn't seem problematic since numeric ASCII characters don't
-           make use of that bit even when shifted left 1 bit, as is necessary
-           for the stop-bit encoding)
-        
-         */
-    }
-
-    // max 256 bytes pre-stuffing
-    void AppendInfo(uint8_t *buf, uint8_t bufSize)
-    {
-        memcpy((void *)&(buf_[bufIdxNextByte_]), buf, bufSize);
-        bufIdxNextByte_ += bufSize;
-    }
-    
-    
-    // Returns number of bytes used or 0 on error.
-    uint8_t Finalize()
-    {
-        SetControl(AX25_CHAR_CONTROL);
-        SetPID(AX25_CHAR_PID);
-        CalcFCS();
-        SetFlags();
-        
-        return bufIdxNextByte_;
-    }
-    
-
-
-private:
-
-    
-    void SetControl(uint8_t control)
-    {
-        buf_[bufIdxControl_] = control;
-    }
-    
-    void SetPID(uint8_t pid)
-    {
-        buf_[bufIdxPID_] = pid;
-    }
-    
-    // Taken from:
-    // https://github.com/tcort/va2epr-tnc/blob/master/firmware/aprs.c
-    static uint16_t CRC16NextByte(uint16_t crc, uint8_t byte)
-    {
-        uint8_t i;
-
-        crc ^= byte;
-
-        /* for each bit in 'byte' */
-        for (i = 0; i < 8; i++) {
-
-            /* if LSB of 'crc' is HIGH (1) */
-            if (crc & 0x0001) {
-                /*
-                 * Optimization Note:
-                 * avr-gcc generates fewer instructions for
-                 * "if (crc & 0x0001)" than for "if (crc << 15)"
-                 */
-
-                /* Shift Right by 1 and XOR the result with the polynomial */
-                crc = (crc>>1) ^ CRC16_CCITT_POLYNOMIAL;
-            } else {
-
-                /* Shift Right  by 1 */
-                crc >>= 1;
-            }
-        }
-
-        return crc;
-    }
-    
-
-
-    void CalcFCS()
-    {
-        // ISO 3309 (HDLC)
-        
-        // reverse bits when done for transmission
-        // Is the number supposed to be big-endian on the wire
-        // (not considering the bit switching)?
-
-        
-        // So...
-        // calc a 16 bit int
-        // Make it BigEndian in RAM
-        // Reverse bits of each byte
-        // That way, when streamed least-significant-bit first, the end result
-        // will be what the spec calls for.
-        //    This relies on the transmission of the binary data to uniformally
-        //    transmit all bytes lsb first.
-        
-        
-        // Apply to Address, Control, PID, Info
-        
-        uint16_t crc = CRC16_INITIAL_VALUE;
-        
-        for (uint8_t i = 1; i < bufIdxNextByte_; ++i)
-        {
-            uint8_t b = buf_[i];
-            
-            crc = CRC16NextByte(crc, b);
-        }
-        
-        uint16_t crcBigEndian = PAL.htons(crc);
-        
-        memcpy((void *)&(buf_[bufIdxNextByte_]),
-               (void *)&crcBigEndian,
-               sizeof(crcBigEndian));
-               
-        
-        // Move to next position
-        ++bufIdxNextByte_;
-    }
-
-
-    void SetFlags()
-    {
-        buf_[0]               = AX25_CHAR_FLAG;
-        buf_[bufIdxNextByte_] = AX25_CHAR_FLAG;
-        
-        // Move to next position
-        ++bufIdxNextByte_;
-    }
-
-    
-    
-
-    uint8_t *buf_;
-    uint8_t  bufIdxNextByte_;
-    uint8_t  bufIdxControl_;
-    uint8_t  bufIdxPID_;
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#include "SignalSourceSineWave.h"
+#include "SignalDAC.h"
 
 
 // Physical layer handler
@@ -328,96 +16,169 @@ private:
 
 class ModemBell202
 {
-    static const uint8_t BUF_SIZE = MAX_MSG_SIZE ? MAX_MSG_SIZE : 1;
+    static const uint16_t BAUD = 1200;
     
-    static const uint16_t DEFAULT_BAUD = 1200;
+    static const uint16_t BIT_DURATION_US = 1000.0 / BAUD * 1000.0;
     
-    static const uint16_t BELL_202_TONE_MARK  = 1200;
-    static const uint16_t BELL_202_TONE_SPACE = 2200;
+    static const uint16_t BELL_202_FREQ_SPACE = 2200;
+    static const uint16_t BELL_202_FREQ_MARK  = 1200;
     
-    static const uint16_t TONE_LIST[2] = {
-        BELL_202_TONE_MARK,
-        BELL_202_TONE_SPACE
-    };
-    
+    static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
     
 public:
-    ModemBell202(uint8_t pinTx, uint8_t pinEnable)
-    : pinTx_(pinTx)
-    , pinEnable_(pinEnable)
-    , toneListIdx_(0)
+    ModemBell202()
+    : pinDebugB_(28)
+    , bitStuffCount_(0)
+    , dac_(&sineWave_)
+    , dacCfgList_{&dacCfg1200_, &dacCfg2200_}
+    , dacCfgListIdx_(0)
     {
-        PAL.PinMode(pinEnable_, OUTPUT);
-        PAL.DigitalWrite(pinEnable_, LOW);
+        // Get configuration for both frequencies to be used
+        dac_.GetFrequencyConfig(BELL_202_FREQ_SPACE, &dacCfg2200_);
+        dac_.GetFrequencyConfig(BELL_202_FREQ_MARK,  &dacCfg1200_);
+        
+        PAL.PinMode(pinDebugB_, OUTPUT);
+        PAL.DigitalWrite(pinDebugB_, LOW);
     }
     
     ~ModemBell202() {}
     
-    void Init()
+    inline void Start()
     {
-        Reset();
-    }
-    
-    void Reset()
-    {
-        toneListIdx_ = 0;
-    }
-    
-    uint8_t Send(uint8_t* buf, uint8_t bufLen)
-    {
-        uint8_t retVal = 0;
+        //Stop();
         
-        Reset();
+        // Doesn't matter which frequency starts, it's NRZI, so
+        // it's really the transitions which matter
+        dac_.SetInitialFrequency(dacCfgList_[dacCfgListIdx_]);
+        
+        dac_.Start();
+    }
+    
+    inline void Send(uint8_t *buf,
+                     uint8_t  bufLen,
+                     uint8_t  bitStuff = 1,
+                     uint8_t  nrzi     = 1)
+    {
+        // Bit counting re-sets every Send
+        bitStuffCount_ = 0;
         
         for (uint8_t i = 0; i < bufLen; ++i)
         {
-            SendByte(buf[i]);
+            SendByte(buf[i], bitStuff, nrzi);
         }
+    }
+    
+    inline void Stop()
+    {
+        dac_.Stop();
         
-        return retVal;
+        dacCfgListIdx_ = 0;
     }
 
     
 private:
 
-    void SendByte(uint8_t b)
+    void SendByte(uint8_t b, uint8_t bitStuff, uint8_t nrzi)
     {
+        uint8_t bTmp = b;
+        
         for (uint8_t i = 0; i < 8; ++i)
         {
-            // LSB vs MSB
-            // Bit stuffing
-                // how to deal with first and last byte?
+            PAL.DigitalWrite(pinDebugB_, HIGH);
+            
+            // Get next bit -- assume LSB first
+            uint8_t bitVal = bTmp & 0x01;
+            
+            // Set up byte for next iteration
+            bTmp >>= 1;
+            
+            // Consider whether a bit needs to get stuffed
+            if (bitVal)
+            {
+                if (bitStuffCount_ == BIT_STUFF_AFTER_COUNT)
+                {
+                    // stuff if enabled
+                    // (intentionally inefficient to try to keep runtime
+                    //  approx the same when enabled vs not)
+                    if (bitStuff)
+                    {
+                        SendBit(0, nrzi);
+                    }
+                    
+                    // reset
+                    bitStuffCount_ = 0;
+                }
+                else
+                {
+                    ++bitStuffCount_;
+                }
+            }
+            else
+            {
+                bitStuffCount_ = 0;
+            }
+            
+            // Send this bit
+            SendBit(bitVal, nrzi);
         }
     }
     
-    void SendBit(uint8_t val)
+    inline void SendBit(uint8_t bitVal, uint8_t nrzi)
     {
         // NRZI
         
-        if (val)
+        if (nrzi)
         {
-            // do transition
-            toneListIdx_ = !toneListIdx_;
+            if (bitVal)
+            {
+                // do transition
+                dacCfgListIdx_ = !dacCfgListIdx_;
+            }
+            else
+            {
+                // no transition
+            }
         }
         else
         {
-            // no transition
+            dacCfgListIdx_ = bitVal;
         }
         
-        SendTone(TONE_LIST[toneListIdx_]);
+        // Unconditionally call this in order to try to keep run time the
+        // same whether or not the frequency changes
+
+        dac_.ChangeFrequency(dacCfgList_[dacCfgListIdx_], &wrapCounter_);
+        
+        PAL.DigitalWrite(pinDebugB_, LOW);
+        
+        // 32usec per timer loop, 833us per bit, that's 26 wraps per bit
+        // Play with the number a bit to adjust
+        // 24 gets 8 bits in 6.51ms
+        // 25 gets 8 bits in 6.75ms
+        // really we want 6.66ms (833us * 8)
+        // so toggle based on bit value and hope it averages out?
+        register uint8_t wrapCounterMax = 24;
+        while (wrapCounter_ < wrapCounterMax) {}
+        
+        // Wait for bit to be transmitted
+        // This is taking forever!
+        // Hmm, I tink the timer0 callbacks are getting starved out...
+        //PAL.DelayMicroseconds(BIT_DURATION_US);
     }
     
-    void SendTone(uint16_t frequency)
-    {
-        tone(frequency);
-        delayMicroseconds();
-    }
-
-
-    uint8_t pinTx_;
-    uint8_t pinEnable_;
+    Pin pinDebugB_;
     
-    uint8_t toneListIdx_;
+    uint8_t bitStuffCount_;    
+
+    SignalSourceSineWave  sineWave_;
+    
+    SignalDAC<SignalSourceSineWave>   dac_;
+    SignalDACFrequencyConfig          dacCfg1200_;
+    SignalDACFrequencyConfig          dacCfg2200_;
+    SignalDACFrequencyConfig         *dacCfgList_[2];
+    uint8_t                           dacCfgListIdx_;
+    
+    volatile uint8_t wrapCounter_;
 };
 
 
@@ -425,7 +186,7 @@ private:
 
 
 
-
+#endif  // __MODEM_BELL_202_H__
 
 
 

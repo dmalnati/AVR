@@ -54,24 +54,25 @@ public:
     , ociebitLoc_(ociebitLoc)
     , tifr_(tifr)
     , ocfbitLoc_(ocfbitLoc)
+    , pin_(pin)
     {
         // What state to be in?
         
         // Which parts should be atomic?
         
         // Set pin to output mode
-        PAL.PinMode(pin, OUTPUT);
-        PAL.DigitalWrite(pin, LOW);
+        PAL.PinMode(pin_, OUTPUT);
+        OutputLow();
     }
     
     ~TimerChannel() {}
     
-    uint16_t GetValue()
+    inline uint16_t GetValue()
     {
         return *ocr_;
     }
     
-    void SetValue(uint16_t value)
+    inline void SetValue(uint16_t value)
     {
         *ocr_ = value;
     }
@@ -81,6 +82,17 @@ public:
     // Output pin control modes
     //
     //////////////////////////////////////////////////////////////////////////
+    
+    void OutputHigh()
+    {
+        PAL.DigitalWrite(pin_, HIGH);
+    }
+    
+    void OutputLow()
+    {
+        PAL.DigitalWrite(pin_, LOW);
+    }
+    
     
     enum class CTCModeBehavior : uint8_t
     {
@@ -180,6 +192,8 @@ private:
              uint8_t ociebitLoc_;
     volatile uint8_t  *tifr_;
              uint8_t   ocfbitLoc_;
+             
+    uint8_t pin_;
 };
 
 
@@ -295,6 +309,10 @@ public:
     
     void StopTimer()
     {
+        // Intentionally directly set the register, leaving in place the
+        // cached internal value of the prescaler.
+        // That way StartTimer can be called later without needing to
+        // re-set the prescaler value.
         TCCR1B &= 0xF8;
     }
     
