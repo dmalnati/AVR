@@ -5,67 +5,112 @@
 #include <inttypes.h>
 #include <avr/interrupt.h>
 
-
-/*
-
-
-Clocked Tone Switcher
-
-
-- Output bitrate
-- bit representation is a tone
-  - the tone has to be a sine wave which carries on from where it was
-    previously
-
-
-It draws data, not fed data(?)
-    maybe through callback function<>
-    
-    
-
-
-*/
-
-
-
 #include "PAL.h"
 #include "Function.h"
 
 
-class TimerChannel
+class TimerInterrupt
 {
 public:
-    TimerChannel(function<void()>  *cbFn,
-                 volatile uint16_t *ocr,
-                 volatile uint8_t  *comreg,
-                          uint8_t   com1bitLoc,
-                          uint8_t   com0bitLoc,
-                 volatile uint8_t  *timsk,
-                          uint8_t   ociebitLoc,
-                 volatile uint8_t  *tifr,
-                          uint8_t   ocfbitLoc,
-                          uint8_t   pin)
+    TimerInterrupt(function<void()>  *cbFn,
+                   volatile uint8_t  *timsk,
+                            uint8_t   ociebitLoc,
+                   volatile uint8_t  *tifr,
+                            uint8_t   ocfbitLoc)
     : cbFn_(cbFn)
-    , ocr_(ocr)
-    , comreg_(comreg)
-    , com1bitLoc_(com1bitLoc)
-    , com0bitLoc_(com0bitLoc)
     , timsk_(timsk)
     , ociebitLoc_(ociebitLoc)
     , tifr_(tifr)
     , ocfbitLoc_(ocfbitLoc)
-    , pin_(pin)
+    {
+        // Nothing to do
+    }
+    
+    virtual ~TimerInterrupt()
+    {
+        // Nothing to do
+    }
+    
+    //////////////////////////////////////////////////////////////////////////
+    //
+    // Interrupt control
+    //
+    //////////////////////////////////////////////////////////////////////////
+    
+    void SetInterruptHandler(function<void()> cbFn)
+    {
+        *cbFn_ = cbFn;
+    }
+    
+    void UnSetInterruptHandler()
+    {
+        *cbFn_ = [](){};
+    }
+    
+    void RegisterForInterrupt()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Clear flag
+            *tifr_ &= (uint8_t)~_BV(ocfbitLoc_);
+            
+            // Register for interrupts
+            *timsk_ |= _BV(ociebitLoc_);
+        }
+    }
+    
+    void DeRegisterForInterrupt()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Disable interrupts
+            *timsk_ &= (uint8_t)~_BV(ociebitLoc_);
+            
+            // Clear flag
+            *tifr_ &= (uint8_t)~_BV(ocfbitLoc_);
+        }
+    }
+
+        
+
+private:
+
+    function<void()> *cbFn_;
+
+    volatile uint8_t  *timsk_;
+             uint8_t   ociebitLoc_;
+    volatile uint8_t  *tifr_;
+             uint8_t   ocfbitLoc_;
+};
+
+
+class TimerChannel
+: public TimerInterrupt
+{
+public:
+    TimerChannel(function<void()>  *cbFn,
+                 volatile uint8_t  *timsk,
+                          uint8_t   ociebitLoc,
+                 volatile uint8_t  *tifr,
+                          uint8_t   ocfbitLoc,
+                 volatile uint16_t *ocr,
+                 volatile uint8_t  *comreg,
+                          uint8_t   com1bitLoc,
+                          uint8_t   com0bitLoc,
+                          uint8_t   pin)
+    : TimerInterrupt(cbFn, timsk, ociebitLoc, tifr, ocfbitLoc)
+    , ocr_(ocr)
+    , comreg_(comreg)
+    , com1bitLoc_(com1bitLoc)
+    , com0bitLoc_(com0bitLoc)
+    , pin_(pin, LOW)
     {
         // What state to be in?
         
         // Which parts should be atomic?
-        
-        // Set pin to output mode
-        PAL.PinMode(pin_, OUTPUT);
-        OutputLow();
     }
     
-    ~TimerChannel() {}
+    virtual ~TimerChannel() {}
     
     inline uint16_t GetValue()
     {
@@ -132,40 +177,6 @@ public:
     {
         SetConfigurationBits((uint8_t)b);
     }
-    
-    //////////////////////////////////////////////////////////////////////////
-    //
-    // Interrupt control
-    //
-    //////////////////////////////////////////////////////////////////////////
-    
-    void SetInterruptHandler(function<void()> cbFn)
-    {
-        *cbFn_ = cbFn;
-    }
-    
-    void UnSetInterruptHandler()
-    {
-        *cbFn_ = [](){};
-    }
-    
-    void RegisterForInterrupt()
-    {
-        // Clear flag
-        *tifr_ &= (uint8_t)~_BV(ocfbitLoc_);
-        
-        // Register for interrupts
-        *timsk_ |= _BV(ociebitLoc_);
-    }
-    
-    void DeRegisterForInterrupt()
-    {
-        // Disable interrupts
-        *timsk_ &= (uint8_t)~_BV(ociebitLoc_);
-        
-        // Clear flag
-        *tifr_ &= (uint8_t)~_BV(ocfbitLoc_);
-    }
 
 
 private:
@@ -181,33 +192,14 @@ private:
                                        (com0bit << com0bitLoc_)));
     }
     
-    
-    function<void()> *cbFn_;
 
     volatile uint16_t *ocr_;
     volatile uint8_t  *comreg_;
              uint8_t   com1bitLoc_;
              uint8_t   com0bitLoc_;
-    volatile uint8_t  *timsk_;
-             uint8_t ociebitLoc_;
-    volatile uint8_t  *tifr_;
-             uint8_t   ocfbitLoc_;
              
     uint8_t pin_;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -222,8 +214,9 @@ class Timer1
 public:
     Timer1()
     : timerPrescaler_(GetTimerPrescalerFromRegister())
-    , channelA_(&cbFnA_, &OCR1A, &TCCR1A, COM1A1, COM1A0, &TIMSK1, OCIE1A, &TIFR1, OCF1A, PIN_CHANNEL_A)
-    , channelB_(&cbFnB_, &OCR1B, &TCCR1A, COM1B1, COM1B0, &TIMSK1, OCIE1B, &TIFR1, OCF1B, PIN_CHANNEL_B)
+    , channelA_  (&cbFnA_,   &TIMSK1, OCIE1A, &TIFR1, OCF1A, &OCR1A, &TCCR1A, COM1A1, COM1A0, PIN_CHANNEL_A)
+    , channelB_  (&cbFnB_,   &TIMSK1, OCIE1B, &TIFR1, OCF1B, &OCR1B, &TCCR1A, COM1B1, COM1B0, PIN_CHANNEL_B)
+    , ovfHandler_(&cbFnOvf_, &TIMSK1, TOIE1,  &TIFR1, TOV1)
     {
         // Care if more than one instance created of mostly-static class?
         
@@ -385,6 +378,11 @@ public:
         return &channelB_;
     }
     
+    TimerInterrupt *GetTimerOverflowHandler()
+    {
+        return &ovfHandler_;
+    }
+    
     uint16_t GetTimerValue()
     {
         return TCNT1;
@@ -537,13 +535,15 @@ public:
     // Should be private but public for the sake of the ISR
     static function<void()> cbFnA_;
     static function<void()> cbFnB_;
+    static function<void()> cbFnOvf_;
     
 private:
 
     TimerPrescaler timerPrescaler_;
 
-    TimerChannel channelA_;
-    TimerChannel channelB_;
+    TimerChannel   channelA_;
+    TimerChannel   channelB_;
+    TimerInterrupt ovfHandler_;
 };
 
 
