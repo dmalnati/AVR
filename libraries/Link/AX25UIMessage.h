@@ -19,8 +19,6 @@
 //            (provided the buffer was large enough)
 class AX25UIMessage
 {
-    static const uint8_t AX25_CHAR_FLAG = 0x7E;
-    
     // We are sending a UI message, with no P/F request-for-response
     static const uint8_t AX25_CHAR_CONTROL = 0x03;
     
@@ -57,25 +55,36 @@ public:
     void Reset()
     {
         // get ready for a new message to be created
-        bufIdxNextByte_ = 1;
+        bufIdxNextByte_ = 0;
         
         // These aren't correct, they will need to be calculated later.
         bufIdxControl_ = 0;
         bufIdxPID_     = 0;
     }
+    
 
-    // src and dst are 7 char, space padded between callsign and SSID
-    void SetAddress(const char *addrDst7char,
-                    const char *addrSrc7char,
-                    const char *addrRepeaterStr = NULL)
+    // Does not try to set stop bit.
+    void EncodeAddress(const char *addr, uint8_t ssid)
     {
-        // affects where Control, PID, Info data goes
+        // should be of form: ascii string, 6 char, space padded on right
         
-        const char *p = NULL;
+        // validate anyway
+        uint8_t addrLen = strlen(addr);
         
-        // encode dst
-        p = addrDst7char;
-        while (*p)
+        // Assume well formed
+        uint8_t useByteCount = 6;
+        uint8_t padByteCount = 0;
+        
+        if (addrLen < 6)
+        {
+            // will need to pad with spaces
+            useByteCount = addrLen;
+            padByteCount = 6 - useByteCount;
+        }
+        
+        // Use the bytes we can
+        const char *p = addr;
+        for (uint8_t i = 0; i < useByteCount; ++i)
         {
             buf_[bufIdxNextByte_] = (*p << 1);
             
@@ -83,28 +92,29 @@ public:
             ++p;
         }
         
-        // encode src
-        p = addrSrc7char;
-        while (*p)
+        // Pad if necessary
+        for (uint8_t i = 0; i < padByteCount; ++i)
         {
-            buf_[bufIdxNextByte_] = (*p << 1);
+            buf_[bufIdxNextByte_] = (' ' << 1);
             
             ++bufIdxNextByte_;
-            ++p;
         }
         
-        // encode repeater (optional)
-        if (addrRepeaterStr)
-        {
-            p = addrRepeaterStr;
-            while (*p)
-            {
-                buf_[bufIdxNextByte_] = (*p << 1);
-                
-                ++bufIdxNextByte_;
-                ++p;
-            }            
-        }
+        // Encode SSID
+        buf_[bufIdxNextByte_] =
+            (uint8_t)(0b01100000 | ((uint8_t)(ssid & 0x0F) << 1));
+        
+        ++bufIdxNextByte_;
+    }
+    
+
+    void SetAddress(const char *addrDst,
+                    uint8_t     addrDstSSID,
+                    const char *addrSrc,
+                    uint8_t     addrSrcSSID)
+    {
+        EncodeAddress(addrDst, addrDstSSID);
+        EncodeAddress(addrSrc, addrSrcSSID);
         
         // set stop-bit on final byte of address
         buf_[bufIdxNextByte_ - 1] |= 0x01;
@@ -172,7 +182,6 @@ public:
         SetControl(AX25_CHAR_CONTROL);
         SetPID(AX25_CHAR_PID);
         CalcFCS();
-        SetFlags();
         
         return bufIdxNextByte_;
     }
@@ -244,39 +253,64 @@ private:
         //    transmit all bytes lsb first.
         
         
+        
+        // EX:
+        // BigEndian          : 0x95D3 -- 1001 0101  1101 0011
+        // Swapped 8-bit bytes: 0xA9CB -- 1010 1001  1100 1011
+        
+        
         // Apply to Address, Control, PID, Info
         
         uint16_t crc = CRC16_INITIAL_VALUE;
         
-        for (uint8_t i = 1; i < bufIdxNextByte_; ++i)
+        for (uint8_t i = 0; i < bufIdxNextByte_; ++i)
         {
             uint8_t b = buf_[i];
             
             crc = CRC16NextByte(crc, b);
         }
         
+        // Get BigEndian representation
         uint16_t crcBigEndian = PAL.htons(crc);
         
+        // Get copy to swap the bits of each byte around within
+        uint16_t crcBigEndianBitSwap = crcBigEndian;
+        
+        // Reverse the bits of each byte
+        uint8_t *p = (uint8_t *)&crcBigEndianBitSwap;
+        
+        for (uint8_t i = 0; i < sizeof(crcBigEndianBitSwap); ++i)
+        {
+            // Get the byte as-is
+            uint8_t b = p[i];
+            
+            // Get container for new byte
+            uint8_t bNew = 0;
+            
+            // Transfer bits
+            for (uint8_t j = 0; j < 8; ++j)
+            {
+                bNew <<= 1;
+                
+                bNew |= (uint8_t)(b & 0x01);
+                
+                b >>= 1;
+            }
+            
+            // Store new byte
+            p[i] = bNew;
+        }
+        
+        // Put the bytes into our buffer
         memcpy((void *)&(buf_[bufIdxNextByte_]),
-               (void *)&crcBigEndian,
-               sizeof(crcBigEndian));
+               (void *)&crcBigEndianBitSwap,
+               sizeof(crcBigEndianBitSwap));
                
         
         // Move to next position
-        ++bufIdxNextByte_;
+        bufIdxNextByte_ += sizeof(crcBigEndianBitSwap);
     }
 
-
-    void SetFlags()
-    {
-        buf_[0]               = AX25_CHAR_FLAG;
-        buf_[bufIdxNextByte_] = AX25_CHAR_FLAG;
-        
-        // Move to next position
-        ++bufIdxNextByte_;
-    }
-
-    
     
 
     uint8_t *buf_;
