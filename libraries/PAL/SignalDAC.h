@@ -26,13 +26,10 @@ public:
     : ss_(ss)
     , timerChannelA_(timer_.GetTimerChannelA())
     , timerChannelB_(timer_.GetTimerChannelB())
+    , timerOvfHandler_(timer_.GetTimerOverflowHandler())
     , wrapCounter_(&wrapCounterDummy_)
-    , pinDebug_(4)
     {
         // Nothing to do
-        
-        // Debug
-        PAL.PinMode(pinDebug_, OUTPUT);
     }
     
     ~SignalDAC()
@@ -55,7 +52,8 @@ public:
         
         double cpuFrequency = PAL.GetCpuFreq();
         double timerPrescaler = 1;
-        double timerTickCount = 256;
+        //double timerTickCount = 256;
+        double timerTickCount = 247;
         double timerFrequency = (double)cpuFrequency /
                                   (double)timerPrescaler / 
                                   (double)timerTickCount;
@@ -113,60 +111,79 @@ public:
     
     void Start()
     {
-        // Stop any ongoing timer
-        //Stop();
-        
-        
-        
-        // Hand set-up the timer
-        timer_.SetTimerValue(0);
-        timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
-        timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_8_BIT);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Hand set-up the timer
+            timer_.SetTimerValue(0);
+            timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
+            //timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_8_BIT);
+            timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
 
-        
-        
-        // Set channel B to first sample, and prepare subsequent sample
-        timerChannelB_->SetValue(ss_->GetSample());
-        ss_->GetNextSampleReady();
-        
-        
-        
-        
-        
-        // Attach interrupt to channel A to know when a given period ends
-        // so that you can transition to next sequence
-        // TODO -- use overflow interrupt instead of this
-        timerChannelA_->SetValue(255);
-        timerChannelA_->SetInterruptHandler([this](){
             
+            
+            // Set channel B to first sample, and prepare subsequent sample
             timerChannelB_->SetValue(ss_->GetSample());
             ss_->GetNextSampleReady();
             
-            ++(*wrapCounter_);
             
-        });
-        timerChannelA_->RegisterForInterrupt();
-        
-        
-        
-        
-        
-        // Begin timer counting
-        timer_.StartTimer();
-        
-        
-        // Begin comparing B to the timer value in order to operate the output
-        // level
-        timerChannelB_->SetFastPWMModeBehavior(
-            TimerChannel::FastPWMModeBehavior::CLEAR
-        );
+            // Attach interrupt to channel A to know when a given period ends
+            // so that you can transition to next sequence
+            //timerOvfHandler_->SetInterruptHandler([this](){
+            timerChannelA_->SetInterruptHandler([this](){
+                
+                timerChannelB_->SetValue(ss_->GetSample());
+                ss_->GetNextSampleReady();
+                
+                ++(*wrapCounter_);
+            });
+            //timerOvfHandler_->RegisterForInterrupt();
+            timerChannelA_->SetValue(247);
+            timerChannelA_->RegisterForInterrupt();
+            
+            
+            
+            // Set up channel A to fire interrupts at 1200Hz
+            //counterA_ = 0;
+            
+            //timerChannelA_->SetInterruptHandler([](){
+                
+                /*
+                ++counterA_;
+                
+                if (counterA_ >= 27)
+                {
+                    //PAL.DigitalToggle(debugChannelA);
+                    
+                    counterA_ = 0;
+                }
+                */
+            //});
+            //timerChannelA_->SetFastPWMModeBehavior(
+            //    TimerChannel::FastPWMModeBehavior::NONE
+            //);
+            //timerChannelA_->SetValue(150);
+            //timerChannelA_->RegisterForInterrupt();
+            
+            
+            
+            
+            // Begin timer counting
+            timer_.StartTimer();
+            
+            
+            // Begin comparing B to the timer value in order to operate the output
+            // level
+            timerChannelB_->SetFastPWMModeBehavior(
+                TimerChannel::FastPWMModeBehavior::CLEAR
+            );
+        }
     }
+
     
     // Expected to happen during run
     inline void ChangeFrequency(SignalDACFrequencyConfig  *cfg,
                                 volatile register uint8_t *wrapCounter = NULL)
     {
-        PAL.DigitalToggle(pinDebug_);
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             ss_->ChangePhaseStep(cfg->phaseStep);
@@ -174,7 +191,6 @@ public:
             wrapCounter_ = wrapCounter ? wrapCounter : &wrapCounterDummy_;
             *wrapCounter_ = 0;
         }
-        PAL.DigitalToggle(pinDebug_);
     }
     
     void Stop()
@@ -185,6 +201,7 @@ public:
             timer_.StopTimer();
 
             // Don't let any potentially queued interrupts fire
+            timerOvfHandler_->DeRegisterForInterrupt();
             timerChannelA_->DeRegisterForInterrupt();
 
             // Make sure B channel is no longer evaluated in terms of the timer
@@ -202,14 +219,15 @@ public:
 private:
     SignalSource *ss_;
 
-    Timer1        timer_;
-    TimerChannel *timerChannelA_;
-    TimerChannel *timerChannelB_;
+    Timer1          timer_;
+    TimerChannel   *timerChannelA_;
+    TimerChannel   *timerChannelB_;
+    TimerInterrupt *timerOvfHandler_;
     
     volatile uint8_t *wrapCounter_;
     volatile uint8_t  wrapCounterDummy_;
     
-    Pin pinDebug_;
+    uint8_t counterA_;
 };
 
 

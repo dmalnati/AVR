@@ -27,25 +27,25 @@ class ModemBell202
     
 public:
     ModemBell202()
-    : pinDebugB_(28)
-    , bitStuffCount_(0)
+    : pinDebugModem_(6)
     , dac_(&sineWave_)
     , dacCfgList_{&dacCfg1200_, &dacCfg2200_}
-    , dacCfgListIdx_(0)
     {
+        Reset();
+        
         // Get configuration for both frequencies to be used
         dac_.GetFrequencyConfig(BELL_202_FREQ_SPACE, &dacCfg2200_);
         dac_.GetFrequencyConfig(BELL_202_FREQ_MARK,  &dacCfg1200_);
         
-        PAL.PinMode(pinDebugB_, OUTPUT);
-        PAL.DigitalWrite(pinDebugB_, LOW);
+        PAL.PinMode(pinDebugModem_, OUTPUT);
+        PAL.DigitalWrite(pinDebugModem_, LOW);
     }
     
     ~ModemBell202() {}
     
     inline void Start()
     {
-        //Stop();
+        Reset();
         
         // Doesn't matter which frequency starts, it's NRZI, so
         // it's really the transitions which matter
@@ -54,37 +54,38 @@ public:
         dac_.Start();
     }
     
-    inline void Send(uint8_t *buf,
-                     uint8_t  bufLen,
-                     uint8_t  bitStuff = 1,
-                     uint8_t  nrzi     = 1)
+    inline void Send(uint8_t *buf, uint8_t  bufLen, uint8_t  bitStuff = 1)
     {
         // Bit counting re-sets every Send
         bitStuffCount_ = 0;
         
         for (uint8_t i = 0; i < bufLen; ++i)
         {
-            SendByte(buf[i], bitStuff, nrzi);
+            SendByte(buf[i], bitStuff);
         }
     }
     
     inline void Stop()
     {
         dac_.Stop();
-        
-        dacCfgListIdx_ = 0;
     }
 
     
 private:
 
-    void SendByte(uint8_t b, uint8_t bitStuff, uint8_t nrzi)
+    void Reset()
+    {
+        dacCfgListIdx_ = 0;
+        bitStuffCount_ = 0;
+    }
+
+    void SendByte(uint8_t b, uint8_t bitStuff)
     {
         uint8_t bTmp = b;
         
         for (uint8_t i = 0; i < 8; ++i)
         {
-            PAL.DigitalWrite(pinDebugB_, HIGH);
+            PAL.DigitalWrite(pinDebugModem_, HIGH);
             
             // Get next bit -- assume LSB first
             uint8_t bitVal = bTmp & 0x01;
@@ -92,9 +93,14 @@ private:
             // Set up byte for next iteration
             bTmp >>= 1;
             
+            // Send this bit
+            SendBit(bitVal);
+            
             // Consider whether a bit needs to get stuffed
             if (bitVal)
             {
+                ++bitStuffCount_;
+                
                 if (bitStuffCount_ == BIT_STUFF_AFTER_COUNT)
                 {
                     // stuff if enabled
@@ -102,46 +108,32 @@ private:
                     //  approx the same when enabled vs not)
                     if (bitStuff)
                     {
-                        SendBit(0, nrzi);
+                        SendBit(0);
                     }
                     
                     // reset
                     bitStuffCount_ = 0;
-                }
-                else
-                {
-                    ++bitStuffCount_;
                 }
             }
             else
             {
                 bitStuffCount_ = 0;
             }
-            
-            // Send this bit
-            SendBit(bitVal, nrzi);
         }
     }
     
-    inline void SendBit(uint8_t bitVal, uint8_t nrzi)
+    inline void SendBit(uint8_t bitVal)
     {
-        // NRZI
+        // NRZI -- transition on 0s
         
-        if (nrzi)
+        if (!bitVal)
         {
-            if (bitVal)
-            {
-                // do transition
-                dacCfgListIdx_ = !dacCfgListIdx_;
-            }
-            else
-            {
-                // no transition
-            }
+            // do transition
+            dacCfgListIdx_ = !dacCfgListIdx_;
         }
         else
         {
-            dacCfgListIdx_ = bitVal;
+            // no transition
         }
         
         // Unconditionally call this in order to try to keep run time the
@@ -149,16 +141,25 @@ private:
 
         dac_.ChangeFrequency(dacCfgList_[dacCfgListIdx_], &wrapCounter_);
         
-        PAL.DigitalWrite(pinDebugB_, LOW);
+        PAL.DigitalWrite(pinDebugModem_, LOW);
         
-        // 32usec per timer loop, 833us per bit, that's 26 wraps per bit
+        // 32usec per timer loop, 833.3333..us per bit, that's 26 wraps per bit
         // Play with the number a bit to adjust
         // 24 gets 8 bits in 6.51ms
         // 25 gets 8 bits in 6.75ms
         // really we want 6.66ms (833us * 8)
         // so toggle based on bit value and hope it averages out?
-        register uint8_t wrapCounterMax = 24;
+        // maybe pad out with some asm nops?
+        register uint8_t wrapCounterMax = 23;
         while (wrapCounter_ < wrapCounterMax) {}
+        
+        // just waste some time
+        for (uint8_t i = 0; i < 5; ++i)
+        {
+            ++wrapCounter_;
+            
+            //for (uint8_t j = 0; j < 254; ++j) { ++wrapCounter_; }
+        }
         
         // Wait for bit to be transmitted
         // This is taking forever!
@@ -166,7 +167,7 @@ private:
         //PAL.DelayMicroseconds(BIT_DURATION_US);
     }
     
-    Pin pinDebugB_;
+    Pin pinDebugModem_;
     
     uint8_t bitStuffCount_;    
 
