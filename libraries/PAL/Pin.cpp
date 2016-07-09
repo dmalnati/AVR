@@ -12,3 +12,14 @@ Pin::Pin(uint8_t pin)
         pinMask_ = _BV(portPin);
     }
 }
+
+Pin::Pin(uint8_t pin, uint8_t enableOutputMode)
+: Pin(pin)
+{
+    if (enableOutputMode)
+    {
+        PAL.PinMode(*this, OUTPUT);
+        PAL.DigitalWrite(*this, LOW);
+    }
+}
+
