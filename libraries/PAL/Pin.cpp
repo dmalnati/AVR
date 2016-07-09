@@ -13,13 +13,10 @@ Pin::Pin(uint8_t pin)
     }
 }
 
-Pin::Pin(uint8_t pin, uint8_t enableOutputMode)
+Pin::Pin(uint8_t pin, uint8_t outputValue)
 : Pin(pin)
 {
-    if (enableOutputMode)
-    {
-        PAL.PinMode(*this, OUTPUT);
-        PAL.DigitalWrite(*this, LOW);
-    }
+    PAL.PinMode(*this, OUTPUT);
+    PAL.DigitalWrite(*this, outputValue);
 }
 

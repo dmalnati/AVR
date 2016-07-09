@@ -11,7 +11,7 @@ class Pin
     
 public:
     Pin(uint8_t pin);
-    Pin(uint8_t pin, uint8_t enableOutputMode);
+    Pin(uint8_t pin, uint8_t outputValue);
 
 private:
     uint8_t port_;
