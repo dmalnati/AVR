@@ -198,7 +198,7 @@ private:
              uint8_t   com1bitLoc_;
              uint8_t   com0bitLoc_;
              
-    uint8_t pin_;
+    Pin pin_;
 };
 
 

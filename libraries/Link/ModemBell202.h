@@ -3,6 +3,7 @@
 
 
 #include "PAL.h"
+#include "Container.h"
 #include "SignalSourceSineWave.h"
 #include "SignalDAC.h"
 
@@ -24,6 +25,8 @@ class ModemBell202
     static const uint16_t BELL_202_FREQ_MARK  = 1200;
     
     static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
+    
+    using SignalDACType = SignalDAC<SignalSourceSineWave>;
     
 public:
     ModemBell202()
@@ -51,6 +54,10 @@ public:
         // it's really the transitions which matter
         dac_.SetInitialFrequency(dacCfgList_[dacCfgListIdx_]);
         
+        // Set up command queue
+        dac_.SetCommandQueue(&dacCmdQueue_);
+        
+        // Begin
         dac_.Start();
     }
     
@@ -63,6 +70,24 @@ public:
         {
             SendByte(buf[i], bitStuff);
         }
+        
+        
+        // Wait for completion!
+        //
+        // Can very easily out-pace the DAC, so need to wait for it to finish.
+        // Possibly this could be done in Stop(), but why, let's call Send()
+        // completely synchronous.
+        //
+        /*
+        SignalDACType::Command cmd;
+        
+        cmd.type         = SignalDACType::CommandType::NOP;
+        cmd.cfgFrequency = dacCfgList_[dacCfgListIdx_];
+        
+        dacCmdQueue_.PushAtomic(cmd);
+        while (dacCmdQueue_.Size()) {}
+        */
+        
     }
     
     inline void Stop()
@@ -77,6 +102,8 @@ private:
     {
         dacCfgListIdx_ = 0;
         bitStuffCount_ = 0;
+        
+        dacCmdQueue_.Clear();
     }
 
     void SendByte(uint8_t b, uint8_t bitStuff)
@@ -139,32 +166,17 @@ private:
         // Unconditionally call this in order to try to keep run time the
         // same whether or not the frequency changes
 
-        dac_.ChangeFrequency(dacCfgList_[dacCfgListIdx_], &wrapCounter_);
+        //dac_.ChangeFrequency(dacCfgList_[dacCfgListIdx_]);
+        
+        // Push a command onto the queue for the DAC to consult
+        SignalDACType::Command cmd;
+        
+        cmd.cmdType      = SignalDACType::CommandType::CHANGE_FREQUENCY;
+        cmd.cfgFrequency = dacCfgList_[dacCfgListIdx_];
+        
+        dacCmdQueue_.PushAtomic(cmd);
         
         PAL.DigitalWrite(pinDebugModem_, LOW);
-        
-        // 32usec per timer loop, 833.3333..us per bit, that's 26 wraps per bit
-        // Play with the number a bit to adjust
-        // 24 gets 8 bits in 6.51ms
-        // 25 gets 8 bits in 6.75ms
-        // really we want 6.66ms (833us * 8)
-        // so toggle based on bit value and hope it averages out?
-        // maybe pad out with some asm nops?
-        register uint8_t wrapCounterMax = 23;
-        while (wrapCounter_ < wrapCounterMax) {}
-        
-        // just waste some time
-        for (uint8_t i = 0; i < 5; ++i)
-        {
-            ++wrapCounter_;
-            
-            //for (uint8_t j = 0; j < 254; ++j) { ++wrapCounter_; }
-        }
-        
-        // Wait for bit to be transmitted
-        // This is taking forever!
-        // Hmm, I tink the timer0 callbacks are getting starved out...
-        //PAL.DelayMicroseconds(BIT_DURATION_US);
     }
     
     Pin pinDebugModem_;
@@ -173,13 +185,13 @@ private:
 
     SignalSourceSineWave  sineWave_;
     
-    SignalDAC<SignalSourceSineWave>   dac_;
-    SignalDACFrequencyConfig          dacCfg1200_;
-    SignalDACFrequencyConfig          dacCfg2200_;
-    SignalDACFrequencyConfig         *dacCfgList_[2];
-    uint8_t                           dacCfgListIdx_;
+    SignalDACType                    dac_;
+    SignalDACType::FrequencyConfig   dacCfg1200_;
+    SignalDACType::FrequencyConfig   dacCfg2200_;
+    SignalDACType::FrequencyConfig  *dacCfgList_[2];
+    uint8_t                          dacCfgListIdx_;
     
-    volatile uint8_t wrapCounter_;
+    SignalDACType::CommandQueue      dacCmdQueue_;
 };
 
 

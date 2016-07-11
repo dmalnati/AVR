@@ -149,7 +149,7 @@ void SendDataInLoopOnDelay(uint8_t *buf, uint8_t bufLen, uint16_t delayMs)
 void GetSetUpBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
 {
     uint8_t *buf     = bufShared;
-    uint8_t  bufSize = BUF_SIZE;
+    //uint8_t  bufSize = BUF_SIZE;
     
     msg.Init(buf);
 
