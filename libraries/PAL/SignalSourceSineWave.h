@@ -19,7 +19,6 @@ class SignalSourceSineWave
 {
     static const uint16_t SAMPLE_COUNT = 512;
     
-    static const uint16_t DEFAULT_PHASE_OFFSET = 0;
     static const uint16_t DEFAULT_PHASE_STEP   = 1;
     
     constexpr static const double SCALING_RATIO = (double)SAMPLE_COUNT / 360.0;
@@ -27,29 +26,55 @@ class SignalSourceSineWave
 public:
     SignalSourceSineWave()
     {
-        Reset(DEFAULT_PHASE_STEP, DEFAULT_PHASE_OFFSET);
+        PhaseConfig cfg;
+        GetPhaseConfig(DEFAULT_PHASE_STEP, &cfg);
+        Reset(&cfg);
     }
     
-    inline void Reset(uint16_t phaseStep, uint16_t phaseOffset = 0)
+    // Allow for pre-calculation of phase-related values.
+    // Avoiding the multiplication steps at run-time saves ~30us.
+    //
+    // None of the modulus calculations can be, or need to be, done in advance
+    // since the compiler has been measured to be optimizing the power-of-two
+    // situation anyway.
+    struct PhaseConfig
+    {
+        // Actually useful configuration
+        uint16_t phasePreScaled;
+        
+        // Useful for debugging
+        uint16_t phaseRequested;
+    };
+    
+    uint8_t GetPhaseConfig(uint16_t phase, PhaseConfig *cfg)
+    {
+        uint8_t retVal = 1;
+        
+        cfg->phasePreScaled = phase * SCALING_RATIO;
+        cfg->phaseRequested = phase;
+        
+        return retVal;
+    }
+    
+    inline void Reset(PhaseConfig *cfgPhaseStep)
     {
         // Set up so that when GetNextSampleReady is complete, the value of
         // idxCurrent is equal to the phaseOffset specified and the sample
         // there is ready to be read.
-        idxStep_    = phaseStep * SCALING_RATIO;
-        idxCurrent_ = (phaseOffset * SCALING_RATIO);
+        idxStep_    = cfgPhaseStep->phasePreScaled;
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
         // Acquire sample
         GetNextSampleReady();
     }
     
-    inline void ChangePhaseStep(uint16_t phaseStep)
+    inline void ChangePhaseStep(PhaseConfig *cfgPhaseStep)
     {
         // Rewind a step
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
         // Prepare new step size
-        idxStep_ = phaseStep * SCALING_RATIO;
+        idxStep_ = cfgPhaseStep->phasePreScaled;
         
         // Acquire sample
         GetNextSampleReady();
