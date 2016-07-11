@@ -63,8 +63,8 @@ public:
  
     /////////// Basic Getters / Setters ///////////
     
-    uint8_t Capacity() const { return capacity_; }
-    uint8_t Size() const { return size_; }
+    inline uint8_t Capacity() const { return capacity_; }
+    inline uint8_t Size() const { return size_; }
     
     
     /////////// Front Access ///////////
@@ -149,6 +149,51 @@ public:
             element = table_[idxBack_];
             
             DecrSize();
+        }
+        
+        return retVal;
+    }
+    
+    /////////// Atomic Access ///////////
+    
+    // This supports the movement of data between main thread code and an ISR.
+    // 
+    // Idea being the pusher is trying to feed data to the ISR quickly, knowing
+    // that the queue may fill before the ISR has been able to consume it all.
+    // However, the ISR will consume it eventually.
+    //
+    // Knowing that, the main thread is ok waiting (blocking) waiting to push
+    // more elements.
+    //
+    // Waiting to push more elements should not come at the expense of the ISR
+    // operation, so as little time in an atomic block should be spent as
+    // possible.
+    //
+    // Once there is again space in the queue, it will not increase again
+    // through any other means than the main blocked thread adding more
+    // (which is by completing this call).
+    //
+    // There is no need for Pop to be atomic, the ISR cannot be interrupted.
+    //
+    uint8_t PushBackAtomic(T element)
+    {
+        uint8_t retVal = 0;
+        
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            retVal = PushBack(element);
+        }
+        
+        if (!retVal)
+        {
+            // Spin lock waiting until something fits
+            while (!CanFitOneMore()) { }
+            
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                // This should work now
+                retVal = PushBack(element);
+            }
         }
         
         return retVal;
@@ -270,46 +315,46 @@ public:
 
 protected:
 
-    void DecrFront()
+    inline void DecrFront()
     {
         --idxFront_;
         if (idxFront_ >= capacity_) { idxFront_ = (capacity_ - 1); }
     }
     
-    void IncrFront()
+    inline void IncrFront()
     {
         ++idxFront_;
         if (idxFront_ >= capacity_) { idxFront_ = 0; }
     }
     
-    void IncrBack()
+    inline void IncrBack()
     {
         ++idxBack_;
         if (idxBack_ >= capacity_) { idxBack_ = 0; }
     }
     
-    void DecrBack()
+    inline void DecrBack()
     {
         --idxBack_;
         if (idxBack_ >= capacity_) { idxBack_ = (capacity_ - 1); }
     }
     
-    void IncrSize()
+    inline void IncrSize()
     {
         ++size_;
     }
     
-    void DecrSize()
+    inline void DecrSize()
     {
         --size_;
     }
 
-    uint8_t CanFitOneMore()
+    inline uint8_t CanFitOneMore()
     {
         return (size_ != capacity_);
     }
     
-    void Clear()
+    inline void Clear()
     {
         idxFront_ = 0;
         idxBack_  = 0;
@@ -320,8 +365,8 @@ private:
     
     uint8_t idxFront_;
     uint8_t idxBack_;
-    uint8_t size_;
-    uint8_t capacity_;
+    volatile uint8_t size_;
+    const uint8_t capacity_;
  
     T       *table_;
     uint8_t  data_[(CAPACITY ? CAPACITY : 1) * sizeof(T)];
@@ -342,6 +387,11 @@ public:
     uint8_t Push(T element)
     {
         return rb_.PushBack(element);
+    }
+    
+    uint8_t PushAtomic(T element)
+    {
+        return rb_.PushBackAtomic(element);
     }
     
     uint8_t Pop(T &element)
