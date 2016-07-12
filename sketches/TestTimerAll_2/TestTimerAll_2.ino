@@ -1,5 +1,5 @@
 #include "PAL.h"
-#include "Timer.h"
+#include "Timer1.h"
 #include "Evm.h"
 
 
@@ -28,8 +28,8 @@ void setup()
     PAL.PinMode(pinSignalA, OUTPUT);
     PAL.PinMode(pinSignalB, OUTPUT);
 
-    t.PowerDownTimer();
-    t.PowerUpTimer();
+    PAL.PowerDownTimer1();
+    PAL.PowerUpTimer1();
     t.StopTimer();
     //t.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
     t.StopTimer();
@@ -243,22 +243,8 @@ void OnTimeout()
     Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000.0);
     Serial.print("Timer ticks/us: ");
     Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000000.0);
-    Serial.print("TCCRA: 0x");
-    Serial.println(t.GetTCCRA(), HEX);
-    Serial.print("TCCRB: 0x");
-    Serial.println(t.GetTCCRB(), HEX);
-    Serial.print("OCRA: 0x");
-    Serial.println(t.GetOCRA(), HEX);
-    Serial.print("OCRB: 0x");
-    Serial.println(t.GetOCRB(), HEX);
-    Serial.print("TIMSK: 0x");
-    Serial.println(TIMSK1, HEX);
-    Serial.print("TIFR: 0x");
-    Serial.println(TIFR1, HEX);
 
     
-    Serial.print("WaveformGenerationMode: ");
-    Serial.println(t.GetWaveformGenerationMode());
     Serial.print("Timer:");
     for (uint8_t i = 0; i < 16; ++i)
     {
