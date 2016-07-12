@@ -268,6 +268,14 @@ public:
     static uint8_t GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
                                                     uint8_t *port,
                                                     uint8_t *portPin);
+                                                    
+
+    static void PowerUpTimer0()   { PRR &= (uint8_t)~_BV(PRTIM0); }
+    static void PowerDownTimer0() { PRR |= _BV(PRTIM0);           }
+    static void PowerUpTimer1()   { PRR &= (uint8_t)~_BV(PRTIM1); }
+    static void PowerDownTimer1() { PRR |= _BV(PRTIM1);           }
+    static void PowerUpTimer2()   { PRR &= (uint8_t)~_BV(PRTIM2); }
+    static void PowerDownTimer2() { PRR |= _BV(PRTIM2);           }
 
 private:
     static volatile uint8_t *port__ddrxPtr[3];

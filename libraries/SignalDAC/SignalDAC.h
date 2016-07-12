@@ -4,53 +4,17 @@
 
 #include <util/atomic.h>
 
-#include "Container.h"
-#include "Timer.h"
-
-
+#include "Timer2.h"
 
 
 template <typename SignalSource>
 class SignalDAC
 {
-    static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
-    
-public:
-
-    // Opaque to the caller
-    struct FrequencyConfig
-    {
-        // Actually useful configuration
-        typename SignalSource::PhaseConfig cfgPhaseStep;
-
-        // Useful for debugging
-        uint16_t frequencyRequested;
-    };
-
-    enum class CommandType : uint8_t
-    {
-        CHANGE_FREQUENCY
-    };
-        
-    struct Command
-    {
-        CommandType cmdType;
-        
-        union
-        {
-            FrequencyConfig *cfgFrequency;
-        };
-    };
-
-    using CommandQueue = Queue<Command, COMMAND_QUEUE_CAPACITY>;
-    
 public:
     SignalDAC(SignalSource *ss)
     : ss_(ss)
     , timerChannelA_(timer_.GetTimerChannelA())
     , timerChannelB_(timer_.GetTimerChannelB())
-    , timerOvfHandler_(timer_.GetTimerOverflowHandler())
-    , cq_(NULL)
     , pinDebugA_(9, LOW)
     {
         // Nothing to do
@@ -60,6 +24,15 @@ public:
     {
         Stop();
     }
+    
+    struct FrequencyConfig
+    {
+        // Actually useful
+        typename SignalSource::PhaseConfig cfgPhaseStep;
+        
+        // Useful for debugging
+        uint16_t frequencyRequested;
+    };
     
     // Configure frequency of signal
     uint8_t GetFrequencyConfig(uint16_t         frequency,
@@ -132,23 +105,17 @@ public:
     // Expected to happen at beginning of transmission
     void SetInitialFrequency(FrequencyConfig *cfg)
     {
-        //ss_->Reset(cfg->phaseStep);
         ss_->Reset(&cfg->cfgPhaseStep);
     }
-    
-    void SetCommandQueue(CommandQueue *cq)
-    {
-        cq_ = cq;
-    };
     
     void Start()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             // Hand set-up the timer
+            timer_.SetTimerPrescaler(Timer2::TimerPrescaler::DIV_BY_1);
+            timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM_TOP_OCRNA);
             timer_.SetTimerValue(0);
-            timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
-            timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
 
             
             // Set channel B to first sample, and prepare subsequent sample
@@ -158,46 +125,12 @@ public:
             
             // Attach interrupt to channel A to know when a given period ends
             // so that you can transition to next sequence
-            
-            counterCycle_ = 0;
             timerChannelA_->SetInterruptHandler([this](){
-                
-                // Check if we're operating in command queue mode
-                if (cq_)
-                {
-                    ++counterCycle_;
-                    
-                    if (counterCycle_ >= 27)
-                    {
-                        PAL.DigitalWrite(pinDebugA_, HIGH);
-                        
-                        Command cmd;
-                        
-                        if (cq_->Pop(cmd))
-                        {
-                            ChangeFrequency(cmd.cfgFrequency);
-                            
-                            counterCycle_ = 0;
-                        }
-                        else
-                        {
-                            // We overtook the queue fill speed.
-                            // Chances are this is a bad thing for the pusher.
-                            // Check constantly instead of resetting
-                            
-                            counterCycle_ = 27;
-                        }
-                        
-                        PAL.DigitalWrite(pinDebugA_, LOW);
-                    }
-                }
-                
                 timerChannelB_->SetValue(ss_->GetSample());
                 
                 ss_->GetNextSampleReady();
             });
             timerChannelA_->SetValue(247);
-            //timerChannelA_->SetValue(248);
             timerChannelA_->RegisterForInterrupt();
             
             
@@ -205,8 +138,8 @@ public:
             timer_.StartTimer();
             
             
-            // Begin comparing B to the timer value in order to operate the output
-            // level
+            // Begin comparing B to the timer value in order to operate the
+            // output level
             timerChannelB_->SetFastPWMModeBehavior(
                 TimerChannel::FastPWMModeBehavior::CLEAR
             );
@@ -231,7 +164,6 @@ public:
             timer_.StopTimer();
 
             // Don't let any potentially queued interrupts fire
-            timerOvfHandler_->DeRegisterForInterrupt();
             timerChannelA_->DeRegisterForInterrupt();
 
             // Make sure B channel is no longer evaluated in terms of the timer
@@ -242,9 +174,6 @@ public:
             
             // In case the output pin was high when this function got called
             timerChannelB_->OutputLow();
-            
-            // Disassociate command queue
-            cq_ = NULL;
         }
     }
     
@@ -252,22 +181,12 @@ public:
 private:
     SignalSource *ss_;
 
-    Timer1          timer_;
+    Timer2          timer_;
     TimerChannel   *timerChannelA_;
     TimerChannel   *timerChannelB_;
-    TimerInterrupt *timerOvfHandler_;
-    
-    uint8_t counterCycle_;
-    uint8_t idx_;
-    FrequencyConfig cfgList_[2];
-    uint8_t idxByte_;
-    FrequencyConfig cfgListByte_[8];
-
-    
-    CommandQueue  *cq_;
     
     
-    Pin     pinDebugA_;
+    Pin  pinDebugA_;
 };
 
 
