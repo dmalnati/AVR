@@ -37,6 +37,7 @@ class ModemBell202
     // indicate which frequency to change to at each bit boundary.
     enum class CommandType : uint8_t
     {
+        NOP = 0,
         CHANGE_FREQUENCY
     };
         
@@ -55,10 +56,9 @@ class ModemBell202
     
 public:
     ModemBell202()
-    : pinDebugModem_(6, LOW)
-    , dac_(&sineWave_)
-    , dacCfgList_{&dacCfg1200_, &dacCfg2200_}
+    : dacCfgList_{&dacCfg1200_, &dacCfg2200_}
     , timerChannelA_(timer_.GetTimerChannelA())
+    , timerChannelOvf_(timer_.GetTimerOverflowHandler())
     , timerTopValue_(CalculateTimerTopValue())
     {
         Reset();
@@ -70,52 +70,64 @@ public:
     
     ~ModemBell202() {}
     
-    inline void Start()
+    void Start()
     {
-        Reset();
-        
-        // Doesn't matter which frequency starts, it's NRZI, so
-        // it's really the transitions which matter
-        dac_.SetInitialFrequency(dacCfgList_[dacCfgListIdx_]);
-        
-        // Set up timer to count fast (high-res) and high (16-bit) so that
-        // we can specify a long duration between match events
-        timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
-        timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
-        timer_.SetTimerValue(0);
-        
-        // Set up handler for baud-rate callback by having the timer wrap
-        // every 833.3333...us for 1200 baud
-        timerChannelA_->SetValue(timerTopValue_);
-        
-        // Set up handler for when the wrap (actually equality) occurs.
-        // We're looking for the main-thread code to have pushed commands onto
-        // our queue, which represent bit transitions.
-        // These bit transitions will cause us to change the DAC output
-        // frequency.
-        timerChannelA_->SetInterruptHandler([this](){
-            Command cmd;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            Reset();
             
-            if (cmdQueue_.Pop(cmd))
-            {
-                if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
+            // Doesn't matter which frequency starts, it's NRZI, so
+            // it's really the transitions which matter
+            dac_.SetInitialFrequency(dacCfgList_[dacCfgListIdx_]);
+            
+            // Set up timer to count fast (high-res) and high (16-bit) so that
+            // we can specify a long duration between match events
+            timer_.SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
+            timer_.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
+            timer_.SetTimerValue(0);
+            
+            // Set up handler for baud-rate callback by having the timer wrap
+            // every 833.3333...us for 1200 baud
+            timerChannelA_->SetValue(timerTopValue_);
+            
+            // Set up handler for when the wrap (actually equality) occurs.
+            // We're looking for the main-thread code to have pushed commands
+            // onto our queue, which represent bit transitions.
+            // These bit transitions will cause us to change the DAC output
+            // frequency.
+            timerChannelA_->SetInterruptHandler([this](){
+                Command cmd;
+                
+                if (cmdQueue_.Pop(cmd))
                 {
-                    dac_.ChangeFrequency(cmd.dacCfg);
+                    if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
+                    {
+                        dac_.ChangeFrequency(cmd.dacCfg);
+                    }
                 }
-            }
-        });
-        timerChannelA_->RegisterForInterrupt();
-        
-        // Get DAC going
-        dac_.Start();
-        
-        // Get our timer going.
-        // Expected operation is that immediately after Start the Send
-        // function is called to start pushing bits into the command queue.
-        timer_.StartTimer();
+            });
+            timerChannelA_->RegisterForInterrupt();
+            
+            
+            // Debug only -- Check period of bit transition timeout
+            timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
+            
+            
+            // Shut off Timer0, it interferes
+            //PAL.PowerDownTimer0();
+            
+            
+            // Get DAC going
+            dac_.Start();
+            
+            // Get our timer going.
+            // Expected operation is that immediately after Start the Send
+            // function is called to start pushing bits into the command queue.
+            timer_.StartTimer();
+        }
     }
     
-    inline void Send(uint8_t *buf, uint8_t  bufLen, uint8_t  bitStuff = 1)
+    void Send(uint8_t *buf, uint8_t  bufLen, uint8_t  bitStuff = 1)
     {
         // Bit counting re-sets every Send
         bitStuffCount_ = 0;
@@ -124,35 +136,34 @@ public:
         {
             SendByte(buf[i], bitStuff);
         }
-        
-        
+    }
+    
+    void Stop()
+    {
         // Wait for completion!
         //
         // Can very easily out-pace the DAC, so need to wait for it to finish.
-        // Possibly this could be done in Stop(), but why, let's call Send()
-        // completely synchronous.
-        //
-        /*
-        SignalDACType::Command cmd;
-        
-        cmd.type         = SignalDACType::CommandType::NOP;
-        cmd.cfgFrequency = dacCfgList_[dacCfgListIdx_];
+        Command cmd;
+        cmd.cmdType = CommandType::NOP;
         
         cmdQueue_.PushAtomic(cmd);
-        while (cmdQueue_.Size()) {}
-        */
         
-    }
-    
-    inline void Stop()
-    {
+        while (cmdQueue_.Size()) {}
+
+        
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             // Stop the DAC
             dac_.Stop();
             
             // Don't let any potentially queued interrupts fire
-            timerChannelA_->DeRegisterForInterrupt();
+            timerChannelOvf_->DeRegisterForInterrupt();
+            
+            // Stop the timer
+            timer_.StopTimer();
+            
+            // Turn on Timer0 again
+            //PAL.PowerUpTimer0();
         }
     }
 
@@ -173,8 +184,6 @@ private:
         
         for (uint8_t i = 0; i < 8; ++i)
         {
-            PAL.DigitalWrite(pinDebugModem_, HIGH);
-            
             // Get next bit -- assume LSB first
             uint8_t bitVal = bTmp & 0x01;
             
@@ -231,8 +240,6 @@ private:
         cmd.dacCfg  = dacCfgList_[dacCfgListIdx_];
         
         cmdQueue_.PushAtomic(cmd);
-        
-        PAL.DigitalWrite(pinDebugModem_, LOW);
     }
     
     
@@ -258,23 +265,18 @@ private:
 
     
     
-    
-    Pin pinDebugModem_;
-    
     uint8_t bitStuffCount_;    
 
-    SignalSourceSineWave  sineWave_;
-    
     SignalDACType                    dac_;
     SignalDACType::FrequencyConfig   dacCfg1200_;
     SignalDACType::FrequencyConfig   dacCfg2200_;
     SignalDACType::FrequencyConfig  *dacCfgList_[2];
     uint8_t                          dacCfgListIdx_;
     
-    Timer1         timer_;
-    TimerChannel  *timerChannelA_;
+    Timer1          timer_;
+    TimerChannel   *timerChannelA_;
+    TimerInterrupt *timerChannelOvf_;
 
-    
     uint16_t  timerTopValue_;
     
     CommandQueue  cmdQueue_;
