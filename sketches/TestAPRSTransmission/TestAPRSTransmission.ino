@@ -19,6 +19,7 @@ void setup()
 {
     Serial.begin(9600);
 
+    // So I can use Serial in the class for debugging...
     ModemBell202 modemReal;
     modem = &modemReal;
     
@@ -122,7 +123,25 @@ void SendDataInLoopOnDelay(uint8_t *buf, uint8_t bufLen, uint16_t delayMs)
 
     while (1)
     {
+        #if 0
+        Serial.println("TOP");
+
+        Serial.print("1 - TCCR1B: ");
+        Serial.println(TCCR1B);
+        Serial.print("1 - TCCR2B: ");
+        Serial.println(TCCR2B);
+        #endif
+        
         modem->Start();
+
+        #if 0
+        Serial.print("2 - TCCR1B: ");
+        Serial.println(TCCR1B);
+        Serial.print("2 - TCCR2B: ");
+        Serial.println(TCCR2B);
+        #endif
+
+        
         
         // Send preamble, which also will serve as the flag byte
         // Send lots, like APRSDroid
@@ -138,11 +157,15 @@ void SendDataInLoopOnDelay(uint8_t *buf, uint8_t bufLen, uint16_t delayMs)
 
         // Send trailing flags
         bitStuff = 0;
-        modem->Send(flagList, 1, bitStuff);
+        modem->Send(flagList, 2, bitStuff);
 
         modem->Stop();
 
         PAL.Delay(delayMs);
+
+        #if 0
+        Serial.println("BOTTOM");
+        #endif
     }
 }
 
@@ -189,6 +212,7 @@ void GetSetUpBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
 
     Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
+    Serial.println();
 
     // Fill out return parameters
     *bufRet    = buf;
