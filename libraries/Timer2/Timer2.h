@@ -192,6 +192,10 @@ public:
     static TimerInterrupt::CbFnRaw cbFnRawB_;
     static TimerInterrupt::CbFnRaw cbFnRawOvf_;
 
+    static void OnFnRawADefault()   { cbFnA_();   }
+    static void OnFnRawBDefault()   { cbFnB_();   }
+    static void OnFnRawOvfDefault() { cbFnOvf_(); }
+    
     
 private:
 

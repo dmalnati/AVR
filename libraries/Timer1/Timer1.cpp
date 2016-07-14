@@ -6,9 +6,9 @@ function<void()> Timer1::cbFnA_;
 function<void()> Timer1::cbFnB_;
 function<void()> Timer1::cbFnOvf_;
 
-TimerInterrupt::CbFnRaw Timer1::cbFnRawA_   = NULL;
-TimerInterrupt::CbFnRaw Timer1::cbFnRawB_   = NULL;
-TimerInterrupt::CbFnRaw Timer1::cbFnRawOvf_ = NULL;
+TimerInterrupt::CbFnRaw Timer1::cbFnRawA_   = Timer1::OnFnRawADefault;
+TimerInterrupt::CbFnRaw Timer1::cbFnRawB_   = Timer1::OnFnRawBDefault;
+TimerInterrupt::CbFnRaw Timer1::cbFnRawOvf_ = Timer1::OnFnRawOvfDefault;
 
 Timer1::TimerPrescaler  Timer1::timerPrescaler_(Timer1::GetTimerPrescalerFromRegister());
 TimerChannel16Bit       Timer1::channelA_  (&cbFnA_,   &cbFnRawA_,   &TIMSK1, OCIE1A, &TIFR1, OCF1A, &OCR1A, &TCCR1A, COM1A1, COM1A0, Timer1::PIN_CHANNEL_A);
@@ -18,19 +18,16 @@ TimerInterrupt          Timer1::ovfHandler_(&cbFnOvf_, &cbFnRawOvf_, &TIMSK1, TO
 
 ISR(TIMER1_COMPA_vect)
 {
-    if (Timer1::cbFnRawA_) Timer1::cbFnRawA_();
-    else                   Timer1::cbFnA_();
+    Timer1::cbFnRawA_();
 }
 
 ISR(TIMER1_COMPB_vect)
 {
-    if (Timer1::cbFnRawB_) Timer1::cbFnRawB_();
-    else                   Timer1::cbFnB_();
+    Timer1::cbFnRawB_();
 }
 
 ISR(TIMER1_OVF_vect)
 {
-    if (Timer1::cbFnRawOvf_) Timer1::cbFnRawOvf_();
-    else                     Timer1::cbFnOvf_();
+    Timer1::cbFnRawOvf_();
 }
 
