@@ -23,6 +23,7 @@ public:
                             uint8_t   ocfbitLoc)
     : cbFn_(cbFn)
     , cbFnRaw_(cbFnRaw)
+    , cbFnRawDefault_(*cbFnRaw_)
     , timsk_(timsk)
     , ociebitLoc_(ociebitLoc)
     , tifr_(tifr)
@@ -74,7 +75,7 @@ public:
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            *cbFnRaw_ = NULL;
+            *cbFnRaw_ = cbFnRawDefault_;
         }
     }
     
@@ -107,6 +108,7 @@ private:
 
     function<void()>  *cbFn_;
     CbFnRaw           *cbFnRaw_;
+    CbFnRaw            cbFnRawDefault_;
 
     volatile uint8_t  *timsk_;
              uint8_t   ociebitLoc_;
