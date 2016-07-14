@@ -11,11 +11,7 @@ template <typename SignalSource>
 class SignalDAC
 {
 public:
-    SignalDAC(SignalSource *ss)
-    : ss_(ss)
-    , timerChannelA_(timer_.GetTimerChannelA())
-    , timerChannelB_(timer_.GetTimerChannelB())
-    , pinDebugA_(9, LOW)
+    SignalDAC()
     {
         // Nothing to do
     }
@@ -35,6 +31,7 @@ public:
     };
     
     // Configure frequency of signal
+    static
     uint8_t GetFrequencyConfig(uint16_t         frequency,
                                FrequencyConfig *cfg)
     {
@@ -88,26 +85,20 @@ public:
         
         
         // fill out configuration
-        //cfg->phaseStep          = ceil(phaseStep);
-        ss_->GetPhaseConfig(ceil(phaseStep), &cfg->cfgPhaseStep);
+        ss_.GetPhaseConfig(ceil(phaseStep), &cfg->cfgPhaseStep);
         cfg->frequencyRequested = frequency;
-        
-        Serial.print("frequencyRequested: ");
-        Serial.println(cfg->frequencyRequested);
-        Serial.print("phaseStepDouble: ");
-        Serial.println(phaseStep);
-        Serial.print("phaseStep: ");
-        Serial.println(ceil(phaseStep));
         
         return retVal;
     }
     
     // Expected to happen at beginning of transmission
+    static
     void SetInitialFrequency(FrequencyConfig *cfg)
     {
-        ss_->Reset(&cfg->cfgPhaseStep);
+        ss_.Reset(&cfg->cfgPhaseStep);
     }
     
+    static
     void Start()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -117,26 +108,20 @@ public:
             timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM_TOP_OCRNA);
             timer_.SetTimerValue(0);
 
+            // Set channel A to TOP to step at the correct frequency
+            timerChannelA_->SetValue(247);
             
             // Set channel B to first sample, and prepare subsequent sample
-            timerChannelB_->SetValue(ss_->GetSample());
-            ss_->GetNextSampleReady();
+            timerChannelB_->SetValue(ss_.GetSample());
+            ss_.GetNextSampleReady();
             
-            
-            // Attach interrupt to channel A to know when a given period ends
+            // Attach interrupt to overflow to know when a given period ends
             // so that you can transition to next sequence
-            timerChannelA_->SetInterruptHandler([this](){
-                timerChannelB_->SetValue(ss_->GetSample());
-                
-                ss_->GetNextSampleReady();
-            });
-            timerChannelA_->SetValue(247);
-            timerChannelA_->RegisterForInterrupt();
-            
+            timerChannelOvf_->SetInterruptHandlerRaw(OnInterrupt);
+            timerChannelOvf_->RegisterForInterrupt();
             
             // Begin timer counting
             timer_.StartTimer();
-            
             
             // Begin comparing B to the timer value in order to operate the
             // output level
@@ -145,17 +130,32 @@ public:
             );
         }
     }
-
+    
+    static
+    void OnInterrupt()
+    {
+        timerChannelB_->SetValue(ss_.GetSample());
+        
+        ss_.GetNextSampleReady();
+    }
     
     // Expected to happen during run
+    static
     inline void ChangeFrequency(FrequencyConfig *cfg)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            ss_->ChangePhaseStep(&cfg->cfgPhaseStep);
+            ChangeFrequencyNonAtomic(cfg);
         }
     }
     
+    static
+    inline void ChangeFrequencyNonAtomic(FrequencyConfig *cfg)
+    {
+        ss_.ChangePhaseStep(&cfg->cfgPhaseStep);
+    }
+    
+    static
     void Stop()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -179,17 +179,16 @@ public:
     
 
 private:
-    SignalSource *ss_;
+    static SignalSource ss_;
 
-    Timer2          timer_;
-    TimerChannel   *timerChannelA_;
-    TimerChannel   *timerChannelB_;
-    
-    
-    Pin  pinDebugA_;
+    static Timer2                    timer_;
+    constexpr static TimerChannel   *timerChannelA_   = Timer2::GetTimerChannelA();
+    constexpr static TimerChannel   *timerChannelB_   = Timer2::GetTimerChannelB();
+    constexpr static TimerInterrupt *timerChannelOvf_ = Timer2::GetTimerOverflowHandler();
 };
 
-
+template <typename SignalSource>
+SignalSource SignalDAC<SignalSource>::ss_;
 
 
 #endif  // __SIGNAL_DAC_H__
