@@ -12,10 +12,6 @@ class Timer1
     
 public:
     Timer1()
-    : timerPrescaler_(GetTimerPrescalerFromRegister())
-    , channelA_  (&cbFnA_,   &TIMSK1, OCIE1A, &TIFR1, OCF1A, &OCR1A, &TCCR1A, COM1A1, COM1A0, PIN_CHANNEL_A)
-    , channelB_  (&cbFnB_,   &TIMSK1, OCIE1B, &TIFR1, OCF1B, &OCR1B, &TCCR1A, COM1B1, COM1B0, PIN_CHANNEL_B)
-    , ovfHandler_(&cbFnOvf_, &TIMSK1, TOIE1,  &TIFR1, TOV1)
     {
         // Nothing to do
     }
@@ -25,7 +21,7 @@ public:
         // Nothing to do
     }
     
-    uint16_t GetTimerPrescalerValue()
+    static uint16_t GetTimerPrescalerValue()
     {
         return ConvertTimerPrescalerToValue(timerPrescaler_);
     }
@@ -42,7 +38,7 @@ public:
         EXTERNAL_CLOCK_RISING_EDGE
     };
     
-    uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
+    static uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
     {
         uint16_t retVal = 0;
         
@@ -60,7 +56,7 @@ public:
         return retVal;
     }
     
-    TimerPrescaler GetTimerPrescalerFromRegister()
+    static TimerPrescaler GetTimerPrescalerFromRegister()
     {
         TimerPrescaler retVal;
         
@@ -78,17 +74,17 @@ public:
         return retVal;
     }
     
-    TimerPrescaler GetTimerPrescaler()
+    static TimerPrescaler GetTimerPrescaler()
     {
         return timerPrescaler_;
     }
     
-    void SetTimerPrescaler(TimerPrescaler p)
+    static void SetTimerPrescaler(TimerPrescaler p)
     {
         timerPrescaler_ = p;
     }
     
-    void StopTimer()
+    static void StopTimer()
     {
         // Intentionally directly set the register, leaving in place the
         // cached internal value of the prescaler.
@@ -97,7 +93,7 @@ public:
         TCCR1B &= 0xF8;
     }
     
-    void StartTimer()
+    static void StartTimer()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -132,7 +128,7 @@ public:
         FAST_PWM_TOP_OCRNA
     };
     
-    void SetTimerMode(TimerMode m)
+    static void SetTimerMode(TimerMode m)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -149,33 +145,45 @@ public:
             // WGM11        x            
             // WGM10         x          
             
-            TCCR1B = (uint8_t)((uint8_t)(TCCR1B & (uint8_t)~_BV(WGM13)) |
-                               (uint8_t)(wgm13bit << WGM13));
-            TCCR1B = (uint8_t)((uint8_t)(TCCR1B & (uint8_t)~_BV(WGM12)) |
-                               (uint8_t)(wgm12bit << WGM12));
-            TCCR1A = (uint8_t)((uint8_t)(TCCR1A & (uint8_t)~_BV(WGM11)) |
-                               (uint8_t)(wgm11bit << WGM11));
-            TCCR1A = (uint8_t)((uint8_t)(TCCR1A & (uint8_t)~_BV(WGM10)) |
-                               (uint8_t)(wgm10bit << WGM10));
+            uint8_t tccr1a;
+            uint8_t tccr1b;
+            
+            tccr1a = (uint8_t)
+                // Mask out the two bits
+                (TCCR1A & (uint8_t)~(_BV(WGM11) | _BV(WGM10))) |
+                // Plug in the two new bits
+                (wgm11bit << WGM11 | wgm10bit << WGM10);
+                
+            tccr1b = (uint8_t)
+                // Mask out the two bits
+                (TCCR1B & (uint8_t)~(_BV(WGM13) | _BV(WGM12))) |
+                // Plug in the two new bits
+                (wgm13bit << WGM13 | wgm12bit << WGM12);
+
+            TCCR1A = tccr1a;
+            TCCR1B = tccr1b;
         }
     }
     
-    TimerChannel *GetTimerChannelA()
+    constexpr
+    static TimerChannel *GetTimerChannelA()
     {
         return &channelA_;
     }
     
-    TimerChannel *GetTimerChannelB()
+    constexpr
+    static TimerChannel *GetTimerChannelB()
     {
         return &channelB_;
     }
     
-    TimerInterrupt *GetTimerOverflowHandler()
+    constexpr
+    static TimerInterrupt *GetTimerOverflowHandler()
     {
         return &ovfHandler_;
     }
     
-    uint16_t GetTimerValue()
+    static uint16_t GetTimerValue()
     {
         uint16_t retVal;
         
@@ -187,7 +195,7 @@ public:
         return retVal;
     }
     
-    void SetTimerValue(uint16_t value)
+    static void SetTimerValue(uint16_t value)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -201,13 +209,17 @@ public:
     static function<void()> cbFnB_;
     static function<void()> cbFnOvf_;
     
+    static TimerInterrupt::CbFnRaw cbFnRawA_;
+    static TimerInterrupt::CbFnRaw cbFnRawB_;
+    static TimerInterrupt::CbFnRaw cbFnRawOvf_;
+    
 private:
 
-    TimerPrescaler      timerPrescaler_;
+    static TimerPrescaler      timerPrescaler_;
 
-    TimerChannel16Bit   channelA_;
-    TimerChannel16Bit   channelB_;
-    TimerInterrupt      ovfHandler_;
+    static TimerChannel16Bit   channelA_;
+    static TimerChannel16Bit   channelB_;
+    static TimerInterrupt      ovfHandler_;
 };
 
 

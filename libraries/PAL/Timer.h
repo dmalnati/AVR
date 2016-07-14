@@ -12,12 +12,17 @@
 class TimerInterrupt
 {
 public:
+    using CbFnRaw = void (*)(); 
+    
+public:
     TimerInterrupt(function<void()>  *cbFn,
+                   CbFnRaw           *cbFnRaw,
                    volatile uint8_t  *timsk,
                             uint8_t   ociebitLoc,
                    volatile uint8_t  *tifr,
                             uint8_t   ocfbitLoc)
     : cbFn_(cbFn)
+    , cbFnRaw_(cbFnRaw)
     , timsk_(timsk)
     , ociebitLoc_(ociebitLoc)
     , tifr_(tifr)
@@ -41,6 +46,8 @@ public:
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
+            UnSetInterruptHandlerRaw();
+            
             *cbFn_ = cbFn;
         }
     }
@@ -50,6 +57,24 @@ public:
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             *cbFn_ = [](){};
+        }
+    }
+    
+    void SetInterruptHandlerRaw(CbFnRaw cbFnRaw)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandler();
+            
+            *cbFnRaw_ = cbFnRaw;
+        }
+    }
+    
+    void UnSetInterruptHandlerRaw()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            *cbFnRaw_ = NULL;
         }
     }
     
@@ -81,6 +106,7 @@ public:
 private:
 
     function<void()>  *cbFn_;
+    CbFnRaw           *cbFnRaw_;
 
     volatile uint8_t  *timsk_;
              uint8_t   ociebitLoc_;
@@ -95,6 +121,7 @@ class TimerChannel
 {
 public:
     TimerChannel(function<void()>  *cbFn,
+                 CbFnRaw           *cbFnRaw,
                  volatile uint8_t  *timsk,
                           uint8_t   ociebitLoc,
                  volatile uint8_t  *tifr,
@@ -103,11 +130,11 @@ public:
                           uint8_t   com1bitLoc,
                           uint8_t   com0bitLoc,
                           uint8_t   pin)
-    : TimerInterrupt(cbFn, timsk, ociebitLoc, tifr, ocfbitLoc)
+    : TimerInterrupt(cbFn, cbFnRaw, timsk, ociebitLoc, tifr, ocfbitLoc)
     , comreg_(comreg)
     , com1bitLoc_(com1bitLoc)
     , com0bitLoc_(com0bitLoc)
-    , pin_(pin, LOW)
+    , pin_(pin)
     {
         // What state to be in?
         
@@ -144,11 +171,15 @@ public:
     
     void OutputHigh()
     {
+        PAL.PinMode(pin_, OUTPUT);
+        
         PAL.DigitalWrite(pin_, HIGH);
     }
     
     void OutputLow()
     {
+        PAL.PinMode(pin_, OUTPUT);
+        
         PAL.DigitalWrite(pin_, LOW);
     }
     
@@ -163,6 +194,8 @@ public:
     
     void SetCTCModeBehavior(CTCModeBehavior b)
     {
+        PAL.PinMode(pin_, OUTPUT);
+        
         SetConfigurationBits((uint8_t)b);
     }
     
@@ -176,6 +209,8 @@ public:
     
     void SetFastPWMModeBehavior(FastPWMModeBehavior b)
     {
+        PAL.PinMode(pin_, OUTPUT);
+        
         SetConfigurationBits((uint8_t)b);
     }
     
@@ -189,6 +224,8 @@ public:
     
     void SetPhaseCorrectPWMModeBehavior(PhaseCorrectPWMModeBehavior b)
     {
+        PAL.PinMode(pin_, OUTPUT);
+        
         SetConfigurationBits((uint8_t)b);
     }
 
@@ -227,6 +264,7 @@ class TimerChannel8Bit
 {
 public:
     TimerChannel8Bit(function<void()>  *cbFn,
+                     CbFnRaw           *cbFnRaw,
                      volatile uint8_t  *timsk,
                               uint8_t   ociebitLoc,
                      volatile uint8_t  *tifr,
@@ -237,6 +275,7 @@ public:
                               uint8_t   com0bitLoc,
                               uint8_t   pin)
     : TimerChannel(cbFn,
+                   cbFnRaw,
                    timsk,
                    ociebitLoc,
                    tifr,
@@ -274,6 +313,7 @@ class TimerChannel16Bit
 {
 public:
     TimerChannel16Bit(function<void()>  *cbFn,
+                      CbFnRaw           *cbFnRaw,
                       volatile uint8_t  *timsk,
                                uint8_t   ociebitLoc,
                       volatile uint8_t  *tifr,
@@ -284,6 +324,7 @@ public:
                                uint8_t   com0bitLoc,
                                uint8_t   pin)
     : TimerChannel(cbFn,
+                   cbFnRaw,
                    timsk,
                    ociebitLoc,
                    tifr,

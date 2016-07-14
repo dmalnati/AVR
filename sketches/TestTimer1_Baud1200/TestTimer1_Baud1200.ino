@@ -10,11 +10,9 @@ static TimerChannel   *ta = NULL;
 static TimerChannel   *tb = NULL;
 static TimerInterrupt *ti = NULL;
 
-static const uint8_t PIN_DEBUG_A = 27;
-static const uint8_t PIN_DEBUG_B = 28;
+Pin pinTimer1ISRA(14, LOW);
+Pin pinTimer1ISROvf(19, LOW);
 
-Pin pinDebugA(PIN_DEBUG_A, LOW);
-Pin pinDebugB(PIN_DEBUG_B, LOW);
 
 
 void setup()
@@ -90,22 +88,28 @@ void TestBaud1200()
     t.SetTimerMode(Timer1::TimerMode::FAST_PWM_TOP_OCRNA);
     t.SetTimerValue(0);
 
-    // Set up channel
+    // Set up top value
+    ta->SetValue(top);
+
+    // Set up interrupt handler
     ta->SetInterruptHandler([&](){
-        PlatformAbstractionLayer::DigitalWrite(pinDebugA, HIGH);
+        PlatformAbstractionLayer::DigitalToggle(pinTimer1ISRA);
 
         // Do some user thing
-
-        PlatformAbstractionLayer::DigitalWrite(pinDebugA, LOW);
     });
-    ta->SetValue(top);
     ta->RegisterForInterrupt();
     
     // Begin
     t.StartTimer();
 
+    // Don't let Timer0 interfere with our precise timing efforts
     PAL.PowerDownTimer0();
-    while (1) {}            // Disable Evm
+
+    // Also prevent Evm from looping and trying to handle interrupts
+    // (which block ISRs)
+    while (1)
+    {
+    }
 }
 
 

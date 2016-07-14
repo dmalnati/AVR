@@ -12,10 +12,6 @@ class Timer2
     
 public:
     Timer2()
-    : timerPrescaler_(GetTimerPrescalerFromRegister())
-    , channelA_  (&cbFnA_,   &TIMSK2, OCIE2A, &TIFR2, OCF2A, &OCR2A, &TCCR2A, COM2A1, COM2A0, PIN_CHANNEL_A)
-    , channelB_  (&cbFnB_,   &TIMSK2, OCIE2B, &TIFR2, OCF2B, &OCR2B, &TCCR2A, COM2B1, COM2B0, PIN_CHANNEL_B)
-    , ovfHandler_(&cbFnOvf_, &TIMSK2, TOIE2,  &TIFR2, TOV2)
     {
         // Nothing to do
     }
@@ -25,7 +21,7 @@ public:
         // Nothing to do
     }
     
-    uint16_t GetTimerPrescalerValue()
+    static uint16_t GetTimerPrescalerValue()
     {
         return ConvertTimerPrescalerToValue(timerPrescaler_);
     }
@@ -42,7 +38,7 @@ public:
         DIV_BY_1024
     };
     
-    uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
+    static uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
     {
         uint16_t retVal = 0;
         
@@ -62,7 +58,7 @@ public:
         return retVal;
     }
     
-    TimerPrescaler GetTimerPrescalerFromRegister()
+    static TimerPrescaler GetTimerPrescalerFromRegister()
     {
         TimerPrescaler retVal;
         
@@ -80,17 +76,17 @@ public:
         return retVal;
     }
     
-    TimerPrescaler GetTimerPrescaler()
+    static TimerPrescaler GetTimerPrescaler()
     {
         return timerPrescaler_;
     }
     
-    void SetTimerPrescaler(TimerPrescaler p)
+    static void SetTimerPrescaler(TimerPrescaler p)
     {
         timerPrescaler_ = p;
     }
     
-    void StopTimer()
+    static void StopTimer()
     {
         // Intentionally directly set the register, leaving in place the
         // cached internal value of the prescaler.
@@ -99,7 +95,7 @@ public:
         TCCR2B &= 0xF8;
     }
     
-    void StartTimer()
+    static void StartTimer()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -126,7 +122,7 @@ public:
         FAST_PWM_TOP_OCRNA
     };
     
-    void SetTimerMode(TimerMode m)
+    static void SetTimerMode(TimerMode m)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
@@ -140,37 +136,48 @@ public:
             // WGM22                x   
             // WGM21        x            
             // WGM20         x          
+
+            uint8_t tccr2a;
+            uint8_t tccr2b;
             
-            TCCR2B = (uint8_t)((uint8_t)(TCCR2B & (uint8_t)~_BV(WGM22)) |
+            tccr2a = (uint8_t)
+                // Mask out the two bits
+                (TCCR2A & (uint8_t)~(_BV(WGM21) | _BV(WGM20))) |
+                // Plug in the two new bits
+                (wgm21bit << WGM21 | wgm20bit << WGM20);
+            
+            tccr2b = (uint8_t)((uint8_t)(TCCR2B & (uint8_t)~_BV(WGM22)) |
                                (uint8_t)(wgm22bit << WGM22));
-            TCCR2A = (uint8_t)((uint8_t)(TCCR2A & (uint8_t)~_BV(WGM21)) |
-                               (uint8_t)(wgm21bit << WGM21));
-            TCCR2A = (uint8_t)((uint8_t)(TCCR2A & (uint8_t)~_BV(WGM20)) |
-                               (uint8_t)(wgm20bit << WGM20));
+                
+            TCCR2A = tccr2a;
+            TCCR2B = tccr2b;
         }
     }
     
-    TimerChannel *GetTimerChannelA()
+    constexpr
+    static TimerChannel *GetTimerChannelA()
     {
         return &channelA_;
     }
     
-    TimerChannel *GetTimerChannelB()
+    constexpr
+    static TimerChannel *GetTimerChannelB()
     {
         return &channelB_;
     }
     
-    TimerInterrupt *GetTimerOverflowHandler()
+    constexpr
+    static TimerInterrupt *GetTimerOverflowHandler()
     {
         return &ovfHandler_;
     }
     
-    uint8_t GetTimerValue()
+    static uint8_t GetTimerValue()
     {
         return TCNT2;
     }
     
-    void SetTimerValue(uint8_t value)
+    static void SetTimerValue(uint8_t value)
     {
         TCNT2 = value;
     }
@@ -181,13 +188,18 @@ public:
     static function<void()> cbFnB_;
     static function<void()> cbFnOvf_;
     
+    static TimerInterrupt::CbFnRaw cbFnRawA_;
+    static TimerInterrupt::CbFnRaw cbFnRawB_;
+    static TimerInterrupt::CbFnRaw cbFnRawOvf_;
+
+    
 private:
 
-    TimerPrescaler     timerPrescaler_;
+    static TimerPrescaler     timerPrescaler_;
 
-    TimerChannel8Bit   channelA_;
-    TimerChannel8Bit   channelB_;
-    TimerInterrupt     ovfHandler_;
+    static TimerChannel8Bit   channelA_;
+    static TimerChannel8Bit   channelB_;
+    static TimerInterrupt     ovfHandler_;
 };
 
 
