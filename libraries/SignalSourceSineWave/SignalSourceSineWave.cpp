@@ -2,6 +2,13 @@
 
 #include <avr/pgmspace.h>
 
+#include "SignalSourceSineWave.h"
+
+
+uint8_t  SignalSourceSineWave::sample_;
+uint16_t SignalSourceSineWave::idxCurrent_;
+uint16_t SignalSourceSineWave::idxStep_;
+
 
 // Taken from here and lightly reformatted:
 // https://github.com/trackuino/trackuino/blob/1.51/trackuino/afsk_avr.cpp

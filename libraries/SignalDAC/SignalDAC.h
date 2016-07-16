@@ -24,78 +24,69 @@ public:
     struct FrequencyConfig
     {
         // Actually useful
-        typename SignalSource::PhaseConfig cfgPhaseStep;
+        typename SignalSource::PhaseConfig cfgPhase;
         
         // Useful for debugging
         uint16_t frequencyRequested;
     };
     
-    // Configure frequency of signal
     static
-    uint8_t GetFrequencyConfig(uint16_t         frequency,
-                               FrequencyConfig *cfg)
+    void GetFrequencyConfig(uint16_t         frequency,
+                            FrequencyConfig *cfg)
     {
-        uint8_t retVal = 1;
-        
-        // frequency = 1200;
-        
-        // We know we're using FastPWM on an 8-bit timer.
-        // Let's say we hand-configure it for simplicity in logic below.
-        // (subject to change)
-        // Figure out frequency of the timer overflow.
-        
-        double cpuFrequency = PAL.GetCpuFreq();
-        double timerPrescaler = 1;
-        //double timerTickCount = 256;
-        double timerTickCount = 247;
-        //double timerFrequency = (double)cpuFrequency /
-        //                          (double)timerPrescaler / 
-        //                          (double)timerTickCount;
-
-        // timerFrequency = 31,250Hz
-
-
-        // unused variable, but working through calculations
-        //double timerTickDurationUs = 1.0 / (double)timerFrequency * 
-        //                             1000000.0 / (timerTickCount * timerPrescaler);
-
-        // timerTickDurationUs = 0.125
-
-        double timerOverflowPeriodUs =
-            (double)(timerTickCount * timerPrescaler) /
-            (double) cpuFrequency *
-            1000000.0;
-
-        // timerOverflowPeriodUs = 32
-            
-        double frequencyPeriodUs = 1.0 / (double)frequency * 1000000.0;
-        
-        // frequencyPeriodUs = 833
-        
-        double timerOverflowsPerFrequencyPeriod =
-            (double)frequencyPeriodUs / (double)timerOverflowPeriodUs;
-        
-        // timerOverflowsPerFrequencyPeriod = 26
+        // Method:
+        // 
+        // User enters a frequency: eg 1200Hz
+        // 
+        // This code intends to:
+        // - determine duration of single signal loop at frequency
+        // - determine duration of single timer loop
+        //   - assume 8-bit FastPWM timer (256 ticks), no prescaler
+        // - calculate number of timer loops per signal loop
+        //   - calculate percent of signal each timer loop represents
+        // - get configuration for signal source
         
         
-        double phaseStep = 360.0 / (double)timerOverflowsPerFrequencyPeriod;
+        // - determine duration of single signal loop at frequency
+        double durationSingleWaveAtFrequencyUs = 1000000.0 / (double)frequency;
         
-        // phaseStep = 13
+        // - determine duration of single timer loop
+        //   - assume 8-bit FastPWM timer (256 ticks), no prescaler
+        double cpuFrequency          = PAL.GetCpuFreq();
+        double timerPrescaler        = 1;
+        double timerTickCount        = 256;
+        double durationSingleTimerUs = 
+            1000000.0 / (cpuFrequency / timerPrescaler / timerTickCount);
         
+        // - calculate number of timer loops per signal loop
+        //   - calculate percent of signal each timer loop represents
+        double timerLoopsPerSingleWaveAtFrequency =
+            durationSingleWaveAtFrequencyUs / durationSingleTimerUs;
+        double phasePct = 1.0 / timerLoopsPerSingleWaveAtFrequency * 100.0;
         
-        
-        // fill out configuration
-        ss_.GetPhaseConfig(ceil(phaseStep), &cfg->cfgPhaseStep);
+        // - get configuration for signal source
+        ss_.GetPhaseConfig(phasePct, &cfg->cfgPhase);
         cfg->frequencyRequested = frequency;
         
-        return retVal;
+        Serial.print("frequencyRequested: ");
+        Serial.println(cfg->frequencyRequested);
+        Serial.print("durationSingleWaveAtFrequencyUs: ");
+        Serial.println(durationSingleWaveAtFrequencyUs);
+        Serial.print("durationSingleTimerUs: ");
+        Serial.println(durationSingleTimerUs);
+        Serial.print("timerLoopsPerSingleWaveAtFrequency: ");
+        Serial.println(timerLoopsPerSingleWaveAtFrequency);
+        Serial.print("phasePct: ");
+        Serial.println(phasePct);
+        Serial.print("idxStep: ");
+        Serial.println(cfg->cfgPhase.idxStep);
     }
     
     // Expected to happen at beginning of transmission
     static
     void SetInitialFrequency(FrequencyConfig *cfg)
     {
-        ss_.Reset(&cfg->cfgPhaseStep);
+        ss_.Reset(&cfg->cfgPhase);
     }
     
     static
@@ -105,12 +96,10 @@ public:
         {
             // Hand set-up the timer
             timer_.SetTimerPrescaler(Timer2::TimerPrescaler::DIV_BY_1);
-            timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM_TOP_OCRNA);
+            //timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM_TOP_OCRNA);
+            timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM);
             timer_.SetTimerValue(0);
 
-            // Set channel A to TOP to step at the correct frequency
-            timerChannelA_->SetValue(247);
-            
             // Set channel B to first sample, and prepare subsequent sample
             timerChannelB_->SetValue(ss_.GetSample());
             ss_.GetNextSampleReady();
@@ -152,7 +141,11 @@ public:
     static
     inline void ChangeFrequencyNonAtomic(FrequencyConfig *cfg)
     {
-        ss_.ChangePhaseStep(&cfg->cfgPhaseStep);
+        ss_.ChangePhaseStep(&cfg->cfgPhase);
+        
+        // debug -- test duration increase (+5us)
+        // maybe this doesn't happen when pin toggling not turned on?
+        //ss_.GetNextSampleReady();
     }
     
     static

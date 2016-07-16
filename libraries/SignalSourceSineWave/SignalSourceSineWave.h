@@ -4,10 +4,15 @@
 
 #include <avr/pgmspace.h>
 
+#include <math.h>
+
 
 extern const uint8_t SINE_TABLE[] PROGMEM;
 
 
+// Effectively a singleton, but you need to instantiate an instance to use it
+// so that its static vars get set up correctly.
+//
 // Usage:
 // - Reset()
 // - GetSample(), GetNextSampleReady(), ...
@@ -19,15 +24,13 @@ class SignalSourceSineWave
 {
     static const uint16_t SAMPLE_COUNT = 512;
     
-    static const uint16_t DEFAULT_PHASE_STEP   = 1;
-    
-    constexpr static const double SCALING_RATIO = (double)SAMPLE_COUNT / 360.0;
+    constexpr static const double DEFAULT_PHASE_PCT = 1.0;
     
 public:
     SignalSourceSineWave()
     {
         PhaseConfig cfg;
-        GetPhaseConfig(DEFAULT_PHASE_STEP, &cfg);
+        GetPhaseConfig(DEFAULT_PHASE_PCT, &cfg);
         Reset(&cfg);
     }
     
@@ -40,52 +43,52 @@ public:
     struct PhaseConfig
     {
         // Actually useful configuration
-        uint16_t phasePreScaled;
+        uint16_t idxStep;
         
         // Useful for debugging
-        uint16_t phaseRequested;
+        double phaseRequested;
     };
     
-    uint8_t GetPhaseConfig(uint16_t phase, PhaseConfig *cfg)
+    static uint8_t GetPhaseConfig(double phasePct, PhaseConfig *cfg)
     {
         uint8_t retVal = 1;
         
-        cfg->phasePreScaled = phase * SCALING_RATIO;
-        cfg->phaseRequested = phase;
+        cfg->idxStep        = phasePct / 100.0 * SAMPLE_COUNT;
+        cfg->phaseRequested = phasePct;
         
         return retVal;
     }
     
-    inline void Reset(PhaseConfig *cfgPhaseStep)
+    static inline void Reset(PhaseConfig *cfg)
     {
         // Set up so that when GetNextSampleReady is complete, the value of
         // idxCurrent is equal to the phaseOffset specified and the sample
         // there is ready to be read.
-        idxStep_    = cfgPhaseStep->phasePreScaled;
+        idxStep_    = cfg->idxStep;
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
         // Acquire sample
         GetNextSampleReady();
     }
     
-    inline void ChangePhaseStep(PhaseConfig *cfgPhaseStep)
+    static inline void ChangePhaseStep(PhaseConfig *cfg)
     {
         // Rewind a step
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
         // Prepare new step size
-        idxStep_ = cfgPhaseStep->phasePreScaled;
+        idxStep_ = cfg->idxStep;
         
         // Acquire sample
         GetNextSampleReady();
     }
     
-    inline uint8_t GetSample()
+    static inline uint8_t GetSample()
     {
         return sample_;
     }
     
-    inline void GetNextSampleReady()
+    static inline void GetNextSampleReady()
     {
         idxCurrent_ = (idxCurrent_ + idxStep_) % SAMPLE_COUNT;
         
@@ -96,10 +99,10 @@ public:
     
 private:
 
-    uint8_t sample_;
+    static uint8_t sample_;
     
-    uint16_t idxCurrent_;
-    uint16_t idxStep_;
+    static uint16_t idxCurrent_;
+    static uint16_t idxStep_;
 };
 
 

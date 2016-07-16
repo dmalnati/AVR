@@ -27,7 +27,7 @@ class ModemBell202
     
     static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
     
-    constexpr static const double AVR_CLOCK_SCALING_FACTOR = 1.005;
+    constexpr static const double AVR_CLOCK_SCALING_FACTOR = 1.0085;
     
     using SignalDACType = SignalDAC<SignalSourceSineWave>;
     
@@ -102,7 +102,7 @@ public:
                 {
                     if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
                     {
-                        dac_.ChangeFrequency(cmd.dacCfg);
+                        dac_.ChangeFrequencyNonAtomic(cmd.dacCfg);
                     }
                 }
             });
@@ -123,7 +123,7 @@ public:
             // Get our timer going.
             // Expected operation is that immediately after Start the Send
             // function is called to start pushing bits into the command queue.
-            timer_.StartTimer();
+            //timer_.StartTimer();
         }
     }
     
