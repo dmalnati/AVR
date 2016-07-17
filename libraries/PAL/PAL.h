@@ -154,6 +154,35 @@ public:
         return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
     }
     
+    static void BitReverse(uint8_t *buf, uint8_t bufLen)
+    {
+        for (uint8_t i = 0; i < bufLen; ++i)
+        {
+            buf[i] = BitReverse(buf[i]);
+        }
+    }
+    
+    static uint8_t BitReverse(uint8_t val)
+    {
+        // Get the byte as-is
+        uint8_t b = val;
+        
+        // Get container for new byte
+        uint8_t bNew = 0;
+        
+        // Transfer bits
+        for (uint8_t i = 0; i < 8; ++i)
+        {
+            bNew <<= 1;
+            
+            bNew |= (uint8_t)(b & 0x01);
+            
+            b >>= 1;
+        }
+        
+        return bNew;
+    }
+    
     static void Swap2(uint8_t *buf)
     {
         uint8_t b = buf[0];
