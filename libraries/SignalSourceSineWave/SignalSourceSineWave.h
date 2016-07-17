@@ -6,6 +6,9 @@
 
 #include <math.h>
 
+// Debug
+#include "Arduino.h"
+
 
 extern const uint8_t SINE_TABLE[] PROGMEM;
 
@@ -26,12 +29,15 @@ class SignalSourceSineWave
     
     constexpr static const double DEFAULT_PHASE_PCT = 1.0;
     
+    // Rounding error values
+    static const uint8_t  DECIMAL_PLACES           = 4;
+    static const uint16_t ERR_PCT_SCALING_FACTOR   = pow(10, DECIMAL_PLACES);
+    static const uint16_t ROUNDING_ERROR_THRESHOLD = ERR_PCT_SCALING_FACTOR;
+    
 public:
     SignalSourceSineWave()
     {
-        PhaseConfig cfg;
-        GetPhaseConfig(DEFAULT_PHASE_PCT, &cfg);
-        Reset(&cfg);
+        // Nothing to do
     }
     
     // Allow for pre-calculation of phase-related values.
@@ -45,6 +51,10 @@ public:
         // Actually useful configuration
         uint16_t idxStep;
         
+        // Deal with rounding errors
+        uint16_t roundingError;
+        int8_t   roundingErrorAdjustment;
+        
         // Useful for debugging
         double phaseRequested;
     };
@@ -53,8 +63,36 @@ public:
     {
         uint8_t retVal = 1;
         
-        cfg->idxStep        = phasePct / 100.0 * SAMPLE_COUNT;
+        cfg->idxStep        = round(phasePct / 100.0 * SAMPLE_COUNT);
         cfg->phaseRequested = phasePct;
+        
+        // Calculate values used in adjusting for rounding errors
+        double pctOfTableSize = (double)cfg->idxStep / SAMPLE_COUNT * 100.0;
+        double pctDiff        = (pctOfTableSize - phasePct) / phasePct;
+
+        double idxStepLogical = phasePct / 100.0 * SAMPLE_COUNT;
+        double stepDiff       = idxStepLogical * pctDiff;
+        
+        cfg->roundingError = fabs(stepDiff) * ERR_PCT_SCALING_FACTOR;
+        if (stepDiff < 0)
+        {
+            cfg->roundingErrorAdjustment = 1;
+        }
+        else
+        {
+            cfg->roundingErrorAdjustment = -1;
+        }
+
+        Serial.print("idxStepLogical:");
+        Serial.println(idxStepLogical);
+        Serial.print("stepDiff:");
+        Serial.println(stepDiff);
+        Serial.print("roundingError:");
+        Serial.println(cfg->roundingError);
+        Serial.print("roundingErrorAdjustment:");
+        Serial.println(cfg->roundingErrorAdjustment);
+        
+        
         
         return retVal;
     }
@@ -67,6 +105,12 @@ public:
         idxStep_    = cfg->idxStep;
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
         
+        // Adjust rounding error state
+        roundingErrorCumulative_ = 0;
+        
+        roundingError_           = cfg->roundingError;
+        roundingErrorAdjustment_ = cfg->roundingErrorAdjustment;
+        
         // Acquire sample
         GetNextSampleReady();
     }
@@ -75,9 +119,16 @@ public:
     {
         // Rewind a step
         idxCurrent_ = (idxCurrent_ - idxStep_) % SAMPLE_COUNT;
-        
+
         // Prepare new step size
         idxStep_ = cfg->idxStep;
+        
+        // Accept new rounding error handling vars.  Keep current cumulative
+        // quantity of error set as-is, though.  (unsure)
+        //roundingErrorCumulative_ = 0;
+        
+        roundingError_           = cfg->roundingError;
+        roundingErrorAdjustment_ = cfg->roundingErrorAdjustment;
         
         // Acquire sample
         GetNextSampleReady();
@@ -90,7 +141,22 @@ public:
     
     static inline void GetNextSampleReady()
     {
-        idxCurrent_ = (idxCurrent_ + idxStep_) % SAMPLE_COUNT;
+        // Deal with rounding error
+        int8_t adjustment;
+        
+        roundingErrorCumulative_ += roundingError_;
+        if (roundingErrorCumulative_ >= ROUNDING_ERROR_THRESHOLD)
+        {
+            adjustment = roundingErrorAdjustment_;
+
+            roundingErrorCumulative_ -= ROUNDING_ERROR_THRESHOLD;
+        }
+        else
+        {
+            adjustment = 0;
+        }
+        
+        idxCurrent_ = (idxCurrent_ + idxStep_ + adjustment) % SAMPLE_COUNT;
         
         uint16_t pgmByteLocation = (uint16_t)SINE_TABLE + idxCurrent_;
         
@@ -103,6 +169,12 @@ private:
     
     static uint16_t idxCurrent_;
     static uint16_t idxStep_;
+    
+    // Rounding error
+    static uint16_t roundingErrorCumulative_;
+    
+    static uint16_t roundingError_;
+    static int8_t   roundingErrorAdjustment_;
 };
 
 
