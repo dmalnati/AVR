@@ -117,14 +117,20 @@ public:
             bufIdxNextByte_ -= 2;
             
             // undo the stop-bit of the prior address
-            buf_[bufIdxNextByte_ - 1] &= 0b11111110;
+            //buf_[bufIdxNextByte_ - 1] &= 0b11111110;
+            
+            // Debug -- set high bit also
+            buf_[bufIdxNextByte_ - 1] &= 0b01111110;
         }
         
         // encode this address
         EncodeAddress(addr, addrSSID);
         
         // set stop bit of this address
-        buf_[bufIdxNextByte_ - 1] |= 0b00000001;
+        //buf_[bufIdxNextByte_ - 1] |= 0b00000001;
+        
+        // Debug -- set high bit also
+        buf_[bufIdxNextByte_ - 1] |= 0b10000001;
 
         // calculate location of control field
         // (already pointed to by bufIdxNextByte_)
@@ -247,37 +253,45 @@ private:
     }
     
     // Taken from:
-    // https://github.com/tcort/va2epr-tnc/blob/master/firmware/aprs.c
-    static uint16_t CRC16NextByte(uint16_t crc, uint8_t byte)
+    // http://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=2449&context=theses
+    // (light reformatting and removal of compiler warnings about comparing
+    //  signed and unsigned values)
+    
+    // Calculate the CRC-16-CCITT of a given array of a given length
+    // NOTE : Operates completely in reverse - bit order
+    static uint16_t calc_crc (uint8_t frame [], uint8_t frame_len)
     {
-        uint8_t i;
-
-        crc ^= byte;
-
-        /* for each bit in 'byte' */
-        for (i = 0; i < 8; i++) {
-
-            /* if LSB of 'crc' is HIGH (1) */
-            if (crc & 0x0001) {
-                /*
-                 * Optimization Note:
-                 * avr-gcc generates fewer instructions for
-                 * "if (crc & 0x0001)" than for "if (crc << 15)"
-                 */
-
-                /* Shift Right by 1 and XOR the result with the polynomial */
-                crc = (crc>>1) ^ CRC16_CCITT_POLYNOMIAL;
-            } else {
-
-                /* Shift Right  by 1 */
-                crc >>= 1;
+        uint8_t i, j;
+        
+        // Preload the CRC register with ones
+        uint16_t crc = 0xffff;
+        
+        // Iterate over every octet in the frame
+        for (i = 0; i < frame_len; i++)
+        {
+            // Iterate over every bit, LSb first
+            for (j = 0; j < 8; j++)
+            {
+                uint8_t bit = (frame[i] >> j) & 0x01;
+                
+                // Divide by a bit - reversed 0x1021
+                if ((crc & 0x0001) != bit)
+                {
+                    crc = (crc >> 1) ^ 0x8408;
+                }
+                else
+                {
+                    crc = crc >> 1;
+                }
             }
         }
-
+        
+        // Take the one's compliment of the calculated CRC
+        crc = crc ^ 0xffff;
+        
         return crc;
-    }
+    }    
     
-
 
     void CalcFCS()
     {
@@ -305,15 +319,7 @@ private:
         
         
         // Apply to Address, Control, PID, Info
-        
-        uint16_t crc = CRC16_INITIAL_VALUE;
-        
-        for (uint8_t i = 0; i < bufIdxNextByte_; ++i)
-        {
-            uint8_t b = buf_[i];
-            
-            crc = CRC16NextByte(crc, b);
-        }
+        uint16_t crc = calc_crc(buf_, bufIdxNextByte_);
         
         // Get BigEndian representation
         uint16_t crcBigEndian = PAL.htons(crc);
@@ -322,35 +328,13 @@ private:
         uint16_t crcBigEndianBitSwap = crcBigEndian;
         
         // Reverse the bits of each byte
-        uint8_t *p = (uint8_t *)&crcBigEndianBitSwap;
-        
-        for (uint8_t i = 0; i < sizeof(crcBigEndianBitSwap); ++i)
-        {
-            // Get the byte as-is
-            uint8_t b = p[i];
-            
-            // Get container for new byte
-            uint8_t bNew = 0;
-            
-            // Transfer bits
-            for (uint8_t j = 0; j < 8; ++j)
-            {
-                bNew <<= 1;
-                
-                bNew |= (uint8_t)(b & 0x01);
-                
-                b >>= 1;
-            }
-            
-            // Store new byte
-            p[i] = bNew;
-        }
+        PAL.BitReverse((uint8_t *)&crcBigEndianBitSwap,
+                       sizeof(crcBigEndianBitSwap));
         
         // Put the bytes into our buffer
         memcpy((void *)&(buf_[bufIdxNextByte_]),
                (void *)&crcBigEndianBitSwap,
                sizeof(crcBigEndianBitSwap));
-               
         
         // Move to next position
         bufIdxNextByte_ += sizeof(crcBigEndianBitSwap);
