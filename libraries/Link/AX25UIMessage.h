@@ -107,6 +107,51 @@ public:
         ++bufIdxNextByte_;
     }
     
+    void AppendAddress(const char *addr, uint8_t addrSSID)
+    {
+        // undo any stop-bit from prior address append.
+        // cope with situation where this is the first.
+        if (bufIdxNextByte_ != 0)
+        {
+            // reverse idxNextByte by the control and pid bytes from last time.
+            bufIdxNextByte_ -= 2;
+            
+            // undo the stop-bit of the prior address
+            buf_[bufIdxNextByte_ - 1] &= 0b11111110;
+        }
+        
+        // encode this address
+        EncodeAddress(addr, addrSSID);
+        
+        // set stop bit of this address
+        buf_[bufIdxNextByte_ - 1] |= 0b00000001;
+
+        // calculate location of control field
+        // (already pointed to by bufIdxNextByte_)
+        bufIdxControl_ = bufIdxNextByte_;
+        
+        // calculate location of pid field
+        ++bufIdxNextByte_;
+        bufIdxPID_ = bufIdxNextByte_;
+        
+        // calculate starting location of data
+        ++bufIdxNextByte_;
+    }
+    
+    void SetDstAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
+    
+    void SetSrcAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
+    
+    void AddRepeaterAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
 
     void SetAddress(const char *addrDst,
                     uint8_t     addrDstSSID,
