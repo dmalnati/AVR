@@ -68,6 +68,7 @@ public:
         ss_.GetPhaseConfig(phasePct, &cfg->cfgPhase);
         cfg->frequencyRequested = frequency;
         
+        // Debug
         Serial.print("frequencyRequested: ");
         Serial.println(cfg->frequencyRequested);
         Serial.print("durationSingleWaveAtFrequencyUs: ");
@@ -96,7 +97,6 @@ public:
         {
             // Hand set-up the timer
             timer_.SetTimerPrescaler(Timer2::TimerPrescaler::DIV_BY_1);
-            //timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM_TOP_OCRNA);
             timer_.SetTimerMode(Timer2::TimerMode::FAST_PWM);
             timer_.SetTimerValue(0);
 
@@ -157,7 +157,7 @@ public:
             timer_.StopTimer();
 
             // Don't let any potentially queued interrupts fire
-            timerChannelA_->DeRegisterForInterrupt();
+            timerChannelOvf_->DeRegisterForInterrupt();
 
             // Make sure B channel is no longer evaluated in terms of the timer
             // for setting output pin level
