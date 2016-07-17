@@ -123,7 +123,7 @@ public:
             // Get our timer going.
             // Expected operation is that immediately after Start the Send
             // function is called to start pushing bits into the command queue.
-            //timer_.StartTimer();
+            timer_.StartTimer();
         }
     }
     
@@ -193,28 +193,29 @@ private:
             // Send this bit
             SendBit(bitVal);
             
+            
             // Consider whether a bit needs to get stuffed
-            if (bitVal)
+            
+            // Is bit stuffing even enabled?
+            if (bitStuff)
             {
-                ++bitStuffCount_;
-                
-                if (bitStuffCount_ == BIT_STUFF_AFTER_COUNT)
+                // Is this a 1?  We're watching for consecutive 1s.
+                if (bitVal)
                 {
-                    // stuff if enabled
-                    // (intentionally inefficient to try to keep runtime
-                    //  approx the same when enabled vs not)
-                    if (bitStuff)
+                    ++bitStuffCount_;
+                    
+                    if (bitStuffCount_ == BIT_STUFF_AFTER_COUNT)
                     {
                         SendBit(0);
+                        
+                        // reset
+                        bitStuffCount_ = 0;
                     }
-                    
-                    // reset
+                }
+                else
+                {
                     bitStuffCount_ = 0;
                 }
-            }
-            else
-            {
-                bitStuffCount_ = 0;
             }
         }
     }
@@ -227,19 +228,29 @@ private:
         {
             // do transition
             dacCfgListIdx_ = !dacCfgListIdx_;
+            
+            // Push a ChangeFrequency command onto the queue for the
+            // next baud interval
+            Command cmd;
+            
+            cmd.cmdType = CommandType::CHANGE_FREQUENCY;
+            cmd.dacCfg  = dacCfgList_[dacCfgListIdx_];
+            
+            cmdQueue_.PushAtomic(cmd);
         }
         else
         {
             // no transition
+            
+            // Push a No-Op command onto the queue.
+            // If nothing was pushed, the ISR would ultimately find the next 
+            // ChangeFrequency command as the main thread moved through all the
+            // bits to send.
+            Command cmd;
+            cmd.cmdType = CommandType::NOP;
+            
+            cmdQueue_.PushAtomic(cmd);
         }
-        
-        // Push a command onto the queue for the next baud interval
-        Command cmd;
-        
-        cmd.cmdType = CommandType::CHANGE_FREQUENCY;
-        cmd.dacCfg  = dacCfgList_[dacCfgListIdx_];
-        
-        cmdQueue_.PushAtomic(cmd);
     }
     
     
