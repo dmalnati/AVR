@@ -31,7 +31,19 @@ void setup()
     //TestModemRandByteOnDelay(50);
 
     GetSetUpBuffer(&buf, &bufLen);
+    //GetSetUpTestBuffer(&buf, &bufLen);
+    //GetSetUpTestBuffer2(&buf, &bufLen);
+    //GetSetUpTestBufferMatchAPRSDroid(&buf, &bufLen);
     SendDataInLoopOnDelay(buf, bufLen, 1000);
+}
+
+void DPrint(const char *msg)
+{
+    return;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        Serial.println(msg);
+    }
 }
 
 void TestModemRandByteOnDelay(uint16_t delayMs)
@@ -119,29 +131,28 @@ void SendDataInLoopOnDelay(uint8_t *buf, uint8_t bufLen, uint16_t delayMs)
     uint8_t flagList[]  = { 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E };
     uint8_t flagListLen = sizeof(flagList);
 
+    uint8_t zeroList[]  = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    uint8_t zeroListLen = sizeof(zeroList);
+
     uint8_t bitStuff = 0;
 
     while (1)
     {
-        #if 0
-        Serial.println("TOP");
-
-        Serial.print("1 - TCCR1B: ");
-        Serial.println(TCCR1B);
-        Serial.print("1 - TCCR2B: ");
-        Serial.println(TCCR2B);
-        #endif
+        DPrint("Before Start");
         
         modem->Start();
 
-        #if 0
-        Serial.print("2 - TCCR1B: ");
-        Serial.println(TCCR1B);
-        Serial.print("2 - TCCR2B: ");
-        Serial.println(TCCR2B);
-        #endif
+        DPrint("Before Zeros");
 
-        
+        // Send some zeros, which cause lots of bit transitions, good
+        // for syncing (according to the internet)
+        for (uint8_t i = 0; i < 3; ++i)
+        {
+            bitStuff = 0;
+            modem->Send(zeroList, zeroListLen, bitStuff);
+        }
+
+        DPrint("Before Flags");
         
         // Send preamble, which also will serve as the flag byte
         // Send lots, like APRSDroid
@@ -151,64 +162,53 @@ void SendDataInLoopOnDelay(uint8_t *buf, uint8_t bufLen, uint16_t delayMs)
             modem->Send(flagList, flagListLen, bitStuff);
         }
 
+        // Debug, stuff SOH in there since APRSDroid is doing it??
+        bitStuff = 1;
+        uint8_t soh = 0x01 << 1;
+        modem->Send(&soh, 1, bitStuff);
+
+        DPrint("Before Data");
+
         // send content
         bitStuff = 1;
         modem->Send(buf, bufLen, bitStuff);
+
+        DPrint("Before Trailer");
 
         // Send trailing flags
         bitStuff = 0;
         modem->Send(flagList, 2, bitStuff);
 
+        DPrint("Before Stop");
+
         modem->Stop();
 
-        PAL.Delay(delayMs);
+        DPrint("Before Delay");
 
-        #if 0
-        Serial.println("BOTTOM");
-        #endif
+        PAL.Delay(delayMs);
     }
 }
 
 void GetSetUpBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
 {
     uint8_t *buf     = bufShared;
-    //uint8_t  bufSize = BUF_SIZE;
     
     msg.Init(buf);
 
-    const char *addrDst     = "KD2KD";      // too short on purpose, checking padding logic
-    uint8_t     addrDstSSID = 0;
-    const char *addrSrc     = "DK3DKK9";    // too long on purpose, checking truncation logic
-    uint8_t     addrSrcSSID = 1;
+    const char *addrDst     = "KD2KDD";
+    uint8_t     addrDstSSID = 9;
+    const char *addrSrc     = "ABC123";
+    uint8_t     addrSrcSSID = 7;
+    const char *info1       = "hi ";
+    const char *info2       = "mom!";
 
-    msg.SetAddress(addrDst, addrDstSSID, addrSrc, addrSrcSSID);
-
-    //Serial.println("Post SetAddress");
-    //StreamBlob(Serial, buf, bufSize, 1);
-
-
-    const char *info1 = "hi ";
-    const char *info2 = "mom!";
+    msg.SetDstAddress(addrDst, addrDstSSID);
+    msg.SetDstAddress(addrSrc, addrSrcSSID);
     
     msg.AppendInfo((uint8_t *)info1, strlen(info1));
-
-    //Serial.println("Post AppendInfo1");
-    //StreamBlob(Serial, buf, bufSize, 1);
-    
     msg.AppendInfo((uint8_t *)info2, strlen(info2));
     
-    //Serial.println("Post AppendInfo2");
-    //StreamBlob(Serial, buf, bufSize, 1);
-
-
     uint8_t bytesUsed = msg.Finalize();
-    //Serial.print("Post Finalize (");
-    //Serial.print(bytesUsed);
-    //Serial.print(" bytes used)");
-    //Serial.println();
-
-    //Serial.println("Container buffer");
-    //StreamBlob(Serial, buf, bufSize, 1);
 
     Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
@@ -218,7 +218,93 @@ void GetSetUpBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
     *bufRet    = buf;
     *bufLenRet = bytesUsed;
 }
- 
+
+// https://www.tapr.org/pdf/DCC1998-PICet-W2FS.pdf
+void GetSetUpTestBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
+{
+    uint8_t *buf = bufShared;
+    
+    const char *addrDst          = "CQ";
+    uint8_t     addrDstSSID      = 0;
+    const char *addrSrc          = "W2FS";
+    uint8_t     addrSrcSSID      = 4;
+    const char *addrRepeater     = "RELAY";
+    uint8_t     addrRepeaterSSID = 0;
+    const char *info             = "Test";
+    
+    msg.Init(buf);
+    msg.SetDstAddress(addrDst, addrDstSSID);
+    msg.SetDstAddress(addrSrc, addrSrcSSID);
+    msg.AddRepeaterAddress(addrRepeater, addrRepeaterSSID);
+    msg.AppendInfo((uint8_t *)info, strlen(info));
+    uint8_t bytesUsed = msg.Finalize();
+    
+    Serial.println("Completed buffer (just the used parts)");
+    StreamBlob(Serial, buf, bytesUsed, 1);
+    Serial.println();
+
+    // Fill out return parameters
+    *bufRet    = buf;
+    *bufLenRet = bytesUsed;
+}
+
+
+
+// http://practicingelectronics.com/articles/article-100003/article.php
+void GetSetUpTestBuffer2(uint8_t **bufRet, uint8_t *bufLenRet)
+{
+    uint8_t *buf = bufShared;
+    
+    const char *addrDst          = "CQ";
+    uint8_t     addrDstSSID      = 0;
+    const char *addrSrc          = "KB2BRD";
+    uint8_t     addrSrcSSID      = 2;
+    const char  info[]           = { 'A', '\r' };
+    
+    msg.Init(buf);
+    msg.SetDstAddress(addrDst, addrDstSSID);
+    msg.SetDstAddress(addrSrc, addrSrcSSID);
+    msg.AppendInfo((uint8_t *)info, sizeof(info));
+    uint8_t bytesUsed = msg.Finalize();
+    
+    Serial.println("Completed buffer (just the used parts)");
+    StreamBlob(Serial, buf, bytesUsed, 1);
+    Serial.println();
+
+    // Fill out return parameters
+    *bufRet    = buf;
+    *bufLenRet = bytesUsed;
+}
+
+void GetSetUpTestBufferMatchAPRSDroid(uint8_t **bufRet, uint8_t *bufLenRet)
+{
+    uint8_t *buf = bufShared;
+    
+    const char *addrDst          = "CQ";
+    uint8_t     addrDstSSID      = 0;
+    const char *addrSrc          = "KD2KDD";
+    uint8_t     addrSrcSSID      = 9;
+    const char *addrRepeater     = "WIDE1";
+    uint8_t     addrRepeaterSSID = 1;
+    const char *info             = "1234";
+    
+    msg.Init(buf);
+    msg.SetDstAddress(addrDst, addrDstSSID);
+    msg.SetDstAddress(addrSrc, addrSrcSSID);
+    msg.AddRepeaterAddress(addrRepeater, addrRepeaterSSID);
+    msg.AppendInfo((uint8_t *)info, strlen(info));
+    uint8_t bytesUsed = msg.Finalize();
+    
+    Serial.println("Completed buffer (just the used parts)");
+    StreamBlob(Serial, buf, bytesUsed, 1);
+    Serial.println();
+
+    // Fill out return parameters
+    *bufRet    = buf;
+    *bufLenRet = bytesUsed;
+}
+
+
 void loop() { }
 
 
