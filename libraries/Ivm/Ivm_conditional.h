@@ -1,4 +1,4 @@
-#ifdef IVM_DISABLE
+#ifndef IVM_DISABLE
 
 #include "Ivm_conditional.hpp"
 

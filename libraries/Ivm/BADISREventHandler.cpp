@@ -4,11 +4,11 @@
 uint8_t
 BADISREventHandler::RegisterForBADISREvent()
 {
-    return Ivm::GetInstance().RegisterBADISREventHandler(this);
+    return Ivm::RegisterBADISREventHandler(this);
 }
 
 uint8_t
 BADISREventHandler::DeRegisterForBADISREvent()
 {
-    return Ivm::GetInstance().DeRegisterBADISREventHandler(this);
+    return Ivm::DeRegisterBADISREventHandler(this);
 }

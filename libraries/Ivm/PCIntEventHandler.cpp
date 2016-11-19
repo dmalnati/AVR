@@ -8,6 +8,9 @@ RegisterForPCIntEvent(uint8_t pin, MODE mode)
 {
     uint8_t retVal = 0;
     
+    // commenting out or not this next line leaves the LED on or off at
+    // startup.  must be some kind of static init sequencing issue.
+    
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
         // Don't allow double registration
@@ -18,7 +21,7 @@ RegisterForPCIntEvent(uint8_t pin, MODE mode)
             pin_  = pin;
             mode_ = mode;
             
-            retVal = Ivm::GetInstance().RegisterPCIntEventHandler(this);
+            retVal = Ivm::RegisterPCIntEventHandler(this);
         }
     }
     
@@ -32,9 +35,9 @@ DeRegisterForPCIntEvent()
 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        retVal = Ivm::GetInstance().DeRegisterPCIntEventHandler(this);
+        retVal = Ivm::DeRegisterPCIntEventHandler(this);
         
-        pin_  = -1;
+        pin_  = 0;
         mode_ = MODE::MODE_UNDEFINED;
     }
     

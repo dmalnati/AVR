@@ -140,7 +140,7 @@ Ivm::OnISR(uint8_t port,
             uint8_t changeDir =
                 (uint8_t)(bitmapChangeDir & (uint8_t)_BV(portPin)) ? 1 : 0;
             
-            Ivm::GetInstance().OnPortPinStateChange(port, portPin, changeDir);
+            Ivm::OnPortPinStateChange(port, portPin, changeDir);
         }
     }
 }
@@ -205,7 +205,7 @@ Ivm::DeRegisterBADISREventHandler(BADISREventHandler *beh)
 void
 Ivm::OnBADISR()
 {
-    BADISREventHandler *beh = Ivm::GetInstance().GetBADISREventHandler();
+    BADISREventHandler *beh = Ivm::GetBADISREventHandler();
     
     if (beh)
     {
@@ -484,8 +484,6 @@ Ivm::GetBADISREventHandler()
 
 
 
-// Storage for Ivm instance
-Ivm Ivm::ivm_;
         
 
 

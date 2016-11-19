@@ -17,10 +17,6 @@ class Ivm
     friend class PCIntEventHandler;
     
 public:
-    static Ivm &GetInstance()
-    {
-        return ivm_;
-    }
     
     ~Ivm() { }
 
@@ -33,8 +29,8 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
 
-    uint8_t RegisterPCIntEventHandler(PCIntEventHandler *pcieh);
-    uint8_t DeRegisterPCIntEventHandler(PCIntEventHandler *pcieh);
+    static uint8_t RegisterPCIntEventHandler(PCIntEventHandler *pcieh);
+    static uint8_t DeRegisterPCIntEventHandler(PCIntEventHandler *pcieh);
 
 
     //
@@ -60,8 +56,8 @@ public:
     // and lead to data structures which are also accessible from ISRs.
     //
     //////////////////////////////////////////////////////////////////////
-    uint8_t RegisterBADISREventHandler(BADISREventHandler *beh);
-    uint8_t DeRegisterBADISREventHandler(BADISREventHandler *beh);
+    static uint8_t RegisterBADISREventHandler(BADISREventHandler *beh);
+    static uint8_t DeRegisterBADISREventHandler(BADISREventHandler *beh);
     
     
     //
@@ -75,8 +71,6 @@ public:
     
     
 private:
-    static Ivm ivm_;
-    
     // Cannot instantiate directly -- singleton
     Ivm() { }
     
@@ -84,7 +78,7 @@ private:
     
     
     // Functions which bubble up actual hardware ISRs
-    void
+    static void
     OnPortPinStateChange(uint8_t port,
                          uint8_t portPin,
                          uint8_t changeDir);
@@ -95,26 +89,26 @@ private:
                                   
     // Architecture-specific implementations for these interfaces are required.
                                   
-    uint8_t
+    static uint8_t
     AttachInterruptForPhysicalPin(uint8_t            physicalPin,
                                   PCIntEventHandler *pcieh);
 
-    uint8_t
+    static uint8_t
     DetachInterruptForPhysicalPin(uint8_t physicalPin);
 
-    PCIntEventHandler *
+    static PCIntEventHandler *
     GetPCIntEventHandlerByPortAndPortPin(uint8_t port, uint8_t portPin);
     
-    uint8_t
+    static uint8_t
     InterruptIsActiveForPhysicalPin(uint8_t physicalPin);
 
-    uint8_t
+    static uint8_t
     AttachBADISREventHandler(BADISREventHandler *beh);
     
-    uint8_t
+    static uint8_t
     DetachBADISREventHandler();
     
-    BADISREventHandler *
+    static BADISREventHandler *
     GetBADISREventHandler();
                                      
 };
