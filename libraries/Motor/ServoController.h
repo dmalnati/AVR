@@ -77,6 +77,14 @@ public:
         // Start this period manually
         cbFnOnPeriodStart();
     }
+    
+    void Stop()
+    {
+        PAL.DigitalWrite(pin_, LOW);
+        
+        timerPeriod_.DeRegisterForTimedEvent();
+        timerDutyCycle_.DeRegisterForIdleTimeHiResTimedEvent();
+    }
 
 
 private:
