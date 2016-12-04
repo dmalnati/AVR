@@ -2,7 +2,7 @@
 #define __IDLE_TIME_HI_RES_TIMED_EVENT_HANDLER__
 
 
-#include "TimedEventHandler.h"
+#include "IdleTimeEventHandler.h"
 
 
 //////////////////////////////////////////////////////////////////////
