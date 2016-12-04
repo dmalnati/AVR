@@ -153,14 +153,14 @@ private:
 
 
 
-template <class T>
+template <typename T>
 class StepperControllerAsync
 {
 public:
     StepperControllerAsync(T &sc)
     : sc_(sc)
     , stepCount_(0)
-    , stepDurationMs_(0)
+    , stepDurationUs_(0)
     {
         // Nothing to do
     }
@@ -173,8 +173,8 @@ public:
     }
     
     void HalfStepRight(uint32_t         stepCount,
-                      uint32_t         stepDurationMs,
-                      function<void()> cbFnOnComplete = [](){})
+                       uint32_t         stepDurationMs,
+                       function<void()> cbFnOnComplete = [](){})
     {
         Start(Direction::RIGHT, stepCount, stepDurationMs, cbFnOnComplete);
     }
@@ -205,7 +205,7 @@ private:
         {
             direction_      = direction;
             stepCount_      = stepCount;
-            stepDurationMs_ = stepDurationMs;
+            stepDurationUs_ = stepDurationMs * 1000;
             
             cbFnOnComplete_ = cbFnOnComplete;
             
@@ -224,9 +224,9 @@ private:
         Stop();
     }
 
-    virtual void OnTimeout()
+    void OnTimeout()
     {
-        ted_.RegisterForIdleTimeHiResTimedEventInterval(stepDurationMs_ * 1000);
+        ted_.RegisterForIdleTimeHiResTimedEventInterval(stepDurationUs_);
         ted_.SetCallback([this](){ OnTimeout(); });
         
         if (direction_ == Direction::LEFT) { sc_.HalfStepLeft();  }
@@ -244,12 +244,16 @@ private:
     
     Direction direction_;
     uint32_t  stepCount_;
-    uint32_t  stepDurationMs_;
+    uint32_t  stepDurationUs_;
     
     function<void()> cbFnOnComplete_;
     
     IdleTimeHiResTimedEventHandlerDelegate ted_;
 };
+
+
+
+
 
 
 
