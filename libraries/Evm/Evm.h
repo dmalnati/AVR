@@ -59,11 +59,10 @@ public:
     virtual
     void HoldStackDangerously(uint32_t timeout);
     
-private:
-
     virtual
     void EndMainLoop();
     
+private:
 
     // Idle Events
     virtual
