@@ -85,6 +85,53 @@ public:
 
 
 
+template <uint8_t BUF_SIZE>
+class SerialBufReader
+{
+public:
+    SerialBufReader(HardwareSerial &s)
+    : s_(s)
+    {
+        // Nothing to do
+    }
+    
+    char *GetBuf(uint8_t *bufSizeReturned = NULL)
+    {
+        char *retVal = NULL;
+        
+        uint8_t bytesAvailable = s_.available();
+
+        if (bytesAvailable)
+        {
+            uint8_t bytesToRead = bytesAvailable;
+
+            if (bytesToRead > BUF_SIZE)
+            {
+                bytesToRead = BUF_SIZE;
+            }
+
+            s_.readBytes(buf_, bytesToRead);
+
+            // terminate with NULL
+            buf_[bytesToRead] = '\0';
+
+            // return values
+            retVal = buf_;
+            if (bufSizeReturned)
+            {
+                *bufSizeReturned = bytesToRead;
+            }
+        }
+
+        return retVal;
+    }
+    
+private:
+    char buf_[BUF_SIZE + 1];
+
+    HardwareSerial &s_;
+};
+
 
 
 #endif // __UTL_H__
