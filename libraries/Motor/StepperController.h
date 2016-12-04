@@ -4,7 +4,7 @@
 
 #include "PAL.h"
 #include "Function.h"
-#include "TimedEventHandler.h"
+#include "IdleTimeHiResTimedEventHandler.h"
 
 
 /*
@@ -149,6 +149,106 @@ private:
         HState::FLOW_BOTTOM_TO_TOP, HState::FLOW_BOTTOM_TO_TOP,
         HState::FLOW_DISABLED,      HState::FLOW_BOTTOM_TO_TOP
     };
+};
+
+
+
+template <class T>
+class StepperControllerAsync
+{
+public:
+    StepperControllerAsync(T &sc)
+    : sc_(sc)
+    , stepCount_(0)
+    , stepDurationMs_(0)
+    {
+        // Nothing to do
+    }
+    
+    void HalfStepLeft(uint32_t         stepCount,
+                      uint32_t         stepDurationMs,
+                      function<void()> cbFnOnComplete = [](){})
+    {
+        Start(Direction::LEFT, stepCount, stepDurationMs, cbFnOnComplete);
+    }
+    
+    void HalfStepRight(uint32_t         stepCount,
+                      uint32_t         stepDurationMs,
+                      function<void()> cbFnOnComplete = [](){})
+    {
+        Start(Direction::RIGHT, stepCount, stepDurationMs, cbFnOnComplete);
+    }
+    
+    void Stop()
+    {
+        ted_.DeRegisterForIdleTimeHiResTimedEvent();
+        
+        cbFnOnComplete_ = [](){};
+    }
+    
+private:
+
+    enum struct Direction : uint8_t
+    {
+        LEFT = 0,
+        RIGHT
+    };
+    
+    void Start(Direction        direction,
+               uint32_t         stepCount,
+               uint32_t         stepDurationMs,
+               function<void()> cbFnOnComplete)
+    {
+        Stop();
+        
+        if (stepCount)
+        {
+            direction_      = direction;
+            stepCount_      = stepCount;
+            stepDurationMs_ = stepDurationMs;
+            
+            cbFnOnComplete_ = cbFnOnComplete;
+            
+            OnTimeout();
+        }
+        else
+        {
+            Finished();
+        }
+    }
+    
+    void Finished()
+    {
+        cbFnOnComplete_();
+        
+        Stop();
+    }
+
+    virtual void OnTimeout()
+    {
+        ted_.RegisterForIdleTimeHiResTimedEventInterval(stepDurationMs_ * 1000);
+        ted_.SetCallback([this](){ OnTimeout(); });
+        
+        if (direction_ == Direction::LEFT) { sc_.HalfStepLeft();  }
+        else                               { sc_.HalfStepRight(); }
+        
+        --stepCount_;
+        
+        if (!stepCount_)
+        {
+            Finished();
+        }
+    }
+
+    T &sc_;
+    
+    Direction direction_;
+    uint32_t  stepCount_;
+    uint32_t  stepDurationMs_;
+    
+    function<void()> cbFnOnComplete_;
+    
+    IdleTimeHiResTimedEventHandlerDelegate ted_;
 };
 
 

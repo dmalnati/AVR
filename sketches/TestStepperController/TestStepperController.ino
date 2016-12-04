@@ -17,6 +17,7 @@ static StepperControllerBipolar sc(pinEnable,
                                    pinPhase2S1,
                                    pinPhase2S2);
 
+static StepperControllerAsync<StepperControllerBipolar> sca(sc);
 
 
 void GoRightForAWhile(uint16_t steps, uint16_t delayMs)
@@ -45,8 +46,8 @@ void GoLeftForAWhile(uint16_t steps, uint16_t delayMs)
 
 void setup()
 {
-    uint16_t steps   = 750;
-    uint16_t delayMs = 1;
+    uint16_t steps   = 600;
+    uint16_t delayMs = 3;
 
     Pin pinDebug(15, LOW);
     
@@ -58,6 +59,19 @@ void setup()
         GoLeftForAWhile(steps, delayMs);
         
         PAL.DigitalWrite(pinDebug, LOW);
+
+        // try some async stuff
+        sca.HalfStepRight(steps, delayMs, [](){
+            Evm::GetInstance().EndMainLoop();
+        });
+
+        evm.HoldStackDangerously();
+
+        sca.HalfStepLeft(steps, delayMs, [](){
+            Evm::GetInstance().EndMainLoop();
+        });
+
+        evm.HoldStackDangerously();
     }
 }
 
