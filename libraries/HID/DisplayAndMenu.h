@@ -2,9 +2,9 @@
 #define __DISPLAY_AND_MENU_H__
 
 
-#include "Evm.h"
+#include "SimpleString.h"
 #include "Function.h"
-#include "TimedEventHandler.h"
+#include "Evm.h"
 #include "LCDFrentaly20x4.h"
 #include "Keypad12Button.h"
 
@@ -68,8 +68,6 @@
  * A command menu option, when invoked, will kick you back to the main screen
  * and you will watch progress from there.
  *
- * (really?)
- *
  *
  *
  * 
@@ -88,14 +86,14 @@
 
 struct MenuItemCommand
 {
-    void (*fnRedraw)();
-    char *description;
+    const char       *description;
+    function<void()>  fnOnCommand;
 };
-
-struct MenuItemRange
+    
+struct MenuItemInputNum
 {
-    void (*fnRedraw)();
-    char *description;
+    const char             *description;
+    function<void(char *)>  fnOnInput;
 };
 
 
@@ -116,28 +114,41 @@ public:
     {
         type_ = MenuItemType::COMMAND;
        
-        data_.mic = mic;
+        MenuItemCommand *p = (MenuItemCommand *)data_;
+        *p = mic;
+    }
+    
+    operator MenuItemCommand & ()
+    {
+        MenuItemCommand *p = (MenuItemCommand *)data_;
+        
+        return *p;
     }
    
-    MenuItem(MenuItemRange &&mir)
+    MenuItem(MenuItemInputNum &&miin)
     {
-        type_ = MenuItemType::RANGE;
+        type_ = MenuItemType::INPUT_NUM;
        
-        data_.mir = mir;
+        MenuItemInputNum *p = (MenuItemInputNum *)data_;
+        *p = miin;
+    }
+    
+    operator MenuItemInputNum & ()
+    {
+        MenuItemInputNum *p = (MenuItemInputNum *)data_;
+        
+        return *p;
     }
 
 private: 
     enum MenuItemType
     {
         COMMAND = 0,
-        RANGE
+        INPUT_NUM
     } type_;
    
-    union
-    {
-        MenuItemCommand mic;
-        MenuItemRange   mir;
-    } data_;
+    // must be the size of the largest of any type to be stored here
+    uint8_t data_[sizeof(MenuItemInputNum)];
 };
 
 
@@ -145,20 +156,22 @@ private:
 
 template <uint8_t COUNT_MENU_ITEMS, uint8_t COUNT_CHAR_INPUT = 8>
 class DisplayAndMenu
-: private TimedEventHandler
 {
 public:
     DisplayAndMenu()
     : activeScreen_(ActiveScreen::MAIN_SCREEN)
     , menuItemActive_(MenuItemActive::INACTIVE)
     , menuItemListIdx_(0)
-    , inputBuf_{0}
-    , inputBufIdx_(0)
     , kpad_({
         10, 11, 12, 13, 14, 15, 16, 17, 18, 19
     })
     {
         // Nothing to do
+    }
+    
+    void SetFnRedrawMainScreen(function<void(LCDFrentaly20x4 &lcd)> &&fnRedrawMainScreen)
+    {
+        fnRedrawMainScreen_ = fnRedrawMainScreen;
     }
 
     using MenuItemHandle = uint8_t;
@@ -193,20 +206,10 @@ public:
 
     void RequestMainScreenRedraw()
     {
-        // Only queue the event if the main screen is currently active
+        // Only honor the request if the main screen is currently active
         if (activeScreen_ == ActiveScreen::MAIN_SCREEN)
         {
-            // Set up async callback to request redraw
-            RegisterForTimedEvent(0);
-        }
-    }
-
-    void RequestMenuItemScreenRedraw(MenuItemHandle menuItemHandle)
-    {
-        if (activeScreen_    == ActiveScreen::MENU_ITEM &&
-            menuItemListIdx_ == menuItemHandle)
-        {
-            RegisterForTimedEvent(0);
+            Draw();
         }
     }
 
@@ -237,15 +240,15 @@ private:
             }
             else
             {
-                if (1 /*enum input*/)
+                MenuItem &menuItem = menuItemList_[menuItemListIdx_];
+                
+                if (menuItem.type_ == MenuItem::MenuItemType::COMMAND)
                 {
                     switch (c)
                     {
                     case '*': SwitchFromMenuItemActiveToMenuItemSelection(); break;
-                    case '#': ApplyEnumValue();                              break;
-                    case '4': ShowPrevEnumValue();                           break;
-                    case '6': ShowNextEnumValue();                           break;
-                    
+                    case '#': ApplyCommand();                                break;
+                        
                     default: break;
                     }
                 }
@@ -265,67 +268,82 @@ private:
 
     void SwitchFromMainScreenToMenuItemSelection()
     {
-        activeScreen_ = ActiveScreen::MENU_ITEM;
-        RegisterForTimedEvent(0);
+        if (COUNT_MENU_ITEMS)
+        {
+            activeScreen_ = ActiveScreen::MENU_ITEM;
+            
+            Draw();
+        }
     }
-
-    void ShowPrevMenuItem()
+    
+    void SwitchFromMenuItemSelectionToMainScreen()
     {
+        activeScreen_ = ActiveScreen::MAIN_SCREEN;
         
+        Draw();
     }
-
-    void ShowNextMenuItem()
-    {
-        
-    }
-
-    void ShowPrevEnumValue()
-    {
-        
-    }
-
-    void ShowNextEnumValue()
-    {
-        
-    }
-
-    void ApplyEnumValue()
-    {
-        
-    }
-
-    void AccumulateInput(char /*c*/)
-    {
-        
-    }
-
-    void ApplyAccumulatedInput()
-    {
-        
-    }
-
+    
     void SwitchFromMenuItemSelectionToMenuItemActive()
     {
+        ClearAccumulator();
         
+        menuItemActive_ = MenuItemActive::ACTIVE;
+        
+        Draw();
     }
 
     void SwitchFromMenuItemActiveToMenuItemSelection()
     {
+        menuItemActive_ = MenuItemActive::INACTIVE;
         
+        Draw();
     }
 
-    void SwitchFromMenuItemSelectionToMainScreen()
+    void ShowPrevMenuItem()
     {
+        menuItemListIdx_ = (menuItemListIdx_ - 1) % COUNT_MENU_ITEMS;
         
+        Draw();
     }
 
+    void ShowNextMenuItem()
+    {
+        menuItemListIdx_ = (menuItemListIdx_ + 1) % COUNT_MENU_ITEMS;
+        
+        Draw();
+    }
 
-    // Called when a screen has requested to be redrawn
-    virtual void OnTimedEvent()
+    void AccumulateInput(char c)
+    {
+        inputStr_.Append(c);
+        
+        Draw();
+    }
+    
+    void ApplyCommand()
+    {
+        MenuItem &menuItem = menuItemList_[menuItemListIdx_];
+
+        ((MenuItemCommand &)menuItem).fnOnCommand();
+    }
+
+    void ApplyAccumulatedInput()
+    {
+        MenuItem &menuItem = menuItemList_[menuItemListIdx_];
+
+        ((MenuItemInputNum &)menuItem).fnOnInput(inputStr_.UnsafePtr());
+    }
+
+    void ClearAccumulator()
+    {
+        inputStr_.Clear();
+    }
+
+    void Draw()
     {
         if (activeScreen_ == ActiveScreen::MAIN_SCREEN)
         {
-            fnRedrawMainScreen_();
+            fnRedrawMainScreen_(lcd_);
         }
         else
         {
@@ -336,14 +354,64 @@ private:
     void RedrawMenuItem()
     {
         MenuItem &menuItem = menuItemList_[menuItemListIdx_];
-
-        switch (menuItem.type_)
+        
+        if (menuItem.type_ == MenuItem::MenuItemType::COMMAND)
         {
-        case MenuItem::MenuItemType::COMMAND: menuItem.data_.mic.fnRedraw(); break;
-
-        default: break;
+            DrawMenuItemCommand(((MenuItemCommand &)menuItem));
+        }
+        else
+        {
+            DrawMenuItemInputNum(((MenuItemInputNum &)menuItem));
         }
     }
+    
+    void DrawMenuItemCommand(MenuItemCommand &mic)
+    {
+        if (menuItemActive_ == MenuItemActive::INACTIVE)
+        {
+            lcd_.PrintAt(0, 0, "# to control Command: ");
+            lcd_.PrintAt(4, 1, mic.description);
+        }
+        else
+        {
+            const char *prefix = "Command: ";
+            lcd_.PrintAt(0, 0, prefix);
+            lcd_.PrintAt(0, strlen(prefix), mic.description);
+        }
+        
+        DrawFooter();
+    }
+    
+    void DrawMenuItemInputNum(MenuItemInputNum &miin)
+    {
+        if (menuItemActive_ == MenuItemActive::INACTIVE)
+        {
+            lcd_.PrintAt(0, 0, "# to control Input: ");
+            lcd_.PrintAt(4, 1, miin.description);
+        }
+        else
+        {
+            const char *prefix = NULL;
+            
+            prefix = "Input: ";
+            lcd_.PrintAt(0,              0, prefix);
+            lcd_.PrintAt(strlen(prefix), 0, miin.description);
+            
+            prefix = "Val: ";
+            lcd_.PrintAt(4, 1, prefix);
+            lcd_.PrintAt(4 + strlen(prefix), 1, inputStr_.UnsafePtr());
+        }
+        
+        DrawFooter();
+    }
+    
+    void DrawFooter()
+    {
+        lcd_.PrintAt(0, 3, "* back, # select");
+    }
+    
+    
+    
 
     enum struct ActiveScreen : uint8_t
     {
@@ -362,13 +430,12 @@ private:
     MenuItemActive menuItemActive_;
     
 
-    function<void()> fnRedrawMainScreen_;
+    function<void(LCDFrentaly20x4 &lcd)> fnRedrawMainScreen_;
 
     MenuItem menuItemList_[COUNT_MENU_ITEMS];
     uint8_t  menuItemListIdx_;
 
-    char    inputBuf_[COUNT_CHAR_INPUT];
-    uint8_t inputBufIdx_;
+    SimpleString<COUNT_CHAR_INPUT> inputStr_;
 
     LCDFrentaly20x4 lcd_;
     Keypad12Button  kpad_;
