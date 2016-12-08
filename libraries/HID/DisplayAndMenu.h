@@ -8,81 +8,6 @@
 #include "LCDFrentaly20x4.h"
 #include "Keypad12Button.h"
 
- 
-/*
- * 
- * Menu items:
- * - status (live updating)
- * - (re)initialize (find boundaries)
- *   - command/action, only option is to run it
- *     - should it update while initializing?
- *     - probably a normal thing to want, the status of a command...
- * - run/start (apply configuration and operate)
- *   - command/action, only option is to run
- *     - should display info as to next step countdown, remaining, etc
- * - stop
- *   - command/action, only option is to stop
- * - configure step size / speed
- *   - input, numeric input
- * - 
- * 
- * 
- * How Display works with user input
- * - main screen, shows status
- * - press # key to get into menu system, and go further into menus, and acts as enter key
- * - press * key to cancel input, back up out of menus
- * 
- * 
- * 
- * 
- * Implementation notes
- * - Status can be updated at any time
- *   - hmm, maybe Display should have to call a function to ask for display
- *   - app code then simply tells Display it's ready to show something new
- *     - that way we don't overwrite one of the sub-menus, and don't need to
- *       store a lot of text state, it is generated on-demand
- * - Let that be the way every menu element works also
- * - Input screens
- *   - they don't get to choose how they're displayed
- *   - instead, Display shows description, old value, new value
- *   - input type can be enum or numeric
- *     - on #, fn called, retVal indicates ok or not, which is displayed to user
- * - 
- * 
- * 
- * 
- * 
- * Main display
- * Menus
- * - commands
- * - configuration
- *   - enumerated values
- *   - user input
- *
- * Main display runs continuously in the background.  Requests to update it
- * may or may not be honored if a menu is active.
- *
- * You can scroll through menu options.
- * You can select a menu option and input a value.
- *
- * A command menu option, when invoked, will kick you back to the main screen
- * and you will watch progress from there.
- *
- *
- *
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- */
-
 
 struct MenuItemCommand
 {
@@ -152,19 +77,25 @@ private:
 };
 
 
-
+struct DisplayAndMenuConfig
+{
+    Keypad12ButtonConfig keypadConfig;
+};
 
 template <uint8_t COUNT_MENU_ITEMS, uint8_t COUNT_CHAR_INPUT = 8>
 class DisplayAndMenu
 {
 public:
-    DisplayAndMenu()
+    static const uint8_t C_IDLE  = Keypad12Button::C_IDLE;
+    static const uint8_t C_TIMED = Keypad12Button::C_TIMED;
+    static const uint8_t C_INTER = Keypad12Button::C_INTER;
+    
+public:
+    DisplayAndMenu(DisplayAndMenuConfig &cfg)
     : activeScreen_(ActiveScreen::MAIN_SCREEN)
     , menuItemActive_(MenuItemActive::INACTIVE)
     , menuItemListIdx_(0)
-    , kpad_({
-        10, 11, 12, 13, 14, 15, 16, 17, 18, 19
-    })
+    , kpad_(cfg.keypadConfig)
     {
         // Nothing to do
     }
@@ -172,6 +103,11 @@ public:
     void SetFnRedrawMainScreen(function<void(LCDFrentaly20x4 &lcd)> &&fnRedrawMainScreen)
     {
         fnRedrawMainScreen_ = fnRedrawMainScreen;
+    }
+    
+    void SetFnMainScreenInput(function<void(char c)> &&fnMainScreenInput)
+    {
+        fnMainScreenInput_ = fnMainScreenInput;
     }
 
     using MenuItemHandle = uint8_t;
@@ -195,6 +131,7 @@ public:
     {
         // Start up the LCD
         lcd_.Init();
+        ClearScreen();
 
         // Init the keypad and register for key press callbacks
         kpad_.Init([this](char c){ OnKeyPress(c); });
@@ -222,6 +159,10 @@ private:
             if (c == '#')
             {
                 SwitchFromMainScreenToMenuItemSelection();
+            }
+            else
+            {
+                fnMainScreenInput_(c);
             }
         }
         else
@@ -280,6 +221,7 @@ private:
     {
         activeScreen_ = ActiveScreen::MAIN_SCREEN;
         
+        ClearScreen();
         Draw();
     }
     
@@ -301,7 +243,9 @@ private:
 
     void ShowPrevMenuItem()
     {
-        menuItemListIdx_ = (menuItemListIdx_ - 1) % COUNT_MENU_ITEMS;
+        menuItemListIdx_ = (menuItemListIdx_ == 0) ?
+                           COUNT_MENU_ITEMS - 1    :
+                           menuItemListIdx_ - 1;
         
         Draw();
     }
@@ -325,6 +269,8 @@ private:
         MenuItem &menuItem = menuItemList_[menuItemListIdx_];
 
         ((MenuItemCommand &)menuItem).fnOnCommand();
+        
+        SwitchFromMenuItemActiveToMenuItemSelection();
     }
 
     void ApplyAccumulatedInput()
@@ -332,6 +278,8 @@ private:
         MenuItem &menuItem = menuItemList_[menuItemListIdx_];
 
         ((MenuItemInputNum &)menuItem).fnOnInput(inputStr_.UnsafePtr());
+        
+        SwitchFromMenuItemActiveToMenuItemSelection();
     }
 
     void ClearAccumulator()
@@ -347,6 +295,7 @@ private:
         }
         else
         {
+            ClearScreen();
             RedrawMenuItem();
         }
     }
@@ -369,14 +318,13 @@ private:
     {
         if (menuItemActive_ == MenuItemActive::INACTIVE)
         {
-            lcd_.PrintAt(0, 0, "# to control Command: ");
+            lcd_.PrintAt(0, 0, "# to select Cmd: ");
             lcd_.PrintAt(4, 1, mic.description);
         }
         else
         {
-            const char *prefix = "Command: ";
-            lcd_.PrintAt(0, 0, prefix);
-            lcd_.PrintAt(0, strlen(prefix), mic.description);
+            lcd_.PrintAt(0, 0, "# to run Cmd: ");
+            lcd_.PrintAt(4, 1, mic.description);
         }
         
         DrawFooter();
@@ -386,20 +334,19 @@ private:
     {
         if (menuItemActive_ == MenuItemActive::INACTIVE)
         {
-            lcd_.PrintAt(0, 0, "# to control Input: ");
+            lcd_.PrintAt(0, 0, "# to select Input: ");
             lcd_.PrintAt(4, 1, miin.description);
         }
         else
         {
+            lcd_.PrintAt(0, 0, "# after Input: ");
+            lcd_.PrintAt(4, 1, miin.description);
+
             const char *prefix = NULL;
             
-            prefix = "Input: ";
-            lcd_.PrintAt(0,              0, prefix);
-            lcd_.PrintAt(strlen(prefix), 0, miin.description);
-            
             prefix = "Val: ";
-            lcd_.PrintAt(4, 1, prefix);
-            lcd_.PrintAt(4 + strlen(prefix), 1, inputStr_.UnsafePtr());
+            lcd_.PrintAt(4,                  2, prefix);
+            lcd_.PrintAt(4 + strlen(prefix), 2, inputStr_.UnsafePtr());
         }
         
         DrawFooter();
@@ -410,7 +357,10 @@ private:
         lcd_.PrintAt(0, 3, "* back, # select");
     }
     
-    
+    void ClearScreen()
+    {
+        lcd_.Clear();
+    }
     
 
     enum struct ActiveScreen : uint8_t
@@ -421,6 +371,7 @@ private:
 
     ActiveScreen activeScreen_;
 
+    
     enum struct MenuItemActive : uint8_t
     {
         INACTIVE = 0,
@@ -431,6 +382,7 @@ private:
     
 
     function<void(LCDFrentaly20x4 &lcd)> fnRedrawMainScreen_;
+    function<void(char c)>               fnMainScreenInput_;
 
     MenuItem menuItemList_[COUNT_MENU_ITEMS];
     uint8_t  menuItemListIdx_;
@@ -442,27 +394,7 @@ private:
 };
 
 
-
-
-
-
 #endif  // __DISPLAY_AND_MENU_H__
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
