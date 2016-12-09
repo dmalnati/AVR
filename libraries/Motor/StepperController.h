@@ -164,24 +164,35 @@ public:
 public:
     StepperControllerAsync(T &sc)
     : sc_(sc)
+    , mode_(Mode::FOREVER)
     , stepCount_(0)
     , stepDurationUs_(0)
     {
-        // Nothing to do
+        ted_.SetCallback([this](){ OnTimeout(); });
     }
     
     void HalfStepCCW(uint32_t         stepCount,
                      uint32_t         stepDurationMs,
                      function<void()> cbFnOnComplete = [](){})
     {
-        Start(Direction::CCW, stepCount, stepDurationMs, cbFnOnComplete);
+        StartStepLimit(Direction::CCW, stepCount, stepDurationMs, cbFnOnComplete);
+    }
+    
+    void HalfStepForeverCCW(uint32_t stepDurationMs)
+    {
+        StartStepForever(Direction::CCW, stepDurationMs);
     }
     
     void HalfStepCW(uint32_t         stepCount,
                     uint32_t         stepDurationMs,
                     function<void()> cbFnOnComplete = [](){})
     {
-        Start(Direction::CW, stepCount, stepDurationMs, cbFnOnComplete);
+        StartStepLimit(Direction::CW, stepCount, stepDurationMs, cbFnOnComplete);
+    }
+    
+    void HalfStepForeverCW(uint32_t stepDurationMs)
+    {
+        StartStepForever(Direction::CW, stepDurationMs);
     }
     
     void Stop()
@@ -199,12 +210,20 @@ private:
         CW
     };
     
-    void Start(Direction        direction,
-               uint32_t         stepCount,
-               uint32_t         stepDurationMs,
-               function<void()> cbFnOnComplete)
+    enum struct Mode : uint8_t
+    {
+        FOREVER = 0,
+        STEP_LIMIT
+    };
+    
+    void StartStepLimit(Direction        direction,
+                        uint32_t         stepCount,
+                        uint32_t         stepDurationMs,
+                        function<void()> cbFnOnComplete)
     {
         Stop();
+        
+        mode_ = Mode::STEP_LIMIT;
         
         if (stepCount)
         {
@@ -228,26 +247,41 @@ private:
         
         Stop();
     }
+    
+    void StartStepForever(Direction direction, uint32_t stepDurationMs)
+    {
+        Stop();
+        
+        mode_ = Mode::FOREVER;
+        
+        direction_      = direction;
+        stepDurationUs_ = stepDurationMs * 1000;
+        
+        OnTimeout();
+    }
 
     void OnTimeout()
     {
         ted_.RegisterForIdleTimeHiResTimedEventInterval(stepDurationUs_);
-        ted_.SetCallback([this](){ OnTimeout(); });
         
         if (direction_ == Direction::CCW) { sc_.HalfStepCCW(); }
         else                              { sc_.HalfStepCW();  }
         
-        --stepCount_;
-        
-        if (!stepCount_)
+        if (mode_ == Mode::STEP_LIMIT)
         {
-            Finished();
+            --stepCount_;
+            
+            if (!stepCount_)
+            {
+                Finished();
+            }
         }
     }
 
     T &sc_;
     
     Direction direction_;
+    Mode      mode_;
     uint32_t  stepCount_;
     uint32_t  stepDurationUs_;
     

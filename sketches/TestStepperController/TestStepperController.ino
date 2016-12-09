@@ -53,14 +53,17 @@ void setup()
     
     while (1)
     {
+        // Manually drive the stepper for a while
         PAL.DigitalWrite(pinDebug, HIGH);
         
         GoRightForAWhile(steps, delayMs);
         GoLeftForAWhile(steps, delayMs);
+
         
+        
+        // Async drive with step limits
         PAL.DigitalWrite(pinDebug, LOW);
 
-        // try some async stuff
         sca.HalfStepCW(steps, delayMs, [](){
             Evm::GetInstance().EndMainLoop();
         });
@@ -72,6 +75,22 @@ void setup()
         });
 
         evm.HoldStackDangerously();
+
+
+        // Async drive forever but stop after time
+        PAL.DigitalWrite(pinDebug, HIGH);
+
+        sca.HalfStepForeverCW(delayMs);
+        evm.HoldStackDangerously(3000);
+        sca.Stop();
+
+        sca.HalfStepForeverCCW(delayMs);
+        evm.HoldStackDangerously(3000);
+        sca.Stop();
+
+
+        PAL.DigitalWrite(pinDebug, LOW);
+        PAL.Delay(50);
     }
 }
 
