@@ -3,19 +3,21 @@
 
 static AppStepperSliderConfig cfg = {
     // Stepper control parameters
-    .pinEnable = 0,
-    .pinPhase1S1 = 0,
-    .pinPhase1S2 = 0,
-    .pinPhase2S1 = 0,
-    .pinPhase2S2 = 0,
+    .pinEnable   = 0,
+    .pinPhase1S1 = 26,
+    .pinPhase1S2 = 25,
+    .pinPhase2S1 = 24,
+    .pinPhase2S2 = 23,
     
     // Limit switch parameters
-    .pinLimitSwitchLeft = 0,
-    .pinLimitSwitchRight = 0,
+    .pinLimitSwitchLeft  = 5,
+    .pinLimitSwitchRight = 6,
     
     // LCD and Keypad parameters
     .damConfig = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        .keypadConfig = {
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+        }
     }
 };
 
