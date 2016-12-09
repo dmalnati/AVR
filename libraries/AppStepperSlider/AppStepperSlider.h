@@ -28,7 +28,7 @@ struct AppStepperSliderConfig
 class AppStepperSlider
 {
 public:
-    static const uint8_t COUNT_MENU_ITEMS = 4;
+    static const uint8_t COUNT_MENU_ITEMS = 2;
 
     using DisplayAndMenuClass         = DisplayAndMenu<COUNT_MENU_ITEMS>;
     using StepperControllerAsyncClass = StepperControllerAsync<StepperControllerBipolar>;
@@ -38,7 +38,8 @@ public:
     static const uint8_t C_TIMED = DisplayAndMenuClass::C_TIMED +
                                    StepperControllerAsyncClass::C_TIMED;
     static const uint8_t C_INTER = DisplayAndMenuClass::C_INTER +
-                                   StepperControllerAsyncClass::C_INTER;
+                                   StepperControllerAsyncClass::C_INTER +
+                                   2;   // PinInput
 
     
 public:
@@ -51,10 +52,12 @@ public:
         cfg.pinPhase2S2
     )
     , stepperControllerAsync_(stepperControllerBipolar_)
-    , limitSwitchLeftInput_(cfg.pinLimitSwitchLeft, LOW)
+    , countRedraws_(0)
+    , limitSwitchLeftInput_(cfg.pinLimitSwitchLeft, LOW, LEVEL_RISING_AND_FALLING)
     , atLimitLeft_(limitSwitchLeftInput_.GetLogicLevel())
-    , limitSwitchRightInput_(cfg.pinLimitSwitchRight, LOW)
+    , limitSwitchRightInput_(cfg.pinLimitSwitchRight, LOW, LEVEL_RISING_AND_FALLING)
     , atLimitRight_(limitSwitchRightInput_.GetLogicLevel())
+    , countLimitSwitchToggle_(0)
     , disp_(cfg.damConfig)
     {
         // Set up limit switches
@@ -63,8 +66,8 @@ public:
 
         // Set up menu
         disp_.AddMenuItem(MenuItemCommand{
-            .description = "CommandName1",
-            .fnOnCommand = [this](){ OnCommand(); }
+            .description = "Calibrate",
+            .fnOnCommand = [this](){ OnCommandCalibrate(); }
         });
     
         disp_.AddMenuItem(MenuItemInputNum{
@@ -79,6 +82,7 @@ public:
     void Run()
     {
         disp_.Init();
+        disp_.RequestMainScreenRedraw();
         
         evm_.MainLoop();
     }
@@ -88,16 +92,33 @@ private:
     void OnLimitSwitchLeft(uint8_t logicLevel)
     {
         atLimitLeft_ = logicLevel;
+        
+        ++countLimitSwitchToggle_;
+        
+        disp_.RequestMainScreenRedraw();
     }
     
     void OnLimitSwitchRight(uint8_t logicLevel)
     {
         atLimitRight_ = logicLevel;
+        
+        ++countLimitSwitchToggle_;
+        
+        disp_.RequestMainScreenRedraw();
     }
 
-    void OnDrawMainScreen(LCDFrentaly20x4 &/*lcd*/)
+    void OnDrawMainScreen(LCDFrentaly20x4 &lcd)
     {
-        // TODO
+        ++countRedraws_;
+        
+        lcd.PrintAt(0, 0, "Redraws: ");
+        lcd.Print(countRedraws_);
+        lcd.PrintAt(0, 1, "AtLimitLeft : ");
+        lcd.Print(atLimitLeft_);
+        lcd.PrintAt(0, 2, "AtLimitRight: ");
+        lcd.Print(atLimitRight_);
+        lcd.PrintAt(0, 3, "Toggle Count: ");
+        lcd.Print(countLimitSwitchToggle_);
     }
     
     void OnMainScreenInput(char /*c*/)
@@ -105,7 +126,7 @@ private:
         // TODO
     }
 
-    void OnCommand()
+    void OnCommandCalibrate()
     {
         // TODO
     }
@@ -116,15 +137,19 @@ private:
     }
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
-
+    
     StepperControllerBipolar    stepperControllerBipolar_;
     StepperControllerAsyncClass stepperControllerAsync_;
+    
+    uint8_t countRedraws_;
     
     PinInput limitSwitchLeftInput_;
     uint8_t  atLimitLeft_;
     
     PinInput limitSwitchRightInput_;
     uint8_t atLimitRight_;
+    
+    uint8_t countLimitSwitchToggle_;
     
     DisplayAndMenuClass disp_;
 };
