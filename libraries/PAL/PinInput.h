@@ -22,33 +22,51 @@ public:
     PinInput(uint8_t pin,
              uint8_t activeLevel = HIGH,
              uint8_t mode        = LEVEL_UNDEFINED)
-    : logicLevelActual_(PAL.DigitalRead(pin))
-    , activeLevel_(activeLevel)
+    : activeLevel_(activeLevel)
     {
-        if (mode == LEVEL_UNDEFINED)
+        // Assume an undefined transition mode means changing from
+        // logical 0 to logical 1
+
+        if (activeLevel_ == HIGH)
         {
-            // assume logical HIGH
-            if (activeLevel_ == HIGH)
+            // High voltage == logical 1
+            
+            if (mode == LEVEL_UNDEFINED || mode == LEVEL_RISING)
+            {
+                RegisterForInterruptEvent(pin, LEVEL_RISING);
+            }
+            else if (mode == LEVEL_FALLING)
+            {
+                PAL.PinMode(pin, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin, LEVEL_FALLING);
+            }
+            else
+            {
+                PAL.PinMode(pin, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin, LEVEL_RISING_AND_FALLING);
+            }
+        }
+        else
+        {
+            // Low voltage == logical 1
+            
+            if (mode == LEVEL_RISING)
+            {
+                PAL.PinMode(pin, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin, LEVEL_FALLING);
+            }
+            else if (mode == LEVEL_UNDEFINED || mode == LEVEL_FALLING)
             {
                 RegisterForInterruptEvent(pin, LEVEL_RISING);
             }
             else
             {
-                RegisterForInterruptEvent(pin, LEVEL_FALLING);
+                PAL.PinMode(pin, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin, LEVEL_RISING_AND_FALLING);
             }
         }
-        else if (mode == LEVEL_RISING)
-        {
-            RegisterForInterruptEvent(pin, LEVEL_RISING);
-        }
-        else if (mode == LEVEL_FALLING)
-        {
-            RegisterForInterruptEvent(pin, LEVEL_FALLING);
-        }
-        else
-        {
-            RegisterForInterruptEvent(pin, LEVEL_RISING_AND_FALLING);
-        }
+        
+        logicLevelActual_ = PAL.DigitalRead(pin);
     }
     
     void SetCallback(function<void(uint8_t logicLevel)> &&cbFn)
