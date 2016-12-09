@@ -22,51 +22,11 @@ public:
     PinInput(uint8_t pin,
              uint8_t activeLevel = HIGH,
              uint8_t mode        = LEVEL_UNDEFINED)
-    : activeLevel_(activeLevel)
+    : pin_(pin)
+    , activeLevel_(activeLevel)
+    , mode_(mode)
     {
-        // Assume an undefined transition mode means changing from
-        // logical 0 to logical 1
-
-        if (activeLevel_ == HIGH)
-        {
-            // High voltage == logical 1
-            
-            if (mode == LEVEL_UNDEFINED || mode == LEVEL_RISING)
-            {
-                RegisterForInterruptEvent(pin, LEVEL_RISING);
-            }
-            else if (mode == LEVEL_FALLING)
-            {
-                PAL.PinMode(pin, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin, LEVEL_FALLING);
-            }
-            else
-            {
-                PAL.PinMode(pin, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin, LEVEL_RISING_AND_FALLING);
-            }
-        }
-        else
-        {
-            // Low voltage == logical 1
-            
-            if (mode == LEVEL_RISING)
-            {
-                PAL.PinMode(pin, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin, LEVEL_FALLING);
-            }
-            else if (mode == LEVEL_UNDEFINED || mode == LEVEL_FALLING)
-            {
-                RegisterForInterruptEvent(pin, LEVEL_RISING);
-            }
-            else
-            {
-                PAL.PinMode(pin, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin, LEVEL_RISING_AND_FALLING);
-            }
-        }
-        
-        logicLevelActual_ = PAL.DigitalRead(pin);
+        Enable();
     }
     
     void SetCallback(function<void(uint8_t logicLevel)> &&cbFn)
@@ -74,9 +34,16 @@ public:
         cbFn_ = cbFn;
     }
     
-    uint8_t GetLogicLevel()
+    uint8_t GetLogicLevel(uint8_t forceRefresh = 0)
     {
         uint8_t retVal = logicLevelActual_;
+        
+        if (forceRefresh)
+        {
+            logicLevelActual_ = PAL.DigitalRead(pin_);
+            
+            retVal = logicLevelActual_;
+        }
         
         if (activeLevel_ == LOW)
         {
@@ -85,7 +52,59 @@ public:
         
         return retVal;
     }
+    
+    void Disable()
+    {
+        DeRegisterForInterruptEvent();
+    }
+    
+    void Enable()
+    {
+        // Assume an undefined transition mode means changing from
+        // logical 0 to logical 1
 
+        if (activeLevel_ == HIGH)
+        {
+            // High voltage == logical 1
+            
+            if (mode_ == LEVEL_UNDEFINED || mode_ == LEVEL_RISING)
+            {
+                RegisterForInterruptEvent(pin_, LEVEL_RISING);
+            }
+            else if (mode_ == LEVEL_FALLING)
+            {
+                PAL.PinMode(pin_, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin_, LEVEL_FALLING);
+            }
+            else
+            {
+                PAL.PinMode(pin_, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin_, LEVEL_RISING_AND_FALLING);
+            }
+        }
+        else
+        {
+            // Low voltage == logical 1
+            
+            if (mode_ == LEVEL_RISING)
+            {
+                PAL.PinMode(pin_, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin_, LEVEL_FALLING);
+            }
+            else if (mode_ == LEVEL_UNDEFINED || mode_ == LEVEL_FALLING)
+            {
+                RegisterForInterruptEvent(pin_, LEVEL_RISING);
+            }
+            else
+            {
+                PAL.PinMode(pin_, INPUT_PULLUP);
+                RegisterForInterruptEvent(pin_, LEVEL_RISING_AND_FALLING);
+            }
+        }
+        
+        logicLevelActual_ = PAL.DigitalRead(pin_);
+    }
+    
 private:
     virtual void OnInterruptEvent(uint8_t logicLevel)
     {
@@ -94,8 +113,10 @@ private:
         cbFn_(GetLogicLevel());
     }
 
+    uint8_t                 pin_;
     uint8_t                 logicLevelActual_;
     uint8_t                 activeLevel_;
+    uint8_t                 mode_;
     function<void(uint8_t)> cbFn_;
 };
 
