@@ -88,10 +88,10 @@ public:
     {
         h1_.Enable();
         h2_.Enable();
-        HalfStepRight();        
+        HalfStepCW();        
     }
     
-    void HalfStepLeft()
+    void HalfStepCCW()
     {
         // Get new index into half step array
         if (halfStepStateListIdx_ == 0) { halfStepStateListIdx_ = 14; }
@@ -101,7 +101,7 @@ public:
         H2(halfStepStateList_[halfStepStateListIdx_ + 1]);
     }
     
-    void HalfStepRight()
+    void HalfStepCW()
     {
         // Get new index into half step array
         halfStepStateListIdx_ = (halfStepStateListIdx_ + 2) % 16;
@@ -157,6 +157,11 @@ template <typename T>
 class StepperControllerAsync
 {
 public:
+    static const uint8_t C_IDLE  = 1;
+    static const uint8_t C_TIMED = 0;
+    static const uint8_t C_INTER = 0;
+    
+public:
     StepperControllerAsync(T &sc)
     : sc_(sc)
     , stepCount_(0)
@@ -165,18 +170,18 @@ public:
         // Nothing to do
     }
     
-    void HalfStepLeft(uint32_t         stepCount,
-                      uint32_t         stepDurationMs,
-                      function<void()> cbFnOnComplete = [](){})
+    void HalfStepCCW(uint32_t         stepCount,
+                     uint32_t         stepDurationMs,
+                     function<void()> cbFnOnComplete = [](){})
     {
-        Start(Direction::LEFT, stepCount, stepDurationMs, cbFnOnComplete);
+        Start(Direction::CCW, stepCount, stepDurationMs, cbFnOnComplete);
     }
     
-    void HalfStepRight(uint32_t         stepCount,
-                       uint32_t         stepDurationMs,
-                       function<void()> cbFnOnComplete = [](){})
+    void HalfStepCW(uint32_t         stepCount,
+                    uint32_t         stepDurationMs,
+                    function<void()> cbFnOnComplete = [](){})
     {
-        Start(Direction::RIGHT, stepCount, stepDurationMs, cbFnOnComplete);
+        Start(Direction::CW, stepCount, stepDurationMs, cbFnOnComplete);
     }
     
     void Stop()
@@ -190,8 +195,8 @@ private:
 
     enum struct Direction : uint8_t
     {
-        LEFT = 0,
-        RIGHT
+        CCW = 0,
+        CW
     };
     
     void Start(Direction        direction,
@@ -229,8 +234,8 @@ private:
         ted_.RegisterForIdleTimeHiResTimedEventInterval(stepDurationUs_);
         ted_.SetCallback([this](){ OnTimeout(); });
         
-        if (direction_ == Direction::LEFT) { sc_.HalfStepLeft();  }
-        else                               { sc_.HalfStepRight(); }
+        if (direction_ == Direction::CCW) { sc_.HalfStepCCW(); }
+        else                              { sc_.HalfStepCW();  }
         
         --stepCount_;
         

@@ -24,7 +24,7 @@ void GoRightForAWhile(uint16_t steps, uint16_t delayMs)
 {
     while (steps)
     {
-        sc.HalfStepRight();
+        sc.HalfStepCW();
 
         PAL.Delay(delayMs);
         
@@ -36,7 +36,7 @@ void GoLeftForAWhile(uint16_t steps, uint16_t delayMs)
 {
     while (steps)
     {
-        sc.HalfStepLeft();
+        sc.HalfStepCCW();
 
         PAL.Delay(delayMs);
         
@@ -61,13 +61,13 @@ void setup()
         PAL.DigitalWrite(pinDebug, LOW);
 
         // try some async stuff
-        sca.HalfStepRight(steps, delayMs, [](){
+        sca.HalfStepCW(steps, delayMs, [](){
             Evm::GetInstance().EndMainLoop();
         });
 
         evm.HoldStackDangerously();
 
-        sca.HalfStepLeft(steps, delayMs, [](){
+        sca.HalfStepCCW(steps, delayMs, [](){
             Evm::GetInstance().EndMainLoop();
         });
 

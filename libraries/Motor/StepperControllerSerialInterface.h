@@ -46,11 +46,11 @@ public:
                 // Call controller
                 if (stepCount >= 0)
                 {
-                    sc_.HalfStepRight(stepCount, delayMs);
+                    sc_.HalfStepCW(stepCount, delayMs);
                 }
                 else
                 {
-                    sc_.HalfStepLeft(-stepCount, delayMs);
+                    sc_.HalfStepCCW(-stepCount, delayMs);
                 }
             }
         });
