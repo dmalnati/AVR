@@ -26,7 +26,11 @@ public:
     , activeLevel_(activeLevel)
     , mode_(mode)
     {
+        // Enable to get the pin mode set correctly so GetLogicLevel works, then
+        // Disable to prevent events from firing until application
+        // ready.
         Enable();
+        Disable();
     }
     
     void SetCallback(function<void(uint8_t logicLevel)> &&cbFn)
