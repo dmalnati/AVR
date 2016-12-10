@@ -36,7 +36,7 @@ private:
     };
     
     // Set time to slide completely in one direction to be 1 hour
-    static const uint32_t DEFAULT_SLIDE_DURATION_MS = 10000; //3600000;
+    static const uint32_t DEFAULT_SLIDE_DURATION_MS = 3600000;
     
 public:
     static const uint8_t COUNT_MENU_ITEMS = 4;
@@ -74,10 +74,6 @@ public:
         limitSwitchLeftInput_.SetCallback([this](uint8_t logicLevel)  { OnLimitSwitchLeft(logicLevel); });
         limitSwitchRightInput_.SetCallback([this](uint8_t logicLevel) { OnLimitSwitchRight(logicLevel); });
 
-        // Disable inputs until in running mode
-        limitSwitchLeftInput_.Disable();
-        limitSwitchRightInput_.Disable();
-        
         // Set up menu
         disp_.AddMenuItem(MenuItemCommand{
             .description = "Calibrate",
@@ -98,7 +94,7 @@ public:
             .description = "Stop",
             .fnOnCommand = [this](){ OnCommandStop(); }
         });
-    
+        
         disp_.SetFnRedrawMainScreen([this](LCDFrentaly20x4 &lcd){ OnDrawMainScreen(lcd); });
         disp_.SetFnMainScreenInput([this](char c){ OnMainScreenInput(c); });
     }
@@ -113,7 +109,6 @@ public:
 
 private:
 
-
     void OnDrawMainScreen(LCDFrentaly20x4 &lcd)
     {
         if (!IsCalibrated())
@@ -122,7 +117,7 @@ private:
         }
         else
         {
-            lcd.PrintAt(0, 0, "Steps: ");
+            lcd.PrintAt(0, 0, "Steps  : ");
             lcd.Print(halfStepCount_ / 2);
         }
         
