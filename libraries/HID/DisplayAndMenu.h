@@ -34,34 +34,32 @@ public:
     // this way.  Purely to make having an array of them easier.
     MenuItem() { }
     
-    MenuItem(MenuItemCommand &&mic)
+    MenuItem(MenuItemCommand mic)
     {
         type_ = MenuItemType::COMMAND;
-       
-        MenuItemCommand *p = (MenuItemCommand *)data_;
-        *p = mic;
+        
+        mic_ = mic;
     }
     
     operator MenuItemCommand & ()
     {
-        MenuItemCommand *p = (MenuItemCommand *)data_;
+        //MenuItemCommand *p = (MenuItemCommand *)data_;
         
-        return *p;
+        //return *p;
+        
+        return mic_;
     }
    
-    MenuItem(MenuItemInputNum &&miin)
+    MenuItem(MenuItemInputNum miin)
     {
         type_ = MenuItemType::INPUT_NUM;
-       
-        MenuItemInputNum *p = (MenuItemInputNum *)data_;
-        *p = miin;
+        
+        miin_ = miin;
     }
     
     operator MenuItemInputNum & ()
     {
-        MenuItemInputNum *p = (MenuItemInputNum *)data_;
-        
-        return *p;
+        return miin_;
     }
 
 private: 
@@ -71,8 +69,9 @@ private:
         INPUT_NUM
     } type_;
    
-    // must be the size of the largest of any type to be stored here
-    uint8_t data_[sizeof(MenuItemInputNum)];
+
+    MenuItemCommand  mic_;
+    MenuItemInputNum miin_;
 };
 
 
@@ -99,19 +98,19 @@ public:
         // Nothing to do
     }
     
-    void SetFnRedrawMainScreen(function<void(LCDFrentaly20x4 &lcd)> &&fnRedrawMainScreen)
+    void SetFnRedrawMainScreen(function<void(LCDFrentaly20x4 &lcd)> fnRedrawMainScreen)
     {
         fnRedrawMainScreen_ = fnRedrawMainScreen;
     }
     
-    void SetFnMainScreenInput(function<void(char c)> &&fnMainScreenInput)
+    void SetFnMainScreenInput(function<void(char c)> fnMainScreenInput)
     {
         fnMainScreenInput_ = fnMainScreenInput;
     }
 
     using MenuItemHandle = uint8_t;
 
-    MenuItemHandle AddMenuItem(MenuItem &&menuItem)
+    MenuItemHandle AddMenuItem(MenuItem menuItem)
     {
         MenuItemHandle retVal = 0;
         
