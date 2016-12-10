@@ -5,11 +5,11 @@
 
 static Evm::Instance<10,10,10> evm;
 
-static uint8_t pinEnable   = 10;
-static uint8_t pinPhase1S1 = 11;
-static uint8_t pinPhase1S2 = 12;
-static uint8_t pinPhase2S1 = 13;
-static uint8_t pinPhase2S2 = 14;
+static uint8_t pinEnable   = 0;
+static uint8_t pinPhase1S1 = 26;
+static uint8_t pinPhase1S2 = 25;
+static uint8_t pinPhase2S1 = 24;
+static uint8_t pinPhase2S2 = 23;
 
 static StepperControllerBipolar sc(pinEnable,
                                    pinPhase1S1,
