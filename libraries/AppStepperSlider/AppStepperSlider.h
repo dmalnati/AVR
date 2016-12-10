@@ -196,18 +196,32 @@ private:
                 stepTimeMs_ = 1;
             }
             
-            GoLeft();
+            // We want to go right by default, assuming calibration just
+            // happened.
+            // However, it's possible multiple runs post-calibration have
+            // happened and the final position is touching the right-hand
+            // side limit switch.  In that case we should go left.
+            
+            uint8_t forceRefresh = 1;
+            if (limitSwitchRightInput_.GetLogicLevel(forceRefresh))
+            {
+                GoLeft();
+            }
+            else
+            {
+                GoRight();
+            }
         }
     }
     
     void GoRight()
     {
-        stepperControllerAsync_.HalfStepForeverCCW(stepTimeMs_);
+        stepperControllerAsync_.HalfStepForeverCW(stepTimeMs_);
     }
     
     void GoLeft()
     {
-        stepperControllerAsync_.HalfStepForeverCW(stepTimeMs_);
+        stepperControllerAsync_.HalfStepForeverCCW(stepTimeMs_);
     }
     
     void OnLimitSwitchLeft(uint8_t logicLevel)
