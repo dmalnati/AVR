@@ -23,18 +23,33 @@ public:
     {
         s_.println("Starting");
         
-        ted_.RegisterForTimedEventInterval(100);
+        ted_.RegisterForTimedEventInterval(250);
         ted_.SetCallback([this](){
             char *inputStr = sr_.GetBuf();
 
             if (inputStr)
             {
+                char *stepCountStr = inputStr;
+                
+                uint8_t doHalfSteps = 1;
+                
+                // Check for leading 'f' character to indicate that
+                // Full steps are required
+                if (inputStr[0] == 'f')
+                {
+                    doHalfSteps = 0;
+                    
+                    // advance to step count part of string
+                    stepCountStr = strchr(inputStr, ' ');
+                    ++stepCountStr;
+                }
+                
                 // steps and direction (positive or negative number)
-                int16_t stepCount = atoi(inputStr);
+                int32_t stepCount = atoi(stepCountStr);
 
                 // delayMs (optional)
-                uint16_t delayMs = 1;
-                char *delayMsStr = strchr(inputStr, ' ');
+                uint32_t delayMs = 1;
+                char *delayMsStr = strchr(stepCountStr, ' ');
                 if (delayMsStr)
                 {
                     // move past the space
@@ -42,15 +57,17 @@ public:
 
                     delayMs = atoi(delayMsStr);
                 }
-
+                
                 // Call controller
                 if (stepCount >= 0)
                 {
-                    sc_.HalfStepCW(stepCount, delayMs);
+                    if (doHalfSteps) { sc_.HalfStepCW(stepCount, delayMs); }
+                    else             { sc_.FullStepCW(stepCount, delayMs); }
                 }
                 else
                 {
-                    sc_.HalfStepCCW(-stepCount, delayMs);
+                    if (doHalfSteps) { sc_.HalfStepCCW(-stepCount, delayMs); }
+                    else             { sc_.FullStepCCW(-stepCount, delayMs); }
                 }
             }
         });
