@@ -2,9 +2,12 @@
 
 
 static AppCrazySantaConfig cfg = {
-    .pinServoLeftArm  = 0,
-    .pinServoRightArm = 0,
-    .pinServoHead     = 0
+    .pinServoLeftArm  = 4,
+    .pinServoRightArm = 5,
+    .pinServoHead     = 6,
+
+    .pinLedLeftEye  = 10,
+    .pinLedRightEye = 11
 };
 
 static AppCrazySanta app(cfg);
