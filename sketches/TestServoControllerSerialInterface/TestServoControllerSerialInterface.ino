@@ -5,7 +5,7 @@
 
 static Evm::Instance<10,10,10> evm;
 
-static uint8_t pinServo = 9;
+static uint8_t pinServo = 4;
 
 static ServoController sc(pinServo);
 static ServoControllerSerialIface<ServoController> scsi(sc, Serial);
