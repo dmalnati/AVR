@@ -7,7 +7,9 @@ static AppCrazySantaConfig cfg = {
     .pinServoHead     = 6,
 
     .pinLedLeftEye  = 10,
-    .pinLedRightEye = 11
+    .pinLedRightEye = 11,
+
+    .pinRangeFinder = 9
 };
 
 static AppCrazySanta app(cfg);
