@@ -20,8 +20,8 @@ class PinInput
 {
 public:
     PinInput(uint8_t pin,
-             uint8_t activeLevel = HIGH,
-             uint8_t mode        = LEVEL_UNDEFINED)
+             uint8_t mode        = LEVEL_RISING,
+             uint8_t activeLevel = LOW)
     : pin_(pin)
     , activeLevel_(activeLevel)
     , mode_(mode)
