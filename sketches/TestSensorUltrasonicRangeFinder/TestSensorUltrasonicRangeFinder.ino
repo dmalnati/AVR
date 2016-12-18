@@ -1,6 +1,5 @@
 #include "SensorUltrasonicRangeFinder.h"
 #include "PAL.h"
-#include "SerialLink.h"
 #include "Evm.h"
 #include "TimedEventHandler.h"
 
@@ -27,9 +26,9 @@ public:
 
     void Run()
     {
-        serialLink_.Init(this, &SensorMonitor::OnSerialDataReadable);
-
-        RegisterForTimedEventInterval(150);
+        Serial.begin(9600);
+    
+        RegisterForTimedEventInterval(500);
 
         evm_.MainLoop();
     }
@@ -42,18 +41,12 @@ private:
 
         sensor_.GetMeasurement(&m);
 
-        // Send raw data via Serial Link
-        serialLink_.Send(0, &m.distIn, 1);
-    }
-
-    void OnSerialDataReadable(SerialLinkHeader *, uint8_t *, uint8_t)
-    {
-        // nothing to do
+        Serial.print("Inches: ");
+        Serial.println(m.distIn);
     }
 
     Evm::Instance<10,10,10> evm_;
 
-    SerialLink<SensorMonitor, 30> serialLink_;
     SensorUltrasonicRangeFinder sensor_;
 };
 
