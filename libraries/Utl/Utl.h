@@ -11,6 +11,7 @@
 
 
 extern void PinToggle(uint8_t pin, uint16_t delayMs = 500);
+extern uint32_t GetRandomInRange(uint32_t rangeLow, uint32_t rangeHigh);
 
 
 class TimedPinToggler : public TimedEventHandler
