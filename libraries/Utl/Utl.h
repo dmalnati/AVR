@@ -84,7 +84,6 @@ public:
 };
 
 
-
 template <uint8_t BUF_SIZE>
 class SerialBufReader
 {
@@ -111,15 +110,29 @@ public:
             }
 
             s_.readBytes(buf_, bytesToRead);
+            
+            uint8_t bytesInBuffer = bytesToRead;
 
             // terminate with NULL
-            buf_[bytesToRead] = '\0';
-
-            // return values
-            retVal = buf_;
-            if (bufSizeReturned)
+            buf_[bytesInBuffer] = '\0';
+            
+            // Strip newline
+            if (buf_[bytesInBuffer - 1] == '\n')
             {
-                *bufSizeReturned = bytesToRead;
+                buf_[bytesInBuffer - 1] = '\0';
+                
+                --bytesInBuffer;
+            }
+            
+            // return values
+            if (bytesInBuffer)
+            {
+                retVal = buf_;
+                
+                if (bufSizeReturned)
+                {
+                    *bufSizeReturned = bytesInBuffer;
+                }
             }
         }
 
@@ -129,6 +142,28 @@ public:
 private:
     char buf_[BUF_SIZE + 1];
 
+    HardwareSerial &s_;
+};
+
+
+class SerialPrinter
+{
+public:
+    SerialPrinter(HardwareSerial &s)
+    : s_(s)
+    {
+        // Nothing to do
+    }
+    
+    template <typename STRT, typename VALT>
+    void Print(STRT str, VALT val)
+    {
+        s_.print(str);
+        s_.print(": ");
+        s_.println(val);
+    }
+
+private:
     HardwareSerial &s_;
 };
 
