@@ -9,13 +9,13 @@ static AppCrazySantaConfig cfg = {
     .pinLedLeftEye  = 10,
     .pinLedRightEye = 11,
 
-    .pinRangeFinder = 9
+    .pinRangeFinder = 14
 };
 
 static AppCrazySanta app(cfg);
 
 
-void setup() 
+void setup()
 {
     app.Run();
 }

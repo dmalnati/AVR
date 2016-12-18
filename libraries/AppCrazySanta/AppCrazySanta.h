@@ -4,11 +4,11 @@
 
 #include "Evm.h"
 #include "Utl.h"
+#include "TimedEventHandler.h"
 #include "ServoController.h"
 #include "LedFader.h"
+#include "SensorUltrasonicRangeFinder.h"
 
-// Temporary
-#include "PinInput.h"
 
 
 struct AppCrazySantaConfig
@@ -40,21 +40,25 @@ private:
     
     static const uint32_t RETURN_TO_START_POS_MS   = 500;
     
+    static const uint32_t RANGE_FINDER_POLL_MS     = 100;
+    static const uint8_t  RANGE_FINDER_LIMIT_IN    = 36;    // 3 feet
+    
     using LedFaderClass = LEDFader<1,0>;
     
     static const uint8_t C_IDLE  = ServoController::C_IDLE  * 3 +
                                    LedFaderClass::C_IDLE * 2;
     static const uint8_t C_TIMED = ServoController::C_TIMED * 3 +
-                                   LedFaderClass::C_TIMED * 2;
+                                   LedFaderClass::C_TIMED * 2 +
+                                   1;   // TimedEventHandlerDelegate
     static const uint8_t C_INTER = ServoController::C_INTER * 3 +
                                    LedFaderClass::C_INTER * 2;
     
 public:
     AppCrazySanta(AppCrazySantaConfig &cfg)
-    : trigger_(cfg.pinRangeFinder)
-    , scLeftArm_(cfg.pinServoLeftArm)
+    : scLeftArm_(cfg.pinServoLeftArm)
     , scRightArm_(cfg.pinServoRightArm)
     , scHead_(cfg.pinServoHead)
+    , rangeFinder_(cfg.pinRangeFinder)
     {
         ledFaderLeftEye_.AddLED(cfg.pinLedLeftEye);
         ledFaderRightEye_.AddLED(cfg.pinLedRightEye);
@@ -62,12 +66,11 @@ public:
     
     void Run()
     {
-        trigger_.SetCallback([this](uint8_t){ StartCrazy2(); });
-        trigger_.Enable();
-        
         FlashEyes();
         GoToStartingPosition();
         StopAll();
+        
+        StartRangeFinder();
         
         evm_.MainLoop();
     }
@@ -127,9 +130,9 @@ private:
         evm_.HoldStackDangerously(RETURN_TO_START_POS_MS);
     }
     
-    void StartCrazy2()
+    void GoCrazy()
     {
-        trigger_.Disable();
+        StopRangeFinder();
 
         const uint32_t FIT_DURATION_MS = 400;
         const uint8_t  FIT_COUNT       = 15;
@@ -148,12 +151,36 @@ private:
         FlashEyes();
         StopAll();
         
-        trigger_.Enable();
+        StartRangeFinder();
+    }
+    
+    void StartRangeFinder()
+    {
+        ted_.SetCallback([this](){ OnGetRangeFinderMeasurement(); });
+        
+        ted_.RegisterForTimedEventInterval(RANGE_FINDER_POLL_MS);
+    }
+    
+    void StopRangeFinder()
+    {
+        ted_.DeRegisterForTimedEvent();
+    }
+    
+    void OnGetRangeFinderMeasurement()
+    {
+        // Get Measurement
+        SensorUltrasonicRangeFinder::Measurement m;
+
+        rangeFinder_.GetMeasurement(&m);
+        
+        // Check if within range to warrant going crazy
+        if (m.distIn <= RANGE_FINDER_LIMIT_IN)
+        {
+            GoCrazy();
+        }
     }
     
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
-    
-    PinInput trigger_;
     
     ServoController scLeftArm_;
     ServoController scRightArm_;
@@ -161,6 +188,9 @@ private:
     
     LedFaderClass ledFaderLeftEye_;
     LedFaderClass ledFaderRightEye_;
+    
+    TimedEventHandlerDelegate   ted_;
+    SensorUltrasonicRangeFinder rangeFinder_;
 };
 
 
