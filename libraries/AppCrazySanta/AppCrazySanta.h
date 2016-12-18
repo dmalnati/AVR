@@ -41,7 +41,7 @@ private:
     static const uint32_t RETURN_TO_START_POS_MS   = 500;
     
     static const uint32_t RANGE_FINDER_POLL_MS     = 100;
-    static const uint8_t  RANGE_FINDER_LIMIT_IN    = 36;    // 3 feet
+    static const uint8_t  RANGE_FINDER_LIMIT_IN    = 24;    // 2 feet
     
     using LedFaderClass = LEDFader<1,0>;
     
