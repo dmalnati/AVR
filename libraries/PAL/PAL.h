@@ -82,6 +82,11 @@ public:
             }
         }
     }
+    
+    static inline uint16_t AnalogRead(uint8_t physicalPin)
+    {
+        return analogRead(GetArduinoPinFromPhysicalPin(physicalPin));
+    }
 
     static inline uint8_t DigitalRead(Pin pin)
     {
