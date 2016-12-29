@@ -7,10 +7,10 @@
 
 class Timer1
 {
+public:
     static const uint8_t PIN_CHANNEL_A = 15;
     static const uint8_t PIN_CHANNEL_B = 16;
     
-public:
     Timer1()
     {
         // Nothing to do
@@ -127,6 +127,11 @@ public:
         FAST_PWM_TOP_ICRN,
         FAST_PWM_TOP_OCRNA
     };
+    
+    static void SetTimerModeFastPWM8Bit()
+    {
+        SetTimerMode(TimerMode::FAST_PWM_8_BIT);
+    }
     
     static void SetTimerMode(TimerMode m)
     {
