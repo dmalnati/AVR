@@ -22,6 +22,9 @@ private:
 public:
     ServoController(uint8_t pin)
     : degCurrent_(DEFAULT_DEG_CURRENT)
+    , isInverted_(0)
+    , rangeLow_(0)
+    , rangeHigh_(180)
     {
         Init(pin);
     }
@@ -40,13 +43,26 @@ public:
         PAL.DigitalWrite(pin_, LOW);
     }
     
+    void SetModeInverted()    { isInverted_ = 1; }
+    void SetModeNonInverted() { isInverted_ = 0; }
+    
+    void SetRange(uint8_t rangeLow, uint8_t rangeHigh)
+    {
+        if (rangeLow <= rangeHigh)
+        {
+            rangeLow_  = rangeLow;
+            rangeHigh_ = rangeHigh;
+        }
+    }
+    
     void MoveTo(uint8_t deg)
     {
-        // Enforce 0 - 180 degree range
-        if (deg > 180)
-        {
-            deg = 180;
-        }
+        // Constrain to range
+        if      (deg < rangeLow_)  { deg = rangeLow_;  }
+        else if (deg > rangeHigh_) { deg = rangeHigh_; }
+        
+        // Invert if necessary
+        if (isInverted_) { deg = 180 - deg; }
         
         // Assume instantaneous move.  Needed to allow for calculations with
         // timed MoveTo.
@@ -185,6 +201,10 @@ private:
     uint32_t stepCurrent_;
     uint32_t stepMax_;
     uint32_t dutyCycleExpireUs_;
+    
+    uint8_t isInverted_;
+    uint8_t rangeLow_;
+    uint8_t rangeHigh_;
 
     TimedEventHandlerDelegate              timerPeriod_;
     IdleTimeHiResTimedEventHandlerDelegate timerDutyCycle_;

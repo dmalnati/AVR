@@ -17,7 +17,7 @@ public:
     {
         // Nothing to do
     }
-
+    
     // called after the Serial stream init'd
     void Init()
     {
@@ -32,36 +32,87 @@ public:
                 s_.print(inputStr);
                 s_.println(" (input)");
                 
-                // degrees
-                int32_t deg = atoi(inputStr);
-                
-                if (deg == -1)
+                if (inputStr[0] == 'i')
                 {
-                    sc_.Stop();
+                    HandleInverseCommand();
+                }
+                else if (inputStr[0] == 'n')
+                {
+                    HandleNonInverseCommand();
+                }
+                else if (inputStr[0] == 'r')
+                {
+                    HandleRangeCommand(inputStr);
                 }
                 else
                 {
-                    // search for optional duration parameter.  If present, we know
-                    // this will exercise the timed MoveTo function.
-                    char *durationMsStr = strchr(inputStr, ' ');
-                    
-                    if (durationMsStr)
-                    {
-                        uint32_t durationMs = atol(durationMsStr);
-                        
-                        sc_.MoveTo(deg, durationMs);
-                    }
-                    else
-                    {
-                        // Call controller
-                        sc_.MoveTo(deg);
-                    }
+                    HandleMoveCommand(inputStr);
                 }
             }
         });
     }
 
 private:
+
+    void HandleInverseCommand()
+    {
+        sc_.SetModeInverted();
+        
+        Serial.println("Mode: Inverted");
+    }
+    
+    void HandleNonInverseCommand()
+    {
+        sc_.SetModeNonInverted();
+        
+        Serial.println("Mode: NonInverted");
+    }
+    
+    void HandleRangeCommand(char *inputStr)
+    {
+        char *rangeLowStr  = strchr(inputStr, ' ')    + 1;
+        char *rangeHighStr = strchr(rangeLowStr, ' ') + 1;
+        
+        uint8_t rangeLow  = atoi(rangeLowStr);
+        uint8_t rangeHigh = atoi(rangeHighStr);
+        
+        sc_.SetRange(rangeLow, rangeHigh);
+        
+        Serial.print("Range: ");
+        Serial.print(rangeLow);
+        Serial.print(" - ");
+        Serial.println(rangeHigh);
+    }
+    
+    void HandleMoveCommand(char *inputStr)
+    {
+        // degrees
+        int32_t deg = atoi(inputStr);
+        
+        if (deg == -1)
+        {
+            sc_.Stop();
+        }
+        else
+        {
+            // search for optional duration parameter.  If present, we know
+            // this will exercise the timed MoveTo function.
+            char *durationMsStr = strchr(inputStr, ' ');
+            
+            if (durationMsStr)
+            {
+                uint32_t durationMs = atol(durationMsStr);
+                
+                sc_.MoveTo(deg, durationMs);
+            }
+            else
+            {
+                // Call controller
+                sc_.MoveTo(deg);
+            }
+        }
+    }
+
     static const uint8_t BUF_SIZE = 10;
     SerialBufReader<BUF_SIZE> sr_;
     

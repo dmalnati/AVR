@@ -22,20 +22,39 @@ public:
     static const uint8_t C_INTER = 0;
     
 private:
-    static const uint8_t PERIOD_MS           = 20;
-    static const uint8_t DEFAULT_DEG_CURRENT = 90;
-
     // Private constructor, only allowed to be created by owner class
-    ServoControllerHW(uint8_t pin, TimerChannel *tc)
-    : pin_(pin)
-    , tc_(tc)
+    ServoControllerHW(TimerChannel *tc)
+    : tc_(tc)
+    , isInverted_(0)
+    , rangeLow_(0)
+    , rangeHigh_(180)
     {
         // Nothing to do
     }
     
 public:
+
+    void SetModeInverted()    { isInverted_ = 1; }
+    void SetModeNonInverted() { isInverted_ = 0; }
+    
+    void SetRange(uint8_t rangeLow, uint8_t rangeHigh)
+    {
+        if (rangeLow <= rangeHigh)
+        {
+            rangeLow_  = rangeLow;
+            rangeHigh_ = rangeHigh;
+        }
+    }
+    
     void MoveTo(uint8_t deg)
     {
+        // Constrain to range
+        if      (deg < rangeLow_)  { deg = rangeLow_;  }
+        else if (deg > rangeHigh_) { deg = rangeHigh_; }
+        
+        // Invert if necessary
+        if (isInverted_) { deg = 180 - deg; }
+        
         // Calculate time of pulse for given degrees
         
         // Calculate duty cycle time in microseconds.
@@ -67,8 +86,11 @@ public:
 
 private:
     
-    uint8_t       pin_;
     TimerChannel *tc_;
+    
+    uint8_t isInverted_;
+    uint8_t rangeLow_;
+    uint8_t rangeHigh_;
 };
 
 
@@ -77,8 +99,8 @@ class ServoControllerHWOwner
 {
 public:
     ServoControllerHWOwner()
-    : scA_(TimerN::PIN_CHANNEL_A, TimerN::GetTimerChannelA())
-    , scB_(TimerN::PIN_CHANNEL_B, TimerN::GetTimerChannelB())
+    : scA_(TimerN::GetTimerChannelA())
+    , scB_(TimerN::GetTimerChannelB())
     {
         // Nothing to do
     }
@@ -119,14 +141,14 @@ public:
         TimerN::StartTimer();
     }
     
-    ServoControllerHW *GetServoControllerHWA()
+    ServoControllerHW &GetServoControllerHWA()
     {
-        return &scA_;
+        return scA_;
     }
     
-    ServoControllerHW *GetServoControllerHWB()
+    ServoControllerHW &GetServoControllerHWB()
     {
-        return &scB_;
+        return scB_;
     }
 
     
@@ -136,6 +158,9 @@ private:
     ServoControllerHW scB_;
 };
 
+
+using ServoControllerHWOwner1 = ServoControllerHWOwner<Timer1>;
+using ServoControllerHWOwner2 = ServoControllerHWOwner<Timer2>;
 
 
 
