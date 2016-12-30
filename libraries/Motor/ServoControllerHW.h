@@ -43,7 +43,7 @@ public:
         uint32_t dutyCycleExpireUs = (0.5 + (((double)deg / 180.0) * 2)) * 1000.0;
 
         // already-known value of time per tick
-        uint8_t usPerTick = 128;
+        uint8_t usPerTick = 32;
         
         // convert microsecond time to a compare value
         uint8_t timerCompareVal = dutyCycleExpireUs / usPerTick;
@@ -62,9 +62,6 @@ public:
     {
         // stop responding to timer
         tc_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::NONE);
-        
-        // force pin low
-        PAL.DigitalWrite(pin_, LOW);
     }
 
 
@@ -108,8 +105,8 @@ public:
         channelB->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::NONE);
 
         // Set up TimerN
-        // prescaler = 1024, so full wrap time of 8-bit counter takes ~32ms
-        TimerN::SetTimerPrescaler(TimerN::TimerPrescaler::DIV_BY_1024);
+        // prescaler = 1024, so full wrap time of 8-bit counter takes ~8.2ms
+        TimerN::SetTimerPrescaler(TimerN::TimerPrescaler::DIV_BY_256);
         
         // mode = fastPWM
         TimerN::SetTimerModeFastPWM8Bit();
