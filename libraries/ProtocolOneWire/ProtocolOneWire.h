@@ -4,122 +4,12 @@
 
 #include "PAL.h"
 
-// Debug
-#include "UtlStreamBlob.h"
-
-
-
-
-
-
-// The inlines being commented out are there only there to debug as
-// I was having a hard time seeing the function creation in the elf.
-// Need to do timing.
-// Need to confirm that the conditionals in the fully templated fn
-// aren't relaly in the code.  (seems that the compile-time-known value
-// of DURATION_US means the if/else branch should already be known also).
-
-
-template <uint8_t DURATION_US>
-//inline
-void PrivateDelayMicrosecondsNoInterrupts()
-{
-    // PrivateDelayMicrosecondsNoInterrupts
-    // <
-        // (DURATION_US == 5) ? (DURATION_US - 2) : (DURATION_US - 1)
-    // >();
-    
-    if (DURATION_US >= 10)
-    {
-        PrivateDelayMicrosecondsNoInterrupts<10>();
-        PrivateDelayMicrosecondsNoInterrupts<DURATION_US - 10>();
-    }
-    else if (DURATION_US >= 5)
-    {
-        PrivateDelayMicrosecondsNoInterrupts<DURATION_US - 5>();
-        PrivateDelayMicrosecondsNoInterrupts<DURATION_US - 5>();
-    }
-    else
-    {
-        PrivateDelayMicrosecondsNoInterrupts<1>();
-        PrivateDelayMicrosecondsNoInterrupts<DURATION_US - 1>();
-    }
-}
-
-
-template <>
-//inline
-void PrivateDelayMicrosecondsNoInterrupts<10>()
-{
-    asm volatile (
-        "    ldi  r18, 26"	"\n"
-        "1:  dec  r18"	"\n"
-        "    brne 1b"	"\n"
-        "    rjmp 1f"	"\n"
-        "1:"	"\n"
-    );
-}
-
-template <>
-//inline
-void PrivateDelayMicrosecondsNoInterrupts<5>()
-{
-    asm volatile (
-        "    ldi  r18, 13"	"\n"
-        "1:  dec  r18"	"\n"
-        "    brne 1b"	"\n"
-        "    nop"	"\n"
-    );
-}
-
-
-template <>
-//inline
-void PrivateDelayMicrosecondsNoInterrupts<1>()
-{
-    asm volatile (
-    "    lpm"	"\n"
-    "    lpm"	"\n"
-    "    rjmp 1f"	"\n"
-    "1:"	"\n"
-    );
-}
-
-template <>
-//inline
-void PrivateDelayMicrosecondsNoInterrupts<0>()
-{
-    // Nothing to do
-}
-
-
-
-
-// Could make this a macro(?) such that it can still work like a
-// function but is called at compile time?
-template <uint8_t DURATION_US>
-//inline 
-void DelayMicrosecondsNoInterrupts()
-{
-    //disable
-    
-    PrivateDelayMicrosecondsNoInterrupts<DURATION_US>();
-    
-    //enable
-}
-
-
-
-
-
 
 class ProtocolOneWire
 {
 private:
     static const uint8_t DURATION_US_TIME_SLOT = 60;
     
-    static const uint8_t DURATION_US_LOW_WRITE_0_MIN =  60;
-    static const uint8_t DURATION_US_LOW_WRITE_0_MAX = 120;
     static const uint8_t DURATION_US_LOW_WRITE_0     =  90;
     
     static const uint8_t DURATION_US_LOW_WRITE_1_MIN =  1;
@@ -136,6 +26,7 @@ private:
     static const uint16_t DURATION_US_LOW_RESET_SIGNAL     = 9 * DURATION_US_TIME_SLOT;
     
     static const uint8_t CODE_CMD_READ_ROM = 0x33;
+    static const uint8_t CODE_CMD_SKIP_ROM = 0xCC;
     
 private:
 
@@ -150,8 +41,16 @@ private:
 public:
     ProtocolOneWire(uint8_t pin)
     : pin_(pin)
-    , dbg_(16, LOW)
-    , dbg2_(17, LOW)
+    {
+        // Nothing to do
+    }
+    
+    ~ProtocolOneWire()
+    {
+        // Nothing to do
+    }
+    
+    void Init()
     {
         // Bus master keeps the line high until triggering communication
         PAL.PinMode(pin_, INPUT_PULLUP);
@@ -159,18 +58,6 @@ public:
         // Delay ignoring any signal on the bus, as some slaves may respond
         // to the pullup high value as indicating the end of a reset.
         PAL.DelayMicroseconds(DURATION_US_TIME_SLOT * 3);
-        
-        
-        
-        
-        DelayMicrosecondsNoInterrupts<11>();
-        DelayMicrosecondsNoInterrupts<5>();
-        DelayMicrosecondsNoInterrupts<2>();
-    }
-    
-    ~ProtocolOneWire()
-    {
-        // Nothing to do
     }
     
     void WriteByte(uint8_t val)
@@ -190,7 +77,6 @@ public:
     {
         uint8_t retVal = 0;
         
-        PAL.DigitalWrite(dbg_, HIGH);
         // Read in LSB first
         for (uint8_t i = 0; i < 8; ++i)
         {
@@ -200,31 +86,33 @@ public:
             
             retVal |= (ReadBit() << 7);
         }
-        PAL.DigitalWrite(dbg_, LOW);
         
         return retVal;
     }
     
     void WriteBit(uint8_t val)
     {
-        if (val)
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            // Pull low for duration shorter than full window indicating a 1
-            PAL.PinMode(pin_, OUTPUT);
-            PAL.DigitalWrite(pin_, LOW);
-            PAL.DelayMicroseconds(DURATION_US_LOW_WRITE_1);
-            PAL.PinMode(pin_, INPUT_PULLUP);
-            
-            // Wait for end of time write time slot
-            PAL.DelayMicroseconds(DURATION_US_TIME_SLOT - DURATION_US_LOW_WRITE_1);
-        }
-        else
-        {
-            // Pull low for duration longer than the full window to indicate 0
-            PAL.PinMode(pin_, OUTPUT);
-            PAL.DigitalWrite(pin_, LOW);
-            PAL.DelayMicroseconds(DURATION_US_LOW_WRITE_0);
-            PAL.PinMode(pin_, INPUT_PULLUP);
+            if (val)
+            {
+                // Pull low for duration shorter than full window indicating a 1
+                PAL.PinMode(pin_, OUTPUT);
+                PAL.DigitalWrite(pin_, LOW);
+                PAL.DelayMicroseconds(DURATION_US_LOW_WRITE_1);
+                PAL.PinMode(pin_, INPUT_PULLUP);
+                
+                // Wait for end of time write time slot
+                PAL.DelayMicroseconds(DURATION_US_TIME_SLOT - DURATION_US_LOW_WRITE_1);
+            }
+            else
+            {
+                // Pull low for duration longer than the full window to indicate 0
+                PAL.PinMode(pin_, OUTPUT);
+                PAL.DigitalWrite(pin_, LOW);
+                PAL.DelayMicroseconds(DURATION_US_LOW_WRITE_0);
+                PAL.PinMode(pin_, INPUT_PULLUP);
+            }
         }
     }
     
@@ -232,25 +120,36 @@ public:
     {
         uint8_t retVal = 0;
         
-        PAL.DigitalWrite(dbg2_, HIGH);
-        // Pull low for duration indicating a read
-        PAL.PinMode(pin_, OUTPUT);
-        PAL.DigitalWrite(pin_, LOW);
-        PAL.DelayMicroseconds(DURATION_US_LOW_READ);
-        PAL.PinMode(pin_, INPUT_PULLUP);
-        
-        // Wait for end of read time slot
-        // "The bus should be sampled 15μs after the bus was pulled low"
-        PAL.DelayMicroseconds(DURATION_US_LOW_READ_MAX - DURATION_US_LOW_READ);
-        PAL.DigitalWrite(dbg2_, LOW);
-        retVal = PAL.DigitalRead(pin_);
-        
-        // now wait for remainder of 60us?
-        // how long does slave have to complete?
-        // Since we're effectively clocking the whole thing, we probably can't
-        // wait "too long," so just wait a whole window before going to the next
-        // bit.
-        PAL.DelayMicroseconds(DURATION_US_TIME_SLOT);
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Pull low for duration indicating a read
+            
+            PAL.PinMode(pin_, OUTPUT);
+            PAL.DigitalWrite(pin_, LOW);
+            // commented this out because it's actually working just fine
+            // without it given the inherent duration of time to mess around
+            // with pin states.
+            //PAL.DelayMicroseconds(DURATION_US_LOW_READ);
+            PAL.PinMode(pin_, INPUT_PULLUP);
+            
+            // Wait for end of read time slot
+            // "The bus should be sampled 15μs after the bus was pulled low"
+            // Tuned, kind of, ultimately during debugging, didn't go back to
+            // question it again.
+            //PAL.DelayMicroseconds(DURATION_US_LOW_READ_MAX - DURATION_US_LOW_READ);
+            PAL.DelayMicroseconds(5);
+            retVal = PAL.DigitalRead(pin_);
+            
+            // Useful debug to spot where this logic recognizes a 1 or 0
+            //PAL.DigitalWrite(dbg_, retVal ? HIGH : LOW);
+            
+            // now wait for remainder of 60us?
+            // how long does slave have to complete?
+            // Since we're effectively clocking the whole thing, we probably can't
+            // wait "too long," so just wait a whole window before going to the next
+            // bit.
+            PAL.DelayMicroseconds(DURATION_US_TIME_SLOT);
+        }
         
         return retVal;
     }
@@ -288,62 +187,27 @@ public:
     
     // Read the 64-bit unique ID of the single slave on the bus.
     // Does not work if zero or more than one slave connected.
-    uint64_t CmdReadRom()
+    void CmdReadRom()
     {
-        //uint64_t slaveId = 0;
         SlaveId slaveId = 0;
-        
         
         // Issue command to send ID when read from
         WriteByte(CODE_CMD_READ_ROM);
-        
-        // Read bytes, most significant bytes first
-        // for (uint8_t i = 0; i < 8; ++i)
-        // {
-            // slaveId <<= 8;
-            
-            // uint8_t slaveIdByte = ReadByte();
-            
-            // slaveId |= slaveIdByte;
-        // }
         
         for (uint8_t i = 0; i < 8; ++i)
         {
             slaveId.byteList[i] = ReadByte();
         }
 
-        
-        //uint8_t crcReceived = (uint8_t)(slaveId & 0x00000000000000FF);
-        uint8_t crcReceived = slaveId.byteList[7];
+        uint8_t crcReceived   = slaveId.byteList[7];
         uint8_t crcCalculated = CRC8(slaveId.byteList, 7);
         
         // Check CRC
         if (crcReceived != crcCalculated)
         {
-            Serial.println("CRC FAILED!!!!!");
-            Serial.print("crcReceived: ");
-            Serial.print(crcReceived, HEX);
-            Serial.println();
-            Serial.print("crcCalculated: ");
-            Serial.print(crcCalculated, HEX);
-            Serial.println();
-            Serial.print("slaveId: ");
-            StreamBlob(Serial, (uint8_t *)&slaveId, 8);
-            Serial.println();
-            
-            Serial.println();
-            
-            
             // Set slaveId to zero to indicate failure
             slaveId = 0;
         }
-        // debug
-        else
-        {
-            Serial.println("CRC GOOD");
-        }
-        
-        return slaveId.id;
     }
     
     // Address all slaves on the bus.
@@ -352,18 +216,10 @@ public:
     // If multiple slaves, only suitable for send-only data (commands).
     void CmdSkipRom()
     {
-        
+        WriteByte(CODE_CMD_SKIP_ROM);
     }
-    
-    // Address a specific slave for subsequent communication.
-    void CmdMatchRom(uint64_t slaveId)
-    {
-        
-    }
-
     
 private:
-
 
     uint8_t WaitLowThenHigh(uint32_t timeoutUs, uint32_t *durationUs = NULL)
     {
@@ -407,6 +263,8 @@ private:
         return retVal;
     }
     
+public:
+    
     // Code from:
     // http://www.evilgeniuslair.com/2015/01/14/crc-8/
     //CRC-8 - based on the CRC8 formulas by Dallas/Maxim
@@ -427,12 +285,10 @@ private:
         return crc;
     }
 
-
-
+    
+private:
 
     Pin pin_;
-    Pin dbg_;
-    Pin dbg2_;
 };
 
 

@@ -7,6 +7,8 @@ static ProtocolOneWire ow(PIN);
 void setup()
 {
     Serial.begin(9600);
+
+    ow.Init();
     
     while (1)
     {
@@ -14,7 +16,13 @@ void setup()
 
         PAL.Delay(500);
 
+
         ow.CmdReadRom();
+        
+        PAL.Delay(500);
+
+        
+        ow.CmdSkipRom();
         
         PAL.Delay(500);
     }
