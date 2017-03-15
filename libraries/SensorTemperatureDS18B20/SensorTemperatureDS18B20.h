@@ -3,6 +3,7 @@
 
 
 #include "ProtocolOneWire.h"
+#include "crc.h"
 
 
 /*
@@ -16,8 +17,9 @@ class SensorTemperatureDS18B20
 {
 private:
     static const uint8_t CODE_CMD_CONVERT         = 0x44;
-    //static const uint8_t CODE_CMD_READ_SCRATCHPAD = 0x48;
     static const uint8_t CODE_CMD_READ_SCRATCHPAD = 0xBE;
+    
+    static const uint16_t MAX_WAIT_BITS = 12000;
     
 public:
 
@@ -52,7 +54,6 @@ public:
             // Reset the bus
             ow_.ResetSignal();
             
-            Serial.println("skip rom");
             // Address the temperature sensor indirectly, by addressing all
             ow_.CmdSkipRom();
             
@@ -61,7 +62,7 @@ public:
             
             // Wait for thermometer to complete its reading.
             // While read is not yet complete
-            uint16_t readsRemaining = 12000;
+            uint16_t readsRemaining = MAX_WAIT_BITS;
             uint8_t thermometerReady = 0;
             uint8_t cont = 1;
             while (cont)
@@ -83,17 +84,10 @@ public:
                 }
             }
             
-            
-            // debug, put bit-reading pin low
-            PAL.DigitalWrite(16, LOW);
-            
-            
             // Check if we gave up or if the thermometer is actually ready
             // to be read.
             if (thermometerReady)
             {
-                retVal = 1;
-                
                 // Tell the thermometer to transmit the 9 byte "scratchpad"
                 // when read.
                 ow_.ResetSignal();
@@ -119,18 +113,12 @@ public:
                 
                 // Confirm checksum
                 uint8_t crcReceived = buf[8];
-                uint8_t crcCalculated = ow_.CRC8(buf, 8);
+                uint8_t crcCalculated = CRC8(buf, 8);
                 
-                if (crcReceived == crcCalculated)
-                {
-                    Serial.println("Temp OK");
-                }
-                else
-                {
-                    Serial.println("Temp BAD");
-                }
-                
-                
+                // Temperature reading is only successful if received and
+                // the checksum matches
+                retVal = (crcReceived == crcCalculated);
+
                 // Extract temperature bytes
                 uint16_t byteBuf;
                 memcpy((void *)&byteBuf, (void *)buf, 2);
@@ -141,8 +129,6 @@ public:
                 
                 // Now convert to host byte order
                 byteBuf = PAL.ntohs(byteBuf);
-                
-                
                 
                 // Copy bytes into signed integer instead of casting which would
                 // have undefined effects.
@@ -158,27 +144,17 @@ public:
                 
                 // Convert to Fahrenheit
                 int16_t tempF = (int16_t)((tempC * (9.0 / 5.0)) + 32.0);
-                
-                Serial.print("tempF: ");
-                Serial.println(tempF);
-                Serial.print("tempC: ");
-                Serial.println(tempC);
-                Serial.print("tempRaw: ");
-                Serial.print(byteBuf);
-                Serial.print(" (");
-                Serial.print(byteBuf, 2);
-                Serial.println(")");
-                PAL.Delay(1000);
+
+                // Fill out measurement structure
+                m->tempF = tempF;
+                m->tempC = tempC;
             }
-            
         }
         
         return retVal;
     }
 
 private:
-
-
 
     ProtocolOneWire ow_;
 };

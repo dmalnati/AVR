@@ -18,15 +18,19 @@ void setup()
 
         if (retVal)
         {
-            Serial.println("Success to read temp");
+            Serial.println("Success -- Temperature read");
+
+            Serial.print("tempF: ");
+            Serial.println(m.tempF);
+            Serial.print("tempC: ");
+            Serial.println(m.tempC);
         }
         else
         {
-            Serial.println("Failed to read temp");
+            Serial.println("Failure -- Could not read Temperature");
         }
-        
-        
-        PAL.Delay(500);
+            
+        PAL.Delay(2000);
     }
 }
 
