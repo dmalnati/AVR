@@ -25,6 +25,8 @@ public:
     , isInverted_(0)
     , rangeLow_(0)
     , rangeHigh_(180)
+    , maxDurationMs_(0)
+    , modeIgnoreMoveToCurrentPosition_(0)
     {
         Init(pin);
     }
@@ -55,6 +57,16 @@ public:
         }
     }
     
+    void SetMaxDurationMotorEnabled(uint32_t durationMs)
+    {
+        maxDurationMs_ = durationMs;
+    }
+    
+    void SetModeIgnoreMoveToCurrentPosition()
+    {
+        modeIgnoreMoveToCurrentPosition_ = 1;
+    }
+    
     void MoveTo(uint8_t deg)
     {
         // Constrain to range
@@ -64,41 +76,56 @@ public:
         // Invert if necessary
         if (isInverted_) { deg = 180 - deg; }
         
-        // Assume instantaneous move.  Needed to allow for calculations with
-        // timed MoveTo.
-        degCurrent_ = deg;
-        
-        // Set up logic for simulating PWM
-        // Two timers are used:
-        // - A timer to go off every PERIOD_MS representing the start of the
-        //   period.
-        // - A timer going off within the period to end the duty cycle.
-        
-        // Calculate duty cycle time in microseconds.
-        // Range between 0.5ms - 2.5ms to cover a 180 degree range of motion.
-        uint32_t dutyCycleExpireUs = (0.5 + (((double)deg / 180.0) * 2)) * 1000.0;
-        
-        // Set up the end-of-duty-cycle callback
-        auto cbFnOnDutyCycleEnd = [&]() {
-            PAL.DigitalWrite(pin_, LOW);
-        };
-        timerDutyCycle_.SetCallback(cbFnOnDutyCycleEnd);
-        
-        // Set up the callback to fire when the period starts
-        auto cbFnOnPeriodStart = [&, dutyCycleExpireUs]() {
-            // Re-start timer to end duty cycle.  Should have expired by now.
-            timerDutyCycle_.RegisterForIdleTimeHiResTimedEvent(dutyCycleExpireUs);
+        // Check if we should ignore moves to the current position
+        if (!modeIgnoreMoveToCurrentPosition_ ||
+            (modeIgnoreMoveToCurrentPosition_ && degCurrent_ != deg))
+        {
+            // Assume instantaneous move.  Needed to allow for calculations with
+            // timed MoveTo.
+            degCurrent_ = deg;
             
-            // Begin the period by starting the duty cycle
-            PAL.DigitalWrite(pin_, HIGH);
-        };
-        timerPeriod_.SetCallback(cbFnOnPeriodStart);
-        
-        // Start the timer so it fires at the next (and subsequent) periods.
-        timerPeriod_.RegisterForTimedEventInterval(PERIOD_MS);
-        
-        // Start this period manually
-        cbFnOnPeriodStart();
+            // Set up logic for simulating PWM
+            // Two timers are used:
+            // - A timer to go off every PERIOD_MS representing the start of the
+            //   period.
+            // - A timer going off within the period to end the duty cycle.
+            
+            // Calculate duty cycle time in microseconds.
+            // Range between 0.5ms - 2.5ms to cover a 180 degree range of motion.
+            uint32_t dutyCycleExpireUs = (0.5 + (((double)deg / 180.0) * 2)) * 1000.0;
+            
+            // Set up the end-of-duty-cycle callback
+            auto cbFnOnDutyCycleEnd = [&]() {
+                PAL.DigitalWrite(pin_, LOW);
+            };
+            timerDutyCycle_.SetCallback(cbFnOnDutyCycleEnd);
+            
+            // Set up the callback to fire when the period starts
+            auto cbFnOnPeriodStart = [&, dutyCycleExpireUs]() {
+                // Re-start timer to end duty cycle.  Should have expired by now.
+                timerDutyCycle_.RegisterForIdleTimeHiResTimedEvent(dutyCycleExpireUs);
+                
+                // Begin the period by starting the duty cycle
+                PAL.DigitalWrite(pin_, HIGH);
+            };
+            timerPeriod_.SetCallback(cbFnOnPeriodStart);
+            
+            // Start the timer so it fires at the next (and subsequent) periods.
+            timerPeriod_.RegisterForTimedEventInterval(PERIOD_MS);
+            
+            // Start this period manually
+            cbFnOnPeriodStart();
+            
+            // Check if there is a max duration in effect
+            if (maxDurationMs_ != 0)
+            {
+                maxDurationTimer_.SetCallback([this](){
+                    Stop();
+                });
+                
+                maxDurationTimer_.RegisterForTimedEvent(maxDurationMs_);
+            }
+        }
     }
     
     void MoveTo(uint8_t deg, uint32_t durationMs)
@@ -189,6 +216,8 @@ public:
         
         timerPeriod_.DeRegisterForTimedEvent();
         timerDutyCycle_.DeRegisterForIdleTimeHiResTimedEvent();
+        
+        maxDurationTimer_.DeRegisterForTimedEvent();
     }
 
 
@@ -208,6 +237,11 @@ private:
 
     TimedEventHandlerDelegate              timerPeriod_;
     IdleTimeHiResTimedEventHandlerDelegate timerDutyCycle_;
+    
+    TimedEventHandlerDelegate  maxDurationTimer_;
+    uint32_t                   maxDurationMs_;
+
+    uint8_t modeIgnoreMoveToCurrentPosition_;
 };
 
 

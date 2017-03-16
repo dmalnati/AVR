@@ -21,7 +21,7 @@ public:
     // called after the Serial stream init'd
     void Init()
     {
-        s_.println("Starting");
+        s_.println("ServoController Serial Interface");
         
         ted_.RegisterForTimedEventInterval(150);
         ted_.SetCallback([this](){
@@ -43,6 +43,14 @@ public:
                 else if (inputStr[0] == 'r')
                 {
                     HandleRangeCommand(inputStr);
+                }
+                else if (inputStr[0] == 'd')
+                {
+                    HandleMaxDurationCommand(inputStr);
+                }
+                else if (inputStr[0] == 'c')
+                {
+                    HandleIgnoreMoveToCurrentPositionCommand();
                 }
                 else
                 {
@@ -82,6 +90,25 @@ private:
         Serial.print(rangeLow);
         Serial.print(" - ");
         Serial.println(rangeHigh);
+    }
+    
+    void HandleMaxDurationCommand(char *inputStr)
+    {
+        char *durationMsStr = strchr(inputStr, ' ') + 1;
+        
+        uint32_t durationMs = atoi(durationMsStr);
+        
+        sc_.SetMaxDurationMotorEnabled(durationMs);
+        
+        Serial.print("MaxDuration: ");
+        Serial.println(durationMs);
+    }
+    
+    void HandleIgnoreMoveToCurrentPositionCommand()
+    {
+        sc_.SetModeIgnoreMoveToCurrentPosition();
+        
+        Serial.println("IgnoreMoveToCurrentPosition");
     }
     
     void HandleMoveCommand(char *inputStr)
