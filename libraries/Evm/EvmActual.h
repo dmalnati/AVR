@@ -41,12 +41,13 @@ public:
     virtual
     void HoldStackDangerously(uint32_t timeout);
     
+    virtual
+    void EndMainLoop();
+
+
 private:
 
     void MainLoopInternal();
-    
-    virtual
-    void EndMainLoop();
     
     class EndMainLoopOnTimeout
     : private TimedEventHandler
