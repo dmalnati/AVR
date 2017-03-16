@@ -56,11 +56,17 @@ public:
         
         // Initialize sensors
         sensorTemp1_.Init();
+        sensorTemp2_.Init();
         
-        // Set up motor stopper timer (so they don't chatter)
-        tedMotorStopper_.SetCallback([this](){
-            StopMotors();
-        });
+        // Set motor initial position
+        servo1_.MoveTo(90);
+        servo2_.MoveTo(90);
+        
+        // Set up motors to not be noisy
+        servo1_.SetMaxDurationMotorEnabled(DURATION_MS_MOTOR_RUN);
+        servo1_.SetModeIgnoreMoveToCurrentPosition();
+        servo2_.SetMaxDurationMotorEnabled(DURATION_MS_MOTOR_RUN);
+        servo2_.SetModeIgnoreMoveToCurrentPosition();
         
         // Set up and run (immediately) temperature taking timers
         auto cbFn = [this](){
@@ -69,9 +75,6 @@ public:
             
             // Debug
             Serial.println();
-            
-            // Stop motors from moving
-            tedMotorStopper_.RegisterForTimedEvent(DURATION_MS_MOTOR_RUN);
         };
         tedPollTemperature_.SetCallback(cbFn);
         tedPollTemperature_.RegisterForTimedEventInterval(POLL_MS_TEMPERATURE);
@@ -131,7 +134,6 @@ private:
     ServoController          servo2_;
     
     TimedEventHandlerDelegate tedPollTemperature_;
-    TimedEventHandlerDelegate tedMotorStopper_;
 
 };
 
