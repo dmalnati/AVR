@@ -122,21 +122,8 @@ private:
         }
         else
         {
-            // search for optional duration parameter.  If present, we know
-            // this will exercise the timed MoveTo function.
-            char *durationMsStr = strchr(inputStr, ' ');
-            
-            if (durationMsStr)
-            {
-                uint32_t durationMs = atol(durationMsStr);
-                
-                sc_.MoveTo(deg, durationMs);
-            }
-            else
-            {
-                // Call controller
-                sc_.MoveTo(deg);
-            }
+            // Call controller
+            sc_.MoveTo(deg);
         }
     }
 
