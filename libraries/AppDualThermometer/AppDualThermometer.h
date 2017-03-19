@@ -12,20 +12,25 @@ struct AppDualThermometerConfig
 {
     uint8_t pinThermometer1;
     uint8_t pinServo1;
+    int8_t  servo1PhysicalCalibrationOffset;
     
     uint8_t pinThermometer2;
     uint8_t pinServo2;
+    int8_t  servo2PhysicalCalibrationOffset;
 };
 
 class AppDualThermometer
 {
 private:
 
-    static const uint8_t C_IDLE  = 10;
-    static const uint8_t C_TIMED = 10;
-    static const uint8_t C_INTER = 10;
+    static const uint8_t C_IDLE  = 2 * SensorTemperatureDS18B20::C_IDLE +
+                                   2 * ServoController::C_IDLE;
+    static const uint8_t C_TIMED = 2 * SensorTemperatureDS18B20::C_TIMED +
+                                   2 * ServoController::C_TIMED          +
+                                   1;   // ted
+    static const uint8_t C_INTER = 2 * SensorTemperatureDS18B20::C_INTER +
+                                   2 * ServoController::C_INTER;
 
-    //static const uint32_t POLL_MS_TEMPERATURE = 60000;  // 1 minute
     static const uint32_t POLL_MS_TEMPERATURE = 5000;
     
     static const uint32_t DURATION_MS_MOTOR_RUN = 1500;
@@ -58,9 +63,9 @@ public:
         sensorTemp1_.Init();
         sensorTemp2_.Init();
         
-        // Set motor initial position
-        servo1_.MoveTo(90);
-        servo2_.MoveTo(90);
+        // Set up motors to be reverse-operated due to mounting
+        servo1_.SetModeInverted();
+        servo2_.SetModeInverted();
         
         // Set up motors to not be noisy
         servo1_.SetMaxDurationMotorEnabled(DURATION_MS_MOTOR_RUN);
@@ -70,8 +75,14 @@ public:
         
         // Set up and run (immediately) temperature taking timers
         auto cbFn = [this](){
-            MeasureAndMove(sensorTemp1_, servo1_);
-            MeasureAndMove(sensorTemp2_, servo2_);
+            MeasureAndMove("Sensor 1",
+                           sensorTemp1_,
+                           servo1_,
+                           cfg_.servo1PhysicalCalibrationOffset);
+            MeasureAndMove("Sensor 2",
+                           sensorTemp2_,
+                           servo2_,
+                           cfg_.servo2PhysicalCalibrationOffset);
             
             // Debug
             Serial.println();
@@ -87,10 +98,12 @@ public:
 
 private:
 
-    static void MeasureAndMove(SensorTemperatureDS18B20 &sensor,
-                               ServoController          &servo)
+    static void MeasureAndMove(const char               *debugStr,
+                               SensorTemperatureDS18B20 &sensor,
+                               ServoController          &servo,
+                               int8_t                   &servoPhysicalCalibrationOffset)
     {
-        sensor.GetMeasurementAsync([&](SensorTemperatureDS18B20::MeasurementAsync ma){
+        sensor.GetMeasurementAsync([&, debugStr](SensorTemperatureDS18B20::MeasurementAsync ma){
             if (ma.retVal)
             {
                 int16_t tempF = ma.m.tempF;
@@ -102,14 +115,23 @@ private:
                 // map onto 180 degree range
                 uint8_t deg = (tempF * 180.0 / 100.0);
                 
+                // adjust angle to account for physical mounting imprecision
+                deg += servoPhysicalCalibrationOffset;
+                
                 // turn servo
                 servo.MoveTo(deg);
                 
+                Serial.print(debugStr);
+                Serial.print(" - ");
                 Serial.print("TempF: ");
                 Serial.print(ma.m.tempF);
                 Serial.print(", deg: ");
                 Serial.print(deg);
                 Serial.println();
+            }
+            else
+            {
+                Serial.println("Could not read temp");
             }
         });
     }

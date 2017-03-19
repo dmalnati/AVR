@@ -2,11 +2,13 @@
 
 
 static AppDualThermometerConfig cfg = {
-    .pinThermometer1 = 15,
-    .pinServo1       = 16,
+    .pinThermometer1                 = 14,
+    .pinServo1                       = 13,
+    .servo1PhysicalCalibrationOffset = -8,
     
-    .pinThermometer2 = 14,
-    .pinServo2       = 13
+    .pinThermometer2                 = 15,
+    .pinServo2                       = 16,
+    .servo2PhysicalCalibrationOffset = -8
 };
 
 static AppDualThermometer app(cfg);
