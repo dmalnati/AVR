@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "Function.h"
+
 
 // Forward declaration
 template <uint8_t, uint8_t, uint8_t>
@@ -35,30 +37,38 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// Function Wrappers
+// Helpers
 //
 //////////////////////////////////////////////////////////////////////
 
-class IdleTimeEventHandlerFnWrapper
+
+class IdleTimeEventHandlerDelegate
 : public IdleTimeEventHandler
 {
-    typedef void (*CallbackFn)(void *userData);
-    
 public:
-    IdleTimeEventHandlerFnWrapper(CallbackFn fn, void *userData)
-    : fn_(fn)
-    , userData_(userData)
+    IdleTimeEventHandlerDelegate()
     {
-        // nothing to do
+        // Nothing to do
     }
-    void OnIdleTimeEvent() { fn_(userData_); }
+    
+    IdleTimeEventHandlerDelegate(function<void()> cbFn)
+    {
+        SetCallback(cbFn);
+    }
+
+    void SetCallback(function<void()> cbFn)
+    {
+        cbFn_ = cbFn;
+    }
 
 private:
-    CallbackFn  fn_;
-    void       *userData_;
+    virtual void OnIdleTimeEvent()
+    {
+        cbFn_();
+    }
+
+    function<void()> cbFn_;
 };
-
-
 
 
 #endif  // __IDLE_TIME_EVENT_HANDLER__
