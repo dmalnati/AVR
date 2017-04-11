@@ -114,8 +114,8 @@ public:
     
     static inline uint16_t AnalogRead(Pin pin)
     {
-        // Adjust only the input, leave along the voltage ref and left adjust
-        ADMUX = ((ADMUX & 0xF0) | pin.adcChannelBits_);
+        // Ensure the voltage reference is fixed to AVcc.  Left adjust disabled.
+        ADMUX = (_BV(REFS0) | pin.adcChannelBits_);
         
         // Decide what to do whether in batch mode or not1
         if (ADCSRA & _BV(ADATE))
@@ -140,7 +140,7 @@ public:
             ADCSRA |= _BV(ADSC);
             
             // Wait for bit to clear, indicating read completed
-            while ((ADCSRA & _BV(ADSC)))
+            while (ADCSRA & _BV(ADSC))
             {
                 // Nothing to do
             }
@@ -152,11 +152,12 @@ public:
         uint8_t low  = ADCL;
         uint8_t high = ADCH;
         
-        uint16_t retVal = ((low << 8) | high);
+        uint16_t retVal = ((high << 8) | low);
         
         return retVal;
     }
     
+    // Between BatchBegin and BatchEnd, you can only read from a single channel
     static inline void AnalogReadBatchBegin()
     {
         // Start the conversion.
