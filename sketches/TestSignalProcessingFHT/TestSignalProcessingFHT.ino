@@ -8,13 +8,13 @@ void setup()
 {
     Serial.begin(9600);
 
-    fht.Init();
+    Pin pinAnalog(23);
 
     while (1)
     {
         SignalProcessingFHT::Measurement m;
 
-        if (fht.GetMeasurement(&m))
+        if (fht.GetMeasurement(pinAnalog, &m))
         {
             // Send data
             Serial.print("valListLen: "); Serial.println(m.valListLen);

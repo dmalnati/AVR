@@ -16,20 +16,19 @@ class SignalProcessingFHT
 {
 public:
 
-    void Init()
-    {
-        ADCSRA = 0xe5; // set the adc to free running mode
-        ADMUX = 0x40; // use adc0
-        DIDR0 = 0x01; // turn off the digital input for adc0
-    }
-    
     struct Measurement
     {
         uint16_t *valList;
         uint16_t  valListLen;
+        
+        /*
+        uint32_t timeDiff;
+        double usPerSample;
+        uint32_t ratePerSec;
+        */
     };
     
-    uint8_t GetMeasurement(Measurement *m)
+    uint8_t GetMeasurement(Pin pin, Measurement *m)
     {
         uint8_t retVal = 0;
         
@@ -37,17 +36,42 @@ public:
         {
             retVal = 1;
             
+            // Get current prescaler, so it can be restored later
+            PlatformAbstractionLayer::ADCPrescaler adcPrescalerCurrent = PAL.GetADCPrescaler();
+            
+            // Set prescaler lower so operations complete more quickly.
+            // Wouldn't do this except that's how I see the example code doing
+            // it so why not.
+            // The spec says stay within 50-200kHz, but at 8MHz clock, and a
+            // prescaler of 32, you get 8,000,000 / 32 = 250kHz, so too quick...
+            PAL.SetADCPrescaler(PlatformAbstractionLayer::ADCPrescaler::DIV_BY_32);
+
+            // Begin batch acquire of analog samples
+            PAL.AnalogReadBatchBegin();
+            
+            //uint32_t timeStart = PAL.Micros();
             for (uint16_t i = 0; i < FHT_N; ++i)
             {
-                while(!(ADCSRA & 0x10)); // wait for adc to be ready
-                ADCSRA = 0xf5; // restart adc
-                byte m = ADCL; // fetch adc data
-                byte j = ADCH;
-                int k = (j << 8) | m; // form into an int
+                int16_t k = (int16_t)PAL.AnalogRead(pin);
+                
                 k -= 0x0200; // form into a signed int
                 k <<= 6; // form into a 16b signed int
                 fht_input[i] = k; // put real data into bins
             }
+            //uint32_t timeEnd = PAL.Micros();
+            
+            // End batch collection
+            PAL.AnalogReadBatchEnd();
+            
+            // Restore ADC prescaler
+            PAL.SetADCPrescaler(adcPrescalerCurrent);
+
+            // Debug
+            /*
+            m->timeDiff = timeEnd - timeStart;
+            m->usPerSample = (double)m->timeDiff / FHT_N;
+            m->ratePerSec = 1000000.0 / m->usPerSample;
+            */
 
             // Process samples
             fht_window(); // window the data for better frequency response
