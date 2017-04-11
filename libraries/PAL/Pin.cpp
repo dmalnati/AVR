@@ -16,10 +16,6 @@ Pin::Pin(uint8_t pin)
         if (pin >= 23)
         {
             adcChannelBits_ = (pin - 23);
-            
-            Serial.print("new Pin: ");
-            Serial.println(pin);
-            Serial.println(adcChannelBits_, 2);
         }
     }
 }
