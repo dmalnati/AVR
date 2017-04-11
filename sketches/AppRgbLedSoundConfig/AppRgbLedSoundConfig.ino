@@ -1,7 +1,9 @@
 #include "AppRgbLedSoundControl.h"
 
 
-static AppRgbLedSoundControlConfig cfg = {};
+static AppRgbLedSoundControlConfig cfg = {
+    .pinMicAnalogInput = 23
+};
 
 static AppRgbLedSoundControl app(cfg);
 

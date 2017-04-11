@@ -6,11 +6,7 @@
 #include "IdleTimeEventHandler.h"
 #include "Timer1.h"
 #include "Timer2.h"
-
-// Include FHT libraries, which are sensitive to preprocessor defs
-#define FHT_N   256
-#define LIN_OUT   1
-#include "FHT.h"
+#include "SignalProcessingFHT.h"
 
 
 struct AppRgbLedSoundControlConfig
@@ -19,7 +15,8 @@ struct AppRgbLedSoundControlConfig
     // Green LED driven by OC1B - Pin 16
     // Blue  LED driven by OC2A - Pin 17
     
-    // Analog input on ADC0
+    // Analog input
+    uint8_t pinMicAnalogInput;
 };
 
 
@@ -34,6 +31,7 @@ public:
 
     AppRgbLedSoundControl(AppRgbLedSoundControlConfig &cfg)
     : cfg_(cfg)
+    , pinMicAnalogInput_(cfg_.pinMicAnalogInput)
     , tcLedRed_(Timer1::GetTimerChannelA())
     , tcLedGreen_(Timer1::GetTimerChannelB())
     , tcLedBlue_(Timer2::GetTimerChannelA())
@@ -67,12 +65,6 @@ private:
 
     void SetUpAnalogInputs()
     {
-        // Set up ADC
-        //TIMSK0 = 0; // turn off timer0 for lower jitter
-        ADCSRA = 0xe5; // set the adc to free running mode
-        ADMUX = 0x40; // use adc0
-        DIDR0 = 0x01; // turn off the digital input for adc0
-        
         timerAdcFht_.SetCallback([this](){
             OnDoAdcFht();
         });
@@ -81,33 +73,53 @@ private:
     
     void OnDoAdcFht()
     {
-        // Collect samples
-        for (uint16_t i = 0; i < FHT_N; ++i)
-        {
-            while(!(ADCSRA & 0x10)); // wait for adc to be ready
-            ADCSRA = 0xf5; // restart adc
-            byte m = ADCL; // fetch adc data
-            byte j = ADCH;
-            int k = (j << 8) | m; // form into an int
-            k -= 0x0200; // form into a signed int
-            k <<= 6; // form into a 16b signed int
-            fht_input[i] = k; // put real data into bins
-        }
+        SignalProcessingFHT::Measurement m;
 
-        // Process samples
-        fht_window(); // window the data for better frequency response
-        fht_reorder(); // reorder the data before doing the fht
-        fht_run(); // process the data in the fht
-        fht_mag_lin(); // take the output of the fht
-        
-        OnFhtDataRead(fht_lin_out);
-        
-        //DumpTable(fht_lin_out);
+        if (fht_.GetMeasurement(pinMicAnalogInput_, &m))
+        {
+            /*
+            MoveCursorToUpperLeft();
+            AnalyzeRange(m.valList,  2, 16);
+            AnalyzeRange(m.valList,  8, 20);
+            AnalyzeRange(m.valList, 16, 24);
+            Serial.println();
+            */
+            
+            OnFhtDataReadNew(m.valList);
+            //DumpTable(m.valList, 48);
+        }
     }
     
-    void DumpTable(uint16_t *fthValList)
+    void MoveCursorToUpperLeft()
     {
-        for (uint16_t i = 0; i < FHT_N/2; ++i)
+        const uint8_t esc = 0x1B;
+        Serial.write(esc);
+        Serial.print("[0;0f");
+    }
+    
+    void AnalyzeRange(uint16_t *fhtValList,
+                      uint16_t  idxStart,
+                      uint16_t  idxLim)
+    {
+        uint16_t count = 0;
+        for (uint16_t i = idxStart; i < idxLim; ++i)
+        {
+            count += fhtValList[i];
+        }
+        
+        Serial.print("Range: ");
+        Serial.print(idxStart);
+        Serial.print(" - ");
+        Serial.print(idxLim);
+        Serial.print(" : ");
+        Serial.print(count);
+        Serial.print("        ");
+        Serial.println();
+    }
+    
+    void DumpTable(uint16_t *fthValList, uint16_t idxLim)
+    {
+        for (uint16_t i = 0; i < idxLim; ++i)
         {
             Serial.print(i);
             Serial.print(": ");
@@ -115,6 +127,105 @@ private:
         }
         Serial.println();
     }
+    
+    void OnFhtDataReadNew(uint16_t *fhtValList)
+    {
+        uint8_t valRed   = CalculateRange(fhtValList,  2, 16);
+        uint8_t valBlue  = CalculateRange(fhtValList,  8, 20);
+        uint8_t valGreen = CalculateRange(fhtValList, 12, 24);
+        
+        OnNewValue(valRed,   tcLedRed_,   1);
+        OnNewValue(valBlue,  tcLedBlue_,  2);
+        OnNewValue(valGreen, tcLedGreen_, 4);
+        
+        /*
+        tcLedRed_->SetValue(valRed);
+        tcLedBlue_->SetValue(valBlue);
+        tcLedGreen_->SetValue(valGreen);
+        */
+        
+        // if one isn't at the max, then scale it to at least 3/4 max and
+        // scale the others to it?
+    }
+    
+    void OnNewValue(uint8_t val, TimerChannel *tc, uint8_t stepDown)
+    {
+        int16_t curValBig  = (int16_t)tc->GetValue();
+        int16_t thisValBig = val;
+        
+        if (thisValBig < curValBig)
+        {
+            //static const uint8_t DEFAULT_STEP_DOWN_VAL = 5;
+            //static const uint8_t DEFAULT_STEP_DOWN_VAL = 1;
+            uint8_t DEFAULT_STEP_DOWN_VAL = stepDown;
+            
+            
+            uint16_t stepDownVal =
+                (curValBig - DEFAULT_STEP_DOWN_VAL) < thisValBig ?
+                    curValBig - thisValBig                       :
+                    DEFAULT_STEP_DOWN_VAL;
+            
+            
+            //uint16_t stepDownVal = 1;
+            
+            
+            //Serial.print("DN: ");
+            //Serial.print(curValBig);
+            //Serial.print(" -> ");
+            
+            curValBig -= stepDownVal;
+            
+            //Serial.print(curValBig);
+            //Serial.println();
+            
+            
+            // set curVal active
+            tc->SetValue(curValBig);
+        }
+        else
+        {
+            // set immediately, higher values always are immediate
+            
+            /*
+            Serial.print("UP: ");
+            Serial.print(curValBig);
+            Serial.print(" -> ");
+            Serial.print(thisValBig);
+            Serial.println();
+            */
+            
+            tc->SetValue(thisValBig);
+        }
+    }
+    
+    uint8_t CalculateRange(uint16_t *fhtValList,
+                           uint16_t  idxStart,
+                           uint16_t  idxLim)
+    {
+        static const uint8_t MIN_VALUE =  10;
+        static const uint8_t MAX_VALUE = 255;
+        
+        uint8_t retVal = 0;
+        
+        uint16_t bucketsUsed = 0;
+        
+        uint16_t count = 0;
+        for (uint16_t i = idxStart; i < idxLim; ++i)
+        {
+            if (MIN_VALUE < fhtValList[i])
+            {
+                ++bucketsUsed;
+                
+                count += fhtValList[i];
+            }
+        }
+        
+        // Algo 1 -- trimmed count
+        retVal = (count <= MAX_VALUE) ? count : MAX_VALUE;
+        
+        return retVal;
+    }
+    
     
     void OnFhtDataRead(uint16_t *fhtValList)
     {
@@ -209,19 +320,24 @@ private:
         Timer2::StartTimer();
     }
     
+    // Event manager
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
+    // Config
     AppRgbLedSoundControlConfig cfg_;
     
-    // Red
+    // Signal processor
+    SignalProcessingFHT fht_;
+    
+    // Analog input
+    Pin pinMicAnalogInput_;
+    
+    // Timer channels for each color
     TimerChannel *tcLedRed_;
-    
-    // Green
     TimerChannel *tcLedGreen_;
-    
-    // Blue
     TimerChannel *tcLedBlue_;
     
+    // Some time keeping
     IdleTimeEventHandlerDelegate timerAdcFht_;
 };
 
