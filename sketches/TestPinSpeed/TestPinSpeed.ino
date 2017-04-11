@@ -10,21 +10,32 @@
  * Toggle up/down
  * ~3.8us
  * 
- * Read
- * 3.6us = 8 - 4.4
+ * Read Digital
+ * ~1.7us = 6.1 - 4.4
+ * 
+ * Read Analog
+ * ~113us
+ * 
+ * Read Analog Batch
+ * ~98us
+ * 
+ * Read Analog Arduino
+ * ~113us
  * 
  */
 
 
-
 void setup()
 {
-    Pin watchMe(15);
+    Pin pinDigital(15);
+    Pin pinAnalog(23);
     Pin marker(16);
+
+    uint8_t pinAnalogArduino = PAL.GetArduinoPinFromPhysicalPin(23);
 
     while (1)
     {
-        PAL.PinMode(watchMe, OUTPUT);
+        PAL.PinMode(pinDigital, OUTPUT);
         PAL.PinMode(marker, OUTPUT);
         
         // Test changing manually the changing of values
@@ -32,17 +43,17 @@ void setup()
         
         for (uint8_t i = 0; i < 25; ++i)
         {
-            PAL.DigitalWrite(watchMe, HIGH);
-            PAL.DigitalWrite(watchMe, LOW);
+            PAL.DigitalWrite(pinDigital, HIGH);
+            PAL.DigitalWrite(pinDigital, LOW);
             
-            PAL.DigitalWrite(watchMe, HIGH);
-            PAL.DigitalWrite(watchMe, LOW);
+            PAL.DigitalWrite(pinDigital, HIGH);
+            PAL.DigitalWrite(pinDigital, LOW);
             
-            PAL.DigitalWrite(watchMe, HIGH);
-            PAL.DigitalWrite(watchMe, LOW);
+            PAL.DigitalWrite(pinDigital, HIGH);
+            PAL.DigitalWrite(pinDigital, LOW);
             
-            PAL.DigitalWrite(watchMe, HIGH);
-            PAL.DigitalWrite(watchMe, LOW);
+            PAL.DigitalWrite(pinDigital, HIGH);
+            PAL.DigitalWrite(pinDigital, LOW);
         }
 
         // Test toggling of values
@@ -50,39 +61,111 @@ void setup()
         
         for (uint8_t i = 0; i < 25; ++i)
         {
-            PAL.DigitalToggle(watchMe);
-            PAL.DigitalToggle(watchMe);
+            PAL.DigitalToggle(pinDigital);
+            PAL.DigitalToggle(pinDigital);
             
-            PAL.DigitalToggle(watchMe);
-            PAL.DigitalToggle(watchMe);
+            PAL.DigitalToggle(pinDigital);
+            PAL.DigitalToggle(pinDigital);
             
-            PAL.DigitalToggle(watchMe);
-            PAL.DigitalToggle(watchMe);
+            PAL.DigitalToggle(pinDigital);
+            PAL.DigitalToggle(pinDigital);
             
-            PAL.DigitalToggle(watchMe);
-            PAL.DigitalToggle(watchMe);
+            PAL.DigitalToggle(pinDigital);
+            PAL.DigitalToggle(pinDigital);
         }
 
-        // Test read
-        PAL.PinMode(watchMe, INPUT);
+        // Test digital read
+        PAL.PinMode(pinDigital, INPUT);
         for (uint8_t i = 0; i < 25; ++i)
         {
             PAL.DigitalWrite(marker, HIGH);
-            PAL.DigitalRead(watchMe);
+            PAL.DigitalRead(pinDigital);
             PAL.DigitalWrite(marker, LOW);
 
             PAL.DigitalWrite(marker, HIGH);
-            PAL.DigitalRead(watchMe);
+            PAL.DigitalRead(pinDigital);
             PAL.DigitalWrite(marker, LOW);
 
             PAL.DigitalWrite(marker, HIGH);
-            PAL.DigitalRead(watchMe);
+            PAL.DigitalRead(pinDigital);
             PAL.DigitalWrite(marker, LOW);
 
             PAL.DigitalWrite(marker, HIGH);
-            PAL.DigitalRead(watchMe);
+            PAL.DigitalRead(pinDigital);
             PAL.DigitalWrite(marker, LOW);
         }
+
+        // Give a little space to separate analog from digital
+        PAL.DelayMicroseconds(200);
+
+        // Test analog read
+        for (uint8_t i = 0; i < 25; ++i)
+        {
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+        }
+
+        PAL.DelayMicroseconds(200);
+
+        // Test analog read, batch mode
+        PAL.AnalogReadBatchBegin();
+        for (uint8_t i = 0; i < 25; ++i)
+        {
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            PAL.AnalogRead(pinAnalog);
+            PAL.DigitalWrite(marker, LOW);
+        }
+        PAL.AnalogReadBatchEnd();
+
+        PAL.DelayMicroseconds(200);
+
+        // Let's see how Arduino analog functions perform
+        for (uint8_t i = 0; i < 25; ++i)
+        {
+            PAL.DigitalWrite(marker, HIGH);
+            analogRead(pinAnalogArduino);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            analogRead(pinAnalogArduino);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            analogRead(pinAnalogArduino);
+            PAL.DigitalWrite(marker, LOW);
+            
+            PAL.DigitalWrite(marker, HIGH);
+            analogRead(pinAnalogArduino);
+            PAL.DigitalWrite(marker, LOW);
+        }
+
+        // Separate groups of readings
+        PAL.Delay(50);
     }
 }
 
