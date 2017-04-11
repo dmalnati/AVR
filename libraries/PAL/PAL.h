@@ -83,10 +83,95 @@ public:
         }
     }
     
+    #if 0
     static inline uint16_t AnalogRead(uint8_t physicalPin)
     {
         return analogRead(GetArduinoPinFromPhysicalPin(physicalPin));
     }
+    #endif
+    
+    enum class ADCPrescaler : uint8_t
+    {
+        DIV_BY_2 = 0,
+        DIV_BY_2_ALSO,
+        DIV_BY_4,
+        DIV_BY_8,
+        DIV_BY_16,
+        DIV_BY_32,
+        DIV_BY_64,
+        DIV_BY_128
+    };
+    
+    static ADCPrescaler GetADCPrescaler()
+    {
+        return (ADCPrescaler)(ADCSRA & 0x07);
+    }
+    
+    static void SetADCPrescaler(ADCPrescaler adcPrescaler)
+    {
+        ADCSRA = ((ADCSRA & 0xF8) | ((uint8_t)adcPrescaler & 0x07));
+    }
+    
+    static inline uint16_t AnalogRead(Pin pin)
+    {
+        // Adjust only the input, leave along the voltage ref and left adjust
+        ADMUX = ((ADMUX & 0xF0) | pin.adcChannelBits_);
+        
+        // Decide what to do whether in batch mode or not1
+        if (ADCSRA & _BV(ADATE))
+        {
+            // Batch mode
+
+            // Wait for interrupt flag to indicate 
+            while (!(ADCSRA & _BV(ADIF)))
+            {
+                // Nothing to do
+            }
+            
+            // Set the "start conversion" bit and the "interrupt flag" bit.
+            // This prompts the next reading
+            ADCSRA |= (_BV(ADSC) | _BV(ADIF));
+        }
+        else
+        {
+            // Regular mode
+            
+            // Set the "start conversion" bit
+            ADCSRA |= _BV(ADSC);
+            
+            // Wait for bit to clear, indicating read completed
+            while ((ADCSRA & _BV(ADSC)))
+            {
+                // Nothing to do
+            }
+        }
+        
+        // Read out low and high bytes of conversion.
+        // Start with low byte, which locks the high byte in place while
+        // you read it, at which point it becomes unlocked.
+        uint8_t low  = ADCL;
+        uint8_t high = ADCH;
+        
+        uint16_t retVal = ((low << 8) | high);
+        
+        return retVal;
+    }
+    
+    static inline void AnalogReadBatchBegin()
+    {
+        // Start the conversion.
+        // Also indicate that the ADC will auto-trigger (begin again)
+        // after a reading.
+        ADCSRA |= (_BV(ADSC) | _BV(ADATE));
+    }
+    
+    static inline void AnalogReadBatchEnd()
+    {
+        // Turn off conversion and batch mode
+        ADCSRA &= ~(_BV(ADSC) | _BV(ADATE));
+    }
+    
+    
 
     static inline uint8_t DigitalRead(Pin pin)
     {

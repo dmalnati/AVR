@@ -16,6 +16,7 @@ public:
 private:
     uint8_t port_;
     uint8_t pinMask_;
+    uint8_t adcChannelBits_;
 };
 
 
