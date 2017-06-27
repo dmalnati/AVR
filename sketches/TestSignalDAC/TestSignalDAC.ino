@@ -19,8 +19,8 @@ void setup()
     ted.SetCallback([](){
         Serial.println("Looping again");
         
-        //TestSignalDAC();
-        TestSignalDACForever();
+        TestSignalDAC();
+        //TestSignalDACForever();
     });
     ted.RegisterForTimedEventInterval(1000);
 
