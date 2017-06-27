@@ -2,21 +2,6 @@
 
 #include <avr/pgmspace.h>
 
-#include "SignalSourceSineWave.h"
-
-
-uint8_t  SignalSourceSineWave::sample_;
-uint16_t SignalSourceSineWave::idxCurrent_;
-uint16_t SignalSourceSineWave::idxStep_;
-
-
-uint16_t SignalSourceSineWave::roundingErrorCumulative_ = 0;
-
-uint16_t SignalSourceSineWave::roundingError_;
-int8_t   SignalSourceSineWave::roundingErrorAdjustment_;
-
-
-
 
 // Taken from here and lightly reformatted:
 // https://github.com/trackuino/trackuino/blob/1.51/trackuino/afsk_avr.cpp
