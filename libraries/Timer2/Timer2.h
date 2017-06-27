@@ -7,6 +7,8 @@
 
 class Timer2
 {
+    static const uint16_t TICK_COUNT = 256;
+    
 public:
     static const uint8_t PIN_CHANNEL_A = 17;
     static const uint8_t PIN_CHANNEL_B =  5;
@@ -26,6 +28,11 @@ public:
         return ConvertTimerPrescalerToValue(timerPrescaler_);
     }
     
+    static uint16_t GetTickCount()
+    {
+        return TICK_COUNT;
+    }
+    
     enum class TimerPrescaler : uint8_t
     {
         DISABLE_TIMER = 0,
@@ -37,6 +44,22 @@ public:
         DIV_BY_256,
         DIV_BY_1024
     };
+    
+    static uint8_t GetTimerPrescalerListLen()
+    {
+        return 7;
+    }
+    
+    static void GetTimerPrescalerList(TimerPrescaler *timerPrescalerList)
+    {
+        timerPrescalerList[0] = TimerPrescaler::DIV_BY_1;
+        timerPrescalerList[1] = TimerPrescaler::DIV_BY_8;
+        timerPrescalerList[2] = TimerPrescaler::DIV_BY_32;
+        timerPrescalerList[3] = TimerPrescaler::DIV_BY_64;
+        timerPrescalerList[4] = TimerPrescaler::DIV_BY_128;
+        timerPrescalerList[5] = TimerPrescaler::DIV_BY_256;
+        timerPrescalerList[6] = TimerPrescaler::DIV_BY_1024;
+    }
     
     static uint16_t ConvertTimerPrescalerToValue(TimerPrescaler p)
     {
