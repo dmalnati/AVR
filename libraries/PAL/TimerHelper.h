@@ -17,7 +17,7 @@ public:
     //  - can be faster or slower
     // - What you don't know:
     //   - what prescaler in use
-    static void SetInterruptFrequency(uint16_t frequency)
+    void SetInterruptFrequency(uint16_t frequency)
     {
         double   cpuFrequency                    = PAL.GetCpuFreq();
         double   durationUsPerRequestedFrequency = 1000000.0 / (double)frequency;
@@ -25,7 +25,6 @@ public:
         
         typename TimerClass::TimerPrescaler timerPrescalerList[TimerClass::GetTimerPrescalerListLen()]; 
         TimerClass::GetTimerPrescalerList(timerPrescalerList);
-        //auto     timerPrescalerList              = TimerClass::GetTimerPrescalerList();
         
         Attempt bestAttempt;
         uint8_t loopedOnceAlready = 0;
@@ -71,6 +70,10 @@ public:
         bestAttempt.Print();
         Serial.println();  Serial.println();
         
+        // Store the best attempt for use later
+        bestAttempt_ = bestAttempt;
+        
+        
         // Actually set up the timer now
         
         // Disable prior operation of Channel A
@@ -79,17 +82,21 @@ public:
         tcA->DeRegisterForInterrupt();
         tcA->UnSetInterruptHandler();
         //tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::NONE);
-        tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);
-        tcA->OutputLow();
+        tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);  tcA->OutputLow();
         
         // Set up timer to operate at previously calculated speeds
-        TimerClass::SetTimerPrescaler(bestAttempt.timerPrescaler);
+        TimerClass::SetTimerPrescaler(bestAttempt_.timerPrescaler);
         TimerClass::SetTimerValue(0);
         
         TimerClass::SetTimerMode(TimerClass::TimerMode::CTC_TOP_OCRNA);
         
-        uint8_t top = bestAttempt.tickCount - 1;  // don't forget that TOP is TICKS-1
+        uint8_t top = bestAttempt_.tickCount - 1;  // don't forget that TOP is TICKS-1
         tcA->SetValue(top);
+    }
+    
+    uint16_t GetInterruptFrequency()
+    {
+        return bestAttempt_.frequencyUsingTickCount;
     }
 
 private:
@@ -124,6 +131,8 @@ private:
             Serial.println(error);
         }
     };
+    
+    Attempt bestAttempt_;
 };
 
 
