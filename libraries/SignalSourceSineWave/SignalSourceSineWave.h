@@ -19,24 +19,10 @@ class SignalSourceSineWave
     {
         friend class SignalSourceSineWave;
         
-        using ThisClass = StepperTypeFixedPointDouble;
-        
     public:
-        StepperTypeFixedPointDouble()
-        {
-            // Nothing to do
-        }
-        
-        StepperTypeFixedPointDouble(uint16_t sampleRate, uint16_t frequency)
-        {
-            Calibrate(sampleRate, frequency);
-        }
         
         void Calibrate(uint16_t sampleRate, uint16_t frequency)
         {
-            // only change stepSize_, leave idx_ so that this (re)calibration
-            // can be run whenever.
-            
             if (sampleRate && frequency)
             {
                 stepSize_ =
@@ -54,7 +40,7 @@ class SignalSourceSineWave
             }
         }
         
-        void ResetIdx()
+        void Reset()
         {
             idx_ = 0.0;
         }
@@ -72,10 +58,6 @@ class SignalSourceSineWave
     
     
 public:
-    SignalSourceSineWave()
-    {
-        // Nothing to do
-    }
     
     using IdxType = StepperTypeFixedPointDouble;
     

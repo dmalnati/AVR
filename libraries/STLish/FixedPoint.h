@@ -13,11 +13,6 @@ class Q1616
     
 public:
 
-    inline ~Q1616()
-    {
-        // Nothing to do
-    }
-
     inline explicit Q1616(const double &val)
     {
         operator=(val);
@@ -53,14 +48,29 @@ public:
         val_ -= qTmp;
     }
     
+    inline bool operator>(const uint8_t &rhs) const
+    {
+        return val_ > ((uint32_t)rhs << BITS_WHOLE);
+    }
+    
     inline bool operator>(const uint16_t &rhs) const
     {
         return val_ > ((uint32_t)rhs << BITS_WHOLE);
     }
     
+    inline bool operator>(const Q1616 &rhs) const
+    {
+        return val_ > rhs.val_;
+    }
+    
     inline operator uint16_t() const
     {
         return (uint16_t)(val_ >> BITS_WHOLE);
+    }
+
+    inline operator uint8_t() const
+    {
+        return (uint8_t)(val_ >> BITS_WHOLE);
     }
 
 private:

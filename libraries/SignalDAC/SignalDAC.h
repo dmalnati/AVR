@@ -114,7 +114,7 @@ public:
             PORTD = 0;
             
             // Adjust index to start over from beginning next time
-            idxSignalSource_.ResetIdx();
+            idxSignalSource_.Reset();
         }
     }
     
