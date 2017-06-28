@@ -88,6 +88,18 @@ public:
         }
     }
     
+    void Suspend()
+    {
+        tca_->SetInterruptHandlerRaw(OnInterruptSuspended);
+        
+        PORTD = 0;
+    }
+    
+    void UnSuspend()
+    {
+        tca_->SetInterruptHandlerRaw(OnInterrupt);
+    }
+    
     void Stop()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -120,6 +132,12 @@ private:
         PORTD = val;
         
         ++idxSignalSource_;
+    }
+    
+    static void OnInterruptSuspended()
+    {
+        // Debug
+        PAL.DigitalToggle(dbg_);
     }
     
 
