@@ -4,17 +4,24 @@
 
 #include <util/atomic.h>
 
-#include "Timer2.h"
+#include "Timer.h"
 
 
-template <typename SignalSource>
+//
+// Clocked at 19.5us at 8MHz from pin toggle to pin toggle.
+//
+// That's 51,282kHz
+//
+// The toggle itself takes time, so the speed is actually greater if removed.
+//
+// Definitely starves out other interrupts at max speed, for instance
+// Delay was running 3x slow.
+//
+template <typename SignalSource, typename TimerClass>
 class SignalDAC
 {
-    using TimerClass = Timer2;
-    
 public:
     SignalDAC()
-    : dbg_(14)
     {
         // Need better way -- open output pins
         // PORTD
@@ -56,15 +63,12 @@ public:
         // Set up callbacks to fire when time for a sample output.
         // Code doesn't necessarily make sense here, but follows the resetting
         // of channel A above by the timer configuration.
-        tca_->SetInterruptHandler([this](){
-            //PAL.DigitalWrite(dbg_, HIGH);
-            
-            PAL.DigitalToggle(dbg_);
-            
-            OnInterrupt();
-            
-            //PAL.DigitalWrite(dbg_, LOW);
-        });
+        tca_->SetInterruptHandlerRaw(OnInterrupt);
+        
+        
+        // Debug
+        tca_->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);  tca_->OutputLow();
+        PAL.PinMode(dbg_, OUTPUT);
     }
     
     void SetFrequency(uint16_t frequency)
@@ -105,8 +109,12 @@ public:
 
 private:
 
-    void OnInterrupt()
+    static void OnInterrupt()
     {
+        // Debug
+        PAL.DigitalToggle(dbg_);
+
+        
         uint8_t val = ss_.GetSampleAtIdx(idxSignalSource_);
         
         PORTD = val;
@@ -116,17 +124,31 @@ private:
     
 
     // Debug
-    Pin dbg_;
+    static Pin dbg_;
     
     
-    uint16_t sampleRateActual_;
+    static uint16_t sampleRateActual_;
     
-    SignalSource           ss_;
-    typename
+    static SignalSource           ss_;
+    static typename
     SignalSource::IdxType  idxSignalSource_;
     
-    TimerChannel *tca_ = TimerClass::GetTimerChannelA();
+    static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
 };
+
+
+template <typename SignalSource, typename TimerClass>
+Pin SignalDAC<SignalSource, TimerClass>::dbg_(14, LOW);
+
+template <typename SignalSource, typename TimerClass>
+uint16_t SignalDAC<SignalSource, TimerClass>::sampleRateActual_;
+
+template <typename SignalSource, typename TimerClass>
+SignalSource SignalDAC<SignalSource, TimerClass>::ss_;
+
+template <typename SignalSource, typename TimerClass>
+typename SignalSource::IdxType SignalDAC<SignalSource, TimerClass>::idxSignalSource_;
+
 
 
 

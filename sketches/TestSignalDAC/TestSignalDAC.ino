@@ -3,12 +3,13 @@
 
 #include "SignalSourceSineWave.h"
 #include "SignalDAC.h"
+#include "Timer2.h"
 
 
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
 
-static SignalDAC<SignalSourceSineWave> dac;
+static SignalDAC<SignalSourceSineWave, Timer2> dac;
 
 
 void setup()
@@ -19,10 +20,10 @@ void setup()
     ted.SetCallback([](){
         Serial.println("Looping again");
         
-        //TestSignalDAC();
+        TestSignalDAC();
         //TestSignalDACForever();
         //TestSignalDACDoingHigherSampleRates();
-        TestSignalDACRamp();
+        //TestSignalDACRamp();
     });
     ted.RegisterForTimedEventInterval(1000);
 
@@ -79,11 +80,16 @@ void TestSignalDACRamp()
 
 void TestSignalDAC()
 {
-    TestSignalDACAt(8000, 440);
-    TestSignalDACAt(8000, 1200);
-    TestSignalDACAt(16000, 1200);
-    TestSignalDACAt(40000, 1200);
-    TestSignalDACAt(44100, 1200);
+    uint16_t frequency = 440;
+    
+    //TestSignalDACAt(2000,  frequency);
+    TestSignalDACAt(5000,  frequency);
+    TestSignalDACAt(10000, frequency);
+    TestSignalDACAt(20000, frequency);
+    TestSignalDACAt(30000, frequency);
+    TestSignalDACAt(40000, frequency);
+    TestSignalDACAt(50000, frequency);
+    TestSignalDACAt(60000, frequency);
 }
 
 void TestSignalDACAt(uint16_t sampleRate, uint16_t frequency)
@@ -93,7 +99,7 @@ void TestSignalDACAt(uint16_t sampleRate, uint16_t frequency)
 
     dac.Start();
 
-    PAL.Delay(100);
+    PAL.Delay(300);
 
     dac.Stop();
 }
