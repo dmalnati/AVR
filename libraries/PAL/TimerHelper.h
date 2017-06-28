@@ -64,11 +64,13 @@ public:
             }
         }
         
+        /*
         Serial.print("SetOverflowInterruptFrequency: ");
         Serial.println(frequency);
         Serial.println("Final best");
         bestAttempt.Print();
         Serial.println();  Serial.println();
+        */
         
         // Store the best attempt for use later
         bestAttempt_ = bestAttempt;
@@ -81,8 +83,7 @@ public:
         
         tcA->DeRegisterForInterrupt();
         tcA->UnSetInterruptHandler();
-        //tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::NONE);
-        tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);  tcA->OutputLow();
+        tcA->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::NONE);
         
         // Set up timer to operate at previously calculated speeds
         TimerClass::SetTimerPrescaler(bestAttempt_.timerPrescaler);
@@ -115,6 +116,7 @@ private:
         
         void Print()
         {
+            /*
             Serial.print("timerPrescalerVal: ");
             Serial.println(timerPrescalerVal);
             Serial.print("durationUsSingleTick: ");
@@ -129,6 +131,7 @@ private:
             Serial.println(frequencyUsingTickCount);
             Serial.print("error: ");
             Serial.println(error);
+            */
         }
     };
     
