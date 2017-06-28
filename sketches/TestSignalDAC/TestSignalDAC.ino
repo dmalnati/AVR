@@ -19,13 +19,62 @@ void setup()
     ted.SetCallback([](){
         Serial.println("Looping again");
         
-        TestSignalDAC();
+        //TestSignalDAC();
         //TestSignalDACForever();
+        //TestSignalDACDoingHigherSampleRates();
+        TestSignalDACRamp();
     });
     ted.RegisterForTimedEventInterval(1000);
 
     
     evm.MainLoop();
+}
+
+void TestSignalDACDoingHigherSampleRates()
+{
+    uint16_t frequency = 440;
+
+    TestSignalDACAt(1000, frequency);
+    TestSignalDACAt(2000, frequency);
+    TestSignalDACAt(4000, frequency);
+    TestSignalDACAt(8000, frequency);
+    TestSignalDACAt(16000, frequency);
+    TestSignalDACAt(24000, frequency);
+    TestSignalDACAt(32000, frequency);
+    TestSignalDACAt(40000, frequency);
+}
+
+
+
+void TestSignalDACRampFrequency(uint16_t sampleRate,
+                                uint16_t freqStart,
+                                uint16_t freqEnd,
+                                uint16_t freqStep)
+{
+    dac.SetSampleRate(sampleRate);
+
+    uint16_t frequency = freqStart;
+
+    // need to set the frequency before starting or
+    // the prior frequency will still be in effect.
+    dac.SetFrequency(frequency);
+
+    dac.Start();
+    do
+    {
+        dac.SetFrequency(frequency);
+        
+        PAL.Delay(500);
+        
+        frequency += freqStep;
+    } while (frequency <= freqEnd);
+    dac.Stop();
+}
+
+void TestSignalDACRamp()
+{
+    TestSignalDACRampFrequency(36000, 1, 10, 1);
+    TestSignalDACRampFrequency(36000, 440, 4400, 440);
 }
 
 void TestSignalDAC()
