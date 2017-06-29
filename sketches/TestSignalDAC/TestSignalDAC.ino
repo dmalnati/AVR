@@ -4,6 +4,7 @@
 #include "SignalSourceSineWave.h"
 #include "SignalSourceSawtoothWave.h"
 #include "SignalSourceSquareWave.h"
+#include "SignalSourceTriangleWave.h"
 #include "SignalDAC.h"
 #include "Timer2.h"
 
@@ -11,9 +12,10 @@
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
 
-static SignalDAC<SignalSourceSineWave, Timer2> dac;
+//static SignalDAC<SignalSourceSineWave, Timer2> dac;
 //static SignalDAC<SignalSourceSawtoothWave, Timer2> dac;
 //static SignalDAC<SignalSourceSquareWave, Timer2> dac;
+static SignalDAC<SignalSourceTriangleWave, Timer2> dac;
 
 
 void setup()

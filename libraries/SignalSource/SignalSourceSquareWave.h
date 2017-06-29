@@ -37,7 +37,7 @@ class SignalSourceSquareWave
         
         void Reset()
         {
-            val_ = (double)UPPER_LIMIT;
+            val_ = 0.0;
         }
         
     private:
