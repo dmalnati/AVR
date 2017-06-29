@@ -13,6 +13,7 @@ extern const uint8_t SINE_TABLE[] PROGMEM;
 class SignalSourceSineWave
 {
     static const uint16_t SINE_TABLE_LEN = 512;
+    static const uint16_t IDX_FIRST_ZERO = 381;
     
     
     class StepperTypeFixedPointDouble
@@ -42,7 +43,7 @@ class SignalSourceSineWave
         
         void Reset()
         {
-            idx_ = 0.0;
+            idx_ = (double)IDX_FIRST_ZERO;
         }
         
     private:
