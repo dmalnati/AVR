@@ -40,6 +40,20 @@ public:
         cbFn_ = cbFn;
     }
     
+    uint8_t GetValue(uint8_t forceRefresh = 0)
+    {
+        uint8_t retVal = valLast_;
+        
+        if (forceRefresh || valLast_ == -1)
+        {
+            valLast_ = PAL.AnalogRead(pin_);
+            
+            retVal = valLast_;
+        }
+        
+        return retVal;
+    }
+    
     void Disable()
     {
         DeRegisterForTimedEvent();
