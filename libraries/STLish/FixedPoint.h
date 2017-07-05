@@ -20,15 +20,13 @@ public:
     
     inline void operator=(const double &rhs)
     {
-        double dTmp = 0.0;
-        
         uint16_t whole = (uint16_t)rhs;
-        dTmp = rhs - whole;
+        double   frac  = rhs - whole;
         
-        uint16_t frac = (uint16_t)round(dTmp * ((uint32_t)2 << BITS_FRAC));
+        uint16_t fracAsInt = (uint16_t)round(frac * ((uint32_t)1 << BITS_FRAC));
         
-        // whole + round(frac * 2^BITS_FRAC)
-        val_ = (((uint32_t)whole << BITS_WHOLE) | frac);
+        // val = whole + round(frac * 2^BITS_FRAC)
+        val_ = (((uint32_t)whole << BITS_WHOLE) | fracAsInt);
     }
     
     inline void operator=(const uint16_t &rhs)
