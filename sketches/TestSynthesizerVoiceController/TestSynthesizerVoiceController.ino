@@ -3,18 +3,24 @@
 #include "PinInputAnalog.h"
 
 #include "SignalSourceSineWave.h"
+#include "SignalSourceSquareWave.h"
+#include "SignalSourceTriangleWave.h"
 #include "SynthesizerVoice.h"
 #include "Timer2.h"
 
 
 class AnalogController
 {
-    uint16_t SAMPLE_RATE = 40000;
+    //uint16_t SAMPLE_RATE = 40000;
+    //uint16_t SAMPLE_RATE = 20000;
+    uint16_t SAMPLE_RATE = 4000;
     
     uint16_t FREQ_LOW  =    1;
     uint16_t FREQ_HIGH = 600;
 
     uint8_t MIN_STEP_SIZE = 10;
+
+    static const uint16_t TONE_DURATION_MS = 500;
     
 public:
     AnalogController(uint8_t pin)
@@ -26,6 +32,8 @@ public:
     void Start()
     {
         Serial.begin(9600);
+
+        Serial.println("Starting");
         
         // Register callbacks for changes in analog value
         pia_.SetCallback([this](uint16_t val){
@@ -38,7 +46,7 @@ public:
         sv_.SetSampleRate(SAMPLE_RATE);
 
         // Get first analog reading
-        DoFirstReading();
+        //DoFirstReading();
 
         // Start the noise
         sv_.Start();
@@ -65,7 +73,8 @@ private:
         Serial.print("val: "); Serial.print(val);
         Serial.print("-> frequency: "); Serial.println(frequency);
 
-        sv_.SetFrequency(frequency);
+        //sv_.SetFrequency(frequency);
+        sv_.StartNote(frequency, TONE_DURATION_MS);
     }
 
     Evm::Instance<10,10,10> evm_;
@@ -73,6 +82,8 @@ private:
     PinInputAnalog  pia_;
     
     SynthesizerVoice<SignalSourceSineWave, Timer2>  sv_;
+    //SynthesizerVoice<SignalSourceSquareWave, Timer2>  sv_;
+    //SynthesizerVoice<SignalSourceTriangleWave, Timer2>  sv_;
 };
 
 

@@ -5,13 +5,20 @@
 #include <util/atomic.h>
 
 #include "Timer.h"
+#include "TimedEventHandler.h"
 #include "SignalOscillator.h"
+#include "SignalEnvelopeADSR.h"
 
 
 template <typename SignalSource, typename TimerClass>
 class SynthesizerVoice
 {
     //using SignalOscillatorClass = SignalOscillator<SignalSource>;
+    
+    static const uint16_t ENVELOPE_ATTACK_DURATION_MS  = 50;
+    static const uint16_t ENVELOPE_DECAY_DURATION_MS   = 100;
+    static const uint16_t ENVELOPE_SUSTAIN_LEVEL_PCT   = 60;
+    static const uint16_t ENVELOPE_RELEASE_DURATION_MS = 150;
     
 public:
     SynthesizerVoice()
@@ -56,6 +63,13 @@ public:
         // Set up oscillator
         so_.SetSampleRate(sampleRateActual);
         
+        // Set up envelope
+        envADSR_.SetSampleRate(sampleRateActual);
+        envADSR_.SetAttackDuration(ENVELOPE_ATTACK_DURATION_MS);
+        envADSR_.SetDecayDuration(ENVELOPE_DECAY_DURATION_MS);
+        envADSR_.SetSustainLevelPct(ENVELOPE_SUSTAIN_LEVEL_PCT);
+        envADSR_.SetReleaseDuration(ENVELOPE_RELEASE_DURATION_MS);
+        
         // Set up callbacks to fire when time for a sample output.
         // Code doesn't necessarily make sense here, but follows the resetting
         // of channel A above by the timer configuration.
@@ -67,15 +81,45 @@ public:
         PAL.PinMode(dbg_, OUTPUT);
     }
     
-    void SetFrequency(uint16_t frequency)
+    void StartNote(uint16_t frequency, uint16_t durationMs)
     {
+        // Adjust envelope
+        envADSR_.Reset();
+        
+        // Adjust oscillator
         so_.SetFrequency(frequency);
+        
+        // Set timer to stop note later
+        ted_.SetCallback([this](){
+            StopNote();
+        });
+        ted_.RegisterForTimedEvent(durationMs);
+        
+        Serial.print("StartNote(frequency=");
+        Serial.print(frequency);
+        Serial.print(", durationMs=");
+        Serial.print(durationMs);
+        Serial.println();
+    }
+    
+    void StopNote()
+    {
+        Serial.println("StopNote()");
+        
+        // Cancel timer in case called externally
+        ted_.DeRegisterForTimedEvent();
+        
+        // Inform envelope that the note has been released
+        envADSR_.StartDecay();
     }
     
     void Start()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
+            // Ensure valid state
+            Stop();
+            
             // Register for interrupts
             tca_->RegisterForInterrupt();
             
@@ -97,8 +141,11 @@ public:
             // Set output value to zero
             PORTD = 0;
             
-            // Adjust index to start over from beginning next time
+            // Reset oscillator for next time
             so_.Reset();
+            
+            // Reset envelope for next time
+            envADSR_.Reset();
         }
     }
     
@@ -110,9 +157,41 @@ private:
         // Debug
         PAL.DigitalToggle(dbg_);
 
+        // Get raw oscillator value
+        uint8_t oscVal = so_.GetNextSample();
         
-        uint8_t val = so_.GetNextSample();
+        // Get envelope value
+        uint8_t envVal = envADSR_.GetNextEnvelope();
         
+        
+        // Apply envelope to oscillator
+        uint8_t postEnvVal;
+        if (oscVal >= 128)
+        {
+            // debug - clipping
+            //postEnvVal = min(oscVal, 127 + envVal);
+            
+            // debug - scaling
+            double pct = (double)envVal / 127;
+            
+            postEnvVal = 127 + ((oscVal - 127) * pct);
+        }
+        else
+        {
+            // debug - clipping
+            //postEnvVal = max(oscVal, 127 - envVal);
+            
+            // debug - scaling
+            double pct = (double)envVal / 127;
+            
+            postEnvVal = 127 - ((127 - oscVal) * pct);
+        }
+        
+        // Calculate final value
+        uint8_t val = envVal;
+        val = postEnvVal;
+        
+        // Create analog signal
         PORTD = val;
     }
     
@@ -123,7 +202,11 @@ private:
     
     static SignalOscillator<SignalSource> so_;
     
+    static SignalEnvelopeADSR envADSR_;
+    
     static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
+    
+    static TimedEventHandlerDelegate ted_;
 };
 
 
@@ -132,6 +215,13 @@ Pin SynthesizerVoice<SignalSource, TimerClass>::dbg_(14, LOW);
 
 template <typename SignalSource, typename TimerClass>
 SignalOscillator<SignalSource> SynthesizerVoice<SignalSource, TimerClass>::so_;
+
+template <typename SignalSource, typename TimerClass>
+SignalEnvelopeADSR SynthesizerVoice<SignalSource, TimerClass>::envADSR_;
+
+template <typename SignalSource, typename TimerClass>
+TimedEventHandlerDelegate SynthesizerVoice<SignalSource, TimerClass>::ted_;
+
 
 
 
