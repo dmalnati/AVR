@@ -13,7 +13,36 @@ class Q1616
     
 public:
 
-    inline explicit Q1616(const double &val)
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // Q1616
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    inline void operator+=(const Q1616 &rhs)
+    {
+        val_ += rhs.val_;
+    }
+    
+    inline void operator-=(const Q1616 &rhs)
+    {
+        val_ -= rhs.val_;
+    }
+    
+    inline bool operator>(const Q1616 &rhs) const
+    {
+        return val_ > rhs.val_;
+    }
+    
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // double
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    inline explicit Q1616(const double val)
     {
         operator=(val);
     }
@@ -29,48 +58,63 @@ public:
         val_ = (((uint32_t)whole << BITS_WHOLE) | fracAsInt);
     }
     
-    inline void operator=(const uint16_t &rhs)
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // uint16_t
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    inline void operator=(const uint16_t rhs)
     {
         val_ = ((uint32_t)rhs << BITS_WHOLE);
     }
     
-    inline void operator+=(const Q1616 &rhs)
+    inline void operator-=(const uint16_t rhs)
     {
-        val_ += rhs.val_;
-    }
-    
-    inline void operator-=(const uint16_t &rhs)
-    {
-        uint32_t qTmp = ((uint32_t)rhs << BITS_WHOLE);
+        uint32_t tmp = ((uint32_t)rhs << BITS_WHOLE);
         
-        val_ -= qTmp;
+        val_ -= tmp;
     }
     
-    inline bool operator>(const uint8_t &rhs) const
+    inline bool operator>(const uint16_t rhs) const
     {
         return val_ > ((uint32_t)rhs << BITS_WHOLE);
     }
     
-    inline bool operator>(const uint16_t &rhs) const
+    inline bool operator<(const uint16_t rhs) const
     {
-        return val_ > ((uint32_t)rhs << BITS_WHOLE);
-    }
-    
-    inline bool operator>(const Q1616 &rhs) const
-    {
-        return val_ > rhs.val_;
+        return val_ < ((uint32_t)rhs << BITS_WHOLE);
     }
     
     inline operator uint16_t() const
     {
         return (uint16_t)(val_ >> BITS_WHOLE);
     }
+    
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // uint8_t
+    //
+    ////////////////////////////////////////////////////////////////////
+    
+    inline bool operator>(const uint8_t rhs) const
+    {
+        return val_ > ((uint32_t)rhs << BITS_WHOLE);
+    }
+
+    inline bool operator<(const uint8_t rhs) const
+    {
+        return val_ < ((uint32_t)rhs << BITS_WHOLE);
+    }
 
     inline operator uint8_t() const
     {
         return (uint8_t)(val_ >> BITS_WHOLE);
     }
-
+    
+    
 private:
 
     uint32_t val_ = 0;
