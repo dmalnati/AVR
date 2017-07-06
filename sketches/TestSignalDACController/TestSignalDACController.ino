@@ -11,8 +11,10 @@ class AnalogController
 {
     uint16_t SAMPLE_RATE = 40000;
     
-    uint16_t FREQ_LOW  =   100;
-    uint16_t FREQ_HIGH = 10000;
+    uint16_t FREQ_LOW  =    1;
+    uint16_t FREQ_HIGH = 600;
+
+    uint8_t MIN_STEP_SIZE = 10;
     
 public:
     AnalogController(uint8_t pin)
@@ -29,7 +31,7 @@ public:
         pia_.SetCallback([this](uint16_t val){
             OnReading(val);
         });
-        pia_.SetMinimumChange(1);
+        pia_.SetMinimumChange(MIN_STEP_SIZE);
         pia_.Enable();
 
         // Calibrate DAC parameters
@@ -58,10 +60,8 @@ private:
         uint16_t frequency =
             FREQ_LOW + ((FREQ_HIGH - FREQ_LOW) * ((double)val / 1023.0));
 
-        Serial.println("OnReading");
         Serial.print("val: "); Serial.print(val);
         Serial.print("-> frequency: "); Serial.println(frequency);
-        Serial.println();
 
         dac_.SetFrequency(frequency);
     }
