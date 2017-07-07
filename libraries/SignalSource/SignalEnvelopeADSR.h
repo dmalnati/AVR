@@ -8,7 +8,7 @@
 class SignalEnvelopeADSR
 {
     static const uint8_t BOTTOM_VALUE =   0;
-    static const uint8_t TOP_VALUE    = 127;
+    static const uint8_t TOP_VALUE    = 255;
     
     static const uint16_t DEFAULT_SAMPLE_RATE = 1;
     static const uint16_t DEFAULT_STEP_SIZE   = 0;
@@ -66,14 +66,9 @@ public:
         state_ = State::RELEASE;
     }
     
-    // return a value 0-127 inclusive
-    // meaning is a wave centered on 127 will go:
-    // -   0% = 0
-    // - 100% = 255
-    //
-    // So if caller's value is:
-    // - above 127, then let signal go as high as (127 + retVal)
-    // - below 127, then let signal go as low  as (127 - retVal)
+    // return a value 0-255 inclusive
+    // meaning is a percentage over 255
+    // so 100 is 100/255 = ~39%
     uint8_t GetNextEnvelope()
     {
         uint8_t retVal = 0;
@@ -83,7 +78,7 @@ public:
             // Convert to decimal value
             retVal = (uint8_t)attackVal_;
             
-            // Move to next attack value
+            // Move to next value
             attackVal_ += attackStepSize_;
             
             // Check if time to move to decay for next sample
@@ -99,7 +94,7 @@ public:
             // Convert to decimal value
             retVal = (uint8_t)decayVal_;
             
-            // Move to next attack value
+            // Move to next value
             decayVal_ -= decayStepSize_;
             
             // Check if time to move to sustain for next sample
@@ -122,10 +117,10 @@ public:
             // Convert to decimal value
             retVal = (uint8_t)releaseVal_;
             
-            // Move to next attack value
+            // Move to next value
             releaseVal_ -= releaseStepSize_;
             
-            // Check if time to move to sustain for next sample
+            // Check if time to move to final state
             // this would be in the form of a wrap around
             if (retVal >= TOP_VALUE)
             {
