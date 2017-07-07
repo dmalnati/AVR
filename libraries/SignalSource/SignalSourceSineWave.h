@@ -5,71 +5,30 @@
 #include <avr/pgmspace.h>
 
 #include "FixedPoint.h"
+#include "FixedPointStepper.h"
 
 
-extern const uint8_t SINE_TABLE[] PROGMEM;
+extern const int8_t SINE_TABLE[] PROGMEM;
 
 
 class SignalSourceSineWave
 {
-    static const uint16_t SINE_TABLE_LEN = 512;
-    static const uint16_t IDX_FIRST_ZERO = 381;
-    
-    
-    class StepperTypeFixedPointDouble
-    {
-        friend class SignalSourceSineWave;
-        
-    public:
-        
-        void Calibrate(uint16_t sampleRate, uint16_t frequency)
-        {
-            if (sampleRate && frequency)
-            {
-                stepSize_ =
-                    (double)SINE_TABLE_LEN / ((double)sampleRate / (double)frequency);
-            }
-        }
-    
-        inline void operator++()
-        {
-            idx_ += stepSize_;
-            
-            if (idx_ > SINE_TABLE_LEN)
-            {
-                idx_ -= SINE_TABLE_LEN;
-            }
-        }
-        
-        void Reset()
-        {
-            idx_ = (double)IDX_FIRST_ZERO;
-        }
-        
-    private:
-    
-        inline operator uint16_t() const
-        {
-            return (uint16_t)idx_;
-        }
-        
-        Q1616 idx_      { 0.0 };
-        Q1616 stepSize_ { 0.0 };
-    };
-    
+    static const uint16_t SINE_TABLE_LEN = 256;
     
 public:
     
-    using IdxType = StepperTypeFixedPointDouble;
+    using IdxType = FixedPointStepper<Q88, SINE_TABLE_LEN>;;
     
-    static inline uint8_t GetSampleAtIdx(const IdxType &idx)
+    static inline int8_t GetSampleAtIdx(const IdxType &idx)
     {
-        uint16_t sineTableIdx    = (uint16_t)idx;
+        uint8_t  sineTableIdx    = (uint8_t)idx;
         uint16_t pgmByteLocation = (uint16_t)SINE_TABLE + sineTableIdx;
-        uint8_t val              = pgm_read_byte_near(pgmByteLocation);
+        int8_t   val             = pgm_read_byte_near(pgmByteLocation);
         
         return val;
     }
+
+private:
     
 };
 
