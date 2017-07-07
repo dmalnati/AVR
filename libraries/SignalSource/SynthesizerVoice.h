@@ -158,38 +158,16 @@ private:
         PAL.DigitalToggle(dbg_);
 
         // Get raw oscillator value
-        uint8_t oscVal = so_.GetNextSample();
+        int8_t oscVal = so_.GetNextSample();
+        //uint8_t val = oscVal;
         
         // Get envelope value
         uint8_t envVal = envADSR_.GetNextEnvelope();
+        //uint8_t val = envVal;
         
-        
-        // Apply envelope to oscillator
-        uint8_t postEnvVal;
-        if (oscVal >= 128)
-        {
-            // debug - clipping
-            //postEnvVal = min(oscVal, 127 + envVal);
-            
-            // debug - scaling
-            double pct = (double)envVal / 127;
-            
-            postEnvVal = 127 + ((oscVal - 127) * pct);
-        }
-        else
-        {
-            // debug - clipping
-            //postEnvVal = max(oscVal, 127 - envVal);
-            
-            // debug - scaling
-            double pct = (double)envVal / 127;
-            
-            postEnvVal = 127 - ((127 - oscVal) * pct);
-        }
-        
-        // Calculate final value
-        uint8_t val = envVal;
-        val = postEnvVal;
+        // Do some scaling based on envelope
+        int8_t scaledVal = (oscVal * envVal / 256);
+        uint8_t val = 128 + scaledVal;
         
         // Create analog signal
         PORTD = val;

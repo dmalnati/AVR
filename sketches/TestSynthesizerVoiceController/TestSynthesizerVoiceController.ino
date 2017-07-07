@@ -12,9 +12,10 @@
 class AnalogController
 {
     //uint16_t SAMPLE_RATE = 40000;
-    //uint16_t SAMPLE_RATE = 20000;
-    uint16_t SAMPLE_RATE = 4000;
-    
+    uint16_t SAMPLE_RATE = 20000;
+    //uint16_t SAMPLE_RATE = 4000;
+    //uint16_t SAMPLE_RATE = 65000;
+
     uint16_t FREQ_LOW  =    1;
     uint16_t FREQ_HIGH = 600;
 
