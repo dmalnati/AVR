@@ -6,31 +6,37 @@
 #include <stdint.h>
 
 
-class Q1616
+template <uint8_t BITS_WHOLE,
+         uint8_t BITS_FRAC,
+         typename STORAGE_TYPE,
+         typename STORAGE_TYPE_HALF_SIZE>
+class FixedPoint
 {
-    static const uint8_t BITS_WHOLE = 16;
-    static const uint8_t BITS_FRAC  = 16;
+    using FixedPointClass = FixedPoint<BITS_WHOLE,
+                                       BITS_FRAC,
+                                       STORAGE_TYPE,
+                                       STORAGE_TYPE_HALF_SIZE>;
     
 public:
 
     
     ////////////////////////////////////////////////////////////////////
     //
-    // Q1616
+    // FixedPointClass
     //
     ////////////////////////////////////////////////////////////////////
 
-    inline void operator+=(const Q1616 &rhs)
+    inline void operator+=(const FixedPointClass &rhs)
     {
         val_ += rhs.val_;
     }
     
-    inline void operator-=(const Q1616 &rhs)
+    inline void operator-=(const FixedPointClass &rhs)
     {
         val_ -= rhs.val_;
     }
     
-    inline bool operator>(const Q1616 &rhs) const
+    inline bool operator>(const FixedPointClass &rhs) const
     {
         return val_ > rhs.val_;
     }
@@ -42,20 +48,21 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    inline explicit Q1616(const double val)
+    inline explicit FixedPoint(const double val)
     {
         operator=(val);
     }
     
     inline void operator=(const double &rhs)
     {
-        uint16_t whole = (uint16_t)rhs;
-        double   frac  = rhs - whole;
+        STORAGE_TYPE_HALF_SIZE whole = (STORAGE_TYPE_HALF_SIZE)rhs;
+        double                 frac  = rhs - whole;
         
-        uint16_t fracAsInt = (uint16_t)round(frac * ((uint32_t)1 << BITS_FRAC));
+        STORAGE_TYPE_HALF_SIZE fracAsInt =
+            (STORAGE_TYPE_HALF_SIZE)round(frac * ((STORAGE_TYPE)1 << BITS_FRAC));
         
         // val = whole + round(frac * 2^BITS_FRAC)
-        val_ = (((uint32_t)whole << BITS_WHOLE) | fracAsInt);
+        val_ = (((STORAGE_TYPE)whole << BITS_WHOLE) | fracAsInt);
     }
     
     
@@ -67,24 +74,24 @@ public:
 
     inline void operator=(const uint16_t rhs)
     {
-        val_ = ((uint32_t)rhs << BITS_WHOLE);
+        val_ = ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
     
     inline void operator-=(const uint16_t rhs)
     {
-        uint32_t tmp = ((uint32_t)rhs << BITS_WHOLE);
+        STORAGE_TYPE tmp = ((STORAGE_TYPE)rhs << BITS_WHOLE);
         
         val_ -= tmp;
     }
     
     inline bool operator>(const uint16_t rhs) const
     {
-        return val_ > ((uint32_t)rhs << BITS_WHOLE);
+        return val_ > ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
     
     inline bool operator<(const uint16_t rhs) const
     {
-        return val_ < ((uint32_t)rhs << BITS_WHOLE);
+        return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
     
     inline operator uint16_t() const
@@ -101,12 +108,12 @@ public:
     
     inline bool operator>(const uint8_t rhs) const
     {
-        return val_ > ((uint32_t)rhs << BITS_WHOLE);
+        return val_ > ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
 
     inline bool operator<(const uint8_t rhs) const
     {
-        return val_ < ((uint32_t)rhs << BITS_WHOLE);
+        return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
 
     inline operator uint8_t() const
@@ -117,8 +124,16 @@ public:
     
 private:
 
-    uint32_t val_ = 0;
+    STORAGE_TYPE val_ = 0;
 };
+
+
+
+using Q1616 = FixedPoint<16, 16, uint32_t, uint16_t>;
+using Q88   = FixedPoint<8, 8, uint16_t, uint8_t>;
+
+
+
 
 
 #endif  // __FIXED_POINT_H__
