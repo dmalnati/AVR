@@ -16,9 +16,9 @@ public:
         idxSignalSource_.Calibrate(sampleRate_, frequency);
     }
     
-    uint8_t GetNextSample()
+    int8_t GetNextSample()
     {
-        uint8_t retVal = ss_.GetSampleAtIdx(idxSignalSource_);
+        int8_t retVal = ss_.GetSampleAtIdx(idxSignalSource_);
         
         ++idxSignalSource_;
         
