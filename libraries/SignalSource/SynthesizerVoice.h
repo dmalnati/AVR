@@ -159,15 +159,21 @@ private:
 
         // Get raw oscillator value
         int8_t oscVal = so_.GetNextSample();
-        //uint8_t val = oscVal;
+        //uint8_t val = 128 + oscVal;
         
         // Get envelope value
-        uint8_t envVal = envADSR_.GetNextEnvelope();
+        Q08 envVal = envADSR_.GetNextEnvelope();
         //uint8_t val = envVal;
         
         // Do some scaling based on envelope
-        int8_t scaledVal = (oscVal * envVal / 256);
+        int8_t scaledVal = (oscVal * envVal);
         uint8_t val = 128 + scaledVal;
+        
+        
+        // how to get ADSR using Q88?
+        // document scaling approach
+        
+        //uint8_t val = 127;
         
         // Create analog signal
         PORTD = val;

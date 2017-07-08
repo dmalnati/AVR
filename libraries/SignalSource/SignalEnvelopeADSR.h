@@ -66,10 +66,8 @@ public:
         state_ = State::RELEASE;
     }
     
-    // return a value 0-255 inclusive
-    // meaning is a percentage over 255
-    // so 100 is 100/255 = ~39%
-    uint8_t GetNextEnvelope()
+    // return a scaling factor
+    Q08 GetNextEnvelope()
     {
         uint8_t retVal = 0;
         
@@ -130,7 +128,7 @@ public:
             }
         }
         
-        return retVal;
+        return (Q08)retVal;
     }
     
     void Reset()
