@@ -6,10 +6,10 @@
 #include <stdint.h>
 
 
-template <uint8_t BITS_WHOLE,
-         uint8_t BITS_FRAC,
-         typename STORAGE_TYPE,
-         typename STORAGE_TYPE_HALF_SIZE>
+template <uint8_t  BITS_WHOLE,
+          uint8_t  BITS_FRAC,
+          typename STORAGE_TYPE,
+          typename STORAGE_TYPE_HALF_SIZE>
 class FixedPoint
 {
     using FixedPointClass = FixedPoint<BITS_WHOLE,
@@ -132,6 +132,137 @@ private:
 using Q1616 = FixedPoint<16, 16, uint32_t, uint16_t>;
 using Q88   = FixedPoint<8, 8, uint16_t, uint8_t>;
 
+
+/*
+ * Note that this class specifically avoids casting multiplication operation
+ * return values to something consistent with what was multiplied against.
+ *
+ * The natural effect of a multiply leads to an intermediate value which is
+ * an 'int', which in AVR is int16_t.  It doesn't matter whether the multiply
+ * is signed or unsigned.
+ *
+ * Avoiding the cast back from the int16_t intermediate state is a massive
+ * performance optimization.
+ *
+ * In testing, in a fairly simple case, the duration of time between two
+ * operations went from ~24.5us to ~18.8us, which matches the performance
+ * when using primitives.
+ *
+ */
+class Q08
+{
+    static const uint8_t BITS_WHOLE = 0;
+    static const uint8_t BITS_FRAC  = 8;
+
+public:
+
+    ////////////////////////////////////////////////////////////////////
+    //
+    // Q08
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    Q08()
+    {
+        // Nothing to do
+    }
+
+    Q08(const Q08 &val)
+    {
+        operator=(val);
+    }
+
+    inline void operator=(const Q08 &rhs)
+    {
+        val_ = rhs.val_;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////
+    //
+    // double
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    Q08(const double val)
+    {
+        operator=(val);
+    }
+
+    inline void operator=(const double rhs)
+    {
+        // convert to range 0-255
+        double frac = rhs - trunc(rhs);
+
+        uint8_t fracAsInt =
+            (uint8_t)round(frac * ((uint8_t)1 << BITS_FRAC));
+
+        val_ = fracAsInt;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////
+    //
+    // uint8_t
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    Q08(const uint8_t val)
+    {
+        operator=(val);
+    }
+
+    inline void operator=(const uint8_t rhs)
+    {
+        val_ = rhs;
+    }
+
+    inline int16_t operator*(const uint8_t rhs) const
+    {
+        return val_ * rhs / 256;
+    }
+    
+    inline operator uint8_t() const
+    {
+        return val_;
+    }
+
+    ////////////////////////////////////////////////////////////////////
+    //
+    // int8_t
+    //
+    ////////////////////////////////////////////////////////////////////
+
+    Q08(const int8_t val)
+    {
+        operator=(val);
+    }
+
+    inline void operator=(const int8_t rhs)
+    {
+        val_ = rhs;
+    }
+    
+    inline int16_t operator*(const int8_t rhs) const
+    {
+        return val_ * rhs / 256;
+    }
+
+
+private:
+
+    uint8_t val_ = 0;
+};
+
+inline int16_t operator*(const uint8_t lhs, const Q08 &rhs)
+{
+    return rhs * lhs;
+}
+
+inline int16_t operator*(const int8_t lhs, const Q08 &rhs)
+{
+    return rhs * lhs;
+}
 
 
 
