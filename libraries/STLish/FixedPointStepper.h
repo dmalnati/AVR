@@ -2,46 +2,42 @@
 #define __FIXED_POINT_STEPPER__
 
 
-template <typename QT, uint16_t BUCKET_COUNT, uint16_t RESET_VALUE = 0>
+template <typename QT>
 class FixedPointStepper
 {
 public:
     
     FixedPointStepper()
-    : idx_(0.0)
+    : val_(0.0)
     , stepSize_(0.0)
     {
         // Nothing to do
     }
     
-    void Calibrate(uint16_t sampleRate, uint16_t frequency)
+    inline void SetValue(double val)
     {
-        if (sampleRate && frequency)
-        {
-            stepSize_ =
-                (double)BUCKET_COUNT / ((double)sampleRate / (double)frequency);
-        }
+        val_ = val;
+    }
+    
+    inline void SetStepSize(double stepSize)
+    {
+        stepSize_ = stepSize;
     }
 
     inline void operator++()
     {
-        idx_ += stepSize_;
-    }
-    
-    void Reset()
-    {
-        idx_ = (double)RESET_VALUE;
+        val_ += stepSize_;
     }
     
     inline operator uint8_t() const
     {
-        return (uint8_t)idx_;
+        return (uint8_t)val_;
     }
     
     
 private:
 
-    QT idx_;
+    QT val_;
     QT stepSize_;
 };
 
