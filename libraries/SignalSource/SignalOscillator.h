@@ -32,23 +32,12 @@ public:
 
 private:
 
-    static uint16_t  sampleRate_;
+    uint16_t  sampleRate_;
+
+    SignalSource  ss_;
     
-    static          SignalSource           ss_;
-    static typename SignalSource::IdxType  idxSignalSource_;
+    typename SignalSource::IdxType  idxSignalSource_;
 };
-
-
-template <typename SignalSource>
-uint16_t SignalOscillator<SignalSource>::sampleRate_;
-
-template <typename SignalSource>
-SignalSource SignalOscillator<SignalSource>::ss_;
-
-template <typename SignalSource>
-typename SignalSource::IdxType SignalOscillator<SignalSource>::idxSignalSource_;
-
-
 
 
 #endif  // __SIGNAL_OSCILLATOR_H__
