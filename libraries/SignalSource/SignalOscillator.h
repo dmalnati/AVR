@@ -22,7 +22,7 @@ public:
     void SetFrequency(uint16_t frequency)
     {
         // Use full-resolution double for an infrequently-called function
-        stepSize_ = ((double)(stepSizePerHz_ * frequency));
+        stepSize_ = stepSizePerHz_ * frequency;
         
         rotation_.SetStepSize(stepSize_);
     }
@@ -32,31 +32,29 @@ public:
         if (frequencyOffset >= 0)
         {
             // Convert frequency offset to fast double
-            Q88 frequencyOffsetQ;
-            frequencyOffsetQ.FromUnsignedInt8((uint8_t)frequencyOffset);
+            Q88 frequencyOffsetQ = (uint8_t)frequencyOffset;
             
             // Scale the frequency offset by the steps-per-hz multiplier
-            Q88 stepOffsetQ = stepSizePerHzQ_ * frequencyOffsetQ;
+            Q88 stepOffset = stepSizePerHzQ_ * frequencyOffsetQ;
             
             // Apply offset to cached step size
-            Q88 stepSizeNew = stepSize_;
-            stepSizeNew += stepOffsetQ;
+            Q88 stepSizeNew = stepSize_ + stepOffset;
             
+            // Set new step size
             rotation_.SetStepSize(stepSizeNew);
         }
         else
         {
             // Convert frequency offset to fast double
-            Q88 frequencyOffsetQ;
-            frequencyOffsetQ.FromUnsignedInt8((uint8_t)-frequencyOffset);
-            
+            Q88 frequencyOffsetQ = (uint8_t)-frequencyOffset;
+
             // Scale the frequency offset by the steps-per-hz multiplier
-            Q88 stepOffsetQ = stepSizePerHzQ_ * frequencyOffsetQ;
+            Q88 stepOffset = stepSizePerHzQ_ * frequencyOffsetQ;
             
             // Apply offset to cached step size
-            Q88 stepSizeNew = stepSize_;
-            stepSizeNew -= stepOffsetQ;
-            
+            Q88 stepSizeNew = stepSize_ - stepOffset;
+
+            // Set new step size
             rotation_.SetStepSize(stepSizeNew);
         }
     }
