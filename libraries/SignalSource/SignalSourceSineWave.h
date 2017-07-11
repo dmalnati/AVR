@@ -4,17 +4,20 @@
 
 #include <avr/pgmspace.h>
 
+#include "SignalSource.h"
+
 
 extern const int8_t SINE_TABLE[] PROGMEM;
 
 
 class SignalSourceSineWave
+: public SignalSource
 {
 public:
     
-    static inline int8_t GetSample(uint8_t brad)
+    inline virtual int8_t GetSample(const uint8_t brad) override
     {
-        uint8_t  sineTableIdx    = (uint8_t)brad;
+        uint8_t  sineTableIdx    = brad;
         uint16_t pgmByteLocation = (uint16_t)SINE_TABLE + sineTableIdx;
         int8_t   val             = pgm_read_byte_near(pgmByteLocation);
         
