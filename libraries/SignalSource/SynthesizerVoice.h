@@ -44,8 +44,7 @@ public:
         
         // Set up oscillators
         SetOscillator1(OscillatorType::SINE);
-        SetOscillator2(OscillatorType::TRIANGLE);
-        SetOscillator2(OscillatorType::NONE);
+        SetOscillator2(OscillatorType::SQUARE);
         
         // Set up LFO
         SetLfo(OscillatorType::SINE);
@@ -250,20 +249,20 @@ private:
         int8_t freqOffset = lfoVal * lfoFactor;
         
         so1_.ApplyFrequencyOffset(freqOffset);
-        //so2_.ApplyFrequencyOffset(freqOffset);
+        so2_.ApplyFrequencyOffset(freqOffset);
 
         // Get current raw oscillator value
         int8_t osc1Val = so1_.GetNextSample();
-        //int8_t osc2Val = so2_.GetNextSample();
+        int8_t osc2Val = so2_.GetNextSample();
         
         static Q08 osc1Factor = 0.5;
-        //static Q08 osc2Factor = 0.5;
+        static Q08 osc2Factor = 0.5;
         
         osc1Val = osc1Val * osc1Factor;
-        //osc2Val = osc2Val * osc2Factor;
+        osc2Val = osc2Val * osc2Factor;
         
-        //int8_t oscVal = osc1Val + osc2Val;
-        int8_t oscVal = osc1Val;
+        int8_t oscVal = osc1Val + osc2Val;
+        //int8_t oscVal = osc1Val;
 
         // Get envelope value
         Q08 envVal = envADSR_.GetNextEnvelope();
