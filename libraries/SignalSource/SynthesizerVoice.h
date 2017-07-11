@@ -6,21 +6,29 @@
 
 #include "Timer.h"
 #include "TimedEventHandler.h"
+
+#include "SignalSourceSineWave.h"
+#include "SignalSourceSawtoothRightWave.h"
+#include "SignalSourceSawtoothLeftWave.h"
+#include "SignalSourceSquareWave.h"
+#include "SignalSourceTriangleWave.h"
 #include "SignalOscillator.h"
+
 #include "SignalEnvelopeADSR.h"
 
 
-template <typename SignalSource, typename TimerClass>
+template <typename TimerClass>
 class SynthesizerVoice
 {
-    //using SignalOscillatorClass = SignalOscillator<SignalSource>;
-    
     static const uint16_t ENVELOPE_ATTACK_DURATION_MS  = 50;
     static const uint16_t ENVELOPE_DECAY_DURATION_MS   = 100;
     static const uint16_t ENVELOPE_SUSTAIN_LEVEL_PCT   = 60;
     static const uint16_t ENVELOPE_RELEASE_DURATION_MS = 150;
     
+    static const uint16_t LFO_FREQUENCY_DEFAULT = 40;
+    
 public:
+
     SynthesizerVoice()
     {
         // Need better way -- open output pins
@@ -34,6 +42,13 @@ public:
         PAL.PinMode(12, OUTPUT);
         PAL.PinMode(13, OUTPUT);
         
+        // Set up oscillators
+        SetOscillator1(OscillatorType::SINE);
+        SetOscillator2(OscillatorType::TRIANGLE);
+        SetOscillator2(OscillatorType::NONE);
+        
+        // Set up LFO
+        SetLfo(OscillatorType::SINE);
         
         // Debug
         PAL.PinMode(dbg_, OUTPUT);
@@ -61,7 +76,12 @@ public:
         uint16_t sampleRateActual = th.GetInterruptFrequency();
         
         // Set up oscillator
-        so_.SetSampleRate(sampleRateActual);
+        so1_.SetSampleRate(sampleRateActual);
+        so2_.SetSampleRate(sampleRateActual);
+        
+        // Set up LFO
+        lfo_.SetSampleRate(sampleRateActual);
+        lfo_.SetFrequency(LFO_FREQUENCY_DEFAULT);
         
         // Set up envelope
         envADSR_.SetSampleRate(sampleRateActual);
@@ -87,7 +107,8 @@ public:
         envADSR_.Reset();
         
         // Adjust oscillator
-        so_.SetFrequency(frequency);
+        so1_.SetFrequency(frequency);
+        so2_.SetFrequency(frequency * 2);
         
         // Set timer to stop note later
         ted_.SetCallback([this](){
@@ -142,38 +163,117 @@ public:
             PORTD = 0;
             
             // Reset oscillator for next time
-            so_.Reset();
+            so1_.Reset();
+            so2_.Reset();
             
             // Reset envelope for next time
             envADSR_.Reset();
         }
     }
     
+    enum class OscillatorType : uint8_t
+    {
+        NONE = 0,
+        SINE,
+        SAWR,
+        SAWL,
+        SQUARE,
+        TRIANGLE
+    };
+
+    void SetOscillator1(OscillatorType type)
+    {
+        SetOscillator(so1_, type);
+    }
+    
+    void SetOscillator2(OscillatorType type)
+    {
+        SetOscillator(so2_, type);
+    }
+    
+    void SetLfo(OscillatorType type)
+    {
+        SetOscillator(lfo_, type);
+    }
 
 private:
+
+    void SetOscillator(SignalOscillator &so, OscillatorType type)
+    {
+        if (type == OscillatorType::NONE)
+        {
+            static SignalSource ss;
+            
+            so.SetSignalSource(&ss);
+        }
+        else if (type == OscillatorType::SINE)
+        {
+            static SignalSourceSineWave ss;
+            
+            so.SetSignalSource(&ss);
+        }
+        else if (type == OscillatorType::SAWR)
+        {
+            static SignalSourceSawtoothRightWave ss;
+            
+            so.SetSignalSource(&ss);
+        }
+        else if (type == OscillatorType::SAWL)
+        {
+            static SignalSourceSawtoothLeftWave ss;
+            
+            so.SetSignalSource(&ss);
+        }
+        else if (type == OscillatorType::SQUARE)
+        {
+            static SignalSourceSquareWave ss;
+            
+            so.SetSignalSource(&ss);
+        }
+        else if (type == OscillatorType::TRIANGLE)
+        {
+            static SignalSourceTriangleWave ss;
+            
+            so.SetSignalSource(&ss);
+        }
+    }
 
     static void OnInterrupt()
     {
         // Debug
         PAL.DigitalToggle(dbg_);
-
-        // Get raw oscillator value
-        int8_t oscVal = so_.GetNextSample();
-        //uint8_t val = 128 + oscVal;
         
+        // Apply the LFO for next time
+        int8_t lfoVal = lfo_.GetNextSample();
+        
+        static Q08 lfoFactor = 0.5;
+        int8_t freqOffset = lfoVal * lfoFactor;
+        
+        so1_.ApplyFrequencyOffset(freqOffset);
+        //so2_.ApplyFrequencyOffset(freqOffset);
+
+        // Get current raw oscillator value
+        int8_t osc1Val = so1_.GetNextSample();
+        //int8_t osc2Val = so2_.GetNextSample();
+        
+        static Q08 osc1Factor = 0.5;
+        //static Q08 osc2Factor = 0.5;
+        
+        osc1Val = osc1Val * osc1Factor;
+        //osc2Val = osc2Val * osc2Factor;
+        
+        //int8_t oscVal = osc1Val + osc2Val;
+        int8_t oscVal = osc1Val;
+
         // Get envelope value
         Q08 envVal = envADSR_.GetNextEnvelope();
-        //uint8_t val = envVal;
         
         // Do some scaling based on envelope
         int8_t scaledVal = (oscVal * envVal);
+
+
         uint8_t val = 128 + scaledVal;
         
-        
-        // how to get ADSR using Q88?
-        // document scaling approach
-        
-        //uint8_t val = 127;
         
         // Create analog signal
         PORTD = val;
@@ -184,7 +284,10 @@ private:
     static Pin dbg_;
     
     
-    static SignalOscillator<SignalSource> so_;
+    static SignalOscillator so1_;
+    static SignalOscillator so2_;
+    
+    static SignalOscillator lfo_;
     
     static SignalEnvelopeADSR envADSR_;
     
@@ -194,17 +297,22 @@ private:
 };
 
 
-template <typename SignalSource, typename TimerClass>
-Pin SynthesizerVoice<SignalSource, TimerClass>::dbg_(14, LOW);
+template <typename TimerClass>
+Pin SynthesizerVoice<TimerClass>::dbg_(14, LOW);
 
-template <typename SignalSource, typename TimerClass>
-SignalOscillator<SignalSource> SynthesizerVoice<SignalSource, TimerClass>::so_;
+template <typename TimerClass>
+SignalOscillator SynthesizerVoice<TimerClass>::so1_;
+template <typename TimerClass>
+SignalOscillator SynthesizerVoice<TimerClass>::so2_;
 
-template <typename SignalSource, typename TimerClass>
-SignalEnvelopeADSR SynthesizerVoice<SignalSource, TimerClass>::envADSR_;
+template <typename TimerClass>
+SignalOscillator SynthesizerVoice<TimerClass>::lfo_;
 
-template <typename SignalSource, typename TimerClass>
-TimedEventHandlerDelegate SynthesizerVoice<SignalSource, TimerClass>::ted_;
+template <typename TimerClass>
+SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
+
+template <typename TimerClass>
+TimedEventHandlerDelegate SynthesizerVoice<TimerClass>::ted_;
 
 
 

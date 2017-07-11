@@ -4,9 +4,9 @@
 
 #include "FixedPoint.h"
 #include "FixedPointStepper.h"
+#include "SignalSource.h"
 
 
-template <typename SignalSource>
 class SignalOscillator
 {
     static const uint16_t VALUE_COUNT = 256;
@@ -14,15 +14,56 @@ class SignalOscillator
 public:
     void SetSampleRate(uint16_t sampleRate)
     {
-        sampleRate_ = sampleRate;
+        stepSizePerHz_ = (double)VALUE_COUNT / (double)sampleRate;
+        
+        stepSizePerHzQ_ = stepSizePerHz_;
     }
     
     void SetFrequency(uint16_t frequency)
     {
-        double stepSize = 
-                (double)VALUE_COUNT / ((double)sampleRate_ / (double)frequency);
+        // Use full-resolution double for an infrequently-called function
+        stepSize_ = ((double)(stepSizePerHz_ * frequency));
         
-        rotation_.SetStepSize(stepSize);
+        rotation_.SetStepSize(stepSize_);
+    }
+    
+    void ApplyFrequencyOffset(int8_t frequencyOffset)
+    {
+        if (frequencyOffset >= 0)
+        {
+            // Convert frequency offset to fast double
+            Q88 frequencyOffsetQ;
+            frequencyOffsetQ.FromUnsignedInt8((uint8_t)frequencyOffset);
+            
+            // Scale the frequency offset by the steps-per-hz multiplier
+            Q88 stepOffsetQ = stepSizePerHzQ_ * frequencyOffsetQ;
+            
+            // Apply offset to cached step size
+            Q88 stepSizeNew = stepSize_;
+            stepSizeNew += stepOffsetQ;
+            
+            rotation_.SetStepSize(stepSizeNew);
+        }
+        else
+        {
+            // Convert frequency offset to fast double
+            Q88 frequencyOffsetQ;
+            frequencyOffsetQ.FromUnsignedInt8((uint8_t)-frequencyOffset);
+            
+            // Scale the frequency offset by the steps-per-hz multiplier
+            Q88 stepOffsetQ = stepSizePerHzQ_ * frequencyOffsetQ;
+            
+            // Apply offset to cached step size
+            Q88 stepSizeNew = stepSize_;
+            stepSizeNew -= stepOffsetQ;
+            
+            rotation_.SetStepSize(stepSizeNew);
+        }
+    }
+    
+    void SetSignalSource(SignalSource *ss)
+    {
+        ss_ = ss;
     }
     
     inline int8_t GetNextSample()
@@ -31,7 +72,7 @@ public:
         // GetSample costs ~500ns for some reason.
         uint8_t brad = rotation_.GetUnsignedInt8();
         
-        int8_t retVal = ss_.GetSample(brad);
+        int8_t retVal = ss_->GetSample(brad);
 
         rotation_.Incr();
         
@@ -45,9 +86,11 @@ public:
 
 private:
 
-    uint16_t               sampleRate_;
-    SignalSource           ss_;
-    FixedPointStepper<Q88> rotation_;
+    double                  stepSizePerHz_;
+    Q88                     stepSizePerHzQ_;
+    SignalSource           *ss_;
+    FixedPointStepper<Q88>  rotation_;
+    Q88                     stepSize_;
 };
 
 
