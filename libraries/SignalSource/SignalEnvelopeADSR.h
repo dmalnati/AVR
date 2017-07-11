@@ -74,7 +74,7 @@ public:
         if (state_ == State::ATTACK)
         {
             // Convert to decimal value
-            retVal = (uint8_t)attackVal_;
+            retVal = attackVal_.GetUnsignedInt8();
             
             // Move to next value
             attackVal_ += attackStepSize_;
@@ -90,7 +90,7 @@ public:
         else if (state_ == State::DECAY)
         {
             // Convert to decimal value
-            retVal = (uint8_t)decayVal_;
+            retVal = decayVal_.GetUnsignedInt8();
             
             // Move to next value
             decayVal_ -= decayStepSize_;
@@ -113,7 +113,7 @@ public:
         else if (state_ == State::RELEASE)
         {
             // Convert to decimal value
-            retVal = (uint8_t)releaseVal_;
+            retVal = releaseVal_.GetUnsignedInt8();
             
             // Move to next value
             releaseVal_ -= releaseStepSize_;

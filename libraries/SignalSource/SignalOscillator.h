@@ -9,7 +9,7 @@
 template <typename SignalSource>
 class SignalOscillator
 {
-    static const uint16_t TOP_VALUE = 256;
+    static const uint16_t VALUE_COUNT = 256;
     
 public:
     void SetSampleRate(uint16_t sampleRate)
@@ -20,17 +20,20 @@ public:
     void SetFrequency(uint16_t frequency)
     {
         double stepSize = 
-                (double)TOP_VALUE / ((double)sampleRate_ / (double)frequency);
+                (double)VALUE_COUNT / ((double)sampleRate_ / (double)frequency);
         
         rotation_.SetStepSize(stepSize);
     }
     
-    int8_t GetNextSample()
+    inline int8_t GetNextSample()
     {
-        uint8_t brad  = (uint8_t)rotation_;
-        int8_t retVal = ss_.GetSample(brad);
+        // Keep the ordering of these instructions.  Bringing the Incr ahead of
+        // GetSample costs ~500ns for some reason.
+        uint8_t brad = rotation_.GetUnsignedInt8();
         
-        ++rotation_;
+        int8_t retVal = ss_.GetSample(brad);
+
+        rotation_.Incr();
         
         return retVal;
     }

@@ -17,8 +17,6 @@ class FixedPoint
                                        STORAGE_TYPE,
                                        STORAGE_TYPE_HALF_SIZE>;
     
-public:
-
     
     ////////////////////////////////////////////////////////////////////
     //
@@ -26,6 +24,40 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
+private:
+    
+    // For lightweight construction of temporary objects, private only
+    inline FixedPoint(STORAGE_TYPE val)
+    : val_(val)
+    {
+        // Nothing to do
+    }
+
+    
+public:
+
+    // Moving member instantiation to explicit constructor since more ctors are
+    // being added and better to be explicit, especially for debugging.
+    inline FixedPoint()
+    : val_(0)
+    {
+        // Nothing to do
+    }
+    
+    // For copy elision, not actually part of a particular use case
+    inline FixedPoint(const FixedPointClass &val)
+    {
+        operator=(val);
+    }
+
+    // Useful for assignment after subtraction in limit mode stepping
+    inline void operator=(const FixedPointClass &rhs)
+    {
+        val_ = rhs.val_;
+    }
+
+public:
+    
     inline void operator+=(const FixedPointClass &rhs)
     {
         val_ += rhs.val_;
@@ -36,9 +68,21 @@ public:
         val_ -= rhs.val_;
     }
     
+    inline FixedPointClass operator-(const FixedPointClass &rhs) const
+    {
+        STORAGE_TYPE retVal = val_ - rhs.val_;
+        
+        return FixedPointClass(retVal);
+    }
+    
     inline bool operator>(const FixedPointClass &rhs) const
     {
         return val_ > rhs.val_;
+    }
+    
+    inline bool operator<(const FixedPointClass &rhs) const
+    {
+        return val_ < rhs.val_;
     }
     
     
@@ -94,7 +138,7 @@ public:
         return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
     
-    inline operator uint16_t() const
+    inline uint16_t GetUnsignedInt16() const
     {
         return (uint16_t)(val_ >> BITS_WHOLE);
     }
@@ -116,7 +160,7 @@ public:
         return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
 
-    inline operator uint8_t() const
+    inline uint8_t GetUnsignedInt8() const
     {
         return (uint8_t)(val_ >> BITS_WHOLE);
     }
@@ -124,7 +168,7 @@ public:
     
 private:
 
-    STORAGE_TYPE val_ = 0;
+    STORAGE_TYPE val_;
 };
 
 
@@ -162,12 +206,12 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    Q08()
+    inline Q08()
     {
         // Nothing to do
     }
 
-    Q08(const Q08 &val)
+    inline Q08(const Q08 &val)
     {
         operator=(val);
     }
@@ -184,7 +228,7 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    Q08(const double val)
+    inline Q08(const double val)
     {
         operator=(val);
     }
@@ -207,7 +251,7 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    Q08(const uint8_t val)
+    inline Q08(const uint8_t val)
     {
         operator=(val);
     }
@@ -222,7 +266,7 @@ public:
         return val_ * rhs / 256;
     }
     
-    inline operator uint8_t() const
+    inline uint8_t GetUnsignedInt8() const
     {
         return val_;
     }
@@ -233,7 +277,7 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    Q08(const int8_t val)
+    inline Q08(const int8_t val)
     {
         operator=(val);
     }
