@@ -26,6 +26,11 @@ public:
         stepSize_ = stepSize;
     }
     
+    inline void SetStepSize(const QT &stepSize)
+    {
+        stepSize_ = stepSize;
+    }
+    
     inline void Incr()
     {
         val_ += stepSize_;

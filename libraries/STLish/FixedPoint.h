@@ -55,9 +55,14 @@ public:
     {
         val_ = rhs.val_;
     }
-
-public:
     
+    inline FixedPointClass operator*(const FixedPointClass &rhs)
+    {
+        STORAGE_TYPE retVal = (val_ * rhs.val_) >> BITS_WHOLE;
+        
+        return retVal;
+    }
+
     inline void operator+=(const FixedPointClass &rhs)
     {
         val_ += rhs.val_;
@@ -165,6 +170,10 @@ public:
         return (uint8_t)(val_ >> BITS_WHOLE);
     }
     
+    inline void FromUnsignedInt8(uint8_t val)
+    {
+        val_ = ((STORAGE_TYPE)val << BITS_WHOLE);
+    }
     
 private:
 
