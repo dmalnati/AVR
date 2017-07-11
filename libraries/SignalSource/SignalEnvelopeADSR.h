@@ -74,33 +74,31 @@ public:
         if (state_ == State::ATTACK)
         {
             // Convert to decimal value
-            retVal = attackVal_.GetUnsignedInt8();
-            
-            // Move to next value
-            attackVal_ += attackStepSize_;
+            retVal = attackStepper_.GetUnsignedInt8();
             
             // Check if time to move to decay for next sample
-            if (retVal >= TOP_VALUE)
+            if (retVal == TOP_VALUE)
             {
-                retVal = TOP_VALUE;
-                
                 state_ = State::DECAY;
+            }
+            else
+            {
+                attackStepper_.IncrTowardLimit();
             }
         }
         else if (state_ == State::DECAY)
         {
             // Convert to decimal value
-            retVal = decayVal_.GetUnsignedInt8();
-            
-            // Move to next value
-            decayVal_ -= decayStepSize_;
+            retVal = decayStepper_.GetUnsignedInt8();
             
             // Check if time to move to sustain for next sample
-            if (retVal <= sustainLevel_)
+            if (retVal == sustainLevel_)
             {
-                retVal = sustainLevel_;
-                
                 state_ = State::SUSTAIN;
+            }
+            else
+            {
+                decayStepper_.DecrTowardLimit();
             }
         }
         else if (state_ == State::SUSTAIN)
@@ -113,18 +111,16 @@ public:
         else if (state_ == State::RELEASE)
         {
             // Convert to decimal value
-            retVal = releaseVal_.GetUnsignedInt8();
-            
-            // Move to next value
-            releaseVal_ -= releaseStepSize_;
+            retVal = releaseStepper_.GetUnsignedInt8();
             
             // Check if time to move to final state
-            // this would be in the form of a wrap around
-            if (retVal >= TOP_VALUE)
+            if (retVal == BOTTOM_VALUE)
             {
-                retVal = BOTTOM_VALUE;
-                
                 state_ = State::DONE;
+            }
+            else
+            {
+                releaseStepper_.DecrTowardLimit();
             }
         }
         
@@ -167,7 +163,7 @@ private:
                                                   attackDurationMs_);
         
         // Store calculated value
-        attackStepSize_ = stepSize;
+        attackStepper_.SetStepSize(stepSize);
     }
     
     void CalculateSustainLevel()
@@ -182,7 +178,7 @@ private:
                                                   decayDurationMs_);
         
         // Store calculated value
-        decayStepSize_ = stepSize;
+        decayStepper_.SetStepSize(stepSize);
     }
     
     void CalculateRelease()
@@ -192,14 +188,19 @@ private:
                                                   releaseDurationMs_);
         
         // Store calculated value
-        releaseStepSize_ = stepSize;
+        releaseStepper_.SetStepSize(stepSize);
     }
     
     void SetStepwiseInitialValues()
     {
-        attackVal_  = (double)BOTTOM_VALUE;
-        decayVal_   = (double)TOP_VALUE;
-        releaseVal_ = (double)sustainLevel_;
+        attackStepper_.SetValue((double)BOTTOM_VALUE);
+        attackStepper_.SetLimitUpper((double)TOP_VALUE);
+        
+        decayStepper_.SetValue((double)TOP_VALUE);
+        decayStepper_.SetLimitLower((double)sustainLevel_);
+        
+        releaseStepper_.SetValue((double)sustainLevel_);
+        releaseStepper_.SetLimitLower((double)BOTTOM_VALUE);
     }
     
     
@@ -220,13 +221,11 @@ private:
     
     // Attack values
     uint16_t attackDurationMs_ = DEFAULT_ATTACK_DURATION_MS;
-    Q1616    attackVal_          {(double)BOTTOM_VALUE};
-    Q1616    attackStepSize_     {(double)DEFAULT_STEP_SIZE};
+    FixedPointStepper<Q88>  attackStepper_;
     
     // Decay values
     uint16_t decayDurationMs_ = DEFAULT_DECAY_DURATION_MS;
-    Q1616    decayVal_          {(double)TOP_VALUE};
-    Q1616    decayStepSize_     {(double)DEFAULT_STEP_SIZE};
+    FixedPointStepper<Q88>  decayStepper_;
 
     // Sustain values
     uint8_t sustainLevelPct_ = DEFAULT_SUSTAIN_LEVEL_PCT;
@@ -235,8 +234,7 @@ private:
     
     // Release values
     uint16_t releaseDurationMs_ = DEFAULT_RELEASE_DURATION_MS;
-    Q1616    releaseVal_        {(double)sustainLevel_};
-    Q1616    releaseStepSize_   {(double)DEFAULT_STEP_SIZE};
+    FixedPointStepper<Q88>  releaseStepper_;
 };
 
 
