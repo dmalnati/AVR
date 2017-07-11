@@ -25,9 +25,14 @@ class FixedPoint
     ////////////////////////////////////////////////////////////////////
 
 private:
+
+    enum class CTorType : uint8_t
+    {
+        PRIVATE = 0
+    };
     
     // For lightweight construction of temporary objects, private only
-    inline FixedPoint(STORAGE_TYPE val)
+    inline FixedPoint(STORAGE_TYPE val, CTorType)
     : val_(val)
     {
         // Nothing to do
@@ -60,7 +65,7 @@ public:
     {
         STORAGE_TYPE retVal = (val_ * rhs.val_) >> BITS_WHOLE;
         
-        return retVal;
+        return FixedPointClass(retVal, CTorType::PRIVATE);
     }
 
     inline void operator+=(const FixedPointClass &rhs)
@@ -73,11 +78,18 @@ public:
         val_ -= rhs.val_;
     }
     
+    inline FixedPointClass operator+(const FixedPointClass &rhs) const
+    {
+        STORAGE_TYPE retVal = val_ + rhs.val_;
+        
+        return FixedPointClass(retVal, CTorType::PRIVATE);
+    }
+    
     inline FixedPointClass operator-(const FixedPointClass &rhs) const
     {
         STORAGE_TYPE retVal = val_ - rhs.val_;
         
-        return FixedPointClass(retVal);
+        return FixedPointClass(retVal, CTorType::PRIVATE);
     }
     
     inline bool operator>(const FixedPointClass &rhs) const
@@ -97,7 +109,7 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
 
-    inline explicit FixedPoint(const double val)
+    inline FixedPoint(const double val)
     {
         operator=(val);
     }
@@ -155,6 +167,11 @@ public:
     //
     ////////////////////////////////////////////////////////////////////
     
+    inline FixedPoint(const uint8_t val)
+    {
+        val_ = ((STORAGE_TYPE)val << BITS_WHOLE);
+    }
+    
     inline bool operator>(const uint8_t rhs) const
     {
         return val_ > ((STORAGE_TYPE)rhs << BITS_WHOLE);
@@ -169,12 +186,7 @@ public:
     {
         return (uint8_t)(val_ >> BITS_WHOLE);
     }
-    
-    inline void FromUnsignedInt8(uint8_t val)
-    {
-        val_ = ((STORAGE_TYPE)val << BITS_WHOLE);
-    }
-    
+        
 private:
 
     STORAGE_TYPE val_;
