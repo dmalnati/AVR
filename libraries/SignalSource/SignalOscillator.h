@@ -4,12 +4,14 @@
 
 #include "FixedPoint.h"
 #include "FixedPointStepper.h"
-#include "SignalSource.h"
 
 
 class SignalOscillator
 {
     static const uint16_t VALUE_COUNT = 256;
+    
+    using SignalSourceFn = int8_t(*)(uint8_t);
+
     
 public:
     void SetSampleRate(uint16_t sampleRate)
@@ -59,9 +61,9 @@ public:
         }
     }
     
-    void SetSignalSource(SignalSource *ss)
+    void SetSignalSource(SignalSourceFn ssFn)
     {
-        ss_ = ss;
+        ssFn_ = ssFn;
     }
     
     inline int8_t GetNextSample()
@@ -70,7 +72,8 @@ public:
         // GetSample costs ~500ns for some reason.
         uint8_t brad = rotation_.GetUnsignedInt8();
         
-        int8_t retVal = ss_->GetSample(brad);
+//        int8_t retVal = (*ss_)(brad);
+        int8_t retVal = ssFn_(brad);
 
         rotation_.Incr();
         
@@ -84,9 +87,11 @@ public:
 
 private:
 
+
+
     double                  stepSizePerHz_;
     Q88                     stepSizePerHzQ_;
-    SignalSource           *ss_;
+    SignalSourceFn          ssFn_;
     FixedPointStepper<Q88>  rotation_;
     Q88                     stepSize_;
 };

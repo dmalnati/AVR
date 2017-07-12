@@ -2,15 +2,11 @@
 #define __SIGNAL_SOURCE_SAWTOOTH_LEFT_WAVE_H__
 
 
-#include "SignalSource.h"
-
-
 class SignalSourceSawtoothLeftWave
-: public SignalSource
 {
 public:
     
-    inline virtual int8_t GetSample(const uint8_t brad) override
+    static inline int8_t GetSample(const uint8_t brad)
     {
         int8_t val = 127 - brad;
         
