@@ -2,6 +2,7 @@
 #define __SERIAL_LINK_H__
 
 
+#include "Function.h"
 #include "TimedEventHandler.h"
 #include "crc.h"
 
@@ -27,21 +28,23 @@ struct SerialLinkHeader
     uint8_t protocolId;
 };
  
-template <typename T, uint8_t PAYLOAD_CAPACITY = 32>
+
 class SerialLink
 : private TimedEventHandler
 {
+    static const uint8_t PAYLOAD_CAPACITY = 32;
+    
 public:
     static const uint8_t C_IDLE  = 0;
     static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 0;
 
 private:
-    typedef void (T::*OnRxAvailableCbFn)(SerialLinkHeader  *hdr,
-                                         uint8_t           *buf,
-                                         uint8_t            bufSize);
+    using CbFunction = function<void(SerialLinkHeader  *hdr,
+                                         uint8_t       *buf,
+                                         uint8_t        bufSize)>;
     
-    static const uint8_t  POLL_PERIOD_MS = 100;
+    static const uint8_t  POLL_PERIOD_MS = 10;
     static const uint16_t BAUD           = 9600;
     static const uint8_t  PREAMBLE_BYTE  = 0x55;
     static const uint8_t  BUF_CAPACITY   = sizeof(SerialLinkHeader) + PAYLOAD_CAPACITY;
@@ -58,8 +61,7 @@ public:
     
     void Reset()
     {
-        obj_       = NULL;
-        rxCb_      = NULL;
+        cbFn_      = CbFunction{};
         bufRxSize_ = 0;
         state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
         
@@ -68,23 +70,17 @@ public:
         DeRegisterForTimedEvent();
     }
     
-    uint8_t Init(T *obj, OnRxAvailableCbFn rxCb)
+    uint8_t Init(CbFunction cbFn)
     {
-        uint8_t retVal = 0;
+        uint8_t retVal = 1;
 
         Reset();
         
-        if (obj && rxCb)
-        {
-            retVal = 1;
-            
-            obj_  = obj;
-            rxCb_ = rxCb;
-            
-            Serial.begin(BAUD);
-            
-            RegisterForTimedEventInterval(POLL_PERIOD_MS);
-        }
+        cbFn_ = cbFn;
+
+        Serial.begin(BAUD);
+        
+        RegisterForTimedEventInterval(POLL_PERIOD_MS);
         
         return retVal;
     }
@@ -276,9 +272,9 @@ private:
                     retVal = sizeof(SerialLinkHeader) + hdr->dataLength;
 
                     // Call back with complete message
-                    ((*obj_).*rxCb_)(hdr,
-                                     &(bufRx_[sizeof(SerialLinkHeader)]),
-                                     hdr->dataLength);
+                    cbFn_(hdr,
+                          &(bufRx_[sizeof(SerialLinkHeader)]),
+                          hdr->dataLength);
 
                     // Destroy data and move on.
                     ClearLeadingBufferBytesAndRecalibrate(sizeof(SerialLinkHeader) +
@@ -327,8 +323,7 @@ private:
     
     
     // Callback members
-    T                 *obj_;
-    OnRxAvailableCbFn  rxCb_;
+    CbFunction cbFn_;
     
     // RX Buffer members
     uint8_t bufRx_[BUF_CAPACITY];

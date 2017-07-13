@@ -1,4 +1,5 @@
 #include <Evm.h>
+#include <Function.h>
 #include <TimedEventHandler.h>
 #include <SerialLink.h>
 #include <Utl.h>
@@ -8,12 +9,20 @@ class TestSerialLink
 : public TimedEventHandler
 {
 public:
-    TestSerialLink() { }
+    TestSerialLink()
+    : pinOnRxAvailable_(4, LOW)
+    , pinOnTimedEvent_(5, LOW)
+    {
+    }
     ~TestSerialLink() { }
 
     void Run()
     {
-        serialLink_.Init(this, &TestSerialLink::OnSerialRxAvailable);
+        serialLink_.Init([this](SerialLinkHeader *hdr,
+                                uint8_t          *buf,
+                                uint8_t           bufSize){
+            OnSerialRxAvailable(hdr, buf, bufSize);
+        });
 
         RegisterForTimedEventInterval(1000);
 
@@ -30,9 +39,11 @@ private:
     {
         static uint8_t count = 0;
 
-        PinToggle(5, 100);
+        PAL.DigitalWrite(pinOnTimedEvent_, HIGH);
         
         serialLink_.Send(1, &count, 1);
+
+        PAL.DigitalWrite(pinOnTimedEvent_, LOW);
 
         ++count;
     }
@@ -43,11 +54,17 @@ private:
                         uint8_t           bufSize)
     {
         // ping pong
-        PinToggle(4, 100);
+        PAL.DigitalWrite(pinOnRxAvailable_, HIGH);
+        
         serialLink_.Send(hdr->protocolId, buf, bufSize);
+        
+        PAL.DigitalWrite(pinOnRxAvailable_, LOW);
     }
 
-    SerialLink<TestSerialLink> serialLink_;
+    SerialLink serialLink_;
+
+    Pin pinOnRxAvailable_;
+    Pin pinOnTimedEvent_;
 };
 
 
