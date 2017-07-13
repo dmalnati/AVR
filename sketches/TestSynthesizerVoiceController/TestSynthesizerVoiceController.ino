@@ -1,18 +1,16 @@
 #include "Evm.h"
 
-#include "PinInputAnalog.h"
-
-#include "SignalSourceSineWave.h"
-#include "SignalSourceSquareWave.h"
-#include "SignalSourceTriangleWave.h"
-#include "SynthesizerVoice.h"
 #include "Timer2.h"
+#include "PinInputAnalog.h"
+#include "SynthesizerVoice.h"
+#include "SynthesizerVoiceSerialInterface.h"
 
 
 class AnalogController
 {
     //uint16_t SAMPLE_RATE = 40000;
-    uint16_t SAMPLE_RATE = 20000;
+    //uint16_t SAMPLE_RATE = 20000;
+    uint16_t SAMPLE_RATE = 10000;
     //uint16_t SAMPLE_RATE = 4000;
     //uint16_t SAMPLE_RATE = 65000;
 
@@ -26,6 +24,7 @@ class AnalogController
 public:
     AnalogController(uint8_t pin)
     : pia_(pin)
+    , svsi_(&sv_)
     {
         // Nothing to do
     }
@@ -42,6 +41,9 @@ public:
         });
         pia_.SetMinimumChange(MIN_STEP_SIZE);
         pia_.Enable();
+
+        // Start up serial controller
+        svsi_.Init();
 
         // Calibrate SynthVoice parameters
         sv_.SetSampleRate(SAMPLE_RATE);
@@ -81,10 +83,9 @@ private:
     Evm::Instance<10,10,10> evm_;
     
     PinInputAnalog  pia_;
-    
-    SynthesizerVoice<SignalSourceSineWave, Timer2>  sv_;
-    //SynthesizerVoice<SignalSourceSquareWave, Timer2>  sv_;
-    //SynthesizerVoice<SignalSourceTriangleWave, Timer2>  sv_;
+
+    SynthesizerVoice<Timer2>  sv_;
+    SynthesizerVoiceSerialInterface<SynthesizerVoice<Timer2>> svsi_;
 };
 
 

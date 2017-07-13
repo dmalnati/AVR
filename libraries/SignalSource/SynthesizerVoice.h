@@ -34,7 +34,7 @@ public:
     {
         // Need better way -- open output pins
         // PORTD
-        PAL.PinMode(2, OUTPUT);
+        //PAL.PinMode(2, OUTPUT);
         PAL.PinMode(3, OUTPUT);
         PAL.PinMode(4, OUTPUT);
         PAL.PinMode(5, OUTPUT);
@@ -44,11 +44,11 @@ public:
         PAL.PinMode(13, OUTPUT);
         
         // Set up oscillators
-        SetOscillator1(OscillatorType::SINE);
-        SetOscillator2(OscillatorType::SINE);
+        SetOscillator1WaveType(OscillatorType::SINE);
+        SetOscillator2WaveType(OscillatorType::NONE);
         
         // Set up LFO
-        SetLfo(OscillatorType::SINE);
+        SetLfoWaveType(OscillatorType::SINE);
         
         // Debug
         PAL.PinMode(dbg_, OUTPUT);
@@ -184,21 +184,58 @@ public:
         TRIANGLE
     };
 
-    void SetOscillator1(OscillatorType type)
+    void SetOscillator1WaveType(OscillatorType type)
     {
         SetOscillator(so1_, type);
     }
     
-    void SetOscillator2(OscillatorType type)
+    void SetOscillator2WaveType(OscillatorType type)
     {
         SetOscillator(so2_, type);
     }
     
-    void SetLfo(OscillatorType type)
+    void SetLfoWaveType(OscillatorType type)
     {
         SetOscillator(lfo_, type);
     }
 
+    
+    
+    void SetOscillator1Frequency(uint16_t frequency)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            
+        so1_.SetFrequency(frequency);
+        
+        }
+    }
+    
+    void SetOscillator2Frequency(uint16_t frequency)
+    {
+        so2_.SetFrequency(frequency);
+    }
+    
+    void SetLFOFrequency(uint16_t frequency)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+
+        lfo_.SetFrequency(frequency);
+        
+        }
+    }
+    
+    void EnableEnvelopeADSR()
+    {
+        envADSREnabled_ = 1;
+    }
+    
+    void DisableEnvelopeADSR()
+    {
+        envADSREnabled_ = 0;
+    }
+    
 private:
 
     void SetOscillator(SignalOscillator &so, OscillatorType type)
@@ -244,7 +281,7 @@ private:
     static void OnInterrupt()
     {
         // Debug
-        PAL.DigitalToggle(dbg_);
+        //PAL.DigitalToggle(dbg_);
         
         // Apply the LFO for next time
         int8_t lfoVal = lfo_.GetNextSample();
@@ -252,22 +289,28 @@ private:
         int8_t freqOffset = lfoVal * lfoFactor_;
         
         so1_.ApplyFrequencyOffset(freqOffset);
-        so2_.ApplyFrequencyOffset(freqOffset);
+        //so2_.ApplyFrequencyOffset(freqOffset);
 
         // Get current raw oscillator value
         int8_t osc1Val = so1_.GetNextSample();
         int8_t osc2Val = so2_.GetNextSample();
 
         // Scale and combine oscillator values
-        osc1Val = osc1Val * osc1Factor_;
-        osc2Val = osc2Val * osc2Factor_;
+        //osc1Val = osc1Val * osc1Factor_;
+        //osc2Val = osc2Val * osc2Factor_;
         
-        int8_t oscVal = osc1Val + osc2Val;
+        //int8_t oscVal = osc1Val + osc2Val;
+        int8_t oscVal = osc1Val;
 
         // Get envelope value and apply
         Q08 envVal = envADSR_.GetNextEnvelope();
 
-        int8_t scaledVal = (oscVal * envVal);
+        int8_t scaledVal = oscVal;
+        if (envADSREnabled_)
+        {
+            PAL.DigitalToggle(dbg_);
+            scaledVal = (oscVal * envVal);
+        }
 
         // Adjust to 0-255 range
         uint8_t val = 128 + scaledVal;
@@ -280,7 +323,6 @@ private:
     // Debug
     static Pin dbg_;
     
-    
     static SignalOscillator so1_;
     static Q08              osc1Factor_;
     
@@ -291,6 +333,7 @@ private:
     static Q08              lfoFactor_;
     
     static SignalEnvelopeADSR envADSR_;
+    static uint8_t            envADSREnabled_;
     
     static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
     
@@ -319,6 +362,8 @@ Q08 SynthesizerVoice<TimerClass>::lfoFactor_ = 0.5;
 
 template <typename TimerClass>
 SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
+template <typename TimerClass>
+uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_ = 1;
 
 template <typename TimerClass>
 TimedEventHandlerDelegate SynthesizerVoice<TimerClass>::ted_;
