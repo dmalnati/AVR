@@ -65,8 +65,6 @@ public:
         bufRxSize_ = 0;
         state_     = State::LOOKING_FOR_PREAMBLE_BYTE;
         
-        Serial.end();
-        
         DeRegisterForTimedEvent();
     }
     
@@ -78,8 +76,6 @@ public:
         
         cbFn_ = cbFn;
 
-        Serial.begin(BAUD);
-        
         RegisterForTimedEventInterval(POLL_PERIOD_MS);
         
         return retVal;
