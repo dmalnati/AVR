@@ -222,6 +222,42 @@ public:
         osc2_.SetFrequency(frequency);
     }
     
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator Balance
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetOscillatorBalance(uint8_t balance)
+    {
+        // Input ranges from 0 to 255
+        // 127 and 128 = 50% for each
+        //   0 = 100% osc1
+        // 255 = 100% osc2
+        
+        uint8_t osc1Pct;
+        uint8_t osc2Pct;
+        
+        if (balance == 127 || balance == 128)
+        {
+            osc1Pct = 127;
+            osc2Pct = 127;
+        }
+        else if (balance > 128)
+        {
+            osc2Pct = 127 + ((balance - 128) + 1);
+            osc1Pct = 255 - osc2Pct;
+        }
+        else
+        {
+            osc1Pct = 127 + ((127 - balance) + 1);
+            osc2Pct = 255 - osc1Pct;
+        }
+        
+        osc1Factor_ = osc1Pct;
+        osc2Factor_ = osc2Pct;
+    }
+    
     
     ///////////////////////////////////////////////////////////////////////
     //
@@ -366,6 +402,9 @@ private:
 
         
         /*
+         * Come back for envelope stuff later
+         *
+        
         // Get envelope value and apply
         Q08 envVal = envADSR_.GetNextEnvelope();
 
@@ -377,8 +416,14 @@ private:
         }
         */
 
+        
+        
+        
+        
+        
+        
         // Adjust to 0-255 range, but only use if some signal is in effect
-        uint8_t val = 128 + scaledVal;
+        uint8_t val = 128 + oscVal;
         if (!osc1Enabled_ && !osc2Enabled_)
         {
             val = 0;
