@@ -61,6 +61,11 @@ public:
         }
     }
     
+    void SetPhaseOffset(int8_t phaseOffset)
+    {
+        phaseOffset_ = phaseOffset;
+    }
+    
     void SetSignalSource(SignalSourceFn ssFn)
     {
         ssFn_ = ssFn;
@@ -70,9 +75,8 @@ public:
     {
         // Keep the ordering of these instructions.  Bringing the Incr ahead of
         // GetSample costs ~500ns for some reason.
-        uint8_t brad = rotation_.GetUnsignedInt8();
+        uint8_t brad = phaseOffset_ + rotation_.GetUnsignedInt8();
         
-//        int8_t retVal = (*ss_)(brad);
         int8_t retVal = ssFn_(brad);
 
         rotation_.Incr();
@@ -94,6 +98,7 @@ private:
     SignalSourceFn          ssFn_;
     FixedPointStepper<Q88>  rotation_;
     Q88                     stepSize_;
+    int8_t                  phaseOffset_ = 0;
 };
 
 

@@ -74,44 +74,47 @@ public:
     
     void SetSampleRate(uint16_t sampleRate)
     {
-        // Important - this be done during runtime, not just during static
-        // init.  Arduino libs mess with timers like Timer2, and the timer
-        // setup below needs to remain intact for functionality to work.
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Important - this be done during runtime, not just during static
+            // init.  Arduino libs mess with timers like Timer2, and the timer
+            // setup below needs to remain intact for functionality to work.
 
-        // The timer may be running, like Timer2
-        TimerClass::StopTimer();
+            // The timer may be running on system startup, like Timer2
+            TimerClass::StopTimer();
 
-        // Pre-calculate the actual sample rate achievable now so that
-        // calls to SetFrequency will be working with the right value.
-        //
-        TimerHelper<TimerClass> th;
-        th.SetInterruptFrequency(sampleRate);
-        uint16_t sampleRateActual = th.GetInterruptFrequency();
-        
-        // Set up oscillator
-        osc1_.SetSampleRate(sampleRateActual);
-        osc2_.SetSampleRate(sampleRateActual);
-        
-        // Set up LFO
-        lfo_.SetSampleRate(sampleRateActual);
-        lfo_.SetFrequency(LFO_FREQUENCY_DEFAULT);
-        
-        // Set up envelope
-        envADSR_.SetSampleRate(sampleRateActual);
-        envADSR_.SetAttackDuration(ENVELOPE_ATTACK_DURATION_MS);
-        envADSR_.SetDecayDuration(ENVELOPE_DECAY_DURATION_MS);
-        envADSR_.SetSustainLevelPct(ENVELOPE_SUSTAIN_LEVEL_PCT);
-        envADSR_.SetReleaseDuration(ENVELOPE_RELEASE_DURATION_MS);
-        
-        // Set up callbacks to fire when time for a sample output.
-        // Code doesn't necessarily make sense here, but follows the resetting
-        // of channel A above by the timer configuration.
-        tca_->SetInterruptHandlerRaw(OnInterrupt);
-        
-        
-        // Debug
-        tca_->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);  tca_->OutputLow();
-        PAL.PinMode(dbg_, OUTPUT);
+            // Pre-calculate the actual sample rate achievable now so that
+            // calls to SetFrequency will be working with the right value.
+            //
+            TimerHelper<TimerClass> th;
+            th.SetInterruptFrequency(sampleRate);
+            uint16_t sampleRateActual = th.GetInterruptFrequency();
+            
+            // Set up oscillator
+            osc1_.SetSampleRate(sampleRateActual);
+            osc2_.SetSampleRate(sampleRateActual);
+            
+            // Set up LFO
+            lfo_.SetSampleRate(sampleRateActual);
+            lfo_.SetFrequency(LFO_FREQUENCY_DEFAULT);
+            
+            // Set up envelope
+            envADSR_.SetSampleRate(sampleRateActual);
+            envADSR_.SetAttackDuration(ENVELOPE_ATTACK_DURATION_MS);
+            envADSR_.SetDecayDuration(ENVELOPE_DECAY_DURATION_MS);
+            envADSR_.SetSustainLevelPct(ENVELOPE_SUSTAIN_LEVEL_PCT);
+            envADSR_.SetReleaseDuration(ENVELOPE_RELEASE_DURATION_MS);
+            
+            // Set up callbacks to fire when time for a sample output.
+            // Code doesn't necessarily make sense here, but follows the resetting
+            // of channel A above by the timer configuration.
+            tca_->SetInterruptHandlerRaw(OnInterrupt);
+            
+            
+            // Debug
+            tca_->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);  tca_->OutputLow();
+            PAL.PinMode(dbg_, OUTPUT);
+        }
     }
     
     void StartNote(uint16_t frequency, uint16_t durationMs)
@@ -120,11 +123,11 @@ public:
         {
             // Adjust envelope
             envADSR_.Reset();
-        }
         
-        // Adjust oscillator
-        osc1_.SetFrequency(frequency);
-        osc2_.SetFrequency(frequency * 2);
+            // Adjust oscillator
+            osc1_.SetFrequency(frequency);
+            osc2_.SetFrequency(frequency * 2);
+        }
         
         // Set timer to stop note later
         ted_.SetCallback([this](){
@@ -178,14 +181,27 @@ public:
             // Set output value to zero
             PORTD = 0;
             
-            // Reset oscillator for next time
-            osc1_.Reset();
-            osc2_.Reset();
+            // Reset oscillators for next time
+            SyncAllOscillators();
             
             // Reset envelope for next time
             envADSR_.Reset();
         }
     }
+    
+    
+    
+    
+    void SetPhaseLock(uint8_t phaseLock)
+    {
+        phaseLock_ = !!phaseLock;
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
     
     
     
@@ -203,7 +219,19 @@ public:
     void SetOscillator1Frequency(uint16_t frequency)
     {
         osc1_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
     }
+    
+    void SetOscillator1PhaseOffset(int8_t offset)
+    {
+        osc1_.SetPhaseOffset(offset);
+    }
+    
+    
     
     
     ///////////////////////////////////////////////////////////////////////
@@ -220,6 +248,16 @@ public:
     void SetOscillator2Frequency(uint16_t frequency)
     {
         osc2_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
+    void SetOscillator2PhaseOffset(int8_t offset)
+    {
+        osc2_.SetPhaseOffset(offset);
     }
     
     ///////////////////////////////////////////////////////////////////////
@@ -258,7 +296,6 @@ public:
         osc2Factor_ = osc2Pct;
     }
     
-    
     ///////////////////////////////////////////////////////////////////////
     //
     // LFO
@@ -280,7 +317,18 @@ public:
     void SetLFOFrequency(uint16_t frequency)
     {
         lfo_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
     }
+    
+    void SetLFOPhaseOffset(int8_t offset)
+    {
+        lfo_.SetPhaseOffset(offset);
+    }
+    
 
     ///////////////////////////////////////////////////////////////////////
     //
@@ -299,6 +347,22 @@ public:
     }
     
 private:
+
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator Control
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SyncAllOscillators()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            osc1_.Reset();
+            osc2_.Reset();
+            lfo_.Reset();
+        }
+    }
 
     void SetOscillator(SignalOscillator &osc,
                        uint8_t          &oscEnabled,
@@ -345,6 +409,13 @@ private:
             osc.SetSignalSource(&ss.GetSample);
         }
     }
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Main Synthesis Loop
+    //
+    ///////////////////////////////////////////////////////////////////////
 
     static void OnInterrupt()
     {
@@ -437,6 +508,8 @@ private:
     // Debug
     static Pin dbg_;
     
+    static uint8_t phaseLock_;
+    
     static SignalOscillator osc1_;
     static uint8_t          osc1Enabled_;
     static Q08              osc1Factor_;
@@ -460,6 +533,9 @@ private:
 
 template <typename TimerClass>
 Pin SynthesizerVoice<TimerClass>::dbg_(14, LOW);
+
+template <typename TimerClass>
+uint8_t SynthesizerVoice<TimerClass>::phaseLock_ = 0;
 
 template <typename TimerClass>
 SignalOscillator SynthesizerVoice<TimerClass>::osc1_;

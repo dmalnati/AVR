@@ -54,13 +54,17 @@ private:
     
     enum class MessageType : uint8_t
     {
+        SET_PHASE_LOCK = 5,
         SET_OSCILLATOR_1_FREQUENCY = 11,
         SET_OSCILLATOR_1_WAVE_TYPE = 12,
+        SET_OSCILLATOR_1_PHASE_OFFSET = 13,
         SET_OSCILLATOR_BALANCE = 20,
         SET_OSCILLATOR_2_FREQUENCY = 21,
         SET_OSCILLATOR_2_WAVE_TYPE = 22,
+        SET_OSCILLATOR_2_PHASE_OFFSET = 23,
         SET_LFO_FREQUENCY = 31,
         SET_LFO_WAVE_TYPE = 32,
+        SET_LFO_PHASE_OFFSET = 33,
         ENVELOPE_ENABLE = 41,
         ENVELOPE_DISABLE = 42
     };
@@ -78,16 +82,21 @@ private:
         
         switch (t)
         {
+        case MessageType::SET_PHASE_LOCK: SET_PHASE_LOCK(buf, bufSize); break;
+
         case MessageType::SET_OSCILLATOR_1_FREQUENCY: SET_OSCILLATOR_1_FREQUENCY(buf, bufSize); break;
         case MessageType::SET_OSCILLATOR_1_WAVE_TYPE: SET_OSCILLATOR_1_WAVE_TYPE(buf, bufSize); break;
+        case MessageType::SET_OSCILLATOR_1_PHASE_OFFSET: SET_OSCILLATOR_1_PHASE_OFFSET(buf, bufSize); break;
         
         case MessageType::SET_OSCILLATOR_BALANCE: SET_OSCILLATOR_BALANCE(buf, bufSize); break;
         
         case MessageType::SET_OSCILLATOR_2_FREQUENCY: SET_OSCILLATOR_2_FREQUENCY(buf, bufSize); break;
         case MessageType::SET_OSCILLATOR_2_WAVE_TYPE: SET_OSCILLATOR_2_WAVE_TYPE(buf, bufSize); break;
+        case MessageType::SET_OSCILLATOR_2_PHASE_OFFSET: SET_OSCILLATOR_2_PHASE_OFFSET(buf, bufSize); break;
         
         case MessageType::SET_LFO_FREQUENCY: SET_LFO_FREQUENCY(buf, bufSize); break;
         case MessageType::SET_LFO_WAVE_TYPE: SET_LFO_WAVE_TYPE(buf, bufSize); break;
+        case MessageType::SET_LFO_PHASE_OFFSET: SET_LFO_PHASE_OFFSET(buf, bufSize); break;
         
         case MessageType::ENVELOPE_ENABLE: ENVELOPE_ENABLE(buf, bufSize); break;
         case MessageType::ENVELOPE_DISABLE: ENVELOPE_DISABLE(buf, bufSize); break;
@@ -98,6 +107,15 @@ private:
     }
     
     
+    
+    uint8_t GetI8(uint8_t *buf, uint8_t &idx)
+    {
+        int8_t retVal = buf[idx];
+        
+        ++idx;
+        
+        return retVal;
+    }
     
     uint8_t GetU8(uint8_t *buf, uint8_t &idx)
     {
@@ -124,7 +142,19 @@ private:
     
     
     
-    
+    void SET_PHASE_LOCK(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint8_t phaseLock = GetU8(buf, idx);
+            
+            sv_->SetPhaseLock(phaseLock);
+        }
+    }
     
     
     
@@ -162,7 +192,19 @@ private:
         }
     }
     
-    
+    void SET_OSCILLATOR_1_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(int8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            int8_t phaseOffset = GetI8(buf, idx);
+            
+            sv_->SetOscillator1PhaseOffset(phaseOffset);
+        }
+    }
     
     
     
@@ -224,7 +266,19 @@ private:
         }
     }
     
-    
+    void SET_OSCILLATOR_2_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(int8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            int8_t phaseOffset = GetI8(buf, idx);
+            
+            sv_->SetOscillator2PhaseOffset(phaseOffset);
+        }
+    }
     
     
     
@@ -268,7 +322,19 @@ private:
         }
     }
     
-    
+    void SET_LFO_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(int8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            int8_t phaseOffset = GetI8(buf, idx);
+            
+            sv_->SetLFOPhaseOffset(phaseOffset);
+        }
+    }
     
     
     
