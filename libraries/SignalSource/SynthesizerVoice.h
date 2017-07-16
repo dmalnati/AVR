@@ -61,7 +61,7 @@ public:
         SetOscillator2WaveType(OscillatorType::NONE);
         
         // Set up LFO
-        SetLfoWaveType(OscillatorType::SINE);
+        SetLFOWaveType(OscillatorType::SINE);
         
         // Debug
         PAL.PinMode(dbg_, OUTPUT);
@@ -302,15 +302,15 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////
     
-    void SetLfoWaveType(OscillatorType type)
+    void SetLFOWaveType(OscillatorType type)
     {
         SetOscillator(lfo_, lfoEnabled_, type);
         
         if (!lfoEnabled_)
         {
             // Restore the frequency offset to the other oscillators
-            osc1_.ApplyFrequencyOffset(0);
-            osc2_.ApplyFrequencyOffset(0);
+            osc1_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
+            osc2_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
         }
     }
     
@@ -327,6 +327,11 @@ public:
     void SetLFOPhaseOffset(int8_t offset)
     {
         lfo_.SetPhaseOffset(offset);
+    }
+    
+    void SetLFOVibratoPct(uint8_t vibratoPct)
+    {
+        lfoVibratoPct_ = vibratoPct;
     }
     
 
@@ -420,17 +425,44 @@ private:
     static void OnInterrupt()
     {
         // Debug
-        //PAL.DigitalToggle(dbg_);
+        PAL.DigitalToggle(dbg_);
         
         // Apply the LFO for next time
         if (lfoEnabled_)
         {
             int8_t lfoVal = lfo_.GetNextSample();
             
-            int8_t freqOffset = lfoVal * lfoFactor_;
+            // Calculate a percent increase in frequency for the oscillator
+            // LFO value varies between -128 and 127.
+            // Shift to 0-255.
+            // Then consider that a percentage over 255 (a Q08 type).
+            // This is the "intensity" factor.
             
-            osc1_.ApplyFrequencyOffset(freqOffset);
-            osc2_.ApplyFrequencyOffset(freqOffset);
+            Q08 lfoIntensity = (uint8_t)(lfoVal + 128);
+            
+            
+            // Objective is to use this intensity to determine how much to
+            // increase the frequency of the given oscillators.
+            // EG:
+            // - LFO at 15
+            //   - that's 143 / 255 = 56%
+            // - OSC1 freq is 100Hz
+            // - OSC1 freq should go to 100Hz + (100Hz * 56%) = 156Hz
+            //
+            // However, we want to first allow allow user ability to dampen that
+            // intensity factor.
+            //
+            // That is, what percent of the current intensity should be
+            // applied?
+            //
+            // Allow a user-tunable control over this.
+            
+            Q08 pctIncrease = lfoIntensity * lfoVibratoPct_;
+            
+            
+            // Now apply to each oscillator
+            osc1_.ApplyFrequencyOffsetPctIncreaseFromBase(pctIncrease);
+            osc2_.ApplyFrequencyOffsetPctIncreaseFromBase(pctIncrease);
         }
         
         
@@ -520,7 +552,7 @@ private:
     
     static SignalOscillator lfo_;
     static uint8_t          lfoEnabled_;
-    static Q08              lfoFactor_;
+    static Q08              lfoVibratoPct_;
     
     static SignalEnvelopeADSR envADSR_;
     static uint8_t            envADSREnabled_;
@@ -556,7 +588,7 @@ SignalOscillator SynthesizerVoice<TimerClass>::lfo_;
 template <typename TimerClass>
 uint8_t SynthesizerVoice<TimerClass>::lfoEnabled_ = 1;
 template <typename TimerClass>
-Q08 SynthesizerVoice<TimerClass>::lfoFactor_ = 0.5;
+Q08 SynthesizerVoice<TimerClass>::lfoVibratoPct_ = 0.5;
 
 
 template <typename TimerClass>

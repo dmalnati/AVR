@@ -17,48 +17,24 @@ public:
     void SetSampleRate(uint16_t sampleRate)
     {
         stepSizePerHz_ = (double)VALUE_COUNT / (double)sampleRate;
-        
-        stepSizePerHzQ_ = stepSizePerHz_;
     }
     
     void SetFrequency(uint16_t frequency)
     {
         // Use full-resolution double for an infrequently-called function
+        // to calculate step size for stepper
         stepSize_ = stepSizePerHz_ * frequency;
         
         rotation_.SetStepSize(stepSize_);
     }
-    
-    void ApplyFrequencyOffset(int8_t frequencyOffset)
+
+    void ApplyFrequencyOffsetPctIncreaseFromBase(Q08 pctIncrease)
     {
-        if (frequencyOffset >= 0)
-        {
-            // Convert frequency offset to fast double
-            Q88 frequencyOffsetQ = (uint8_t)frequencyOffset;
-            
-            // Scale the frequency offset by the steps-per-hz multiplier
-            Q88 stepOffset = stepSizePerHzQ_ * frequencyOffsetQ;
-            
-            // Apply offset to cached step size
-            Q88 stepSizeNew = stepSize_ + stepOffset;
-            
-            // Set new step size
-            rotation_.SetStepSize(stepSizeNew);
-        }
-        else
-        {
-            // Convert frequency offset to fast double
-            Q88 frequencyOffsetQ = (uint8_t)-frequencyOffset;
-
-            // Scale the frequency offset by the steps-per-hz multiplier
-            Q88 stepOffset = stepSizePerHzQ_ * frequencyOffsetQ;
-            
-            // Apply offset to cached step size
-            Q88 stepSizeNew = stepSize_ - stepOffset;
-
-            // Set new step size
-            rotation_.SetStepSize(stepSizeNew);
-        }
+        Q88 stepSizeToAdd = stepSize_ * pctIncrease;
+        
+        Q88 stepSizeNew = stepSize_ + stepSizeToAdd;
+        
+        rotation_.SetStepSize(stepSizeNew);
     }
     
     void SetPhaseOffset(int8_t phaseOffset)
@@ -94,10 +70,9 @@ private:
 
 
     double                  stepSizePerHz_;
-    Q88                     stepSizePerHzQ_;
+    Q88                     stepSize_;
     SignalSourceFn          ssFn_;
     FixedPointStepper<Q88>  rotation_;
-    Q88                     stepSize_;
     int8_t                  phaseOffset_ = 0;
 };
 
