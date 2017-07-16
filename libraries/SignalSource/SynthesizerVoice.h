@@ -30,6 +30,19 @@ class SynthesizerVoice
     
 public:
 
+    enum class OscillatorType : uint8_t
+    {
+        NONE = 0,
+        SINE,
+        SAWR,
+        SAWL,
+        SQUARE,
+        TRIANGLE
+    };
+
+    
+public:
+
     SynthesizerVoice()
     {
         // Need better way -- open output pins
@@ -76,8 +89,8 @@ public:
         uint16_t sampleRateActual = th.GetInterruptFrequency();
         
         // Set up oscillator
-        so1_.SetSampleRate(sampleRateActual);
-        so2_.SetSampleRate(sampleRateActual);
+        osc1_.SetSampleRate(sampleRateActual);
+        osc2_.SetSampleRate(sampleRateActual);
         
         // Set up LFO
         lfo_.SetSampleRate(sampleRateActual);
@@ -110,8 +123,8 @@ public:
         }
         
         // Adjust oscillator
-        so1_.SetFrequency(frequency);
-        so2_.SetFrequency(frequency * 2);
+        osc1_.SetFrequency(frequency);
+        osc2_.SetFrequency(frequency * 2);
         
         // Set timer to stop note later
         ted_.SetCallback([this](){
@@ -166,66 +179,79 @@ public:
             PORTD = 0;
             
             // Reset oscillator for next time
-            so1_.Reset();
-            so2_.Reset();
+            osc1_.Reset();
+            osc2_.Reset();
             
             // Reset envelope for next time
             envADSR_.Reset();
         }
     }
     
-    enum class OscillatorType : uint8_t
-    {
-        NONE = 0,
-        SINE,
-        SAWR,
-        SAWL,
-        SQUARE,
-        TRIANGLE
-    };
-
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator 1
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
     void SetOscillator1WaveType(OscillatorType type)
     {
-        SetOscillator(so1_, type);
+        SetOscillator(osc1_, osc1Enabled_, type);
     }
-    
-    void SetOscillator2WaveType(OscillatorType type)
-    {
-        SetOscillator(so2_, type);
-    }
-    
-    void SetLfoWaveType(OscillatorType type)
-    {
-        SetOscillator(lfo_, type);
-    }
-
-    
     
     void SetOscillator1Frequency(uint16_t frequency)
     {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            
-        so1_.SetFrequency(frequency);
-        
-        }
+        osc1_.SetFrequency(frequency);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator 2
+    //
+    ///////////////////////////////////////////////////////////////////////
+
+    void SetOscillator2WaveType(OscillatorType type)
+    {
+        SetOscillator(osc2_, osc2Enabled_, type);
     }
     
     void SetOscillator2Frequency(uint16_t frequency)
     {
-        so2_.SetFrequency(frequency);
+        osc2_.SetFrequency(frequency);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // LFO
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetLfoWaveType(OscillatorType type)
+    {
+        SetOscillator(lfo_, lfoEnabled_, type);
+        
+        if (!lfoEnabled_)
+        {
+            // Restore the frequency offset to the other oscillators
+            osc1_.ApplyFrequencyOffset(0);
+            osc2_.ApplyFrequencyOffset(0);
+        }
     }
     
     void SetLFOFrequency(uint16_t frequency)
     {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-
         lfo_.SetFrequency(frequency);
-        
-        }
     }
-    
+
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // EnvelopeADSR
+    //
+    ///////////////////////////////////////////////////////////////////////
+
     void EnableEnvelopeADSR()
     {
         envADSREnabled_ = 1;
@@ -238,43 +264,49 @@ public:
     
 private:
 
-    void SetOscillator(SignalOscillator &so, OscillatorType type)
+    void SetOscillator(SignalOscillator &osc,
+                       uint8_t          &oscEnabled,
+                       OscillatorType    type)
     {
+        oscEnabled = 1;
+        
         if (type == OscillatorType::NONE)
         {
             static SignalSourceNoneWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            oscEnabled = 0;
+            
+            osc.SetSignalSource(&ss.GetSample);
         }
         else if (type == OscillatorType::SINE)
         {
             static SignalSourceSineWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(&ss.GetSample);
         }
         else if (type == OscillatorType::SAWR)
         {
             static SignalSourceSawtoothRightWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(&ss.GetSample);
         }
         else if (type == OscillatorType::SAWL)
         {
             static SignalSourceSawtoothLeftWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(&ss.GetSample);
         }
         else if (type == OscillatorType::SQUARE)
         {
             static SignalSourceSquareWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(&ss.GetSample);
         }
         else if (type == OscillatorType::TRIANGLE)
         {
             static SignalSourceTriangleWave ss;
             
-            so.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(&ss.GetSample);
         }
     }
 
@@ -284,24 +316,56 @@ private:
         //PAL.DigitalToggle(dbg_);
         
         // Apply the LFO for next time
-        int8_t lfoVal = lfo_.GetNextSample();
+        if (lfoEnabled_)
+        {
+            int8_t lfoVal = lfo_.GetNextSample();
+            
+            int8_t freqOffset = lfoVal * lfoFactor_;
+            
+            osc1_.ApplyFrequencyOffset(freqOffset);
+            osc2_.ApplyFrequencyOffset(freqOffset);
+        }
         
-        int8_t freqOffset = lfoVal * lfoFactor_;
         
-        so1_.ApplyFrequencyOffset(freqOffset);
-        //so2_.ApplyFrequencyOffset(freqOffset);
-
+        
+        
         // Get current raw oscillator value
-        int8_t osc1Val = so1_.GetNextSample();
-        int8_t osc2Val = so2_.GetNextSample();
+        int8_t osc1Val = osc1_.GetNextSample();
+        int8_t osc2Val = osc2_.GetNextSample();
 
-        // Scale and combine oscillator values
-        //osc1Val = osc1Val * osc1Factor_;
-        //osc2Val = osc2Val * osc2Factor_;
+        // Prepare to store single value representing the oscillator set
+        int8_t oscVal = 0;
         
-        //int8_t oscVal = osc1Val + osc2Val;
-        int8_t oscVal = osc1Val;
+        // Scale if both enabled
+        if (osc1Enabled_ && osc2Enabled_)
+        {
+            // Scale and combine oscillator values
+            osc1Val = osc1Val * osc1Factor_;
+            osc2Val = osc2Val * osc2Factor_;
+            
+            oscVal = osc1Val + osc2Val;
+        }
+        else if (osc1Enabled_)
+        {
+            oscVal = osc1Val;
+        }
+        else if (osc2Enabled_)
+        {
+            oscVal = osc2Val;
+        }
+        
 
+
+
+
+
+
+
+
+
+
+        
+        /*
         // Get envelope value and apply
         Q08 envVal = envADSR_.GetNextEnvelope();
 
@@ -311,9 +375,14 @@ private:
             PAL.DigitalToggle(dbg_);
             scaledVal = (oscVal * envVal);
         }
+        */
 
-        // Adjust to 0-255 range
+        // Adjust to 0-255 range, but only use if some signal is in effect
         uint8_t val = 128 + scaledVal;
+        if (!osc1Enabled_ && !osc2Enabled_)
+        {
+            val = 0;
+        }
         
         // Create analog signal
         PORTD = val;
@@ -323,13 +392,16 @@ private:
     // Debug
     static Pin dbg_;
     
-    static SignalOscillator so1_;
+    static SignalOscillator osc1_;
+    static uint8_t          osc1Enabled_;
     static Q08              osc1Factor_;
     
-    static SignalOscillator so2_;
+    static SignalOscillator osc2_;
+    static uint8_t          osc2Enabled_;
     static Q08              osc2Factor_;
     
     static SignalOscillator lfo_;
+    static uint8_t          lfoEnabled_;
     static Q08              lfoFactor_;
     
     static SignalEnvelopeADSR envADSR_;
@@ -345,17 +417,23 @@ template <typename TimerClass>
 Pin SynthesizerVoice<TimerClass>::dbg_(14, LOW);
 
 template <typename TimerClass>
-SignalOscillator SynthesizerVoice<TimerClass>::so1_;
+SignalOscillator SynthesizerVoice<TimerClass>::osc1_;
+template <typename TimerClass>
+uint8_t SynthesizerVoice<TimerClass>::osc1Enabled_ = 1;
 template <typename TimerClass>
 Q08 SynthesizerVoice<TimerClass>::osc1Factor_ = 0.5;
 
 template <typename TimerClass>
-SignalOscillator SynthesizerVoice<TimerClass>::so2_;
+SignalOscillator SynthesizerVoice<TimerClass>::osc2_;
+template <typename TimerClass>
+uint8_t SynthesizerVoice<TimerClass>::osc2Enabled_ = 1;
 template <typename TimerClass>
 Q08 SynthesizerVoice<TimerClass>::osc2Factor_ = 0.5;
 
 template <typename TimerClass>
 SignalOscillator SynthesizerVoice<TimerClass>::lfo_;
+template <typename TimerClass>
+uint8_t SynthesizerVoice<TimerClass>::lfoEnabled_ = 1;
 template <typename TimerClass>
 Q08 SynthesizerVoice<TimerClass>::lfoFactor_ = 0.5;
 
