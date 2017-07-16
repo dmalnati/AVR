@@ -6,6 +6,9 @@
 #include <stdint.h>
 
 
+class Q08;
+
+
 template <uint8_t  BITS_WHOLE,
           uint8_t  BITS_FRAC,
           typename STORAGE_TYPE,
@@ -100,6 +103,20 @@ public:
     inline bool operator<(const FixedPointClass &rhs) const
     {
         return val_ < rhs.val_;
+    }
+    
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // Q08
+    //
+    ////////////////////////////////////////////////////////////////////
+    
+    inline FixedPointClass operator*(const Q08 &rhs) const
+    {
+        STORAGE_TYPE retVal = val_ * rhs;
+        
+        return FixedPointClass(retVal, CTorType::PRIVATE);
     }
     
     
@@ -241,6 +258,25 @@ public:
     {
         val_ = rhs.val_;
     }
+    
+    inline Q08 operator*(const Q08 &rhs) const
+    {
+        return (uint8_t)(val_ * rhs.val_ / 256);
+    }
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // FixedPoint
+    //
+    ////////////////////////////////////////////////////////////////////
+    
+    // Use deduction to make sure we're only referring to FixedPoint types here
+    template <uint8_t BITS_WHOLE, uint8_t BITS_FRAC, typename STORAGE_TYPE, typename STORAGE_TYPE_HALF_SIZE>
+    inline FixedPoint<BITS_WHOLE,BITS_FRAC,STORAGE_TYPE,STORAGE_TYPE_HALF_SIZE>
+    operator*(const FixedPoint<BITS_WHOLE,BITS_FRAC,STORAGE_TYPE,STORAGE_TYPE_HALF_SIZE> &rhs) const
+    {
+        return rhs * *this;
+    }
 
 
     ////////////////////////////////////////////////////////////////////
@@ -264,7 +300,19 @@ public:
 
         val_ = fracAsInt;
     }
-
+    
+    
+    ////////////////////////////////////////////////////////////////////
+    //
+    // uint16_t
+    //
+    ////////////////////////////////////////////////////////////////////
+    
+    inline int32_t operator*(const uint16_t rhs) const
+    {
+        return ((int32_t)val_ * (int32_t)rhs) / 256;
+    }
+    
 
     ////////////////////////////////////////////////////////////////////
     //
@@ -319,6 +367,12 @@ private:
     uint8_t val_ = 0;
 };
 
+
+inline int16_t operator*(const uint16_t lhs, const Q08 &rhs)
+{
+    return rhs * lhs;
+}
+
 inline int16_t operator*(const uint8_t lhs, const Q08 &rhs)
 {
     return rhs * lhs;
@@ -328,6 +382,10 @@ inline int16_t operator*(const int8_t lhs, const Q08 &rhs)
 {
     return rhs * lhs;
 }
+
+
+
+
 
 
 
