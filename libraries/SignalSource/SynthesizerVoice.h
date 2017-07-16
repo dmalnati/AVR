@@ -334,6 +334,11 @@ public:
         lfoVibratoPct_ = vibratoPct;
     }
     
+    void SetLFOTromoloPct(uint8_t tromoloPct)
+    {
+        lfoTromoloPct_ = tromoloPct;
+    }
+    
 
     ///////////////////////////////////////////////////////////////////////
     //
@@ -427,20 +432,30 @@ private:
         // Debug
         PAL.DigitalToggle(dbg_);
         
-        // Apply the LFO for next time
+        
+        
+        // LFO signal processing.
+        //
+        // LFO value varies between -128 and 127.
+        // Shift to 0-255.
+        // Then consider that a percentage over 255 (a Q08 type).
+        // This is the "intensity" factor.
+        // Two values are maintained, in-phase and 180-degrees out-of-phase,
+        // which supports both vibrato and tremolo.
+        // We want vibrato to be most intense at the same time tromolo is at
+        // peak amplitude, both phases are needed for that.
+        int8_t lfoVal = lfo_.GetNextSample();
+        
+        uint8_t lfoValPhase0   = (lfoVal + 128);
+        uint8_t lfoValPhase180 = 255 - lfoValPhase0;
+
+        Q08 lfoIntensityPhase0   = lfoValPhase0;
+        Q08 lfoIntensityPhase180 = lfoValPhase180;
+        
+        // LFO Vibrato
         if (lfoEnabled_)
         {
-            int8_t lfoVal = lfo_.GetNextSample();
-            
-            // Calculate a percent increase in frequency for the oscillator
-            // LFO value varies between -128 and 127.
-            // Shift to 0-255.
-            // Then consider that a percentage over 255 (a Q08 type).
-            // This is the "intensity" factor.
-            
-            Q08 lfoIntensity = (uint8_t)(lfoVal + 128);
-            
-            
+            // Calculate a percent increase in frequency for the oscillator.
             // Objective is to use this intensity to determine how much to
             // increase the frequency of the given oscillators.
             // EG:
@@ -457,8 +472,7 @@ private:
             //
             // Allow a user-tunable control over this.
             
-            Q08 pctIncrease = lfoIntensity * lfoVibratoPct_;
-            
+            Q08 pctIncrease = lfoIntensityPhase0 * lfoVibratoPct_;
             
             // Now apply to each oscillator
             osc1_.ApplyFrequencyOffsetPctIncreaseFromBase(pctIncrease);
@@ -494,8 +508,15 @@ private:
         }
         
 
-
-
+        
+        
+        
+        
+        // LFO Tromolo
+        if (lfoEnabled_)
+        {
+            oscVal = oscVal - (oscVal * (lfoIntensityPhase180 * lfoTromoloPct_));
+        }
 
 
 
@@ -553,6 +574,7 @@ private:
     static SignalOscillator lfo_;
     static uint8_t          lfoEnabled_;
     static Q08              lfoVibratoPct_;
+    static Q08              lfoTromoloPct_;
     
     static SignalEnvelopeADSR envADSR_;
     static uint8_t            envADSREnabled_;
@@ -589,6 +611,8 @@ template <typename TimerClass>
 uint8_t SynthesizerVoice<TimerClass>::lfoEnabled_ = 1;
 template <typename TimerClass>
 Q08 SynthesizerVoice<TimerClass>::lfoVibratoPct_ = 0.5;
+template <typename TimerClass>
+Q08 SynthesizerVoice<TimerClass>::lfoTromoloPct_ = 0.5;
 
 
 template <typename TimerClass>
