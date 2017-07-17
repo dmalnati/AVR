@@ -19,6 +19,11 @@ class SignalEnvelopeADSR
     static const uint16_t DEFAULT_RELEASE_DURATION_MS = 20;
     
 public:
+
+    SignalEnvelopeADSR()
+    {
+        SetConstantValues();
+    }
     
     void SetSampleRate(uint16_t sampleRate)
     {
@@ -63,6 +68,11 @@ public:
     
     void StartDecay()
     {
+        // Calculate starting point for Decay.
+        // Can't pre-calculate because Attack or Decay may still be in effect.
+        CalculateRelease(1);
+        releaseStepper_.SetValue((Q88)currentLevel_);
+        
         state_ = State::RELEASE;
     }
     
@@ -124,6 +134,9 @@ public:
             }
         }
         
+        // Cache for times when Decay begins before Sustain was reached
+        currentLevel_ = retVal;
+        
         return (Q08)retVal;
     }
     
@@ -181,26 +194,30 @@ private:
         decayStepper_.SetStepSize(stepSize);
     }
     
-    void CalculateRelease()
+    void CalculateRelease(uint8_t useCurrentLevel = 0)
     {
+        uint8_t level = useCurrentLevel ? currentLevel_ : sustainLevel_;
+        
         // Just go linear down
-        double stepSize = CalculateLinearStepSize(sustainLevel_ - BOTTOM_VALUE,
+        double stepSize = CalculateLinearStepSize(level - BOTTOM_VALUE,
                                                   releaseDurationMs_);
         
         // Store calculated value
         releaseStepper_.SetStepSize(stepSize);
     }
     
+    void SetConstantValues()
+    {
+        attackStepper_.SetLimitUpper((Q88)TOP_VALUE);
+        releaseStepper_.SetLimitLower((Q88)BOTTOM_VALUE);
+    }
+    
     void SetStepwiseInitialValues()
     {
         attackStepper_.SetValue(attackStepperInitialValue_);
-        attackStepper_.SetLimitUpper(attackStepperLimitUpper_);
         
         decayStepper_.SetValue(decayStepperInitialValue_);
         decayStepper_.SetLimitLower((Q88)sustainLevel_);
-        
-        releaseStepper_.SetValue((Q88)sustainLevel_);
-        releaseStepper_.SetLimitLower(releaseStepperLimitLower_);
     }
     
     
@@ -212,9 +229,11 @@ private:
         RELEASE,
         DONE
     };
+    
 
     // Keep track of state of envelope stage
-    State state_;
+    State   state_;
+    uint8_t currentLevel_ = 0;
     
     // Cached raw values
     uint16_t sampleRate_ = DEFAULT_SAMPLE_RATE;
@@ -223,7 +242,6 @@ private:
     uint16_t                attackDurationMs_          = DEFAULT_ATTACK_DURATION_MS;
     FixedPointStepper<Q88>  attackStepper_;
     Q88                     attackStepperInitialValue_ = BOTTOM_VALUE;
-    Q88                     attackStepperLimitUpper_   = TOP_VALUE;
 
     // Decay values
     uint16_t                decayDurationMs_          = DEFAULT_DECAY_DURATION_MS;
@@ -236,9 +254,8 @@ private:
                                TOP_VALUE;
     
     // Release values
-    uint16_t                releaseDurationMs_        = DEFAULT_RELEASE_DURATION_MS;
+    uint16_t                releaseDurationMs_ = DEFAULT_RELEASE_DURATION_MS;
     FixedPointStepper<Q88>  releaseStepper_;
-    Q88                     releaseStepperLimitLower_ = BOTTOM_VALUE;
 };
 
 
