@@ -62,7 +62,7 @@ public:
     
     void Reset()
     {
-        rotation_.SetValue(0);
+        rotation_.SetValue((Q88)(uint8_t)0);
     }
 
 private:
