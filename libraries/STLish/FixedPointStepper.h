@@ -16,34 +16,35 @@ public:
         // Nothing to do
     }
     
-    inline void SetValue(double val)
+
+    template <typename T>
+    inline void SetValue(const T &val)
     {
         val_ = val;
     }
     
-    inline void SetStepSize(double stepSize)
+    template <typename T>
+    inline void SetStepSize(const T &stepSize)
     {
         stepSize_ = stepSize;
     }
     
-    inline void SetStepSize(const QT &stepSize)
-    {
-        stepSize_ = stepSize;
-    }
-    
-    inline void Incr()
-    {
-        val_ += stepSize_;
-    }
-    
-    inline void SetLimitLower(double limitLower)
+    template <typename T>
+    inline void SetLimitLower(const T &limitLower)
     {
         limitLower_ = limitLower;
     }
     
-    inline void SetLimitUpper(double limitUpper)
+    template <typename T>
+    inline void SetLimitUpper(const T &limitUpper)
     {
         limitUpper_ = limitUpper;
+    }
+
+
+    inline void Incr()
+    {
+        val_ += stepSize_;
     }
     
     void IncrTowardLimit()
@@ -79,7 +80,7 @@ public:
             val_ -= stepSize_;
         }
     }
-
+    
     inline uint8_t GetUnsignedInt8() const
     {
         return val_.GetUnsignedInt8();
