@@ -193,14 +193,14 @@ private:
     
     void SetStepwiseInitialValues()
     {
-        attackStepper_.SetValue((double)BOTTOM_VALUE);
-        attackStepper_.SetLimitUpper((double)TOP_VALUE);
+        attackStepper_.SetValue(attackStepperInitialValue_);
+        attackStepper_.SetLimitUpper(attackStepperLimitUpper_);
         
-        decayStepper_.SetValue((double)TOP_VALUE);
-        decayStepper_.SetLimitLower((double)sustainLevel_);
+        decayStepper_.SetValue(decayStepperInitialValue_);
+        decayStepper_.SetLimitLower((Q88)sustainLevel_);
         
-        releaseStepper_.SetValue((double)sustainLevel_);
-        releaseStepper_.SetLimitLower((double)BOTTOM_VALUE);
+        releaseStepper_.SetValue((Q88)sustainLevel_);
+        releaseStepper_.SetLimitLower(releaseStepperLimitLower_);
     }
     
     
@@ -220,12 +220,15 @@ private:
     uint16_t sampleRate_ = DEFAULT_SAMPLE_RATE;
     
     // Attack values
-    uint16_t attackDurationMs_ = DEFAULT_ATTACK_DURATION_MS;
+    uint16_t                attackDurationMs_          = DEFAULT_ATTACK_DURATION_MS;
     FixedPointStepper<Q88>  attackStepper_;
-    
+    Q88                     attackStepperInitialValue_ = BOTTOM_VALUE;
+    Q88                     attackStepperLimitUpper_   = TOP_VALUE;
+
     // Decay values
-    uint16_t decayDurationMs_ = DEFAULT_DECAY_DURATION_MS;
+    uint16_t                decayDurationMs_          = DEFAULT_DECAY_DURATION_MS;
     FixedPointStepper<Q88>  decayStepper_;
+    Q88                     decayStepperInitialValue_ = TOP_VALUE;
 
     // Sustain values
     uint8_t sustainLevelPct_ = DEFAULT_SUSTAIN_LEVEL_PCT;
@@ -233,8 +236,9 @@ private:
                                TOP_VALUE;
     
     // Release values
-    uint16_t releaseDurationMs_ = DEFAULT_RELEASE_DURATION_MS;
+    uint16_t                releaseDurationMs_        = DEFAULT_RELEASE_DURATION_MS;
     FixedPointStepper<Q88>  releaseStepper_;
+    Q88                     releaseStepperLimitLower_ = BOTTOM_VALUE;
 };
 
 
