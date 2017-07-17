@@ -68,7 +68,13 @@ private:
         SET_LFO_VIBRATO_PCT = 34,
         SET_LFO_TROMOLO_PCT = 35,
         ENVELOPE_ENABLE = 41,
-        ENVELOPE_DISABLE = 42
+        ENVELOPE_DISABLE = 42,
+        SET_ENVELOPE_ATTACK_DURATION_MS = 43,
+        SET_ENVELOPE_DECAY_DURATION_MS = 44,
+        SET_ENVELOPE_SUSTAIN_LEVEL_PCT = 45,
+        SET_ENVELOPE_RELEASE_DURATION_MS = 46,
+        SYNTHESIZER_KEY_DOWN = 61,
+        SYNTHESIZER_KEY_UP = 62
     };
 
     
@@ -105,6 +111,18 @@ private:
         
         case MessageType::ENVELOPE_ENABLE: ENVELOPE_ENABLE(buf, bufSize); break;
         case MessageType::ENVELOPE_DISABLE: ENVELOPE_DISABLE(buf, bufSize); break;
+        
+        
+        
+        case MessageType::SET_ENVELOPE_ATTACK_DURATION_MS: SET_ENVELOPE_ATTACK_DURATION_MS(buf, bufSize); break;
+        case MessageType::SET_ENVELOPE_DECAY_DURATION_MS: SET_ENVELOPE_DECAY_DURATION_MS(buf, bufSize); break;
+        case MessageType::SET_ENVELOPE_SUSTAIN_LEVEL_PCT: SET_ENVELOPE_SUSTAIN_LEVEL_PCT(buf, bufSize); break;
+        case MessageType::SET_ENVELOPE_RELEASE_DURATION_MS: SET_ENVELOPE_RELEASE_DURATION_MS(buf, bufSize); break;
+        
+        
+        case MessageType::SYNTHESIZER_KEY_DOWN: SYNTHESIZER_KEY_DOWN(buf, bufSize); break;
+        case MessageType::SYNTHESIZER_KEY_UP: SYNTHESIZER_KEY_UP(buf, bufSize); break;
+        
         
         default:
             break;
@@ -383,6 +401,61 @@ private:
         sv_->DisableEnvelopeADSR();
     }
     
+    void SET_ENVELOPE_ATTACK_DURATION_MS(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint16_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint16_t durationMs = GetU16(buf, idx);
+            
+            sv_->SetAttackDuration(durationMs);
+        }
+    }
+    
+    void SET_ENVELOPE_DECAY_DURATION_MS(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint16_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint16_t durationMs = GetU16(buf, idx);
+            
+            sv_->SetDecayDuration(durationMs);
+        }
+    }
+    
+    void SET_ENVELOPE_SUSTAIN_LEVEL_PCT(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint8_t levelPct = GetU8(buf, idx);
+            
+            sv_->SetSustainLevelPct(levelPct);
+        }
+    }
+    
+    void SET_ENVELOPE_RELEASE_DURATION_MS(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint16_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint16_t durationMs = GetU16(buf, idx);
+            
+            sv_->SetReleaseDuration(durationMs);
+        }
+    }
     
     
     
@@ -390,12 +463,16 @@ private:
     
     
     
+    void SYNTHESIZER_KEY_DOWN(uint8_t *, uint8_t)
+    {
+        sv_->OnKeyDown();
+    }
     
-    
-    
-    
-    
-    
+    void SYNTHESIZER_KEY_UP(uint8_t *, uint8_t)
+    {
+        sv_->OnKeyUp();
+    }
+
     
     
     

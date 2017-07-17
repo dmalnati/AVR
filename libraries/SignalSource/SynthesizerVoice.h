@@ -169,6 +169,22 @@ public:
         // Debug
         Serial.println("StopNote()");
     }
+    
+    void OnKeyDown()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            envADSR_.Reset();
+        }
+    }
+    
+    void OnKeyUp()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            envADSR_.StartDecay();
+        }
+    }
 
     
     
@@ -188,6 +204,26 @@ public:
         envADSREnabled_ = 0;
     }
     
+    void SetAttackDuration(uint16_t durationMs)
+    {
+        envADSR_.SetAttackDuration(durationMs);
+    }
+    
+    void SetDecayDuration(uint16_t durationMs)
+    {
+        envADSR_.SetDecayDuration(durationMs);
+    }
+    
+    void SetSustainLevelPct(uint8_t levelPct)
+    {
+        envADSR_.SetSustainLevelPct(levelPct);
+    }
+    
+    void SetReleaseDuration(uint16_t durationMs)
+    {
+        envADSR_.SetReleaseDuration(durationMs);
+    }
+    
 private:
     
     ///////////////////////////////////////////////////////////////////////
@@ -199,7 +235,7 @@ private:
     static void OnInterrupt()
     {
         // Get next generated value
-        uint8_t fgVal = FunctionGenerator::GetNextValue();
+        int8_t fgVal = FunctionGenerator::GetNextValue();
         
         // Get envelope value and apply
         Q08 envVal = envADSR_.GetNextEnvelope();
