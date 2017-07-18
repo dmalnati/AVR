@@ -131,19 +131,19 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////
     
-    void OnKeyDown()
+    void EnvelopeBeginAttack()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            envADSR_.Reset();
+            envADSR_.StartAttack();
         }
     }
     
-    void OnKeyUp()
+    void EnvelopeBeginRelease()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            envADSR_.StartDecay();
+            envADSR_.StartRelease();
         }
     }
 
