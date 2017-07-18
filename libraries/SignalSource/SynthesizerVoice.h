@@ -131,45 +131,6 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////
     
-    void StartNote(uint16_t frequency, uint16_t durationMs)
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            // Adjust envelope
-            envADSR_.Reset();
-        
-            // Set up function generator parameters for note
-            FunctionGenerator::SetOscillator1Frequency(frequency);
-            FunctionGenerator::SetOscillator2Frequency(frequency + 5);
-        }
-        
-        // Set timer to stop note later
-        ted_.SetCallback([this](){
-            StopNote();
-        });
-        ted_.RegisterForTimedEvent(durationMs);
-        
-        // Debug
-        Serial.print("StartNote(frequency=");
-        Serial.print(frequency);
-        Serial.print(", durationMs=");
-        Serial.print(durationMs);
-        Serial.println();
-    }
-    
-    void StopNote()
-    {
-        // Cancel timer in case called externally
-        // (as opposed to timer timeout having triggered this function)
-        ted_.DeRegisterForTimedEvent();
-        
-        // Inform envelope that the note has been released
-        envADSR_.StartDecay();
-        
-        // Debug
-        Serial.println("StopNote()");
-    }
-    
     void OnKeyDown()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -261,8 +222,6 @@ private:
     static uint8_t            envADSREnabled_;
     
     static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
-    
-    static TimedEventHandlerDelegate ted_;
 };
 
 
@@ -271,9 +230,6 @@ template <typename TimerClass>
 SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
 template <typename TimerClass>
 uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_ = 1;
-
-template <typename TimerClass>
-TimedEventHandlerDelegate SynthesizerVoice<TimerClass>::ted_;
 
 
 
