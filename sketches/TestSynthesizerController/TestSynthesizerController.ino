@@ -11,7 +11,7 @@ class Controller
 {
 public:
     Controller()
-    : svsi_(s_.GetSynthesizerVoice())
+    : svsi_(s_.GetSynthesizerVoice(), &s_)
     {
         // Nothing to do
     }
@@ -55,7 +55,7 @@ public:
             
             PlayAsync(n);
         });
-        tedNextNote_.RegisterForTimedEventInterval(1000);
+        //tedNextNote_.RegisterForTimedEventInterval(1000);
         
         // Start up serial controller
         svsi_.Init();

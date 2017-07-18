@@ -20,8 +20,10 @@ public:
 
 public:
 
-    SynthesizerVoiceSerialInterface(SynthesizerVoiceClass *sv)
+    SynthesizerVoiceSerialInterface(SynthesizerVoiceClass *sv,
+                                    Synthesizer           *s)
     : sv_(sv)
+    , s_(s)
     {
         // Nothing to do
     }
@@ -73,6 +75,8 @@ private:
         SET_ENVELOPE_DECAY_DURATION_MS = 44,
         SET_ENVELOPE_SUSTAIN_LEVEL_PCT = 45,
         SET_ENVELOPE_RELEASE_DURATION_MS = 46,
+        ENVELOPE_BEGIN_ATTACK = 47,
+        ENVELOPE_BEGIN_RELEASE = 48,
         SYNTHESIZER_KEY_DOWN = 61,
         SYNTHESIZER_KEY_UP = 62
     };
@@ -120,9 +124,13 @@ private:
         case MessageType::SET_ENVELOPE_RELEASE_DURATION_MS: SET_ENVELOPE_RELEASE_DURATION_MS(buf, bufSize); break;
         
         
+        case MessageType::ENVELOPE_BEGIN_ATTACK: ENVELOPE_BEGIN_ATTACK(buf, bufSize); break;
+        case MessageType::ENVELOPE_BEGIN_RELEASE: ENVELOPE_BEGIN_RELEASE(buf, bufSize); break;
+        
+        
         case MessageType::SYNTHESIZER_KEY_DOWN: SYNTHESIZER_KEY_DOWN(buf, bufSize); break;
         case MessageType::SYNTHESIZER_KEY_UP: SYNTHESIZER_KEY_UP(buf, bufSize); break;
-        
+
         
         default:
             break;
@@ -463,16 +471,72 @@ private:
     
     
     
-    void SYNTHESIZER_KEY_DOWN(uint8_t *, uint8_t)
+    void ENVELOPE_BEGIN_ATTACK(uint8_t *, uint8_t)
     {
-        sv_->OnKeyDown();
+        sv_->EnvelopeBeginAttack();
+    }
+    
+    void ENVELOPE_BEGIN_RELEASE(uint8_t *, uint8_t)
+    {
+        sv_->EnvelopeBeginRelease();
+    }
+
+    
+    
+    
+    
+    
+    
+    void SYNTHESIZER_KEY_DOWN(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint8_t key = GetU8(buf, idx);
+            
+            Synthesizer::Note n;
+            
+            switch (key)
+            {
+            case  1: n = Synthesizer::Note::C       ; break;
+            case  2: n = Synthesizer::Note::C_SHARP ; break;
+            case  3: n = Synthesizer::Note::D       ; break;
+            case  4: n = Synthesizer::Note::D_SHARP ; break;
+            case  5: n = Synthesizer::Note::E       ; break;
+            case  6: n = Synthesizer::Note::F       ; break;
+            case  7: n = Synthesizer::Note::G_FLAT  ; break;
+            case  8: n = Synthesizer::Note::G       ; break;
+            case  9: n = Synthesizer::Note::A_FLAT  ; break;
+            case 10: n = Synthesizer::Note::A       ; break;
+            case 11: n = Synthesizer::Note::B_FLAT  ; break;
+            case 12: n = Synthesizer::Note::B       ; break;
+            
+            default: n = Synthesizer::Note::A       ; break;
+            }
+            
+            s_->OnKeyDown(n);
+        }
     }
     
     void SYNTHESIZER_KEY_UP(uint8_t *, uint8_t)
     {
-        sv_->OnKeyUp();
+        s_->OnKeyUp();
     }
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -483,6 +547,7 @@ private:
     SerialLink serialLink_;
     
     SynthesizerVoiceClass *sv_;
+    Synthesizer           *s_;
 };
 
 

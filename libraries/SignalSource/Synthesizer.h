@@ -43,6 +43,12 @@ public:
 public:
 
 
+
+
+
+
+
+
     // presets
     // octaves
 
@@ -95,16 +101,16 @@ public:
         SynthesizerVoiceClass::SetOscillator1Frequency(freq);
         SynthesizerVoiceClass::SetOscillator2Frequency(freq + 3);
         
-        SynthesizerVoiceClass::OnKeyDown();
+        SynthesizerVoiceClass::EnvelopeBeginAttack();
     }
     
     void OnKeyUp(Note)
     {
-        SynthesizerVoiceClass::OnKeyUp();
+        SynthesizerVoiceClass::EnvelopeBeginRelease();
     }
     void OnKeyUp()
     {
-        SynthesizerVoiceClass::OnKeyUp();
+        SynthesizerVoiceClass::EnvelopeBeginRelease();
     }
     
     
