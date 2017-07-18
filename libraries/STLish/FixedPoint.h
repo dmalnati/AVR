@@ -172,10 +172,11 @@ public:
         return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
     
-    inline uint16_t GetUnsignedInt16() const
+    explicit inline operator uint16_t() const
     {
         return (uint16_t)(val_ >> BITS_WHOLE);
     }
+
     
     
     ////////////////////////////////////////////////////////////////////
@@ -199,7 +200,7 @@ public:
         return val_ < ((STORAGE_TYPE)rhs << BITS_WHOLE);
     }
 
-    inline uint8_t GetUnsignedInt8() const
+    explicit inline operator uint8_t() const
     {
         return (uint8_t)(val_ >> BITS_WHOLE);
     }
@@ -335,10 +336,11 @@ public:
         return val_ * rhs / 256;
     }
     
-    inline uint8_t GetUnsignedInt8() const
+    explicit inline operator uint8_t() const
     {
         return val_;
     }
+
 
     ////////////////////////////////////////////////////////////////////
     //

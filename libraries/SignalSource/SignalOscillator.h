@@ -51,7 +51,7 @@ public:
     {
         // Keep the ordering of these instructions.  Bringing the Incr ahead of
         // GetSample costs ~500ns for some reason.
-        uint8_t brad = phaseOffset_ + rotation_.GetUnsignedInt8();
+        uint8_t brad = phaseOffset_ + (uint8_t)rotation_;
         
         int8_t retVal = ssFn_(brad);
 

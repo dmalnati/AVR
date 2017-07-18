@@ -81,10 +81,11 @@ public:
         }
     }
     
-    inline uint8_t GetUnsignedInt8() const
+    explicit inline operator uint8_t() const
     {
-        return val_.GetUnsignedInt8();
+        return (uint8_t)val_;
     }
+
     
     
 private:

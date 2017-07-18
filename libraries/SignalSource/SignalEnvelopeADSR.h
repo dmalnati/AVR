@@ -84,7 +84,7 @@ public:
         if (state_ == State::ATTACK)
         {
             // Convert to decimal value
-            retVal = attackStepper_.GetUnsignedInt8();
+            retVal = (uint8_t)attackStepper_;
             
             // Check if time to move to decay for next sample
             if (retVal == TOP_VALUE)
@@ -99,7 +99,7 @@ public:
         else if (state_ == State::DECAY)
         {
             // Convert to decimal value
-            retVal = decayStepper_.GetUnsignedInt8();
+            retVal = (uint8_t)decayStepper_;
             
             // Check if time to move to sustain for next sample
             if (retVal == sustainLevel_)
@@ -121,7 +121,7 @@ public:
         else if (state_ == State::RELEASE)
         {
             // Convert to decimal value
-            retVal = releaseStepper_.GetUnsignedInt8();
+            retVal = (uint8_t)releaseStepper_;
             
             // Check if time to move to final state
             if (retVal == BOTTOM_VALUE)
