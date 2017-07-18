@@ -66,7 +66,7 @@ public:
         Reset();
     }
     
-    void StartDecay()
+    void StartRelease()
     {
         // Calculate starting point for Decay.
         // Can't pre-calculate because Attack or Decay may still be in effect.
@@ -115,7 +115,7 @@ public:
         {
             // Constant value.
             // No transition to another state from here, that happens when the
-            // caller invokes StartDecay()
+            // caller invokes StartRelease()
             retVal = sustainLevel_;
         }
         else if (state_ == State::RELEASE)
