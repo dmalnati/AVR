@@ -120,8 +120,7 @@ public:
             // Constant value.
             // No transition to another state from here, that happens when the
             // caller invokes StartRelease()
-            //retVal = sustainLevel_;
-            retVal = 0;
+            retVal = sustainLevel_;
         }
         else if (state_ == State::RELEASE)
         {
