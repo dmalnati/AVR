@@ -12,7 +12,7 @@ SignalSource
 - Add AUX In
 - Add Custom Wave (drawable, loadable)
 
-
+Signal to 0 when oscillators are off
 
     
     
@@ -39,4 +39,4 @@ Code Cleanup
 
 Stop using templates for SynthesizerVoice and TimerHelper
 
-
+Would using anonymous unions speed up FixedPoint?

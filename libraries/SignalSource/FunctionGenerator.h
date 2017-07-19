@@ -10,6 +10,27 @@
 #include "SignalSourceTriangleWave.h"
 #include "SignalOscillator.h"
 
+#include "CfgItem.h"
+
+
+enum
+{
+    SET_PHASE_LOCK                =  5,
+    SET_OSCILLATOR_1_FREQUENCY    = 11,
+    SET_OSCILLATOR_1_WAVE_TYPE    = 12,
+    SET_OSCILLATOR_1_PHASE_OFFSET = 13,
+    SET_OSCILLATOR_BALANCE        = 20,
+    SET_OSCILLATOR_2_FREQUENCY    = 21,
+    SET_OSCILLATOR_2_WAVE_TYPE    = 22,
+    SET_OSCILLATOR_2_PHASE_OFFSET = 23,
+    SET_LFO_FREQUENCY             = 31,
+    SET_LFO_WAVE_TYPE             = 32,
+    SET_LFO_PHASE_OFFSET          = 33,
+    SET_LFO_VIBRATO_PCT           = 34,
+    SET_LFO_TROMOLO_PCT           = 35
+};
+
+
 
 class FunctionGenerator
 {
@@ -61,153 +82,72 @@ public:
         SyncAllOscillators();
     }
     
+    
     ///////////////////////////////////////////////////////////////////////
     //
-    // Mode
+    // Configuration
     //
     ///////////////////////////////////////////////////////////////////////
     
-    void SetPhaseLock(uint8_t phaseLock)
+    void SetCfgItem(CfgItem c)
     {
-        phaseLock_ = !!phaseLock;
-        
-        if (phaseLock_)
+        switch (c.type)
         {
-            SyncAllOscillators();
+        case SET_PHASE_LOCK:
+            SetPhaseLock((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_FREQUENCY:
+            SetOscillator1Frequency((uint16_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_WAVE_TYPE:
+            SetOscillator1WaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_PHASE_OFFSET:
+            SetOscillator1PhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_BALANCE:
+            SetOscillatorBalance((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_FREQUENCY:
+            SetOscillator2Frequency((uint16_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_WAVE_TYPE:
+            SetOscillator2WaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_PHASE_OFFSET:
+            SetOscillator2PhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_LFO_FREQUENCY:
+            SetLFOFrequency((uint16_t)c);
+            break;
+            
+        case SET_LFO_WAVE_TYPE:
+            SetLFOWaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_LFO_PHASE_OFFSET:
+            SetLFOPhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_LFO_VIBRATO_PCT:
+            SetLFOVibratoPct((uint8_t)c);
+            break;
+            
+        case SET_LFO_TROMOLO_PCT:
+            SetLFOTromoloPct((uint8_t)c);
+            break;
+            
+        default:
+            break;
         }
-    }
-    
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // Oscillator 1
-    //
-    ///////////////////////////////////////////////////////////////////////
-    
-    void SetOscillator1WaveType(OscillatorType type)
-    {
-        SetOscillator(osc1_, osc1Enabled_, type);
-    }
-    
-    void SetOscillator1Frequency(uint16_t frequency)
-    {
-        osc1_.SetFrequency(frequency);
-        
-        if (phaseLock_)
-        {
-            SyncAllOscillators();
-        }
-    }
-    
-    void SetOscillator1PhaseOffset(int8_t offset)
-    {
-        osc1_.SetPhaseOffset(offset);
-    }
-    
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // Oscillator 2
-    //
-    ///////////////////////////////////////////////////////////////////////
-
-    void SetOscillator2WaveType(OscillatorType type)
-    {
-        SetOscillator(osc2_, osc2Enabled_, type);
-    }
-    
-    void SetOscillator2Frequency(uint16_t frequency)
-    {
-        osc2_.SetFrequency(frequency);
-        
-        if (phaseLock_)
-        {
-            SyncAllOscillators();
-        }
-    }
-    
-    void SetOscillator2PhaseOffset(int8_t offset)
-    {
-        osc2_.SetPhaseOffset(offset);
-    }
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // Oscillator Balance
-    //
-    ///////////////////////////////////////////////////////////////////////
-    
-    void SetOscillatorBalance(uint8_t balance)
-    {
-        // Input ranges from 0 to 255
-        // 127 and 128 = 50% for each
-        //   0 = 100% osc1
-        // 255 = 100% osc2
-        
-        uint8_t osc1Pct;
-        uint8_t osc2Pct;
-        
-        if (balance == 127 || balance == 128)
-        {
-            osc1Pct = 127;
-            osc2Pct = 127;
-        }
-        else if (balance > 128)
-        {
-            osc2Pct = 127 + ((balance - 128) + 1);
-            osc1Pct = 255 - osc2Pct;
-        }
-        else
-        {
-            osc1Pct = 127 + ((127 - balance) + 1);
-            osc2Pct = 255 - osc1Pct;
-        }
-        
-        osc1Factor_ = osc1Pct;
-        osc2Factor_ = osc2Pct;
-    }
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // LFO
-    //
-    ///////////////////////////////////////////////////////////////////////
-    
-    void SetLFOWaveType(OscillatorType type)
-    {
-        SetOscillator(lfo_, lfoEnabled_, type);
-        
-        if (!lfoEnabled_)
-        {
-            // Restore the frequency offset to the other oscillators
-            osc1_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
-            osc2_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
-        }
-    }
-    
-    void SetLFOFrequency(uint16_t frequency)
-    {
-        lfo_.SetFrequency(frequency);
-        
-        if (phaseLock_)
-        {
-            SyncAllOscillators();
-        }
-    }
-    
-    void SetLFOPhaseOffset(int8_t offset)
-    {
-        lfo_.SetPhaseOffset(offset);
-    }
-    
-    void SetLFOVibratoPct(uint8_t vibratoPct)
-    {
-        lfoVibratoPct_ = vibratoPct;
-    }
-    
-    void SetLFOTromoloPct(uint8_t tromoloPct)
-    {
-        lfoTromoloPct_ = tromoloPct;
     }
     
     
@@ -309,7 +249,162 @@ public:
         return retVal;
     }
     
+private:
     
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Mode
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetPhaseLock(uint8_t phaseLock)
+    {
+        phaseLock_ = !!phaseLock;
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator 1
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetOscillator1WaveType(OscillatorType type)
+    {
+        SetOscillator(osc1_, osc1Enabled_, type);
+    }
+    
+protected:
+    void SetOscillator1Frequency(uint16_t frequency)
+    {
+        osc1_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
+private:
+    void SetOscillator1PhaseOffset(int8_t offset)
+    {
+        osc1_.SetPhaseOffset(offset);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator 2
+    //
+    ///////////////////////////////////////////////////////////////////////
+
+    void SetOscillator2WaveType(OscillatorType type)
+    {
+        SetOscillator(osc2_, osc2Enabled_, type);
+    }
+    
+protected:
+    void SetOscillator2Frequency(uint16_t frequency)
+    {
+        osc2_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
+private:
+    void SetOscillator2PhaseOffset(int8_t offset)
+    {
+        osc2_.SetPhaseOffset(offset);
+    }
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Oscillator Balance
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetOscillatorBalance(uint8_t balance)
+    {
+        // Input ranges from 0 to 255
+        // 127 and 128 = 50% for each
+        //   0 = 100% osc1
+        // 255 = 100% osc2
+        
+        uint8_t osc1Pct;
+        uint8_t osc2Pct;
+        
+        if (balance == 127 || balance == 128)
+        {
+            osc1Pct = 127;
+            osc2Pct = 127;
+        }
+        else if (balance > 128)
+        {
+            osc2Pct = 127 + ((balance - 128) + 1);
+            osc1Pct = 255 - osc2Pct;
+        }
+        else
+        {
+            osc1Pct = 127 + ((127 - balance) + 1);
+            osc2Pct = 255 - osc1Pct;
+        }
+        
+        osc1Factor_ = osc1Pct;
+        osc2Factor_ = osc2Pct;
+    }
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // LFO
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetLFOWaveType(OscillatorType type)
+    {
+        SetOscillator(lfo_, lfoEnabled_, type);
+        
+        if (!lfoEnabled_)
+        {
+            // Restore the frequency offset to the other oscillators
+            osc1_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
+            osc2_.ApplyFrequencyOffsetPctIncreaseFromBase((uint8_t)0);
+        }
+    }
+    
+    void SetLFOFrequency(uint16_t frequency)
+    {
+        lfo_.SetFrequency(frequency);
+        
+        if (phaseLock_)
+        {
+            SyncAllOscillators();
+        }
+    }
+    
+    void SetLFOPhaseOffset(int8_t offset)
+    {
+        lfo_.SetPhaseOffset(offset);
+    }
+    
+    void SetLFOVibratoPct(uint8_t vibratoPct)
+    {
+        lfoVibratoPct_ = vibratoPct;
+    }
+    
+    void SetLFOTromoloPct(uint8_t tromoloPct)
+    {
+        lfoTromoloPct_ = tromoloPct;
+    }
+    
+
 private:
 
     ///////////////////////////////////////////////////////////////////////

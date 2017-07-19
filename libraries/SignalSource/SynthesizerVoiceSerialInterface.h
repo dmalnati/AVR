@@ -7,6 +7,8 @@
 #include "Function.h"
 #include "SerialLink.h"
 
+#include "FunctionGenerator.h"
+
 
 template <typename SynthesizerVoiceClass>
 class SynthesizerVoiceSerialInterface
@@ -56,19 +58,6 @@ private:
     
     enum class MessageType : uint8_t
     {
-        SET_PHASE_LOCK = 5,
-        SET_OSCILLATOR_1_FREQUENCY = 11,
-        SET_OSCILLATOR_1_WAVE_TYPE = 12,
-        SET_OSCILLATOR_1_PHASE_OFFSET = 13,
-        SET_OSCILLATOR_BALANCE = 20,
-        SET_OSCILLATOR_2_FREQUENCY = 21,
-        SET_OSCILLATOR_2_WAVE_TYPE = 22,
-        SET_OSCILLATOR_2_PHASE_OFFSET = 23,
-        SET_LFO_FREQUENCY = 31,
-        SET_LFO_WAVE_TYPE = 32,
-        SET_LFO_PHASE_OFFSET = 33,
-        SET_LFO_VIBRATO_PCT = 34,
-        SET_LFO_TROMOLO_PCT = 35,
         ENVELOPE_ENABLE = 41,
         ENVELOPE_DISABLE = 42,
         SET_ENVELOPE_ATTACK_DURATION_MS = 43,
@@ -89,30 +78,37 @@ private:
         uint8_t *buf     = &bufWithType[1];
         uint8_t  bufSize = bufWithTypeSize - 1;
         
+        uint8_t messageTypeByte = bufWithType[0];
+        
+        switch (messageTypeByte)
+        {
+        case SET_PHASE_LOCK: ON_SET_PHASE_LOCK(buf, bufSize); break;
+
+        case SET_OSCILLATOR_1_FREQUENCY: ON_SET_OSCILLATOR_1_FREQUENCY(buf, bufSize); break;
+        case SET_OSCILLATOR_1_WAVE_TYPE: ON_SET_OSCILLATOR_1_WAVE_TYPE(buf, bufSize); break;
+        case SET_OSCILLATOR_1_PHASE_OFFSET: ON_SET_OSCILLATOR_1_PHASE_OFFSET(buf, bufSize); break;
+        
+        case SET_OSCILLATOR_BALANCE: ON_SET_OSCILLATOR_BALANCE(buf, bufSize); break;
+        
+        case SET_OSCILLATOR_2_FREQUENCY: ON_SET_OSCILLATOR_2_FREQUENCY(buf, bufSize); break;
+        case SET_OSCILLATOR_2_WAVE_TYPE: ON_SET_OSCILLATOR_2_WAVE_TYPE(buf, bufSize); break;
+        case SET_OSCILLATOR_2_PHASE_OFFSET: ON_SET_OSCILLATOR_2_PHASE_OFFSET(buf, bufSize); break;
+        
+        case SET_LFO_FREQUENCY: ON_SET_LFO_FREQUENCY(buf, bufSize); break;
+        case SET_LFO_WAVE_TYPE: ON_SET_LFO_WAVE_TYPE(buf, bufSize); break;
+        case SET_LFO_PHASE_OFFSET: ON_SET_LFO_PHASE_OFFSET(buf, bufSize); break;
+        case SET_LFO_VIBRATO_PCT: ON_SET_LFO_VIBRATO_PCT(buf, bufSize); break;
+        case SET_LFO_TROMOLO_PCT: ON_SET_LFO_TROMOLO_PCT(buf, bufSize); break;
+        
+        default:
+            break;
+        }
+        
         // Extract MessageType
         MessageType t = (MessageType)bufWithType[0];
         
         switch (t)
         {
-        case MessageType::SET_PHASE_LOCK: SET_PHASE_LOCK(buf, bufSize); break;
-
-        case MessageType::SET_OSCILLATOR_1_FREQUENCY: SET_OSCILLATOR_1_FREQUENCY(buf, bufSize); break;
-        case MessageType::SET_OSCILLATOR_1_WAVE_TYPE: SET_OSCILLATOR_1_WAVE_TYPE(buf, bufSize); break;
-        case MessageType::SET_OSCILLATOR_1_PHASE_OFFSET: SET_OSCILLATOR_1_PHASE_OFFSET(buf, bufSize); break;
-        
-        case MessageType::SET_OSCILLATOR_BALANCE: SET_OSCILLATOR_BALANCE(buf, bufSize); break;
-        
-        case MessageType::SET_OSCILLATOR_2_FREQUENCY: SET_OSCILLATOR_2_FREQUENCY(buf, bufSize); break;
-        case MessageType::SET_OSCILLATOR_2_WAVE_TYPE: SET_OSCILLATOR_2_WAVE_TYPE(buf, bufSize); break;
-        case MessageType::SET_OSCILLATOR_2_PHASE_OFFSET: SET_OSCILLATOR_2_PHASE_OFFSET(buf, bufSize); break;
-        
-        case MessageType::SET_LFO_FREQUENCY: SET_LFO_FREQUENCY(buf, bufSize); break;
-        case MessageType::SET_LFO_WAVE_TYPE: SET_LFO_WAVE_TYPE(buf, bufSize); break;
-        case MessageType::SET_LFO_PHASE_OFFSET: SET_LFO_PHASE_OFFSET(buf, bufSize); break;
-        case MessageType::SET_LFO_VIBRATO_PCT: SET_LFO_VIBRATO_PCT(buf, bufSize); break;
-        case MessageType::SET_LFO_TROMOLO_PCT: SET_LFO_TROMOLO_PCT(buf, bufSize); break;
-        
-        
         case MessageType::ENVELOPE_ENABLE: ENVELOPE_ENABLE(buf, bufSize); break;
         case MessageType::ENVELOPE_DISABLE: ENVELOPE_DISABLE(buf, bufSize); break;
         
@@ -173,7 +169,7 @@ private:
     
     
     
-    void SET_PHASE_LOCK(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_PHASE_LOCK(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -183,7 +179,7 @@ private:
             
             uint8_t phaseLock = GetU8(buf, idx);
             
-            sv_->SetPhaseLock(phaseLock);
+            sv_->SetCfgItem({SET_PHASE_LOCK, phaseLock});
         }
     }
     
@@ -194,7 +190,7 @@ private:
     
     
     
-    void SET_OSCILLATOR_1_FREQUENCY(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_1_FREQUENCY(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint16_t);
         
@@ -204,11 +200,11 @@ private:
             
             uint16_t frequency = GetU16(buf, idx);
             
-            sv_->SetOscillator1Frequency(frequency);
+            sv_->SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, frequency});
         }
     }
     
-    void SET_OSCILLATOR_1_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_1_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -216,14 +212,13 @@ private:
         {
             uint8_t idx = 0;
             
-            typename SynthesizerVoiceClass::OscillatorType waveType =
-                (typename SynthesizerVoiceClass::OscillatorType)GetU8(buf, idx);
+            uint8_t waveType = GetU8(buf, idx);
             
-            sv_->SetOscillator1WaveType(waveType);
+            sv_->SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, waveType});
         }
     }
     
-    void SET_OSCILLATOR_1_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_1_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(int8_t);
         
@@ -233,14 +228,14 @@ private:
             
             int8_t phaseOffset = GetI8(buf, idx);
             
-            sv_->SetOscillator1PhaseOffset(phaseOffset);
+            sv_->SetCfgItem({SET_OSCILLATOR_1_PHASE_OFFSET, phaseOffset});
         }
     }
     
     
     
     
-    void SET_OSCILLATOR_BALANCE(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_BALANCE(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -250,7 +245,7 @@ private:
             
             uint8_t balance = GetU8(buf, idx);
             
-            sv_->SetOscillatorBalance(balance);
+            sv_->SetCfgItem({SET_OSCILLATOR_BALANCE, balance});
         }
     }
 
@@ -265,7 +260,7 @@ private:
     
     
 
-    void SET_OSCILLATOR_2_FREQUENCY(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_2_FREQUENCY(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint16_t);
         
@@ -275,11 +270,11 @@ private:
             
             uint16_t frequency = GetU16(buf, idx);
             
-            sv_->SetOscillator2Frequency(frequency);
+            sv_->SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, frequency});
         }
     }
     
-    void SET_OSCILLATOR_2_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_2_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -287,14 +282,13 @@ private:
         {
             uint8_t idx = 0;
             
-            typename SynthesizerVoiceClass::OscillatorType waveType =
-                (typename SynthesizerVoiceClass::OscillatorType)GetU8(buf, idx);
+            uint8_t waveType = GetU8(buf, idx);
             
-            sv_->SetOscillator2WaveType(waveType);
+            sv_->SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, waveType});
         }
     }
     
-    void SET_OSCILLATOR_2_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_OSCILLATOR_2_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(int8_t);
         
@@ -304,7 +298,7 @@ private:
             
             int8_t phaseOffset = GetI8(buf, idx);
             
-            sv_->SetOscillator2PhaseOffset(phaseOffset);
+            sv_->SetCfgItem({SET_OSCILLATOR_2_PHASE_OFFSET, phaseOffset});
         }
     }
     
@@ -320,7 +314,7 @@ private:
 
 
     
-    void SET_LFO_FREQUENCY(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_LFO_FREQUENCY(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint16_t);
         
@@ -330,12 +324,12 @@ private:
             
             uint16_t frequency = GetU16(buf, idx);
             
-            sv_->SetLFOFrequency(frequency);
+            sv_->SetCfgItem({SET_LFO_FREQUENCY, frequency});
         }
     }
     
     
-    void SET_LFO_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_LFO_WAVE_TYPE(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -343,14 +337,13 @@ private:
         {
             uint8_t idx = 0;
             
-            typename SynthesizerVoiceClass::OscillatorType waveType =
-                (typename SynthesizerVoiceClass::OscillatorType)GetU8(buf, idx);
+            uint8_t waveType = GetU8(buf, idx);
             
-            sv_->SetLFOWaveType(waveType);
+            sv_->SetCfgItem({SET_LFO_WAVE_TYPE, waveType});
         }
     }
     
-    void SET_LFO_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_LFO_PHASE_OFFSET(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(int8_t);
         
@@ -360,11 +353,11 @@ private:
             
             int8_t phaseOffset = GetI8(buf, idx);
             
-            sv_->SetLFOPhaseOffset(phaseOffset);
+            sv_->SetCfgItem({SET_LFO_PHASE_OFFSET, phaseOffset});
         }
     }
     
-    void SET_LFO_VIBRATO_PCT(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_LFO_VIBRATO_PCT(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -374,11 +367,11 @@ private:
             
             uint8_t vibratoPct = GetU8(buf, idx);
             
-            sv_->SetLFOVibratoPct(vibratoPct);
+            sv_->SetCfgItem({SET_LFO_VIBRATO_PCT, vibratoPct});
         }
     }
     
-    void SET_LFO_TROMOLO_PCT(uint8_t *buf, uint8_t bufSize)
+    void ON_SET_LFO_TROMOLO_PCT(uint8_t *buf, uint8_t bufSize)
     {
         const uint8_t BYTES_NEEDED = sizeof(uint8_t);
         
@@ -388,7 +381,7 @@ private:
             
             uint8_t tromoloPct = GetU8(buf, idx);
             
-            sv_->SetLFOTromoloPct(tromoloPct);
+            sv_->SetCfgItem({SET_LFO_TROMOLO_PCT, tromoloPct});
         }
     }
     
