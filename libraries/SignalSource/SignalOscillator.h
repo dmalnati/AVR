@@ -14,6 +14,13 @@ class SignalOscillator
 
     
 public:
+    
+    SignalOscillator(SignalSourceFn ssFn)
+    : ssFn_(ssFn)
+    {
+        // Nothing to do
+    }
+
     void SetSampleRate(uint16_t sampleRate)
     {
         stepSizePerHz_ = (double)VALUE_COUNT / (double)sampleRate;

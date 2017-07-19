@@ -23,6 +23,8 @@ public:
     SignalEnvelopeADSR()
     {
         SetConstantValues();
+
+        Reset();
     }
     
     void SetSampleRate(uint16_t sampleRate)
@@ -64,6 +66,8 @@ public:
     void StartAttack()
     {
         Reset();
+        
+        state_ = State::ATTACK;
     }
     
     void StartRelease()
@@ -116,7 +120,8 @@ public:
             // Constant value.
             // No transition to another state from here, that happens when the
             // caller invokes StartRelease()
-            retVal = sustainLevel_;
+            //retVal = sustainLevel_;
+            retVal = 0;
         }
         else if (state_ == State::RELEASE)
         {
@@ -142,7 +147,7 @@ public:
     
     void Reset()
     {
-        state_ = State::ATTACK;
+        state_ = State::DONE;
         
         SetStepwiseInitialValues();
     }

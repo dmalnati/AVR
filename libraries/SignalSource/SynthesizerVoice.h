@@ -229,7 +229,7 @@ private:
 template <typename TimerClass>
 SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
 template <typename TimerClass>
-uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_ = 1;
+uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_ = 0;
 
 
 

@@ -30,13 +30,6 @@ public:
 
     FunctionGenerator()
     {
-        // Set up oscillators
-        SetOscillator1WaveType(OscillatorType::SINE);
-        SetOscillator2WaveType(OscillatorType::NONE);
-        
-        // Set up LFO
-        SetLFOWaveType(OscillatorType::SINE);
-        
         // Debug
         PAL.PinMode(dbg_, OUTPUT);
     }
@@ -340,41 +333,29 @@ private:
         
         if (type == OscillatorType::NONE)
         {
-            static SignalSourceNoneWave ss;
-            
             oscEnabled = 0;
             
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssNone_.GetSample);
         }
         else if (type == OscillatorType::SINE)
         {
-            static SignalSourceSineWave ss;
-            
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssSine_.GetSample);
         }
         else if (type == OscillatorType::SAWR)
         {
-            static SignalSourceSawtoothRightWave ss;
-            
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssSawR_.GetSample);
         }
         else if (type == OscillatorType::SAWL)
         {
-            static SignalSourceSawtoothLeftWave ss;
-            
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssSawL_.GetSample);
         }
         else if (type == OscillatorType::SQUARE)
         {
-            static SignalSourceSquareWave ss;
-            
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssSquare_.GetSample);
         }
         else if (type == OscillatorType::TRIANGLE)
         {
-            static SignalSourceTriangleWave ss;
-            
-            osc.SetSignalSource(&ss.GetSample);
+            osc.SetSignalSource(ssTriangle_.GetSample);
         }
     }
     
@@ -398,6 +379,13 @@ private:
     static uint8_t          lfoEnabled_;
     static Q08              lfoVibratoPct_;
     static Q08              lfoTromoloPct_;
+    
+    static SignalSourceNoneWave           ssNone_;
+    static SignalSourceSineWave           ssSine_;
+    static SignalSourceSawtoothRightWave  ssSawR_;
+    static SignalSourceSawtoothLeftWave   ssSawL_;
+    static SignalSourceSquareWave         ssSquare_;
+    static SignalSourceTriangleWave       ssTriangle_;
 };
 
 
@@ -405,18 +393,27 @@ Pin              FunctionGenerator::dbg_(14, LOW);
 
 uint8_t          FunctionGenerator::phaseLock_ = 0;
 
-SignalOscillator FunctionGenerator::osc1_;
+SignalOscillator FunctionGenerator::osc1_(FunctionGenerator::ssNone_.GetSample);
 uint8_t          FunctionGenerator::osc1Enabled_ = 1;
 Q08              FunctionGenerator::osc1Factor_  = 0.5;
 
-SignalOscillator FunctionGenerator::osc2_;
+SignalOscillator FunctionGenerator::osc2_(FunctionGenerator::ssNone_.GetSample);
 uint8_t          FunctionGenerator::osc2Enabled_ = 1;
 Q08              FunctionGenerator::osc2Factor_  = 0.5;
 
-SignalOscillator FunctionGenerator::lfo_;
+SignalOscillator FunctionGenerator::lfo_(FunctionGenerator::ssNone_.GetSample);
 uint8_t          FunctionGenerator::lfoEnabled_    = 1;
 Q08              FunctionGenerator::lfoVibratoPct_ = 0.5;
 Q08              FunctionGenerator::lfoTromoloPct_ = 0.5;
+
+SignalSourceNoneWave           FunctionGenerator::ssNone_;
+SignalSourceSineWave           FunctionGenerator::ssSine_;
+SignalSourceSawtoothRightWave  FunctionGenerator::ssSawR_;
+SignalSourceSawtoothLeftWave   FunctionGenerator::ssSawL_;
+SignalSourceSquareWave         FunctionGenerator::ssSquare_;
+SignalSourceTriangleWave       FunctionGenerator::ssTriangle_;
+
+
 
 
 
