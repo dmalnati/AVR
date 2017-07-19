@@ -1,0 +1,42 @@
+
+
+
+
+
+Functionality
+-------------
+
+Pitch Bend
+
+SignalSource
+- Add AUX In
+- Add Custom Wave (drawable, loadable)
+
+
+
+    
+    
+Performance
+-----------
+    
+EnvelopeADSR
+- appears to have a ~270us spike on transition to Release
+  - due to lots of floating point math
+  - fix it
+
+Synthesizer
+- have it ask SynthesizerVoice how long a loop takes on average
+  - then calculate sample rate, leaving (say) 10% headroom for other CPU work
+  - make sure TimerHelper configurable to be "less than" requested instead of
+    simply "closest to"
+
+  
+  
+  
+  
+Code Cleanup
+------------
+
+Stop using templates for SynthesizerVoice and TimerHelper
+
+
