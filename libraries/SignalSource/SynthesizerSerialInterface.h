@@ -1,5 +1,5 @@
-#ifndef __SYNTHESIZER_VOICE_SERIAL_INTERFACE_H__
-#define __SYNTHESIZER_VOICE_SERIAL_INTERFACE_H__
+#ifndef __SYNTHESIZER_SERIAL_INTERFACE_H__
+#define __SYNTHESIZER_SERIAL_INTERFACE_H__
 
 
 #include <string.h>
@@ -10,7 +10,7 @@
 #include "FunctionGenerator.h"
 
 
-class SynthesizerVoiceSerialInterface
+class SynthesizerSerialInterface
 {
     static const uint8_t PROTOCOL_ID = 123;
     
@@ -21,7 +21,7 @@ public:
 
 public:
 
-    SynthesizerVoiceSerialInterface(Synthesizer *s)
+    SynthesizerSerialInterface(Synthesizer *s)
     : s_(s)
     {
         // Nothing to do
@@ -568,7 +568,7 @@ private:
 };
 
 
-#endif  // __SYNTHESIZER_VOICE_SERIAL_INTERFACE_H__
+#endif  // __SYNTHESIZER_SERIAL_INTERFACE_H__
 
 
 

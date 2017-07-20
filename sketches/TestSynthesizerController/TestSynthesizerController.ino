@@ -1,14 +1,14 @@
 #include "Evm.h"
 
 #include "Synthesizer.h"
-#include "SynthesizerVoiceSerialInterface.h"
+#include "SynthesizerSerialInterface.h"
 
 
 class Controller
 {
 public:
     Controller()
-    : svsi_(&s_)
+    : ssi_(&s_)
     {
         // Nothing to do
     }
@@ -20,7 +20,7 @@ public:
         Serial.println("Starting");
 
         // Start up serial controller
-        svsi_.Init();
+        ssi_.Init();
 
         // Set up and start synthesizer
         s_.Init();
@@ -35,7 +35,7 @@ private:
     Evm::Instance<10,10,10> evm_;
 
     Synthesizer s_;
-    SynthesizerVoiceSerialInterface svsi_;
+    SynthesizerSerialInterface ssi_;
 };
 
 static Controller c;
