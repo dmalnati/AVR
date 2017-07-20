@@ -10,7 +10,7 @@
 
 
 class Synthesizer
-: protected SynthesizerVoice<Timer2>
+: private SynthesizerVoice<Timer2>
 {
     using SynthesizerVoiceClass = SynthesizerVoice<Timer2>;
     
@@ -42,16 +42,11 @@ public:
     
 public:
 
-
-
-
-
-
-
-
-    // presets
-    // octaves
-
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Initialization
+    //
+    ///////////////////////////////////////////////////////////////////////
     
     void Init()
     {
@@ -78,17 +73,16 @@ public:
     }
     
     
-    // https://www.key-notes.com/blog/layout-of-piano-keys
-    // https://www.key-notes.com/blog/piano-notes-chart
-    // https://www.key-notes.com/blog/piano-key-chart
-    // https://en.wikipedia.org/wiki/C_(musical_note)
-    // https://en.wikipedia.org/wiki/Piano_key_frequencies
-    // C D E F G A B C
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Main Interface
+    //
+    ///////////////////////////////////////////////////////////////////////
     
-    
-    const static uint8_t DEFAULT_OCTAVE = 4;
-    
-    
+    void OnKeyDown()
+    {
+        SynthesizerVoiceClass::EnvelopeBeginAttack();
+    }
     
     void OnKeyDown(Note n)
     {
@@ -98,16 +92,12 @@ public:
         // Convert note into a frequency
         uint16_t freq = (uint16_t)NOTE__FREQ[(uint8_t)n];
         
-        SynthesizerVoiceClass::SetOscillator1Frequency(freq);
-        SynthesizerVoiceClass::SetOscillator2Frequency(freq + 3);
+        SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, freq});
+        SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, freq + 3});
         
-        SynthesizerVoiceClass::EnvelopeBeginAttack();
+        OnKeyDown();
     }
     
-    void OnKeyUp(Note)
-    {
-        SynthesizerVoiceClass::EnvelopeBeginRelease();
-    }
     void OnKeyUp()
     {
         SynthesizerVoiceClass::EnvelopeBeginRelease();
@@ -116,34 +106,21 @@ public:
     
     
     
-    // Allow access to underlying functionality directly
-    SynthesizerVoiceClass *GetSynthesizerVoice()
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Configuration
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    void SetCfgItem(CfgItem c)
     {
-        return this;
-    }
-    
-    
-    
-    
-    // Config that can be handled here, or passed down
-    
-    enum Config
-    {
-        // nothing yet
-    };
-    
-    void SetConfig(Config, uint16_t)
-    {
-        if (0)
+        switch (c.type)
         {
-            
-        }
-        else
-        {
-            //SynthesizerVoiceClass::SetConfig();
+        default:
+            SynthesizerVoiceClass::SetCfgItem(c);
         }
     }
-
 
 
 private:
@@ -151,6 +128,14 @@ private:
     static const uint8_t NOTE_COUNT = 19;
     static const Q1616   NOTE__FREQ[Synthesizer::NOTE_COUNT];
 };
+
+
+// https://www.key-notes.com/blog/layout-of-piano-keys
+// https://www.key-notes.com/blog/piano-notes-chart
+// https://www.key-notes.com/blog/piano-key-chart
+// https://en.wikipedia.org/wiki/C_(musical_note)
+// https://en.wikipedia.org/wiki/Piano_key_frequencies
+// C D E F G A B C
 
 const Q1616 Synthesizer::NOTE__FREQ[Synthesizer::NOTE_COUNT] =
 {

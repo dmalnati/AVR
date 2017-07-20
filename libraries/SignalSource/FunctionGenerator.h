@@ -60,6 +60,13 @@ public:
         // Nothing to do
     }
     
+    
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Initialization
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
     void SetSampleRate(uint16_t sampleRate)
     {
         // Set up oscillator
@@ -80,74 +87,6 @@ public:
     {
         // Reset state of oscillators
         SyncAllOscillators();
-    }
-    
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // Configuration
-    //
-    ///////////////////////////////////////////////////////////////////////
-    
-    void SetCfgItem(CfgItem c)
-    {
-        switch (c.type)
-        {
-        case SET_PHASE_LOCK:
-            SetPhaseLock((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_FREQUENCY:
-            SetOscillator1Frequency((uint16_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_WAVE_TYPE:
-            SetOscillator1WaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_PHASE_OFFSET:
-            SetOscillator1PhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_BALANCE:
-            SetOscillatorBalance((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_FREQUENCY:
-            SetOscillator2Frequency((uint16_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_WAVE_TYPE:
-            SetOscillator2WaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_PHASE_OFFSET:
-            SetOscillator2PhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_LFO_FREQUENCY:
-            SetLFOFrequency((uint16_t)c);
-            break;
-            
-        case SET_LFO_WAVE_TYPE:
-            SetLFOWaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_LFO_PHASE_OFFSET:
-            SetLFOPhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_LFO_VIBRATO_PCT:
-            SetLFOVibratoPct((uint8_t)c);
-            break;
-            
-        case SET_LFO_TROMOLO_PCT:
-            SetLFOTromoloPct((uint8_t)c);
-            break;
-            
-        default:
-            break;
-        }
     }
     
     
@@ -249,8 +188,76 @@ public:
         return retVal;
     }
     
-private:
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Configuration
+    //
+    ///////////////////////////////////////////////////////////////////////
     
+    void SetCfgItem(CfgItem c)
+    {
+        switch (c.type)
+        {
+        case SET_PHASE_LOCK:
+            SetPhaseLock((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_FREQUENCY:
+            SetOscillator1Frequency((uint16_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_WAVE_TYPE:
+            SetOscillator1WaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_1_PHASE_OFFSET:
+            SetOscillator1PhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_BALANCE:
+            SetOscillatorBalance((uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_FREQUENCY:
+            SetOscillator2Frequency((uint16_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_WAVE_TYPE:
+            SetOscillator2WaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_OSCILLATOR_2_PHASE_OFFSET:
+            SetOscillator2PhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_LFO_FREQUENCY:
+            SetLFOFrequency((uint16_t)c);
+            break;
+            
+        case SET_LFO_WAVE_TYPE:
+            SetLFOWaveType((OscillatorType)(uint8_t)c);
+            break;
+            
+        case SET_LFO_PHASE_OFFSET:
+            SetLFOPhaseOffset((uint8_t)c);
+            break;
+            
+        case SET_LFO_VIBRATO_PCT:
+            SetLFOVibratoPct((uint8_t)c);
+            break;
+            
+        case SET_LFO_TROMOLO_PCT:
+            SetLFOTromoloPct((uint8_t)c);
+            break;
+            
+        default:
+            break;
+        }
+    }
+    
+    
+private:
+
     ///////////////////////////////////////////////////////////////////////
     //
     // Mode
@@ -279,7 +286,6 @@ private:
         SetOscillator(osc1_, osc1Enabled_, type);
     }
     
-protected:
     void SetOscillator1Frequency(uint16_t frequency)
     {
         osc1_.SetFrequency(frequency);
@@ -290,7 +296,6 @@ protected:
         }
     }
     
-private:
     void SetOscillator1PhaseOffset(int8_t offset)
     {
         osc1_.SetPhaseOffset(offset);
@@ -308,7 +313,6 @@ private:
         SetOscillator(osc2_, osc2Enabled_, type);
     }
     
-protected:
     void SetOscillator2Frequency(uint16_t frequency)
     {
         osc2_.SetFrequency(frequency);
@@ -319,7 +323,6 @@ protected:
         }
     }
     
-private:
     void SetOscillator2PhaseOffset(int8_t offset)
     {
         osc2_.SetPhaseOffset(offset);
@@ -360,6 +363,7 @@ private:
         osc1Factor_ = osc1Pct;
         osc2Factor_ = osc2Pct;
     }
+    
     
     ///////////////////////////////////////////////////////////////////////
     //

@@ -10,16 +10,28 @@
 #include "FunctionGenerator.h"
 #include "SignalEnvelopeADSR.h"
 
+#include "CfgItem.h"
+
+
+enum
+{
+    SET_ENVELOPE_ON_OFF              = 41,
+    SET_ENVELOPE_ATTACK_DURATION_MS  = 43,
+    SET_ENVELOPE_DECAY_DURATION_MS   = 44,
+    SET_ENVELOPE_SUSTAIN_LEVEL_PCT   = 45,
+    SET_ENVELOPE_RELEASE_DURATION_MS = 46,
+};
+
 
 template <typename TimerClass>
 class SynthesizerVoice
-: public FunctionGenerator
+: private FunctionGenerator
 {
     static const uint16_t ENVELOPE_ATTACK_DURATION_MS  = 50;
     static const uint16_t ENVELOPE_DECAY_DURATION_MS   = 100;
     static const uint16_t ENVELOPE_SUSTAIN_LEVEL_PCT   = 60;
     static const uint16_t ENVELOPE_RELEASE_DURATION_MS = 150;
-    
+
 public:
 
     SynthesizerVoice()
@@ -34,19 +46,21 @@ public:
         PAL.PinMode(11, OUTPUT);
         PAL.PinMode(12, OUTPUT);
         PAL.PinMode(13, OUTPUT);
+        
+        SetDefaultValues();
     }
     
     ~SynthesizerVoice()
     {
         Stop();
     }
-    
+
     ///////////////////////////////////////////////////////////////////////
     //
-    // Primary Initialization
+    // Initialization
     //
     ///////////////////////////////////////////////////////////////////////
-    
+
     // Expected to be called once, at runtime, before Start or any other use.
     void SetSampleRate(uint16_t sampleRate)
     {
@@ -65,45 +79,41 @@ public:
             TimerHelper<TimerClass> th;
             th.SetInterruptFrequency(sampleRate);
             uint16_t sampleRateActual = th.GetInterruptFrequency();
-            
+
             // Set up Function Generator
             FunctionGenerator::SetSampleRate(sampleRateActual);
-            
+
             // Set up Envelope
             envADSR_.SetSampleRate(sampleRateActual);
-            envADSR_.SetAttackDuration(ENVELOPE_ATTACK_DURATION_MS);
-            envADSR_.SetDecayDuration(ENVELOPE_DECAY_DURATION_MS);
-            envADSR_.SetSustainLevelPct(ENVELOPE_SUSTAIN_LEVEL_PCT);
-            envADSR_.SetReleaseDuration(ENVELOPE_RELEASE_DURATION_MS);
             
             // Set up sample rate callback
             //
             // Code doesn't necessarily make sense here, but follows the
             // resetting of channel A above by the timer configuration.
             tca_->SetInterruptHandlerRaw(OnInterrupt);
-            
-            
+
+
             // Debug
             tca_->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);
             tca_->OutputLow();
         }
     }
-    
+
     void Start()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             // Ensure valid state
             Stop();
-            
+
             // Register for interrupts
             tca_->RegisterForInterrupt();
-            
+
             // Start the timer
             TimerClass::StartTimer();
         }
     }
-    
+
     void Stop()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -113,24 +123,25 @@ public:
 
             // Don't let any potentially queued interrupts fire
             tca_->DeRegisterForInterrupt();
-            
+
             // Set output value to zero
             PORTD = 0;
-            
+
             // Reset oscillators for next time
             FunctionGenerator::Reset();
-            
+
             // Reset envelope for next time
             envADSR_.Reset();
         }
     }
+
     
     ///////////////////////////////////////////////////////////////////////
     //
     // Music Synthesis Interface
     //
     ///////////////////////////////////////////////////////////////////////
-    
+
     void EnvelopeBeginAttack()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -138,7 +149,7 @@ public:
             envADSR_.StartAttack();
         }
     }
-    
+
     void EnvelopeBeginRelease()
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -147,62 +158,88 @@ public:
         }
     }
 
-    
+
     ///////////////////////////////////////////////////////////////////////
     //
     // Configuration
     //
     ///////////////////////////////////////////////////////////////////////
-    
+
     void SetCfgItem(CfgItem c)
     {
         switch (c.type)
         {
-            default:
-                FunctionGenerator::SetCfgItem(c);
-                break;
+        case SET_ENVELOPE_ON_OFF:
+            SetEnvelopeOnOff((uint8_t)c);
+            break;
+            
+        case SET_ENVELOPE_ATTACK_DURATION_MS:
+            SetAttackDuration((uint16_t)c);
+            break;
+            
+        case SET_ENVELOPE_DECAY_DURATION_MS:
+            SetDecayDuration((uint16_t)c);
+            break;
+            
+        case SET_ENVELOPE_SUSTAIN_LEVEL_PCT:
+            SetSustainLevelPct((uint8_t)c);
+            break;
+            
+        case SET_ENVELOPE_RELEASE_DURATION_MS:
+            SetReleaseDuration((uint16_t)c);
+            break;
+            
+        default:
+            FunctionGenerator::SetCfgItem(c);
+            break;
         }
+    }
+    
+    void SetDefaultValues()
+    {
+        SetCfgItem({SET_ENVELOPE_ON_OFF, (uint8_t)1});
+        
+        SetCfgItem({SET_ENVELOPE_ATTACK_DURATION_MS,  ENVELOPE_ATTACK_DURATION_MS});
+        SetCfgItem({SET_ENVELOPE_DECAY_DURATION_MS,   ENVELOPE_DECAY_DURATION_MS});
+        SetCfgItem({SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   ENVELOPE_SUSTAIN_LEVEL_PCT});
+        SetCfgItem({SET_ENVELOPE_RELEASE_DURATION_MS, ENVELOPE_RELEASE_DURATION_MS});
     }
 
     
+private:
+
     ///////////////////////////////////////////////////////////////////////
     //
     // EnvelopeADSR Control
     //
     ///////////////////////////////////////////////////////////////////////
 
-    void EnableEnvelopeADSR()
+    void SetEnvelopeOnOff(uint8_t onOff)
     {
-        envADSREnabled_ = 1;
+        envADSREnabled_ = !!onOff;
     }
-    
-    void DisableEnvelopeADSR()
-    {
-        envADSREnabled_ = 0;
-    }
-    
+
     void SetAttackDuration(uint16_t durationMs)
     {
         envADSR_.SetAttackDuration(durationMs);
     }
-    
+
     void SetDecayDuration(uint16_t durationMs)
     {
         envADSR_.SetDecayDuration(durationMs);
     }
-    
+
     void SetSustainLevelPct(uint8_t levelPct)
     {
         envADSR_.SetSustainLevelPct(levelPct);
     }
-    
+
     void SetReleaseDuration(uint16_t durationMs)
     {
         envADSR_.SetReleaseDuration(durationMs);
     }
-    
-private:
-    
+
+
     ///////////////////////////////////////////////////////////////////////
     //
     // Main Synthesis Loop
@@ -213,7 +250,7 @@ private:
     {
         // Get next generated value
         int8_t fgVal = FunctionGenerator::GetNextValue();
-        
+
         // Get envelope value and apply
         Q08 envVal = envADSR_.GetNextEnvelope();
 
@@ -222,21 +259,20 @@ private:
         {
             scaledVal = (fgVal * envVal);
         }
-        
+
         // Adjust to 0-255 range
         uint8_t val = 128 + scaledVal;
 
         // Output
         PORTD = val;
     }
-    
-    
-    
+
+
 private:
-    
+
     static SignalEnvelopeADSR envADSR_;
     static uint8_t            envADSREnabled_;
-    
+
     static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
 };
 
@@ -245,7 +281,7 @@ private:
 template <typename TimerClass>
 SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
 template <typename TimerClass>
-uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_ = 0;
+uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_;
 
 
 
