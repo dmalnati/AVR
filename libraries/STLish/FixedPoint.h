@@ -64,13 +64,6 @@ public:
         val_ = rhs.val_;
     }
     
-    inline FixedPointClass operator*(const FixedPointClass &rhs)
-    {
-        STORAGE_TYPE retVal = (val_ * rhs.val_) >> BITS_WHOLE;
-        
-        return FixedPointClass(retVal, CTorType::PRIVATE);
-    }
-
     inline void operator+=(const FixedPointClass &rhs)
     {
         val_ += rhs.val_;
