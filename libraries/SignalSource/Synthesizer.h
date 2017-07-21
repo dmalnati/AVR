@@ -4,9 +4,13 @@
 
 #include "Timer2.h"
 
-#include "FixedPoint.h"
-
 #include "SynthesizerVoice.h"
+
+
+enum
+{
+    SET_OCTAVE = 51,
+};
 
 
 class Synthesizer
@@ -14,6 +18,10 @@ class Synthesizer
 {
     using SynthesizerVoiceClass = SynthesizerVoice<Timer2>;
     using FnPtr                 = void (Synthesizer::*)();
+    
+    static const uint8_t OCTAVE_MIN     = 1;
+    static const uint8_t OCTAVE_MAX     = 8;
+    static const uint8_t OCTAVE_DEFAULT = 4;
     
 public:
 
@@ -85,11 +93,8 @@ public:
     
     void OnKeyDown(Note n)
     {
-        // check for prior note still being down and apply multi-down logic
-        
-
         // Convert note into a frequency
-        uint16_t freq = (uint16_t)NOTE__FREQ[(uint8_t)n];
+        uint16_t freq = ScaleFreqToOctave(NOTE__FREQ[(uint8_t)n]);
         
         SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, freq});
         SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, freq + 3});
@@ -125,6 +130,10 @@ public:
     {
         switch (c.type)
         {
+        case SET_OCTAVE:
+            SetOctave((uint8_t)c);
+            break;
+            
         default:
             SynthesizerVoiceClass::SetCfgItem(c);
         }
@@ -135,86 +144,48 @@ private:
 
     void SetDefaultValues()
     {
-        ApplyInstrumentConfiguration();
+        SetCfgItem({SET_OCTAVE, (uint8_t)OCTAVE_DEFAULT});
     }
     
-    void ApplyInstrumentConfiguration()
+    void SetOctave(uint8_t octaveInput)
     {
-        ((*this).*(instrumentPresetList_[instrumentPresetListIdx_]))();
-    }
-    
-    void SetInstrumentFlute1()
-    {
-        SetCfgItemList((CfgItem[]){
-            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE},
-            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE},
-            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
-        });
+        uint8_t octave = octaveInput;
         
-        SetEnvelopeFast();
-    }
-    
-    void SetInstrumentFlute2()
-    {
-        SetCfgItemList((CfgItem[]){
-            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE},
-            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE},
-            {SET_OSCILLATOR_BALANCE,     127},
-            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
-        });
-        
-        SetEnvelopeFast();
-    }
-    
-    void SetInstrumentSynth1()
-    {
-        SetCfgItemList((CfgItem[]){
-            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWR},
-            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWR},
-            {SET_OSCILLATOR_BALANCE,     127},
-            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
-        });
-        
-        SetEnvelopeFast();
-    }
-    
-    void SetEnvelopeFast()
-    {
-        SetCfgItemList((CfgItem[]){
-            {SET_ENVELOPE_ATTACK_DURATION_MS,  150},
-            {SET_ENVELOPE_DECAY_DURATION_MS,   255},
-            {SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   255},
-            {SET_ENVELOPE_RELEASE_DURATION_MS, 150},
-        });
-    }
-    
-    
-    
-    template <uint8_t N>
-    void SetCfgItemList(const CfgItem (&& cfgItemList)[N])
-    {
-        for (auto &cfgItem : cfgItemList)
+        if (octave < OCTAVE_MIN)
         {
-            SetCfgItem(cfgItem);
+            octave = OCTAVE_MIN;
         }
+        else if (octave > OCTAVE_MAX)
+        {
+            octave = OCTAVE_MAX;
+        }
+        
+        octave_ = octave;
+    }
+    
+    uint16_t ScaleFreqToOctave(const double freq) const
+    {
+        uint16_t retVal = freq * (double)octave_ / (double)OCTAVE_DEFAULT;
+        
+        return retVal;
     }
     
     
+    // Keep presets outside the main logic
+    #include "SynthesizerPresets.h"
     
     
-    static const uint8_t INSTRUMNET_PRESET_COUNT = 3;
-    FnPtr instrumentPresetList_[INSTRUMNET_PRESET_COUNT] = {
-        &Synthesizer::SetInstrumentFlute1,
-        &Synthesizer::SetInstrumentFlute2,
-        &Synthesizer::SetInstrumentSynth1
-    };
-    uint8_t instrumentPresetListIdx_ = 0;
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Members
+    //
+    ///////////////////////////////////////////////////////////////////////
+    
+    uint8_t octave_;
 
     
-    
-
     static const uint8_t NOTE_COUNT = 19;
-    static const Q1616   NOTE__FREQ[Synthesizer::NOTE_COUNT];
+    static const double  NOTE__FREQ[Synthesizer::NOTE_COUNT];
 };
 
 
@@ -225,7 +196,8 @@ private:
 // https://en.wikipedia.org/wiki/Piano_key_frequencies
 // C D E F G A B C
 
-const Q1616 Synthesizer::NOTE__FREQ[Synthesizer::NOTE_COUNT] =
+// Note that these are in the OCTAVE_DEFAULT == 4
+const double Synthesizer::NOTE__FREQ[Synthesizer::NOTE_COUNT] =
 {
     261.626, // C      
     277.183, // C_SHARP

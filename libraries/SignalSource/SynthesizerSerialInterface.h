@@ -147,6 +147,15 @@ private:
             break;
         
         
+        
+        
+        
+        
+        case SET_OCTAVE:
+            ON_SET_OCTAVE(buf, bufSize);
+            break;
+        
+        
 
         
         default:
@@ -500,6 +509,37 @@ private:
             s_->SetCfgItem({SET_ENVELOPE_RELEASE_DURATION_MS, durationMs});
         }
     }
+    
+    
+    
+    void ON_SET_OCTAVE(uint8_t *buf, uint8_t bufSize)
+    {
+        const uint8_t BYTES_NEEDED = sizeof(uint8_t);
+        
+        if (bufSize == BYTES_NEEDED)
+        {
+            uint8_t idx = 0;
+            
+            uint8_t octave = GetU8(buf, idx);
+            
+            s_->SetCfgItem({SET_OCTAVE, octave});
+        }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
