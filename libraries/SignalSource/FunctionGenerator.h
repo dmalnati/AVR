@@ -31,22 +31,19 @@ enum
 };
 
 
+enum class OscillatorType : uint8_t
+{
+    NONE = 0,
+    SINE,
+    SAWR,
+    SAWL,
+    SQUARE,
+    TRIANGLE
+};
+
 
 class FunctionGenerator
 {
-public:
-
-    enum class OscillatorType : uint8_t
-    {
-        NONE = 0,
-        SINE,
-        SAWR,
-        SAWL,
-        SQUARE,
-        TRIANGLE
-    };
-
-    
 public:
 
     FunctionGenerator()

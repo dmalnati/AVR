@@ -13,6 +13,7 @@ class Synthesizer
 : private SynthesizerVoice<Timer2>
 {
     using SynthesizerVoiceClass = SynthesizerVoice<Timer2>;
+    using FnPtr                 = void (Synthesizer::*)();
     
 public:
 
@@ -50,16 +51,14 @@ public:
     
     void Init()
     {
-        
         // Determine sample rate and configure SV
         // calculate duration per sample, over many samples, determine
         // appropriate sample rate to achieve, for example:
         // - 90% utilization, 10% headroom
-        
-        
         const uint16_t SAMPLE_RATE = 10000;
         SynthesizerVoiceClass::SetSampleRate(SAMPLE_RATE);
         
+        SetDefaultValues();
     }
     
     void Start()
@@ -103,9 +102,18 @@ public:
         SynthesizerVoiceClass::EnvelopeBeginRelease();
     }
     
-    
-    
-    
+    void CycleToNextInstrument()
+    {
+        ++instrumentPresetListIdx_;
+        
+        if (instrumentPresetListIdx_ == INSTRUMNET_PRESET_COUNT)
+        {
+            instrumentPresetListIdx_ = 0;
+        }
+        
+        ApplyInstrumentConfiguration();
+    }
+
     
     ///////////////////////////////////////////////////////////////////////
     //
@@ -124,6 +132,86 @@ public:
 
 
 private:
+
+    void SetDefaultValues()
+    {
+        ApplyInstrumentConfiguration();
+    }
+    
+    void ApplyInstrumentConfiguration()
+    {
+        ((*this).*(instrumentPresetList_[instrumentPresetListIdx_]))();
+    }
+    
+    void SetInstrumentFlute1()
+    {
+        SetCfgItemList((CfgItem[]){
+            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE},
+            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE},
+            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
+        });
+        
+        SetEnvelopeFast();
+    }
+    
+    void SetInstrumentFlute2()
+    {
+        SetCfgItemList((CfgItem[]){
+            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE},
+            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE},
+            {SET_OSCILLATOR_BALANCE,     127},
+            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
+        });
+        
+        SetEnvelopeFast();
+    }
+    
+    void SetInstrumentSynth1()
+    {
+        SetCfgItemList((CfgItem[]){
+            {SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWR},
+            {SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWR},
+            {SET_OSCILLATOR_BALANCE,     127},
+            {SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE},
+        });
+        
+        SetEnvelopeFast();
+    }
+    
+    void SetEnvelopeFast()
+    {
+        SetCfgItemList((CfgItem[]){
+            {SET_ENVELOPE_ATTACK_DURATION_MS,  150},
+            {SET_ENVELOPE_DECAY_DURATION_MS,   255},
+            {SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   255},
+            {SET_ENVELOPE_RELEASE_DURATION_MS, 150},
+        });
+    }
+    
+    
+    
+    template <uint8_t N>
+    void SetCfgItemList(const CfgItem (&& cfgItemList)[N])
+    {
+        for (auto &cfgItem : cfgItemList)
+        {
+            SetCfgItem(cfgItem);
+        }
+    }
+    
+    
+    
+    
+    static const uint8_t INSTRUMNET_PRESET_COUNT = 3;
+    FnPtr instrumentPresetList_[INSTRUMNET_PRESET_COUNT] = {
+        &Synthesizer::SetInstrumentFlute1,
+        &Synthesizer::SetInstrumentFlute2,
+        &Synthesizer::SetInstrumentSynth1
+    };
+    uint8_t instrumentPresetListIdx_ = 0;
+
+    
+    
 
     static const uint8_t NOTE_COUNT = 19;
     static const Q1616   NOTE__FREQ[Synthesizer::NOTE_COUNT];

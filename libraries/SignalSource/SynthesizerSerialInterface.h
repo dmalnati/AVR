@@ -51,12 +51,7 @@ private:
     }
     
     
-    enum class MessageType : uint8_t
-    {
-        FN_SYNTHESIZER_KEY_DOWN = 61,
-        FN_SYNTHESIZER_KEY_DOWN_NOTE = 62,
-        FN_SYNTHESIZER_KEY_UP = 63
-    };
+    
 
     
     void Process(uint8_t *bufWithType, uint8_t bufWithTypeSize)
@@ -165,6 +160,15 @@ private:
         // Messages which do not match a configuration item
         //
         ///////////////////////////////////////////////////////////////////////
+        
+        enum class MessageType : uint8_t
+        {
+            FN_SYNTHESIZER_KEY_DOWN = 61,
+            FN_SYNTHESIZER_KEY_DOWN_NOTE = 62,
+            FN_SYNTHESIZER_KEY_UP = 63,
+            FN_SYNTHESIZER_CYCLE_TO_NEXT_INSTRUMENT = 64
+        };
+        
         MessageType t = (MessageType)bufWithType[0];
         
         switch (t)
@@ -181,6 +185,9 @@ private:
             FN_SYNTHESIZER_KEY_UP(buf, bufSize);
             break;
 
+        case MessageType::FN_SYNTHESIZER_CYCLE_TO_NEXT_INSTRUMENT:
+            FN_SYNTHESIZER_CYCLE_TO_NEXT_INSTRUMENT(buf, bufSize);
+            break;
         
         default:
             break;
@@ -542,6 +549,11 @@ private:
     void FN_SYNTHESIZER_KEY_UP(uint8_t *, uint8_t)
     {
         s_->OnKeyUp();
+    }
+    
+    void FN_SYNTHESIZER_CYCLE_TO_NEXT_INSTRUMENT(uint8_t *, uint8_t)
+    {
+        s_->CycleToNextInstrument();
     }
     
     
