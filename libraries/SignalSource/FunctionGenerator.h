@@ -490,15 +490,15 @@ Pin              FunctionGenerator::dbg_(14, LOW);
 uint8_t          FunctionGenerator::phaseLock_ = 0;
 
 SignalOscillator FunctionGenerator::osc1_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::osc1Enabled_ = 1;
+uint8_t          FunctionGenerator::osc1Enabled_ = 0;
 Q08              FunctionGenerator::osc1Factor_  = 0.5;
 
 SignalOscillator FunctionGenerator::osc2_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::osc2Enabled_ = 1;
+uint8_t          FunctionGenerator::osc2Enabled_ = 0;
 Q08              FunctionGenerator::osc2Factor_  = 0.5;
 
 SignalOscillator FunctionGenerator::lfo_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::lfoEnabled_    = 1;
+uint8_t          FunctionGenerator::lfoEnabled_    = 0;
 Q08              FunctionGenerator::lfoVibratoPct_ = 0.5;
 Q08              FunctionGenerator::lfoTromoloPct_ = 0.5;
 

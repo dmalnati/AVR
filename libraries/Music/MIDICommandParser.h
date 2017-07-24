@@ -73,33 +73,42 @@ public:
                 
                 // Check if parameters are ready to be consumed
                 // Don't forget that we still have the first byte in the queue.
-                if (parameterCount && q_.Size() >= parameterCount + 1)
+                if (parameterCount)
                 {
-                    uint8_t ok = 1;
-                    for (uint8_t i = 1; ok && i < parameterCount + 1; ++i)
+                    if (q_.Size() >= parameterCount + 1)
                     {
-                        // basically break on first failure
-                        ok = IsCommandByte(q_[i]);
-                    }
-                    
-                    if (ok)
-                    {
-                        retVal = 1;
-                        
-                        cmd->param1 = q_[1];
-                        
-                        if (parameterCount == 2)
+                        uint8_t ok = 1;
+                        for (uint8_t i = 1; ok && i < parameterCount + 1; ++i)
                         {
-                            cmd->param2 = q_[2];
+                            // basically break on first failure
+                            ok = !IsCommandByte(q_[i]);
                         }
                         
-                        // Good data, but we ate it all up
-                        AdvanceHeadToNextCommandByte();
+                        if (ok)
+                        {
+                            retVal = 1;
+                            
+                            cmd->param1 = q_[1];
+                            
+                            if (parameterCount == 2)
+                            {
+                                cmd->param2 = q_[2];
+                            }
+                            
+                            // Good data, but we ate it all up
+                            AdvanceHeadToNextCommandByte();
+                        }
+                        else
+                        {
+                            // Bad data
+                            AdvanceHeadToNextCommandByte();
+                        }
                     }
                     else
                     {
-                        // Bad data
-                        AdvanceHeadToNextCommandByte();
+                        // Not all params in the buffer yet.  Do nothing.
+                        // If the buf is full, the old bytes will get pushed
+                        // out eventually.
                     }
                 }
                 else

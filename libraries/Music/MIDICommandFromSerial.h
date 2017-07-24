@@ -2,27 +2,60 @@
 #define __MIDI_COMMAND_FROM_SERIAL_H__
 
 
+#include "Function.h"
+
+#include "TimedEventHandler.h"
+
 #include "MIDICommand.h"
 #include "MIDICommandParser.h"
 
 
 class MIDICommandFromSerial
 {
-    uint8_t MAX_BYTES_PER_ATTEMPT = 6;
+    static const uint8_t DEFAULT_POLL_PERIOD   = 10;
+    static const uint8_t MAX_BYTES_PER_ATTEMPT = 6;
     
 public:
     
-    void Init(MIDICommandParser *mcp)
+    void SetCallbackOnMIDICommand(function<void(MIDICommand cmd)> cbFn)
     {
-        mcp_ = mcp;
+        cbFn_ = cbFn;
     }
+    
+    void Start()
+    {
+        ted_.SetCallback([this](){
+            OnPoll();
+        });
+        
+        ted_.RegisterForTimedEventInterval(DEFAULT_POLL_PERIOD);
+    }
+    
+    void Stop()
+    {
+        ted_.DeRegisterForTimedEvent();
+    }
+    
 
+private:
+
+    void OnPoll()
+    {
+        // Attempt to extract a MIDICommand
+        MIDICommand cmd;
+        
+        if (GetMIDICommand(&cmd))
+        {
+            cbFn_(cmd);
+        }
+    }
+    
     uint8_t GetMIDICommand(MIDICommand *cmd)
     {
         uint8_t retVal    = 0;
         uint8_t bytesSeen = 0;
         
-        if (mcp_ && cmd && Serial.available())
+        if (cmd && Serial.available())
         {
             uint8_t cont = 1;
             
@@ -32,9 +65,9 @@ public:
                 
                 ++bytesSeen;
                 
-                mcp_->AddByte(b);
+                mcp_.AddByte(b);
 
-                if (mcp_->GetMsg(cmd))
+                if (mcp_.GetMsg(cmd))
                 {
                     retVal = 1;
                     
@@ -59,8 +92,12 @@ public:
         return retVal;
     }
 
-private:
-    MIDICommandParser *mcp_ = NULL;
+
+    MIDICommandParser mcp_;
+    
+    TimedEventHandlerDelegate ted_;
+
+    function<void(MIDICommand cmd)> cbFn_;
 };
 
 
