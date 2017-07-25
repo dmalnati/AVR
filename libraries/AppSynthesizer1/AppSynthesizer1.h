@@ -4,6 +4,9 @@
 
 #include "Evm.h"
 
+#include "PianoKeyboardPimoroniHAT.h"
+#include "MIDICommandFromPianoKeyboardPimoroniHAT.h"
+
 #include "MIDICommandFromSerial.h"
 #include "MIDISynthesizer.h"
 
@@ -25,6 +28,7 @@ private:
 public:
     AppSynthesizer1(const AppSynthesizer1Config &cfg)
     : cfg_(cfg)
+    , hatToMidi_(hat_)
     {
         // Nothing to do
     }
@@ -47,7 +51,10 @@ public:
         midiSynth_.Init();
         
         // Read and monitor controls
-        ReadAndMonitorControls();
+        SetUpControls();
+        
+        // Init inputs
+        hatToMidi_.Init();
 
         // Start Synthesizer
         midiSynth_.Start();
@@ -58,10 +65,23 @@ public:
 
 private:
 
-    void ReadAndMonitorControls()
+    void SetUpControls()
     {
         midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+        
+        
+        hat_.SetCallbackOnInstrumentChangeKeyPress([this](){
+            
+        });
+        
+        hat_.SetCallbackOnOctaveKeyUpPress([this](){
+            
+        });
+        
+        hat_.SetCallbackOnOctaveKeyDownPress([this](){
+            
+        });
     }
 
 
@@ -72,6 +92,10 @@ private:
     
     MIDICommandFromSerial  midiReader_;
     MIDISynthesizer        midiSynth_;
+    
+    PianoKeyboardPimoroniHAT                 hat_;
+    MIDICommandFromPianoKeyboardPimoroniHAT  hatToMidi_;
+
 };
 
 
