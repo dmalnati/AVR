@@ -47,6 +47,18 @@ class FunctionGenerator
 public:
 
     FunctionGenerator()
+    : dbg_(14, LOW)
+    , phaseLock_(0)
+    , osc1_(ssNone_.GetSample)
+    , osc1Enabled_(0)
+    , osc1Factor_(0.5)
+    , osc2_(ssNone_.GetSample)
+    , osc2Enabled_(0)
+    , osc2Factor_(0.5)
+    , lfo_(ssNone_.GetSample)
+    , lfoEnabled_(0)
+    , lfoVibratoPct_(0.5)
+    , lfoTromoloPct_(0.5)
     {
         // Debug
         PAL.PinMode(dbg_, OUTPUT);
@@ -86,14 +98,13 @@ public:
         SyncAllOscillators();
     }
     
-    
     ///////////////////////////////////////////////////////////////////////
     //
     // Main Synthesis
     //
     ///////////////////////////////////////////////////////////////////////
 
-    static uint8_t GetNextValue()
+    uint8_t GetNextValue()
     {
         uint8_t retVal = 0;
         
@@ -252,7 +263,31 @@ public:
         }
     }
     
+protected:
+
+    ///////////////////////////////////////////////////////////////////////
+    //
+    // Benchmarking
+    //
+    ///////////////////////////////////////////////////////////////////////
+
+    void SetBenchmarkingParameters()
+    {
+        // Turn on all features
+        SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+        SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+        SetCfgItem({SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::SINE});
+    }
     
+    void UnSetBenchmarkingParameters()
+    {
+        // Go back to post-construction state
+        SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+        SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+        SetCfgItem({SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE});
+    }
+
+
 private:
 
     ///////////////////////////////////////////////////////////////////////
@@ -459,55 +494,30 @@ private:
 private:
 
     // Debug
-    static Pin dbg_;
+    Pin dbg_;
     
-    static uint8_t phaseLock_;
+    uint8_t phaseLock_;
     
-    static SignalOscillator osc1_;
-    static uint8_t          osc1Enabled_;
-    static Q08              osc1Factor_;
+    SignalOscillator osc1_;
+    uint8_t          osc1Enabled_;
+    Q08              osc1Factor_;
     
-    static SignalOscillator osc2_;
-    static uint8_t          osc2Enabled_;
-    static Q08              osc2Factor_;
+    SignalOscillator osc2_;
+    uint8_t          osc2Enabled_;
+    Q08              osc2Factor_;
     
-    static SignalOscillator lfo_;
-    static uint8_t          lfoEnabled_;
-    static Q08              lfoVibratoPct_;
-    static Q08              lfoTromoloPct_;
+    SignalOscillator lfo_;
+    uint8_t          lfoEnabled_;
+    Q08              lfoVibratoPct_;
+    Q08              lfoTromoloPct_;
     
-    static SignalSourceNoneWave           ssNone_;
-    static SignalSourceSineWave           ssSine_;
-    static SignalSourceSawtoothRightWave  ssSawR_;
-    static SignalSourceSawtoothLeftWave   ssSawL_;
-    static SignalSourceSquareWave         ssSquare_;
-    static SignalSourceTriangleWave       ssTriangle_;
+    SignalSourceNoneWave           ssNone_;
+    SignalSourceSineWave           ssSine_;
+    SignalSourceSawtoothRightWave  ssSawR_;
+    SignalSourceSawtoothLeftWave   ssSawL_;
+    SignalSourceSquareWave         ssSquare_;
+    SignalSourceTriangleWave       ssTriangle_;
 };
-
-
-Pin              FunctionGenerator::dbg_(14, LOW);
-
-uint8_t          FunctionGenerator::phaseLock_ = 0;
-
-SignalOscillator FunctionGenerator::osc1_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::osc1Enabled_ = 0;
-Q08              FunctionGenerator::osc1Factor_  = 0.5;
-
-SignalOscillator FunctionGenerator::osc2_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::osc2Enabled_ = 0;
-Q08              FunctionGenerator::osc2Factor_  = 0.5;
-
-SignalOscillator FunctionGenerator::lfo_(FunctionGenerator::ssNone_.GetSample);
-uint8_t          FunctionGenerator::lfoEnabled_    = 0;
-Q08              FunctionGenerator::lfoVibratoPct_ = 0.5;
-Q08              FunctionGenerator::lfoTromoloPct_ = 0.5;
-
-SignalSourceNoneWave           FunctionGenerator::ssNone_;
-SignalSourceSineWave           FunctionGenerator::ssSine_;
-SignalSourceSawtoothRightWave  FunctionGenerator::ssSawR_;
-SignalSourceSawtoothLeftWave   FunctionGenerator::ssSawL_;
-SignalSourceSquareWave         FunctionGenerator::ssSquare_;
-SignalSourceTriangleWave       FunctionGenerator::ssTriangle_;
 
 
 

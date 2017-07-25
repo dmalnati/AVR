@@ -27,11 +27,6 @@ template <typename TimerClass>
 class SynthesizerVoice
 : private FunctionGenerator
 {
-    static const uint16_t ENVELOPE_ATTACK_DURATION_MS  = 50;
-    static const uint16_t ENVELOPE_DECAY_DURATION_MS   = 100;
-    static const uint16_t ENVELOPE_SUSTAIN_LEVEL_PCT   = 60;
-    static const uint16_t ENVELOPE_RELEASE_DURATION_MS = 150;
-
 public:
 
     SynthesizerVoice()
@@ -48,6 +43,8 @@ public:
         PAL.PinMode(13, OUTPUT);
         
         SetDefaultValues();
+        
+        BeSingleton();
     }
     
     ~SynthesizerVoice()
@@ -61,6 +58,30 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////
 
+    // Expected to be run once, before SetSampleRate
+    uint32_t GetLoopDurationUs()
+    {
+        FunctionGenerator::SetBenchmarkingParameters();
+        
+        uint32_t timeStart = PAL.Micros();
+        
+        const uint16_t LOOP_COUNT = 1000;
+        for (uint16_t i = 0; i < LOOP_COUNT; ++i)
+        {
+            GetNextSample();
+        }
+        
+        uint32_t timeEnd = PAL.Micros();
+        
+        FunctionGenerator::UnSetBenchmarkingParameters();
+        FunctionGenerator::Reset();
+        
+        uint32_t timeDiff  = (timeEnd - timeStart) + 1;
+        uint32_t usPerLoop = timeDiff / LOOP_COUNT;
+        
+        return usPerLoop;
+    }
+    
     // Expected to be called once, at runtime, before Start or any other use.
     void SetSampleRate(uint16_t sampleRate)
     {
@@ -79,7 +100,7 @@ public:
             TimerHelper<TimerClass> th;
             th.SetInterruptFrequency(sampleRate);
             uint16_t sampleRateActual = th.GetInterruptFrequency();
-
+            
             // Set up Function Generator
             FunctionGenerator::SetSampleRate(sampleRateActual);
 
@@ -198,16 +219,16 @@ public:
     void SetDefaultValues()
     {
         SetCfgItem({SET_ENVELOPE_ON_OFF, (uint8_t)1});
-        
-        SetCfgItem({SET_ENVELOPE_ATTACK_DURATION_MS,  ENVELOPE_ATTACK_DURATION_MS});
-        SetCfgItem({SET_ENVELOPE_DECAY_DURATION_MS,   ENVELOPE_DECAY_DURATION_MS});
-        SetCfgItem({SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   ENVELOPE_SUSTAIN_LEVEL_PCT});
-        SetCfgItem({SET_ENVELOPE_RELEASE_DURATION_MS, ENVELOPE_RELEASE_DURATION_MS});
     }
 
-    
+
 private:
 
+    void BeSingleton()
+    {
+        instance_ = this;
+    }
+    
     ///////////////////////////////////////////////////////////////////////
     //
     // EnvelopeADSR Control
@@ -246,7 +267,7 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////
 
-    static void OnInterrupt()
+    inline uint8_t GetNextSample()
     {
         // Get next generated value
         int8_t fgVal = FunctionGenerator::GetNextValue();
@@ -263,27 +284,29 @@ private:
         // Adjust to 0-255 range
         uint8_t val = 128 + scaledVal;
 
+        return val;
+    }
+    
+    static inline void OnInterrupt()
+    {
         // Output
-        PORTD = val;
+        PORTD = instance_->GetNextSample();
     }
 
 
 private:
 
-    static SignalEnvelopeADSR envADSR_;
-    static uint8_t            envADSREnabled_;
+    SignalEnvelopeADSR envADSR_;
+    uint8_t            envADSREnabled_;
 
     static constexpr TimerChannel *tca_ = TimerClass::GetTimerChannelA();
+    
+    static SynthesizerVoice<TimerClass> *instance_;
 };
 
 
-
 template <typename TimerClass>
-SignalEnvelopeADSR SynthesizerVoice<TimerClass>::envADSR_;
-template <typename TimerClass>
-uint8_t SynthesizerVoice<TimerClass>::envADSREnabled_;
-
-
+SynthesizerVoice<TimerClass> *SynthesizerVoice<TimerClass>::instance_ = NULL;
 
 
 

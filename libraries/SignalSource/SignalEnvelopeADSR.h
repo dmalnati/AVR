@@ -13,10 +13,10 @@ class SignalEnvelopeADSR
     static const uint16_t DEFAULT_SAMPLE_RATE = 1;
     static const uint16_t DEFAULT_STEP_SIZE   = 0;
     
-    static const uint16_t DEFAULT_ATTACK_DURATION_MS  = 50;
+    static const uint16_t DEFAULT_ATTACK_DURATION_MS  = 100;
     static const uint16_t DEFAULT_DECAY_DURATION_MS   = 100;
-    static const uint8_t  DEFAULT_SUSTAIN_LEVEL_PCT   = 50;
-    static const uint16_t DEFAULT_RELEASE_DURATION_MS = 20;
+    static const uint8_t  DEFAULT_SUSTAIN_LEVEL_PCT   = 80;
+    static const uint16_t DEFAULT_RELEASE_DURATION_MS = 350;
     
 public:
 

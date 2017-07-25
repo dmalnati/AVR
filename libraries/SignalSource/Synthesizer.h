@@ -23,6 +23,8 @@ class Synthesizer
     static const uint8_t OCTAVE_MAX     = 8;
     static const uint8_t OCTAVE_DEFAULT = 4;
     
+    static const uint8_t DEFAULT_USE_PCT_CPU = 90;
+    
 public:
 
     enum class Note : uint8_t
@@ -55,14 +57,34 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////
     
-    void Init()
+    void Init(uint8_t usePctCpu = DEFAULT_USE_PCT_CPU)
     {
-        // Determine sample rate and configure SV
-        // calculate duration per sample, over many samples, determine
-        // appropriate sample rate to achieve, for example:
-        // - 90% utilization, 10% headroom
-        const uint16_t SAMPLE_RATE = 10000;
-        SynthesizerVoiceClass::SetSampleRate(SAMPLE_RATE);
+        // Normalize CPU utilization value
+        if (usePctCpu > 100)
+        {
+            usePctCpu = 100;
+        }
+        else if (usePctCpu == 0)
+        {
+            usePctCpu = 1;
+        }
+        
+        double pctCpuFloat = (double)usePctCpu / 100.0;
+        
+        double usPerLoop             = Synthesizer::GetLoopDurationUs();
+        double loopsPerSec           = 1000000 / usPerLoop;
+        double loopsPerSecWithMargin = loopsPerSec * pctCpuFloat;
+        
+        /*
+        double usPerLoopWithMargin   = usPerLoop / pctCpuFloat;
+        Serial.print("usPerLoop: ");             Serial.println(usPerLoop);
+        Serial.print("loopsPerSec: ");           Serial.println(loopsPerSec);
+        Serial.print("usePctCpu: ");             Serial.println(usePctCpu);
+        Serial.print("loopsPerSecWithMargin: "); Serial.println(loopsPerSecWithMargin);
+        Serial.print("usPerLoopWithMargin: ");   Serial.println(usPerLoopWithMargin);
+        */
+        
+        SynthesizerVoiceClass::SetSampleRate(loopsPerSecWithMargin);
     }
     
     void Start()
