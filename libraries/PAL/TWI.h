@@ -120,7 +120,7 @@ public:
         SendSlaveAddressRead(slaveAddr);
         for (uint8_t i = 0; i < bufRxLen; ++i)
         {
-            uint8_t ackOrNack = (i == bufRxLen - 1);
+            uint8_t ackOrNack = !(i == (bufRxLen - 1));
             
             bufRx[i] = ReceiveByte(ackOrNack);
         }
