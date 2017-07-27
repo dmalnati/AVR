@@ -36,58 +36,13 @@ class TWIClass
     
     // Other
     static const uint32_t DEFAULT_CLOCK_FREQ = 100000;
-    static const uint8_t  DEFAULT_PRESCALER   = 1;
-    
-private:
-
-    
-    
-    uint8_t status_;
-    
-    void SetStatusOk()
-    {
-        status_ = 1;
-    }
-    
-    void CheckStatus(uint8_t expectedStatus)
-    {
-        status_ = (GetTWIStatus() == expectedStatus);
-        
-        Serial.print("CheckStatus: expected: ");
-        Serial.print(expectedStatus, HEX);
-        Serial.print(", got: ");
-        Serial.print(GetTWIStatus(), HEX);
-        Serial.println();
-    }
-    
-    uint8_t GetOk()
-    {
-        return status_;
-    }
-    
-    void SetSCLPeriod()
-    {
-        // TWI Bit Rate Register
-        // TWBR
-        
-        // p. 213
-        // 
-        //                           CPU Freq
-        // SCL Frequency = -------------------------------
-        //                 16 + ((2 * TWBR) * (Prescaler))
-        // 
-        // 
-        
-        // Note -- Slave frequency must be at least 16x SCL Frequency
-        
-        TWBR = (((PAL.GetCpuFreq() / DEFAULT_CLOCK_FREQ) - 16 ) / 2);
-    }
-
+    static const uint8_t  DEFAULT_PRESCALER  = 1;
     
 public:
 
     TWIClass()
-    : status_(1)
+    : health_(1)
+    , unexpectedTWIStatus_(0)
     {
         SetSCLPeriod();
     }
@@ -104,7 +59,7 @@ public:
                            uint8_t *bufRx,
                            uint8_t  bufRxLen)
     {
-        SetStatusOk();
+        SetHealthOk();
 
         SendStart();
         
@@ -126,16 +81,131 @@ public:
         }
         
         SendStop();
+        
+        DealWithErrors();
 
-        return GetOk();
+        return GetHealth();
+    }
+    
+    uint8_t Send(uint8_t slaveAddr, uint8_t *bufTx, uint8_t bufTxLen)
+    {
+        SetHealthOk();
+        
+        SendStart();
+        SendSlaveAddressWrite(slaveAddr);
+        for (uint8_t i = 0; i < bufTxLen; ++i)
+        {
+            SendByte(bufTx[i]);
+        }
+        SendStop();
+        
+        DealWithErrors();
+
+        return GetHealth();
+    }
+    
+    uint8_t WriteRegister(uint8_t slaveAddr, uint8_t reg, uint8_t val)
+    {
+        uint8_t buf[2] = { reg, val };
+        uint8_t bufLen = 2;
+        
+        return Send(slaveAddr, buf, bufLen);
+    }
+    
+    uint8_t ReadRegister(uint8_t slaveAddr, uint8_t reg, uint8_t &val)
+    {
+        return SendAndReceive(slaveAddr, &reg, 1, &val, 1);
     }
     
     
 private:
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Init
+    //
+    //////////////////////////////////////////////////////////////////////
+
+    void SetSCLPeriod()
+    {
+        TWBR = (((PAL.GetCpuFreq() / DEFAULT_CLOCK_FREQ) - 16 ) / 2);
+    }
+
+    
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Health and Error Condition Handling
+    //
+    //////////////////////////////////////////////////////////////////////
+
+    void SetHealthOk()
+    {
+        health_ = 1;
+    }
+    
+    uint8_t GetHealth()
+    {
+        return health_;
+    }
+    
+    void SetHealth(uint8_t health)
+    {
+        health_ = health;
+    }
+    
+    uint8_t GetTWIStatus()
+    {
+        return (TWSR & 0b11111000);
+    }
+    
+    void ExpectedTWIStatus(uint8_t status)
+    {
+        SetHealth(GetTWIStatus() == status);
+        
+        if (!GetHealth())
+        {
+            SetUnexpectedTWIStatus(GetTWIStatus());
+        }
+    }
+    
+    void SetUnexpectedTWIStatus(uint8_t status)
+    {
+        unexpectedTWIStatus_ = status;
+    }
+    
+    uint8_t GetUnexpectedTWIStatus()
+    {
+        return unexpectedTWIStatus_;
+    }
+    
+    void DealWithErrors()
+    {
+        if (!GetHealth())
+        {
+            switch (GetUnexpectedTWIStatus())
+            {
+            case MT_STATUS_SLA_W_TRASMITTED_NACK_RECEIVED:
+            case MT_STATUS_DATA_TRASMITTED_NACK_RECEIVED:
+            case MR_STATUS_SLA_R_TRANSMITTED_NACK_RECEIVED:
+                SendStopUnconditional();
+                break;
+                
+            default:
+                break;
+            }
+        }
+    }
+
+
+    //////////////////////////////////////////////////////////////////////
+    //
+    // Protocol Operation
+    //
+    //////////////////////////////////////////////////////////////////////
     
     void SendStart(uint8_t repeated = 0)
     {
-        if (GetOk())
+        if (GetHealth())
         {
             // 1.
             // Application writes to TWCR to initiate transmission of START
@@ -147,43 +217,38 @@ private:
             
             if (repeated)
             {
-                CheckStatus(MT_STATUS_REPEATED_START_TRANSMITTED);
+                ExpectedTWIStatus(MT_STATUS_REPEATED_START_TRANSMITTED);
             }
             else
             {
-                CheckStatus(MT_STATUS_START_TRANSMITTED);
+                ExpectedTWIStatus(MT_STATUS_START_TRANSMITTED);
             }
         }
     }
     
-    uint8_t GetTWIStatus()
-    {
-        return (TWSR & 0b11111000);
-    }
-    
     void SendSlaveAddressWrite(uint8_t slaveAddr)
     {
-        if (GetOk())
+        if (GetHealth())
         {
             SendSlaveAddressWithAlreadySetDirection(slaveAddr << 1 | 0x00);
             
-            CheckStatus(MT_STATUS_SLA_W_TRASMITTED_ACK_RECEIVED);
+            ExpectedTWIStatus(MT_STATUS_SLA_W_TRASMITTED_ACK_RECEIVED);
         }
     }
     
     void SendSlaveAddressRead(uint8_t slaveAddr)
     {
-        if (GetOk())
+        if (GetHealth())
         {
             SendSlaveAddressWithAlreadySetDirection(slaveAddr << 1 | 0x01);
             
-            CheckStatus(MR_STATUS_SLA_R_TRANSMITTED_ACK_RECEIVED);
+            ExpectedTWIStatus(MR_STATUS_SLA_R_TRANSMITTED_ACK_RECEIVED);
         }
     }
     
     void SendSlaveAddressWithAlreadySetDirection(uint8_t slaveAddrPlus)
     {
-        if (GetOk())
+        if (GetHealth())
         {
             // 3.
             // Check TWSR to see if START was sent. Application loads SLA+W into
@@ -198,10 +263,9 @@ private:
         }
     }
     
-    
     void SendByte(uint8_t val)
     {
-        if (GetOk())
+        if (GetHealth())
         {
             // 5.
             // Check TWSR to see if SLA+W was sent and ACK received. Application
@@ -214,7 +278,7 @@ private:
             // TWINT set. Status code indicates data sent, ACK received
             while (!(TWCR & (1<<TWINT)));
             
-            CheckStatus(MT_STATUS_DATA_TRASMITTED_ACK_RECEIVED);
+            ExpectedTWIStatus(MT_STATUS_DATA_TRASMITTED_ACK_RECEIVED);
         }
     }
     
@@ -222,7 +286,7 @@ private:
     {
         uint8_t retVal = 0;
         
-        if (GetOk())
+        if (GetHealth())
         {
             if (ackOrNack)
             {
@@ -239,14 +303,16 @@ private:
             
             if (ackOrNack)
             {
-                CheckStatus(MR_STATUS_DATA_RECEIVED_ACK_RETURNED);
+                // ACK
+                ExpectedTWIStatus(MR_STATUS_DATA_RECEIVED_ACK_RETURNED);
             }
             else
             {
-                CheckStatus(MR_STATUS_DATA_RECEIVED_NACK_RETURNED);
+                // NACK
+                ExpectedTWIStatus(MR_STATUS_DATA_RECEIVED_NACK_RETURNED);
             }
             
-            if (GetOk())
+            if (GetHealth())
             {
                 retVal = TWDR;
             }
@@ -255,37 +321,38 @@ private:
         return retVal;
     }
     
-    
     void SendStop()
     {
-        if (GetOk())
+        if (GetHealth())
         {
-            TWCR = (1 << TWINT)|(1 << TWEN) | (1 << TWSTO);
+            SendStopUnconditional();
         }
     }
     
+    void SendStopUnconditional()
+    {
+        TWCR = (1 << TWINT)|(1 << TWEN) | (1 << TWSTO);
+    }
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    //////////////////////////////////////////////////////////////////////
-    //
-    // Master Transmitter Logic
-    //
-    //////////////////////////////////////////////////////////////////////
-    
-    
+private:
+
+    uint8_t health_;
+    uint8_t unexpectedTWIStatus_;
+};
+
+
+// Singleton
+extern TWIClass TWI;
+
+
+
+
+
+
+
+
+
 /*
 
     void SetSCLPeriod()
@@ -363,7 +430,6 @@ private:
         
         TWCR = (1<<TWINT)|(1<<TWEN | (1<<TWSTO);
     }
-*/
     
     
     //////////////////////////////////////////////////////////////////////
@@ -381,14 +447,6 @@ private:
     // Now Stop, or repeated start
     
     
-    
-    
-
-    
-    
-    
-    
-/*
 
 // SCL - clock pin (28)
 // SDA - data pin  (27)
@@ -431,46 +489,7 @@ private:
 //   - otherwise another master could ask for other data that you then read
 
 
-
-
-
-
-
  */
-
-private:
-};
-
-
-// Singleton
-extern TWIClass TWI;
-
-
-
-
-
-
-class TWISlave
-{
-public:
-    TWISlave(uint8_t address)
-    : address_(address)
-    {
-        // Nothing to do
-    }
-    
-    
-
-private:
-    uint8_t address_;
-};
-
-
-
-
-
-
-
 
 
 
