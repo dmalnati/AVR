@@ -3,6 +3,7 @@
 
 
 static const uint8_t ADDR = 0x28;
+//static const uint8_t ADDR = 0x2B;
 
 SensorCapacitiveTouchCAP1188 cap(ADDR);
 
@@ -10,28 +11,39 @@ SensorCapacitiveTouchCAP1188 cap(ADDR);
 void setup()
 {
     Serial.begin(9600);
+    Serial.println("Starting");
+
+    Pin dbg(14, LOW);
+
+    uint8_t touchedLast = 0;
     
     while (1)
     {
-        Serial.println("Checking");
-        
+        //Serial.println("Checking");
+
+        PAL.DigitalToggle(dbg);
         uint8_t touched = cap.GetTouched();
+        PAL.DigitalToggle(dbg);
 
-        for (uint8_t i = 0; i < 8; ++i)
+        if (touched != touchedLast)
         {
-            if ((touched << i) & 0x80)
+            for (uint8_t i = 0; i < 8; ++i)
             {
-                Serial.print(i); Serial.print(" ");
+                if ((touched << i) & 0x80)
+                {
+                    Serial.print(i);
+                }
+                else
+                {
+                    Serial.print(" ");
+                }
             }
-            else
-            {
-                Serial.print("  ");
-            }
+            Serial.println();
         }
-        Serial.println();
-        Serial.println();
 
-        PAL.Delay(500);
+        touchedLast = touched;
+
+        PAL.Delay(100);
     }
 }
 
