@@ -15,6 +15,8 @@ void setup()
 
     Pin dbg(14, LOW);
 
+    cap.EnableLEDs();
+
     uint8_t touchedLast = 0;
     
     while (1)
