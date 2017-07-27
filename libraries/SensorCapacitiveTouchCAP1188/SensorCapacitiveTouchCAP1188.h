@@ -9,9 +9,9 @@
 
 class SensorCapacitiveTouchCAP1188
 {
-    static const uint8_t REG_MAIN_CONTROL        = 0x00;
-    static const uint8_t REG_SENSOR_INPUT_STATUS = 0x03;
-    static const uint8_t REG_SENSOR_INPUT_LED_LINKING = 0x72;
+    static const uint8_t REG_MAIN_CONTROL                 = 0x00;
+    static const uint8_t REG_SENSOR_INPUT_STATUS          = 0x03;
+    static const uint8_t REG_SENSOR_INPUT_LED_LINKING     = 0x72;
     static const uint8_t REG_MULTIPLE_TOUCH_CONFIGURATION = 0x2A;
     
 public:
