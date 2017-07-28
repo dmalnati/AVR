@@ -37,24 +37,11 @@ public:
         // Operate the serial port
         Serial.begin(BAUD);
         
-        // Direct inbound MIDI to the synthesizer
-        midiReader_.SetCallbackOnMIDICommand([this](MIDICommand cmd){
-            midiSynth_.ProcessCommand(cmd);
-        });
-        
-        // Poll for new MIDI
-        midiReader_.Start();
-        
-        // Set up Synthesizer
-        midiSynth_.Init();
-        
         // Read and monitor controls
         SetUpInputsAndDefaults();
         
-        // Init inputs
-        hatToMidi_.Init();
-
-        // Start Synthesizer
+        // Set up and start Synthesizer
+        midiSynth_.Init();
         midiSynth_.Start();
         
         // Handle events
@@ -65,12 +52,19 @@ private:
 
     void SetUpInputsAndDefaults()
     {
-        // Setup defaults
+        // Setup synthesizer defaults
         midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         
-        // Configure keyboard
+        // Direct inbound MIDI to the synthesizer
+        midiReader_.SetCallbackOnMIDICommand([this](MIDICommand cmd){
+            midiSynth_.ProcessCommand(cmd);
+        });
+        midiReader_.Start();
+        
+        // Set up keyboard
         hatToMidi_.GetHat().EnableLEDs();
+        hatToMidi_.Init();
     }
 
 

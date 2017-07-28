@@ -28,6 +28,10 @@ public:
     , valLast_(-1)
     {
         SetMinimumChange(DEFAULT_MINIMUM_CHANGE);
+        
+        fnAnalogRead_ = [](uint8_t pin) {
+            return PAL.AnalogRead(pin);
+        };
     }
     
     void SetMinimumChange(uint16_t minimumChange)
@@ -40,13 +44,19 @@ public:
         cbFn_ = cbFn;
     }
     
+    void SetAnalogReadFunction(function<uint16_t(uint8_t)> fnAnalogRead)
+    {
+        fnAnalogRead_ = fnAnalogRead;
+    }
+    
     uint8_t GetValue(uint8_t forceRefresh = 0)
     {
         uint8_t retVal = valLast_;
         
         if (forceRefresh || valLast_ == -1)
         {
-            valLast_ = PAL.AnalogRead(pin_);
+            //valLast_ = PAL.AnalogRead(pin_);
+            valLast_ = fnAnalogRead_(pin_);
             
             retVal = valLast_;
         }
@@ -67,7 +77,8 @@ public:
 private:
     virtual void OnTimedEvent()
     {
-        uint16_t val = PAL.AnalogRead(pin_);
+        //uint16_t val = PAL.AnalogRead(pin_);
+        uint16_t val = fnAnalogRead_(pin_);
         
         if (minimumChange_ != -1)
         {
@@ -96,6 +107,7 @@ private:
     int32_t                      minimumChange_;
     int32_t                      valLast_;
     function<void(uint16_t val)> cbFn_;
+    function<uint16_t(uint8_t)>  fnAnalogRead_;
 };
 
 
