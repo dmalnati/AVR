@@ -28,7 +28,6 @@ private:
 public:
     AppSynthesizer1(const AppSynthesizer1Config &cfg)
     : cfg_(cfg)
-    , hatToMidi_(hat_)
     {
         // Nothing to do
     }
@@ -37,7 +36,6 @@ public:
     {
         // Operate the serial port
         Serial.begin(BAUD);
-        
         
         // Direct inbound MIDI to the synthesizer
         midiReader_.SetCallbackOnMIDICommand([this](MIDICommand cmd){
@@ -51,7 +49,7 @@ public:
         midiSynth_.Init();
         
         // Read and monitor controls
-        SetUpControls();
+        SetUpInputsAndDefaults();
         
         // Init inputs
         hatToMidi_.Init();
@@ -65,23 +63,14 @@ public:
 
 private:
 
-    void SetUpControls()
+    void SetUpInputsAndDefaults()
     {
+        // Setup defaults
         midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         
-        
-        hat_.SetCallbackOnInstrumentChangeKeyPress([this](){
-            
-        });
-        
-        hat_.SetCallbackOnOctaveKeyUpPress([this](){
-            
-        });
-        
-        hat_.SetCallbackOnOctaveKeyDownPress([this](){
-            
-        });
+        // Configure keyboard
+        hatToMidi_.GetHat().EnableLEDs();
     }
 
 
@@ -93,7 +82,6 @@ private:
     MIDICommandFromSerial  midiReader_;
     MIDISynthesizer        midiSynth_;
     
-    PianoKeyboardPimoroniHAT                 hat_;
     MIDICommandFromPianoKeyboardPimoroniHAT  hatToMidi_;
 
 };

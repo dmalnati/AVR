@@ -53,6 +53,11 @@ public:
             
             Synthesizer::OnKeyDown(no.note, no.octave);
         }
+        else if (cmd.type == MIDICommand::Type::PROGRAM_CHANGE)
+        {
+            // Ignore data, just cycle presets
+            Synthesizer::CycleToNextInstrument();
+        }
     }
     
     ///////////////////////////////////////////////////////////////////////

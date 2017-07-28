@@ -10,8 +10,8 @@ struct MIDICommand
         NOTE_OFF              = 0b00000000,
         NOTE_ON               = 0b00000001,
         AFTERTOUCH            = 0b00000010,
-        CONTINUOUS_CONTROLLER = 0b00000011,
-        PATCH_CHANGE          = 0b00000100,
+        CONTROL_CHANGE        = 0b00000011,
+        PROGRAM_CHANGE        = 0b00000100,
         CHANNEL_PRESSURE      = 0b00000101,
         PITCH_BEND            = 0b00000110,
         NON_MUSICAL_COMMANDS  = 0b00000111

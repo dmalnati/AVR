@@ -53,12 +53,12 @@ public:
                 case MIDICommand::Type::NOTE_OFF:
                 case MIDICommand::Type::NOTE_ON:
                 case MIDICommand::Type::AFTERTOUCH:
-                case MIDICommand::Type::CONTINUOUS_CONTROLLER:
+                case MIDICommand::Type::CONTROL_CHANGE:
                 case MIDICommand::Type::PITCH_BEND:
                     parameterCount = 2;
                     break;
                     
-                case MIDICommand::Type::PATCH_CHANGE:
+                case MIDICommand::Type::PROGRAM_CHANGE:
                 case MIDICommand::Type::CHANNEL_PRESSURE:
                     parameterCount = 1;
                     break;
