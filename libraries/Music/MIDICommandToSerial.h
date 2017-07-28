@@ -27,7 +27,7 @@ public:
             buf[0] = (uint8_t)(1 << 7 | (uint8_t)cmd.type << 4 | cmd.channel);
             buf[1] = cmd.param1;
             
-            Serial.write(buf, 3);
+            Serial.write(buf, 2);
         }
     }
 
