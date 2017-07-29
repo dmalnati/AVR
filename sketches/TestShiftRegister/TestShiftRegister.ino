@@ -1,53 +1,57 @@
-#include <MyShiftRegister.h>
-#include <SoftwareSerial.h>
+#include "ShiftRegister.h"
 
-const uint8_t PIN_SR_LOAD         = 0;
-const uint8_t PIN_SR_CLOCK        = 1;
-const uint8_t PIN_SR_CLOCK_ENABLE = 2;
-const uint8_t PIN_SR_SERIAL       = 3;
-const uint8_t PIN_SERIAL_TX       = 4;
-const uint8_t PIN_SERIAL_RX       = -1;
 
-MyShiftRegister sr(PIN_SR_LOAD,
-                   PIN_SR_CLOCK,
-                   PIN_SR_CLOCK_ENABLE,
-                   PIN_SR_SERIAL);
+static const uint8_t PIN_LOAD         = 14;
+static const uint8_t PIN_CLOCK        = 13;
+static const uint8_t PIN_CLOCK_ENABLE = 12;
+static const uint8_t PIN_SERIAL       = 11;
 
-SoftwareSerial ss(PIN_SERIAL_RX, PIN_SERIAL_TX);
+static ShiftRegister sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
+
 
 void setup()
 {
-  pinMode(PIN_SERIAL_TX, OUTPUT);
-  ss.begin(9600);
-}
+    Serial.begin(9600);
+    Serial.println("Starting");
 
-void MonitorSIPO()
-{
-  uint8_t sipoData = 0;
-  uint8_t sipoDataLast = 0;
-  
-  while (1)
-  {
-    sipoData = sr.ShiftIn();
-
-    if (sipoData != sipoDataLast)
+    uint8_t bitmapLast = 0;
+    while (1)
     {
-      ss.write(sipoData);
+        uint8_t bitmap = sr.ShiftIn();
+
+        for (uint8_t i = 0; i < 8; ++i)
+        {
+            uint8_t bitVal     = !!(bitmap     << (7 - i));
+            uint8_t bitValLast = !!(bitmapLast << (7 - i));
+            
+            if (bitVal != bitValLast)
+            {
+                Serial.print("PISO Pin ");
+                Serial.print(i);
+                Serial.print(": changed from ");
+                Serial.print(bitValLast);
+                Serial.print(" to ");
+                Serial.print(bitVal);
+                Serial.println();
+            }
+        }
+
+        bitmapLast = bitmap;
     }
-
-    sipoDataLast = sipoData;
-
-    // not required to delay, but saves obesrving bounce as
-    // any pin toggles on and off.
-    // This is purely for demo so other applications may care.
-    delay(100);
-  }
 }
 
-void loop()
-{
-  MonitorSIPO();
-}
+
+void loop() {}
+
+
+
+
+
+
+
+
+
+
 
 
 
