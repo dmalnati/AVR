@@ -55,7 +55,6 @@ public:
         
         if (forceRefresh || valLast_ == -1)
         {
-            //valLast_ = PAL.AnalogRead(pin_);
             valLast_ = fnAnalogRead_(pin_);
             
             retVal = valLast_;
@@ -77,8 +76,9 @@ public:
 private:
     virtual void OnTimedEvent()
     {
-        //uint16_t val = PAL.AnalogRead(pin_);
         uint16_t val = fnAnalogRead_(pin_);
+        
+        Ser
         
         if (minimumChange_ != -1)
         {

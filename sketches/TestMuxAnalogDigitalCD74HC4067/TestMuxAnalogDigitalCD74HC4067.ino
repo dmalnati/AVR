@@ -3,7 +3,6 @@
 #include "MuxAnalogDigitalCD74HC4067.h"
 
 
-
 static const uint8_t PIN_BIT_0 = 15;
 static const uint8_t PIN_BIT_1 = 16;
 static const uint8_t PIN_BIT_2 = 17;
@@ -21,6 +20,7 @@ static MuxAnalogDigitalCD74HC4067 mux(PIN_BIT_0,
                                       PIN_BIT_3,
                                       PIN_MUX);
 
+
 void setup()
 {
     Serial.begin(9600);
@@ -31,21 +31,25 @@ void setup()
     uint8_t channel = 0;
     for (auto pia : piaList)
     {
-        pia->SetAnalogReadFunction([=channel, &mux](uint8_t pin){
+        pia->SetAnalogReadFunction([=](uint8_t pin){
             mux.ConnectToChannel(channel);
     
             return PAL.AnalogRead(pin);
         });
 
-        pia->SetCallback([=channel, &mux](uint16_t val){
+        pia->SetCallback([=](uint16_t val){
             Serial.print("channel: ");
             Serial.print(channel);
             Serial.print(", val: ");
             Serial.print(val);
+            Serial.println();
         });
         
         ++channel;
     }
+
+    pia1.Enable();
+    pia2.Enable();
 
     evm.MainLoop();
 }
