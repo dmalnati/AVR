@@ -78,8 +78,6 @@ private:
     {
         uint16_t val = fnAnalogRead_(pin_);
         
-        Ser
-        
         if (minimumChange_ != -1)
         {
             // Fire when:
