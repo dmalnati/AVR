@@ -7,8 +7,6 @@
 
 class MuxAnalogDigitalCD74HC4067
 {
-    static const uint8_t PROPAGATION_DELAY_TIME_US = 25;
-    
 public:
     MuxAnalogDigitalCD74HC4067(uint8_t pinBit0,
                                uint8_t pinBit1,
@@ -40,8 +38,6 @@ public:
             PAL.DigitalWrite(pinBit1_, (channel & 0b00000010) ? HIGH : LOW);
             PAL.DigitalWrite(pinBit2_, (channel & 0b00000100) ? HIGH : LOW);
             PAL.DigitalWrite(pinBit3_, (channel & 0b00001000) ? HIGH : LOW);
-            
-            PAL.DelayMicroseconds(PROPAGATION_DELAY_TIME_US);
         }
         
         return retVal;
