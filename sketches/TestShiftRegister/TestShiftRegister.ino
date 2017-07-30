@@ -21,13 +21,13 @@ void setup()
 
         for (uint8_t i = 0; i < 8; ++i)
         {
-            uint8_t bitVal     = !!(bitmap     << (7 - i));
-            uint8_t bitValLast = !!(bitmapLast << (7 - i));
+            uint8_t bitVal     = !!(bitmap     & (1 << (7 - i)));
+            uint8_t bitValLast = !!(bitmapLast & (1 << (7 - i)));
             
             if (bitVal != bitValLast)
             {
                 Serial.print("PISO Pin ");
-                Serial.print(i);
+                Serial.print(7 - i);
                 Serial.print(": changed from ");
                 Serial.print(bitValLast);
                 Serial.print(" to ");

@@ -35,8 +35,9 @@ public:
         PAL.DigitalWrite(pinLoad_, HIGH);
         PAL.DelayMicroseconds(5);
         
-        // Tell the shift register to start paying attention to the clock for
-        // shifting
+        // The first bit value is already available for reading.
+        // However, tell the shift register to start paying attention to the
+        // clock for all subsequent reads.
         PAL.DigitalWrite(pinClockEnable_, LOW);
         
         retVal = ClockInOneByte();
@@ -58,10 +59,10 @@ private:
         // Most significant bit first
         for (uint8_t i = 0; i < 8; ++i)
         {
-            PAL.DigitalWrite(pinClock_, HIGH);
-            
             retVal |= (PAL.DigitalRead(pinSerial_) << (7 - i));
             
+            // Pulse the clock high so the data is ready to read for next time
+            PAL.DigitalWrite(pinClock_, HIGH);
             PAL.DigitalWrite(pinClock_, LOW);
         }
         

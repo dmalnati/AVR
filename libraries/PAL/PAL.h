@@ -237,14 +237,6 @@ public:
         return delayMicroseconds(delay);
     }
     
-    static uint8_t ShiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder)
-    {
-        uint8_t arduinoDataPin  = GetArduinoPinFromPhysicalPin(dataPin);
-        uint8_t arduinoClockPin = GetArduinoPinFromPhysicalPin(clockPin);
-        
-        return shiftIn(arduinoDataPin, arduinoClockPin, bitOrder);
-    }
-    
     static void BitReverse(uint8_t *buf, uint8_t bufLen)
     {
         for (uint8_t i = 0; i < bufLen; ++i)
