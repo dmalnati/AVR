@@ -29,6 +29,13 @@ public:
     {
         uint8_t retVal = 0;
         
+        ShiftIn(&retVal, 1);
+        
+        return retVal;
+    }
+    
+    void ShiftIn(uint8_t *buf, uint8_t bufLen)
+    {
         // Tell the shift register that it should lock the parallel values
         PAL.DigitalWrite(pinLoad_, LOW);
         PAL.DelayMicroseconds(5);
@@ -40,12 +47,13 @@ public:
         // clock for all subsequent reads.
         PAL.DigitalWrite(pinClockEnable_, LOW);
         
-        retVal = ClockInOneByte();
+        for (uint16_t i = 0; i < bufLen; ++i)
+        {
+            buf[i] = ClockInOneByte();
+        }
         
         // Tell the shift register to stop looking at the clock
         PAL.DigitalWrite(pinClockEnable_, HIGH);
-        
-        return retVal;
     }
 
 

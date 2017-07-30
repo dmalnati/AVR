@@ -14,29 +14,54 @@ void setup()
     Serial.begin(9600);
     Serial.println("Starting");
 
-    uint8_t bitmapLast = 0;
+    ReadAndCompare(2);
+}
+
+void ReadAndCompare(const uint8_t bufSize)
+{
+    uint8_t bufLast[bufSize];
+    memset(bufLast, 0, bufSize);
+    uint8_t buf[bufSize];
+    memset(buf, 0, bufSize);
+
     while (1)
     {
-        uint8_t bitmap = sr.ShiftIn();
+        sr.ShiftIn(buf, bufSize);
 
-        for (uint8_t i = 0; i < 8; ++i)
+        CompareBits(bufLast, buf, bufSize);
+
+        memcpy(bufLast, buf, bufSize);
+    }
+}
+
+void CompareBits(uint8_t *bufLast, uint8_t *buf, uint8_t bufLen)
+{
+    for (uint16_t i = 0; i < bufLen; ++i)
+    {
+        uint8_t bitmapLast = bufLast[i];
+        uint8_t bitmap     = buf[i];
+
+        if (bitmap != bitmapLast)
         {
-            uint8_t bitVal     = !!(bitmap     & (1 << (7 - i)));
-            uint8_t bitValLast = !!(bitmapLast & (1 << (7 - i)));
+            Serial.print("Byte "); Serial.println(i);
             
-            if (bitVal != bitValLast)
+            for (uint8_t j = 0; j < 8; ++j)
             {
-                Serial.print("PISO Pin ");
-                Serial.print(7 - i);
-                Serial.print(": changed from ");
-                Serial.print(bitValLast);
-                Serial.print(" to ");
-                Serial.print(bitVal);
-                Serial.println();
+                uint8_t bitVal     = !!(bitmap     & (1 << (7 - j)));
+                uint8_t bitValLast = !!(bitmapLast & (1 << (7 - j)));
+                
+                if (bitVal != bitValLast)
+                {
+                    Serial.print("  PISO Pin ");
+                    Serial.print(7 - j);
+                    Serial.print(": changed from ");
+                    Serial.print(bitValLast);
+                    Serial.print(" to ");
+                    Serial.print(bitVal);
+                    Serial.println();
+                }
             }
         }
-
-        bitmapLast = bitmap;
     }
 }
 
