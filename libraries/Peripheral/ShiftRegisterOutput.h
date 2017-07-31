@@ -78,7 +78,7 @@ private:
 
     virtual void DigitalWrite(uint8_t pinLogical, uint8_t val)
     {
-        uint8_t bufIdx = (pinLogical / 8) * 8;
+        uint8_t bufIdx = pinLogical / 8;
         uint8_t bit    = pinLogical % 8;
         
         if (val)

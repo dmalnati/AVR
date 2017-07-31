@@ -32,9 +32,6 @@ public:
     
     void ShiftOut(uint8_t *buf, uint8_t bufLen)
     {
-        // The first bit value is already available for reading.
-        // However, tell the shift register to start paying attention to the
-        // clock for all subsequent reads.
         PAL.DigitalWrite(pinLatch_, LOW);
         
         for (uint16_t i = 0; i < bufLen; ++i)
@@ -42,7 +39,6 @@ public:
             ClockOutOneByte(buf[i]);
         }
         
-        // Tell the shift register to stop looking at the clock
         PAL.DigitalWrite(pinLatch_, HIGH);
     }
 
@@ -51,7 +47,6 @@ private:
 
     void ClockOutOneByte(uint8_t bitList)
     {
-        // Actually extract the serialized data
         // Most significant bit first
         for (uint8_t i = 0; i < 8; ++i)
         {
