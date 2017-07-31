@@ -8,7 +8,9 @@
 
 
 // Tested on 74HC165N (PISO)
+// https://assets.nexperia.com/documents/data-sheet/74HC_HCT165.pdf
 // http://playground.arduino.cc/Code/ShiftRegSN74HC165N
+
 
 class ShiftRegister
 {
