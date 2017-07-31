@@ -4,7 +4,7 @@
 
 #include "Function.h"
 #include "TimedEventHandler.h"
-#include "ShiftRegister.h"
+#include "ShiftRegisterIn.h"
 
 
 template <uint8_t REGISTER_COUNT>
@@ -24,9 +24,9 @@ class ShiftRegisterInput
     
 public:
 
-    ShiftRegisterInput(ShiftRegister &sr,
-                       uint32_t       pollPeriodMs = DEFAULT_POLL_PERIOD_MS,
-                       CbFn           cbFnDefault  = [](uint8_t){})
+    ShiftRegisterInput(ShiftRegisterIn &sr,
+                       uint32_t         pollPeriodMs = DEFAULT_POLL_PERIOD_MS,
+                       CbFn             cbFnDefault  = [](uint8_t){})
     : sr_(sr)
     , pollPeriodMs_(pollPeriodMs)
     {
@@ -131,7 +131,7 @@ private:
     }
     
     
-    ShiftRegister &sr_;
+    ShiftRegisterIn &sr_;
 
     TimedEventHandlerDelegate ted_;
     uint32_t                  pollPeriodMs_;

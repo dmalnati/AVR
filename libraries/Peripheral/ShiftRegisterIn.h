@@ -1,5 +1,5 @@
-#ifndef __SHIFT_REGISTER_H__
-#define __SHIFT_REGISTER_H__
+#ifndef __SHIFT_REGISTER_IN_H__
+#define __SHIFT_REGISTER_IN_H__
 
 
 #include <stdint.h>
@@ -12,13 +12,13 @@
 // http://playground.arduino.cc/Code/ShiftRegSN74HC165N
 
 
-class ShiftRegister
+class ShiftRegisterIn
 {
 public:
-    ShiftRegister(uint8_t pinLoad,
-                  uint8_t pinClock,
-                  uint8_t pinClockEnable,
-                  uint8_t pinSerial)
+    ShiftRegisterIn(uint8_t pinLoad,
+                    uint8_t pinClock,
+                    uint8_t pinClockEnable,
+                    uint8_t pinSerial)
     : pinLoad_(pinLoad)
     , pinClock_(pinClock)
     , pinClockEnable_(pinClockEnable)
@@ -101,7 +101,7 @@ private:
 
 
 
-#endif  // __SHIFT_REGISTER_H__
+#endif  // __SHIFT_REGISTER_IN_H__
 
 
 

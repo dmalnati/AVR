@@ -1,4 +1,4 @@
-#include "ShiftRegister.h"
+#include "ShiftRegisterIn.h"
 
 
 static const uint8_t PIN_LOAD         = 14;
@@ -6,7 +6,7 @@ static const uint8_t PIN_CLOCK        = 13;
 static const uint8_t PIN_CLOCK_ENABLE = 12;
 static const uint8_t PIN_SERIAL       = 11;
 
-static ShiftRegister sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
+static ShiftRegisterIn sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
 
 
 void setup()

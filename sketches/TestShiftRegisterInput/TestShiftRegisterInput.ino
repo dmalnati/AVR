@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "ShiftRegister.h"
+#include "ShiftRegisterIn.h"
 #include "ShiftRegisterInput.h"
 
 
@@ -11,7 +11,7 @@ static const uint8_t PIN_SERIAL       = 11;
 
 static Evm::Instance<10,10,10> evm;
 
-static ShiftRegister sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
+static ShiftRegisterIn sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
 static ShiftRegisterInput<2> sri(sr, 20, [](uint8_t logicLevel){
     Serial.print("default logicLevel change: ");
     Serial.print(logicLevel);
