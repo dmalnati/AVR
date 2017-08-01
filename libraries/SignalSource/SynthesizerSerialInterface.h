@@ -572,11 +572,11 @@ private:
             case  4: n = Synthesizer::Note::D_SHARP ; break;
             case  5: n = Synthesizer::Note::E       ; break;
             case  6: n = Synthesizer::Note::F       ; break;
-            case  7: n = Synthesizer::Note::G_FLAT  ; break;
+            case  7: n = Synthesizer::Note::F_SHARP ; break;
             case  8: n = Synthesizer::Note::G       ; break;
-            case  9: n = Synthesizer::Note::A_FLAT  ; break;
+            case  9: n = Synthesizer::Note::G_SHARP ; break;
             case 10: n = Synthesizer::Note::A       ; break;
-            case 11: n = Synthesizer::Note::B_FLAT  ; break;
+            case 11: n = Synthesizer::Note::A_SHARP ; break;
             case 12: n = Synthesizer::Note::B       ; break;
             
             default: n = Synthesizer::Note::A       ; break;
