@@ -13,7 +13,69 @@
 
 struct AppSynthesizer1Config
 {
+    // Synth
+    uint8_t pinLogicalPisoPhaseLock;
     
+    
+    // Oscillator 1
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeSine;
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeSawr;
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeSawl;
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeSquare;
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeTriangle;
+    uint8_t pinLogicalPisoOsc1ButtonWaveTypeNone;
+    
+    uint8_t pinLogicalSipoOsc1LedWaveTypeSine;
+    uint8_t pinLogicalSipoOsc1LedWaveTypeSawr;
+    uint8_t pinLogicalSipoOsc1LedWaveTypeSawl;
+    uint8_t pinLogicalSipoOsc1LedWaveTypeSquare;
+    uint8_t pinLogicalSipoOsc1LedWaveTypeTriangle;
+    uint8_t pinLogicalSipoOsc1LedWaveTypeNone;
+    
+    uint8_t pinLogicalMuxOsc1Frequency;
+    
+    
+    // Oscillator 2
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeSine;
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeSawr;
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeSawl;
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeSquare;
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeTriangle;
+    uint8_t pinLogicalPisoOsc2ButtonWaveTypeNone;
+    
+    uint8_t pinLogicalSipoOsc2LedWaveTypeSine;
+    uint8_t pinLogicalSipoOsc2LedWaveTypeSawr;
+    uint8_t pinLogicalSipoOsc2LedWaveTypeSawl;
+    uint8_t pinLogicalSipoOsc2LedWaveTypeSquare;
+    uint8_t pinLogicalSipoOsc2LedWaveTypeTriangle;
+    uint8_t pinLogicalSipoOsc2LedWaveTypeNone;
+    
+    uint8_t pinLogicalMuxOsc2Frequency;
+    
+    
+    // Oscillator Balance
+    uint8_t pinLogicalMuxOscBalance;
+
+    
+    // LFO
+    uint8_t pinLogicalPisoLfoButtonWaveTypeSine;
+    uint8_t pinLogicalPisoLfoButtonWaveTypeSawr;
+    uint8_t pinLogicalPisoLfoButtonWaveTypeSawl;
+    uint8_t pinLogicalPisoLfoButtonWaveTypeSquare;
+    uint8_t pinLogicalPisoLfoButtonWaveTypeTriangle;
+    uint8_t pinLogicalPisoLfoButtonWaveTypeNone;
+    
+    uint8_t pinLogicalSipoLfoLedWaveTypeSine;
+    uint8_t pinLogicalSipoLfoLedWaveTypeSawr;
+    uint8_t pinLogicalSipoLfoLedWaveTypeSawl;
+    uint8_t pinLogicalSipoLfoLedWaveTypeSquare;
+    uint8_t pinLogicalSipoLfoLedWaveTypeTriangle;
+    uint8_t pinLogicalSipoLfoLedWaveTypeNone;
+    
+    uint8_t pinLogicalMuxLfoFrequency;
+    
+    uint8_t pinLogicalMuxTromello;
+    uint8_t pinLogicalMuxVibrato;
 };
 
 class AppSynthesizer1
