@@ -47,8 +47,7 @@ class FunctionGenerator
 public:
 
     FunctionGenerator()
-    : dbg_(14, LOW)
-    , phaseLock_(0)
+    : phaseLock_(0)
     , osc1_(ssNone_.GetSample)
     , osc1Enabled_(0)
     , osc1Factor_(0.5)
@@ -60,8 +59,7 @@ public:
     , lfoVibratoPct_(0.5)
     , lfoTromoloPct_(0.5)
     {
-        // Debug
-        PAL.PinMode(dbg_, OUTPUT);
+        // Nothing to do
     }
     
     ~FunctionGenerator()
@@ -87,9 +85,6 @@ public:
         
         // Reset state
         Reset();
-        
-        // Debug
-        PAL.PinMode(dbg_, OUTPUT);
     }
     
     void Reset()
@@ -107,10 +102,6 @@ public:
     uint8_t GetNextValue()
     {
         uint8_t retVal = 0;
-        
-        // Debug
-        PAL.DigitalToggle(dbg_);
-        
         
         // LFO signal processing.
         //
@@ -493,9 +484,6 @@ private:
     
 private:
 
-    // Debug
-    Pin dbg_;
-    
     uint8_t phaseLock_;
     
     SignalOscillator osc1_;

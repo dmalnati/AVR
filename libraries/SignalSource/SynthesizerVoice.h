@@ -62,6 +62,7 @@ public:
     uint32_t GetLoopDurationUs()
     {
         FunctionGenerator::SetBenchmarkingParameters();
+        envADSR_.StartAttack();
         
         uint32_t timeStart = PAL.Micros();
         
@@ -75,6 +76,7 @@ public:
         
         FunctionGenerator::UnSetBenchmarkingParameters();
         FunctionGenerator::Reset();
+        envADSR_.Reset();
         
         uint32_t timeDiff  = (timeEnd - timeStart) + 1;
         uint32_t usPerLoop = timeDiff / LOOP_COUNT;
@@ -112,11 +114,6 @@ public:
             // Code doesn't necessarily make sense here, but follows the
             // resetting of channel A above by the timer configuration.
             tca_->SetInterruptHandlerRaw(OnInterrupt);
-
-
-            // Debug
-            tca_->SetCTCModeBehavior(TimerChannel::CTCModeBehavior::TOGGLE);
-            tca_->OutputLow();
         }
     }
 
@@ -282,7 +279,7 @@ private:
 
         // Adjust to 0-255 range
         uint8_t val = 128 + scaledVal;
-
+        
         return val;
     }
     
