@@ -2,50 +2,22 @@
 
 
 
-Sprint
-------
-
-static SynthesizerVoice seems to invoke defaults after other objects
-- make not-static
-
-~45us with most functionality disabled.
-  so assume really like 100us
-  
-! Starting with:
-usPerLoop: 52
-loopsPerSec: 19230
-loopsPerSecWithMargin: 17307
-usPerLoopWithMargin: 57
-
-! Once FunctionGenerator non-static, and SV GetNextSample also non-static
-usPerLoop: 54
-loopsPerSec: 18518
-loopsPerSecWithMargin: 16666
-usPerLoopWithMargin: 60
-
-
-! Now with SV envelope non-static
-usPerLoop: 57
-loopsPerSec: 17543
-loopsPerSecWithMargin: 15788
-usPerLoopWithMargin: 63
-
-
 
 Functionality
 -------------
 
 Pitch Bend
 
+Filter
+
 SignalSource
 - Add AUX In
 - Add Custom Wave (drawable, loadable)
 
-Signal to 0 when oscillators are off
-
 Envelope curved not linear
 
-    
+
+
 Performance
 -----------
     
@@ -53,14 +25,6 @@ EnvelopeADSR
 - appears to have a ~270us spike on transition to Release
   - due to lots of floating point math
   - fix it
-
-Synthesizer
-- have it ask SynthesizerVoice how long a loop takes on average
-  - then calculate sample rate, leaving (say) 10% headroom for other CPU work
-  - make sure TimerHelper configurable to be "less than" requested instead of
-    simply "closest to"
-
-  
   
   
   
@@ -69,15 +33,21 @@ Code Cleanup
 
 Stop using templates for SynthesizerVoice and TimerHelper
 
-Would using anonymous unions speed up FixedPoint?
-
-
+Move SignalSource files to appropriate locations (if better ones exist)
 
 
 Circuit
 -------
 
 Make own amplifier, current one has too much noise
+
+Should midi connect from Out to In work?
+
+Replace MIDI transistor with optocoupler.
+
+Replace R2R ladder with pre-made.
+
+Get AUX-in working
 
 
 
