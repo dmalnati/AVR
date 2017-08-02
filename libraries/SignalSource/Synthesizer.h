@@ -70,14 +70,21 @@ public:
         }
         
         double pctCpuFloat = (double)usePctCpu / 100.0;
+
+        // Measurements indicate on 8MHz and using Timer2 ISR, there is approx
+        // 10us latency between ISR calls.
+        double usPerIsr = ((double)PAL.GetCpuFreq() / 8000000.0) * 10;
         
-        double usPerLoop             = Synthesizer::GetLoopDurationUs();
-        double loopsPerSec           = 1000000 / usPerLoop;
+        double usPerLoop             = SynthesizerVoiceClass::GetLoopDurationUs();
+        double usPerLoopAdjusted     = usPerLoop + usPerIsr;
+        double loopsPerSec           = 1000000 / usPerLoopAdjusted;
         double loopsPerSecWithMargin = loopsPerSec * pctCpuFloat;
         
         /*
         double usPerLoopWithMargin   = usPerLoop / pctCpuFloat;
+        Serial.print("usPerIsr: ");              Serial.println(usPerIsr);
         Serial.print("usPerLoop: ");             Serial.println(usPerLoop);
+        Serial.print("usPerLoopAdjusted: ");     Serial.println(usPerLoopAdjusted);
         Serial.print("loopsPerSec: ");           Serial.println(loopsPerSec);
         Serial.print("usePctCpu: ");             Serial.println(usePctCpu);
         Serial.print("loopsPerSecWithMargin: "); Serial.println(loopsPerSecWithMargin);

@@ -274,9 +274,9 @@ protected:
     void SetBenchmarkingParameters()
     {
         // Turn on all features
-        SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        SetCfgItem({SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::SINE});
+        SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
+        SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
+        SetCfgItem({SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::TRIANGLE});
     }
     
     void UnSetBenchmarkingParameters()

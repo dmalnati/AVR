@@ -68,7 +68,7 @@ public:
         const uint16_t LOOP_COUNT = 1000;
         for (uint16_t i = 0; i < LOOP_COUNT; ++i)
         {
-            GetNextSample();
+            instance_->GetNextSample();
         }
         
         uint32_t timeEnd = PAL.Micros();
@@ -216,13 +216,12 @@ public:
         }
     }
     
+private:
+    
     void SetDefaultValues()
     {
         SetCfgItem({SET_ENVELOPE_ON_OFF, (uint8_t)1});
     }
-
-
-private:
 
     void BeSingleton()
     {
