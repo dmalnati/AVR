@@ -73,9 +73,6 @@ public:
         return ShiftRegisterOutputPin{this, pinLogical};
     }
 
-
-private:
-
     virtual void DigitalWrite(uint8_t pinLogical, uint8_t val)
     {
         uint8_t bufIdx = pinLogical / 8;
@@ -92,6 +89,9 @@ private:
         
         sro_.ShiftOut(buf, BUF_SIZE);
     }
+
+    
+private:
 
     ShiftRegisterOut &sro_;
 
