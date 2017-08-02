@@ -81,9 +81,9 @@ static struct AppSynthesizer1Config cfg = {
     .pinPisoClockEnable = 14,
     .pinPisoSerial      = 15,
 
-    .pinSipoClock = 23,
-    .pinSipoLatch = 24,
-    .pinSerial    = 25,
+    .pinSipoClock  = 23,
+    .pinSipoLatch  = 24,
+    .pinSipoSerial = 25,
 
     .pinMuxBit0   = 16,
     .pinMuxBit1   = 17,

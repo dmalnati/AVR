@@ -4,6 +4,14 @@
 
 #include "Evm.h"
 
+#include "ShiftRegisterIn.h"
+#include "ShiftRegisterInput.h"
+
+#include "ShiftRegisterOut.h"
+#include "ShiftRegisterOutput.h"
+
+#include "MuxAnalogDigitalCD74HC4067.h"
+
 #include "PianoKeyboardPimoroniHAT.h"
 #include "MIDICommandFromPianoKeyboardPimoroniHAT.h"
 
@@ -95,7 +103,7 @@ struct AppSynthesizer1Config
     
     uint8_t pinSipoClock;
     uint8_t pinSipoLatch;
-    uint8_t pinSerial;
+    uint8_t pinSipoSerial;
     
     uint8_t pinMuxBit0;
     uint8_t pinMuxBit1;
@@ -113,9 +121,17 @@ private:
     
     static const uint16_t BAUD = 31250;
     
+    static const uint8_t SHIFT_REGISTER_IN_COUNT  = 3;
+    static const uint8_t SHIFT_REGISTER_OUT_COUNT = 3;
+    
 public:
     AppSynthesizer1(const AppSynthesizer1Config &cfg)
     : cfg_(cfg)
+    , srIn_(cfg_.pinPisoLoad, cfg_.pinPisoClock, cfg_.pinPisoClockEnable, cfg_.pinPisoSerial)
+    , srInput_(srIn_)
+    , srOut_(cfg_.pinSipoClock, cfg_.pinSipoLatch, cfg_.pinSipoSerial)
+    , srOutput_(srOut_)
+    , mux_(cfg_.pinMuxBit0, cfg_.pinMuxBit1, cfg_.pinMuxBit2, cfg_.pinMuxBit3, cfg_.pinMuxAnalog)
     {
         // Nothing to do
     }
@@ -125,11 +141,13 @@ public:
         // Operate the serial port
         Serial.begin(BAUD);
         
+        // Set up Synthesizer
+        midiSynth_.Init();
+        
         // Read and monitor controls
         SetUpInputsAndDefaults();
         
-        // Set up and start Synthesizer
-        midiSynth_.Init();
+        // Start Synthesizer
         midiSynth_.Start();
         
         // Handle events
@@ -160,6 +178,14 @@ private:
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
     const AppSynthesizer1Config &cfg_;
+    
+    ShiftRegisterIn                             srIn_;
+    ShiftRegisterInput<SHIFT_REGISTER_IN_COUNT> srInput_;
+    
+    ShiftRegisterOut                              srOut_;
+    ShiftRegisterOutput<SHIFT_REGISTER_OUT_COUNT> srOutput_;
+    
+    MuxAnalogDigitalCD74HC4067 mux_;
     
     MIDICommandFromSerial  midiReader_;
     MIDISynthesizer        midiSynth_;
