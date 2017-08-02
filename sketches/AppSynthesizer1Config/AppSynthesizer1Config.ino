@@ -1,9 +1,9 @@
 #include "AppSynthesizer1.h"
 
-struct AppSynthesizer1Config cfg = {
-
+static struct AppSynthesizer1Config cfg = {
     // Synth
     .pinLogicalPisoPhaseLock = 6,
+
 
     // Oscillator 1
     .pinLogicalPisoOsc1ButtonWaveTypeSine     = 0,
@@ -65,6 +65,31 @@ struct AppSynthesizer1Config cfg = {
     .pinLogicalMuxTromello = 4,
     .pinLogicalMuxVibrato = 5,
 
+
+    // Envelope
+    .pinLogicalPisoEnvEnable = 22,
+    .pinLogicalPisoEnvPulse  = 23,
+    .pinLogicalMuxEnvAttack  = 6,
+    .pinLogicalMuxEnvDecay   = 7,
+    .pinLogicalMuxEnvSustain = 8,
+    .pinLogicalMuxEnvRelease = 9,
+
+
+    // Physical Pin Layout
+    .pinPisoLoad        = 9,
+    .pinPisoClock       = 10,
+    .pinPisoClockEnable = 14,
+    .pinPisoSerial      = 15,
+
+    .pinSipoClock = 23,
+    .pinSipoLatch = 24,
+    .pinSerial    = 25,
+
+    .pinMuxBit0   = 16,
+    .pinMuxBit1   = 17,
+    .pinMuxBit2   = 18,
+    .pinMuxBit3   = 19,
+    .pinMuxAnalog = 26,
 };
 
 

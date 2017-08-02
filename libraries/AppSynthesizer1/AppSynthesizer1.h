@@ -76,6 +76,32 @@ struct AppSynthesizer1Config
     
     uint8_t pinLogicalMuxTromello;
     uint8_t pinLogicalMuxVibrato;
+    
+    
+    // Envelope
+    uint8_t pinLogicalPisoEnvEnable;
+    uint8_t pinLogicalPisoEnvPulse;
+    uint8_t pinLogicalMuxEnvAttack;
+    uint8_t pinLogicalMuxEnvDecay;
+    uint8_t pinLogicalMuxEnvSustain;
+    uint8_t pinLogicalMuxEnvRelease;
+    
+    
+    // Physical Pin Layout
+    uint8_t pinPisoLoad;
+    uint8_t pinPisoClock;
+    uint8_t pinPisoClockEnable;
+    uint8_t pinPisoSerial;
+    
+    uint8_t pinSipoClock;
+    uint8_t pinSipoLatch;
+    uint8_t pinSerial;
+    
+    uint8_t pinMuxBit0;
+    uint8_t pinMuxBit1;
+    uint8_t pinMuxBit2;
+    uint8_t pinMuxBit3;
+    uint8_t pinMuxAnalog;
 };
 
 class AppSynthesizer1
