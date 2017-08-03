@@ -5,7 +5,7 @@
 #include "Evm.h"
 
 #include "ShiftRegisterIn.h"
-#include "ShiftRegisterInput.h"
+#include "ShiftRegisterInputSingleCallback.h"
 
 #include "ShiftRegisterOut.h"
 #include "ShiftRegisterOutput.h"
@@ -136,7 +136,7 @@ public:
     AppSynthesizer1(const AppSynthesizer1Config &cfg)
     : cfg_(cfg)
     , srIn_(cfg_.pinPisoLoad, cfg_.pinPisoClock, cfg_.pinPisoClockEnable, cfg_.pinPisoSerial)
-    , srInput_(srIn_)
+    , srInputSC_(srIn_)
     , srOut_(cfg_.pinSipoClock, cfg_.pinSipoLatch, cfg_.pinSipoSerial)
     , srOutput_(srOut_)
     , mux_(cfg_.pinMuxBit0, cfg_.pinMuxBit1, cfg_.pinMuxBit2, cfg_.pinMuxBit3, cfg_.pinMuxAnalog)
@@ -199,44 +199,144 @@ private:
     
     void SetupButtonInputs()
     {
-        SetupOsc1Inputs();
-        SetupOsc2Inputs();
-        SetupLfoInputs();
-        SetupEnvelopeInputs();
+        srInputSC_.SetCallback([this](uint8_t pinLogical, uint8_t logicLevel){
+            OnPinChange(pinLogical, logicLevel);
+        });
     }
     
-    void SetupOsc1Inputs()
+    void OnPinChange(uint8_t pinLogical, uint8_t logicLevel)
     {
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSawr, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSawl, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSquare, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeTriangle, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc1ButtonWaveTypeNone, [this](uint8_t){
-            ClearOsc1Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
-        });
+        // Group wave selection first, and only examine if logic level
+        // is rising, since that's all they care about
+        if (logicLevel)
+        {
+            if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeSawr)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeSawl)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeSquare)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeTriangle)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc1ButtonWaveTypeNone)
+            {
+                ClearOsc1Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeSine)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeSawr)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeSawl)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeSquare)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeTriangle)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoOsc2ButtonWaveTypeNone)
+            {
+                ClearOsc2Leds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
+                midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeSine)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeSawr)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeSawl)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeSquare)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeTriangle)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
+            }
+            else if (pinLogical == cfg_.pinLogicalPisoLfoButtonWaveTypeNone)
+            {
+                ClearLfoLeds();
+                srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
+                midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+            }
+        }
+        
+        // Examine Envelope pins.
+        // Possibly redundant, but no real harm, and clearer code results
+        if (pinLogical == cfg_.pinLogicalPisoEnvEnable)
+        {
+            midiSynth_.SetCfgItem({SET_ENVELOPE_ON_OFF, logicLevel});
+        }
+        else if (pinLogical == cfg_.pinLogicalPisoEnvPulse)
+        {
+            if (logicLevel)
+            {
+                midiSynth_.OnKeyDown();
+            }
+            else
+            {
+                midiSynth_.OnKeyUp();
+            }
+        }
     }
     
     void ClearOsc1Leds()
@@ -254,40 +354,6 @@ private:
         {
             srOutput_.DigitalWrite(pinLogical, LOW);
         }
-    }
-
-    void SetupOsc2Inputs()
-    {
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeSine, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeSawr, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeSawl, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeSquare, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeTriangle, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoOsc2ButtonWaveTypeNone, [this](uint8_t){
-            ClearOsc2Leds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
-        });
     }
     
     void ClearOsc2Leds()
@@ -307,40 +373,6 @@ private:
         }
     }
 
-    void SetupLfoInputs()
-    {
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeSine, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSine, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeSawr, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawr, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SAWR});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeSawl, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSawl, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SAWL});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeSquare, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeSquare, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::SQUARE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeTriangle, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeTriangle, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::TRIANGLE});
-        });
-        srInput_.SetCallback(cfg_.pinLogicalPisoLfoButtonWaveTypeNone, [this](uint8_t){
-            ClearLfoLeds();
-            srOutput_.DigitalWrite(cfg_.pinLogicalSipoLfoLedWaveTypeNone, HIGH);
-            midiSynth_.SetCfgItem({SET_LFO_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
-        });
-    }
-    
     void ClearLfoLeds()
     {
         uint8_t pinList[] = {
@@ -356,31 +388,6 @@ private:
         {
             srOutput_.DigitalWrite(pinLogical, LOW);
         }
-    }
-    
-    void SetupEnvelopeInputs()
-    {
-        
-        srInput_.SetCallback(cfg_.pinLogicalPisoEnvEnable,
-                             [this](uint8_t logicLevel){
-            
-            midiSynth_.SetCfgItem({SET_ENVELOPE_ON_OFF, logicLevel});
-        },
-                             LEVEL_RISING_AND_FALLING);
-        
-        srInput_.SetCallback(cfg_.pinLogicalPisoEnvPulse,
-                             [this](uint8_t logicLevel){
-            if (logicLevel)
-            {
-                midiSynth_.OnKeyDown();
-            }
-            else
-            {
-                midiSynth_.OnKeyUp();
-            }
-        },
-                             LEVEL_RISING_AND_FALLING);
-        
     }
     
     void SetupAnalogInputs()
@@ -477,8 +484,8 @@ private:
 
     const AppSynthesizer1Config &cfg_;
     
-    ShiftRegisterIn                             srIn_;
-    ShiftRegisterInput<SHIFT_REGISTER_IN_COUNT> srInput_;
+    ShiftRegisterIn                                           srIn_;
+    ShiftRegisterInputSingleCallback<SHIFT_REGISTER_IN_COUNT> srInputSC_;
     
     ShiftRegisterOut                              srOut_;
     ShiftRegisterOutput<SHIFT_REGISTER_OUT_COUNT> srOutput_;
