@@ -65,19 +65,14 @@ public:
     {
         uint16_t retVal = 0;
         
-        switch (p)
-        {
-            case TimerPrescaler::DIV_BY_1:    retVal =    1; break;
-            case TimerPrescaler::DIV_BY_8:    retVal =    8; break;
-            case TimerPrescaler::DIV_BY_32:   retVal =   32; break;
-            case TimerPrescaler::DIV_BY_64:   retVal =   64; break;
-            case TimerPrescaler::DIV_BY_128:  retVal =  128; break;
-            case TimerPrescaler::DIV_BY_256:  retVal =  256; break;
-            case TimerPrescaler::DIV_BY_1024: retVal = 1024; break;
-            
-            default: break;
-        }
-        
+        if      (p == TimerPrescaler::DIV_BY_1)    { retVal =    1; }
+        else if (p == TimerPrescaler::DIV_BY_8)    { retVal =    8; }
+        else if (p == TimerPrescaler::DIV_BY_32)   { retVal =   32; }
+        else if (p == TimerPrescaler::DIV_BY_64)   { retVal =   64; }
+        else if (p == TimerPrescaler::DIV_BY_128)  { retVal =  128; }
+        else if (p == TimerPrescaler::DIV_BY_256)  { retVal =  256; }
+        else if (p == TimerPrescaler::DIV_BY_1024) { retVal = 1024; }
+
         return retVal;
     }
     

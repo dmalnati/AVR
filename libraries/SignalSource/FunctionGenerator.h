@@ -195,62 +195,57 @@ public:
     
     void SetCfgItem(CfgItem c)
     {
-        switch (c.type)
+        if (c.type == SET_PHASE_LOCK)
         {
-        case SET_PHASE_LOCK:
             SetPhaseLock((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_FREQUENCY:
+        }
+        else if (c.type == SET_OSCILLATOR_1_FREQUENCY)
+        {
             SetOscillator1Frequency((uint16_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_WAVE_TYPE:
+        }
+        else if (c.type == SET_OSCILLATOR_1_WAVE_TYPE)
+        {
             SetOscillator1WaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_1_PHASE_OFFSET:
+        }
+        else if (c.type == SET_OSCILLATOR_1_PHASE_OFFSET)
+        {
             SetOscillator1PhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_BALANCE:
+        }
+        else if (c.type == SET_OSCILLATOR_BALANCE)
+        {
             SetOscillatorBalance((uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_FREQUENCY:
+        }
+        else if (c.type == SET_OSCILLATOR_2_FREQUENCY)
+        {
             SetOscillator2Frequency((uint16_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_WAVE_TYPE:
+        }
+        else if (c.type == SET_OSCILLATOR_2_WAVE_TYPE)
+        {
             SetOscillator2WaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_OSCILLATOR_2_PHASE_OFFSET:
+        }
+        else if (c.type == SET_OSCILLATOR_2_PHASE_OFFSET)
+        {
             SetOscillator2PhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_LFO_FREQUENCY:
+        }
+        else if (c.type == SET_LFO_FREQUENCY)
+        {
             SetLFOFrequency((uint16_t)c);
-            break;
-            
-        case SET_LFO_WAVE_TYPE:
+        }
+        else if (c.type == SET_LFO_WAVE_TYPE)
+        {
             SetLFOWaveType((OscillatorType)(uint8_t)c);
-            break;
-            
-        case SET_LFO_PHASE_OFFSET:
+        }
+        else if (c.type == SET_LFO_PHASE_OFFSET)
+        {
             SetLFOPhaseOffset((uint8_t)c);
-            break;
-            
-        case SET_LFO_VIBRATO_PCT:
+        }
+        else if (c.type == SET_LFO_VIBRATO_PCT)
+        {
             SetLFOVibratoPct((uint8_t)c);
-            break;
-            
-        case SET_LFO_TROMOLO_PCT:
+        }
+        else if (c.type == SET_LFO_TROMOLO_PCT)
+        {
             SetLFOTromoloPct((uint8_t)c);
-            break;
-            
-        default:
-            break;
         }
     }
     

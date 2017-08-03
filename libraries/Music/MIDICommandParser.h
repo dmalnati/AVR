@@ -48,27 +48,22 @@ public:
                 // Determine the number of parameters
                 uint8_t parameterCount = 0;
                 
-                switch (cmd->type)
+                if (cmd->type ==  MIDICommand::Type::NOTE_OFF       ||
+                    cmd->type ==  MIDICommand::Type::NOTE_ON        ||
+                    cmd->type ==  MIDICommand::Type::AFTERTOUCH     ||
+                    cmd->type ==  MIDICommand::Type::CONTROL_CHANGE ||
+                    cmd->type ==  MIDICommand::Type::PITCH_BEND)
                 {
-                case MIDICommand::Type::NOTE_OFF:
-                case MIDICommand::Type::NOTE_ON:
-                case MIDICommand::Type::AFTERTOUCH:
-                case MIDICommand::Type::CONTROL_CHANGE:
-                case MIDICommand::Type::PITCH_BEND:
                     parameterCount = 2;
-                    break;
-                    
-                case MIDICommand::Type::PROGRAM_CHANGE:
-                case MIDICommand::Type::CHANNEL_PRESSURE:
+                }
+                else if (cmd->type == MIDICommand::Type::PROGRAM_CHANGE ||
+                         cmd->type == MIDICommand::Type::CHANNEL_PRESSURE)
+                {
                     parameterCount = 1;
-                    break;
-                
-                case MIDICommand::Type::NON_MUSICAL_COMMANDS:
-                default:
-                    // Not actually possible to get an enum value that isn't
-                    // in the list above.  3 bits are fully accounted for.
-                    // As a result I won't account for this below.
-                    break;
+                }
+                else // MIDICommand::Type::NON_MUSICAL_COMMANDS
+                {
+                    // Do nothing
                 }
                 
                 // Check if parameters are ready to be consumed

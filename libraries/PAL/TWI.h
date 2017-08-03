@@ -182,16 +182,13 @@ private:
     {
         if (!GetHealth())
         {
-            switch (GetUnexpectedTWIStatus())
+            uint8_t status = GetUnexpectedTWIStatus();
+            
+            if (status == MT_STATUS_SLA_W_TRASMITTED_NACK_RECEIVED ||
+                status == MT_STATUS_DATA_TRASMITTED_NACK_RECEIVED  ||
+                status == MR_STATUS_SLA_R_TRANSMITTED_NACK_RECEIVED)
             {
-            case MT_STATUS_SLA_W_TRASMITTED_NACK_RECEIVED:
-            case MT_STATUS_DATA_TRASMITTED_NACK_RECEIVED:
-            case MR_STATUS_SLA_R_TRANSMITTED_NACK_RECEIVED:
                 SendStopUnconditional();
-                break;
-                
-            default:
-                break;
             }
         }
     }

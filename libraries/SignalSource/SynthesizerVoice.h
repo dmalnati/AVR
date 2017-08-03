@@ -185,31 +185,29 @@ public:
 
     void SetCfgItem(CfgItem c)
     {
-        switch (c.type)
+        if (c.type == SET_ENVELOPE_ON_OFF)
         {
-        case SET_ENVELOPE_ON_OFF:
             SetEnvelopeOnOff((uint8_t)c);
-            break;
-            
-        case SET_ENVELOPE_ATTACK_DURATION_MS:
+        }
+        else if (c.type == SET_ENVELOPE_ATTACK_DURATION_MS)
+        {
             SetAttackDuration((uint16_t)c);
-            break;
-            
-        case SET_ENVELOPE_DECAY_DURATION_MS:
+        }
+        else if (c.type == SET_ENVELOPE_DECAY_DURATION_MS)
+        {
             SetDecayDuration((uint16_t)c);
-            break;
-            
-        case SET_ENVELOPE_SUSTAIN_LEVEL_PCT:
+        }
+        else if (c.type == SET_ENVELOPE_SUSTAIN_LEVEL_PCT)
+        {
             SetSustainLevelPct((uint8_t)c);
-            break;
-            
-        case SET_ENVELOPE_RELEASE_DURATION_MS:
+        }
+        else if (c.type == SET_ENVELOPE_RELEASE_DURATION_MS)
+        {
             SetReleaseDuration((uint16_t)c);
-            break;
-            
-        default:
+        }
+        else
+        {
             FunctionGenerator::SetCfgItem(c);
-            break;
         }
     }
     

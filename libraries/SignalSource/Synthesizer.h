@@ -123,12 +123,35 @@ public:
     
     void OnKeyDown(Note n, uint8_t octave)
     {
+        // https://www.key-notes.com/blog/layout-of-piano-keys
+        // https://www.key-notes.com/blog/piano-notes-chart
+        // https://www.key-notes.com/blog/piano-key-chart
+        // https://en.wikipedia.org/wiki/C_(musical_note)
+        // https://en.wikipedia.org/wiki/Piano_key_frequencies
+        // C D E F G A B C
+        
+        double freq = 1;
+        
+        uint8_t noteNumber = (uint8_t)n;
+        if      (noteNumber ==  0) { freq = 261.626; } // C      
+        else if (noteNumber ==  1) { freq = 277.183; } // C_SHARP
+        else if (noteNumber ==  2) { freq = 293.665; } // D      
+        else if (noteNumber ==  3) { freq = 311.127; } // D_SHARP
+        else if (noteNumber ==  4) { freq = 329.628; } // E      
+        else if (noteNumber ==  5) { freq = 349.228; } // F      
+        else if (noteNumber ==  6) { freq = 369.994; } // F_SHARP
+        else if (noteNumber ==  7) { freq = 391.995; } // G      
+        else if (noteNumber ==  8) { freq = 415.305; } // G_SHARP
+        else if (noteNumber ==  9) { freq = 440.000; } // A      
+        else if (noteNumber == 10) { freq = 466.164; } // A_SHARP
+        else if (noteNumber == 11) { freq = 493.883; } // B      
+        
         SetCfgItem({SET_OCTAVE, octave});
         
-        uint16_t freq = ScaleFreqToOctave(NOTE__FREQ[(uint8_t)n]);
+        uint16_t freqInt = ScaleFreqToOctave(freq);
         
-        SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, freq});
-        SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, freq + 3});
+        SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, freqInt});
+        SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, freqInt + 3});
         
         OnKeyDown();
     }
@@ -159,13 +182,12 @@ public:
     
     void SetCfgItem(CfgItem c)
     {
-        switch (c.type)
+        if (c.type == SET_OCTAVE)
         {
-        case SET_OCTAVE:
             SetOctave((uint8_t)c);
-            break;
-            
-        default:
+        }
+        else
+        {
             SynthesizerVoiceClass::SetCfgItem(c);
         }
     }
@@ -230,37 +252,7 @@ private:
     ///////////////////////////////////////////////////////////////////////
     
     uint8_t octave_;
-
-    
-    static const uint8_t NOTE_COUNT = 12;
-    static const double  NOTE__FREQ[Synthesizer::NOTE_COUNT];
 };
-
-
-// https://www.key-notes.com/blog/layout-of-piano-keys
-// https://www.key-notes.com/blog/piano-notes-chart
-// https://www.key-notes.com/blog/piano-key-chart
-// https://en.wikipedia.org/wiki/C_(musical_note)
-// https://en.wikipedia.org/wiki/Piano_key_frequencies
-// C D E F G A B C
-
-// Note that these are in the OCTAVE_DEFAULT == 4
-const double Synthesizer::NOTE__FREQ[Synthesizer::NOTE_COUNT] =
-{
-    261.626, // C      
-    277.183, // C_SHARP
-    293.665, // D      
-    311.127, // D_SHARP
-    329.628, // E      
-    349.228, // F      
-    369.994, // F_SHARP
-    391.995, // G      
-    415.305, // G_SHARP
-    440.000, // A      
-    466.164, // A_SHARP
-    493.883, // B      
-};
-
 
 
 

@@ -66,40 +66,36 @@ PlatformAbstractionLayer::GetPortAndPortPinFromPhysicalPin(uint8_t  physicalPin,
 {
     uint8_t retVal = 1;
     
-    switch (physicalPin)
-    {
-        case  0: retVal = 0;                       break;
-        case  1: *port = PORT_C; *portPin = PINC6; break;
-        case  2: *port = PORT_D; *portPin = PIND0; break;
-        case  3: *port = PORT_D; *portPin = PIND1; break;
-        case  4: *port = PORT_D; *portPin = PIND2; break;
-        case  5: *port = PORT_D; *portPin = PIND3; break;
-        case  6: *port = PORT_D; *portPin = PIND4; break;
-        case  7: retVal = 0;                       break;
-        case  8: retVal = 0;                       break;
-        case  9: *port = PORT_B; *portPin = PINB6; break;
-        case 10: *port = PORT_B; *portPin = PINB7; break;
-        case 11: *port = PORT_D; *portPin = PIND5; break;
-        case 12: *port = PORT_D; *portPin = PIND6; break;
-        case 13: *port = PORT_D; *portPin = PIND7; break;
-        case 14: *port = PORT_B; *portPin = PINB0; break;
-        case 15: *port = PORT_B; *portPin = PINB1; break;
-        case 16: *port = PORT_B; *portPin = PINB2; break;
-        case 17: *port = PORT_B; *portPin = PINB3; break;
-        case 18: *port = PORT_B; *portPin = PINB4; break;
-        case 19: *port = PORT_B; *portPin = PINB5; break;
-        case 20: retVal = 0;                       break;
-        case 21: retVal = 0;                       break;
-        case 22: retVal = 0;                       break;
-        case 23: *port = PORT_C; *portPin = PINC0; break;
-        case 24: *port = PORT_C; *portPin = PINC1; break;
-        case 25: *port = PORT_C; *portPin = PINC2; break;
-        case 26: *port = PORT_C; *portPin = PINC3; break;
-        case 27: *port = PORT_C; *portPin = PINC4; break;
-        case 28: *port = PORT_C; *portPin = PINC5; break;
-        
-        default: retVal = 0;
-    }
+    if      (physicalPin ==  0) { retVal = 0;                       }
+    else if (physicalPin ==  1) { *port = PORT_C; *portPin = PINC6; }
+    else if (physicalPin ==  2) { *port = PORT_D; *portPin = PIND0; }
+    else if (physicalPin ==  3) { *port = PORT_D; *portPin = PIND1; }
+    else if (physicalPin ==  4) { *port = PORT_D; *portPin = PIND2; }
+    else if (physicalPin ==  5) { *port = PORT_D; *portPin = PIND3; }
+    else if (physicalPin ==  6) { *port = PORT_D; *portPin = PIND4; }
+    else if (physicalPin ==  7) { retVal = 0;                       }
+    else if (physicalPin ==  8) { retVal = 0;                       }
+    else if (physicalPin ==  9) { *port = PORT_B; *portPin = PINB6; }
+    else if (physicalPin == 10) { *port = PORT_B; *portPin = PINB7; }
+    else if (physicalPin == 11) { *port = PORT_D; *portPin = PIND5; }
+    else if (physicalPin == 12) { *port = PORT_D; *portPin = PIND6; }
+    else if (physicalPin == 13) { *port = PORT_D; *portPin = PIND7; }
+    else if (physicalPin == 14) { *port = PORT_B; *portPin = PINB0; }
+    else if (physicalPin == 15) { *port = PORT_B; *portPin = PINB1; }
+    else if (physicalPin == 16) { *port = PORT_B; *portPin = PINB2; }
+    else if (physicalPin == 17) { *port = PORT_B; *portPin = PINB3; }
+    else if (physicalPin == 18) { *port = PORT_B; *portPin = PINB4; }
+    else if (physicalPin == 19) { *port = PORT_B; *portPin = PINB5; }
+    else if (physicalPin == 20) { retVal = 0;                       }
+    else if (physicalPin == 21) { retVal = 0;                       }
+    else if (physicalPin == 22) { retVal = 0;                       }
+    else if (physicalPin == 23) { *port = PORT_C; *portPin = PINC0; }
+    else if (physicalPin == 24) { *port = PORT_C; *portPin = PINC1; }
+    else if (physicalPin == 25) { *port = PORT_C; *portPin = PINC2; }
+    else if (physicalPin == 26) { *port = PORT_C; *portPin = PINC3; }
+    else if (physicalPin == 27) { *port = PORT_C; *portPin = PINC4; }
+    else if (physicalPin == 28) { *port = PORT_C; *portPin = PINC5; }
+    else                        { retVal = 0;                       }
     
     return retVal;
 }

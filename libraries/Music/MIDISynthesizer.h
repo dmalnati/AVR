@@ -68,11 +68,7 @@ public:
     
     void SetCfgItem(CfgItem c)
     {
-        switch (c.type)
-        {
-        default:
-            Synthesizer::SetCfgItem(c);
-        }
+        Synthesizer::SetCfgItem(c);
     }
 
     
@@ -88,42 +84,25 @@ private:
     {
         int8_t             octave     = param1 / 12;
         uint8_t            noteNumber = param1 - (octave * 12);
-        Synthesizer::Note  note       = NOTE_NUMBER__NOTE[noteNumber];
+        Synthesizer::Note  note       = Synthesizer::Note::C;
+        
+        if      (noteNumber ==  0) { note = Synthesizer::Note::C;       }
+        else if (noteNumber ==  1) { note = Synthesizer::Note::C_SHARP; }
+        else if (noteNumber ==  2) { note = Synthesizer::Note::D;       }
+        else if (noteNumber ==  3) { note = Synthesizer::Note::D_SHARP; }
+        else if (noteNumber ==  4) { note = Synthesizer::Note::E;       }
+        else if (noteNumber ==  5) { note = Synthesizer::Note::F;       }
+        else if (noteNumber ==  6) { note = Synthesizer::Note::F_SHARP; }
+        else if (noteNumber ==  7) { note = Synthesizer::Note::G;       }
+        else if (noteNumber ==  8) { note = Synthesizer::Note::G_SHARP; }
+        else if (noteNumber ==  9) { note = Synthesizer::Note::A;       }
+        else if (noteNumber == 10) { note = Synthesizer::Note::A_SHARP; }
+        else if (noteNumber == 11) { note = Synthesizer::Note::B;       }
         
         NoteAndOctave retVal = { note, octave };
         
         return retVal;
     }
-    
-    
-    ///////////////////////////////////////////////////////////////////////
-    //
-    // Members
-    //
-    ///////////////////////////////////////////////////////////////////////
-
-    static const uint8_t NOTE_NUMBER_COUNT = 19;
-    static const Synthesizer::Note 
-        NOTE_NUMBER__NOTE[MIDISynthesizer::NOTE_NUMBER_COUNT];
-
-
-};
-
-const Synthesizer::Note
-MIDISynthesizer::NOTE_NUMBER__NOTE[MIDISynthesizer::NOTE_NUMBER_COUNT] =
-{
-    Synthesizer::Note::C,
-    Synthesizer::Note::C_SHARP,
-    Synthesizer::Note::D,
-    Synthesizer::Note::D_SHARP,
-    Synthesizer::Note::E,
-    Synthesizer::Note::F,
-    Synthesizer::Note::F_SHARP,
-    Synthesizer::Note::G,
-    Synthesizer::Note::G_SHARP,
-    Synthesizer::Note::A,
-    Synthesizer::Note::A_SHARP,
-    Synthesizer::Note::B,
 };
 
 
