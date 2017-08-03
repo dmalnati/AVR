@@ -10,6 +10,8 @@
 #include "ShiftRegisterOut.h"
 #include "ShiftRegisterOutput.h"
 
+#include "PinInputAnalog.h"
+
 #include "MuxAnalogDigitalCD74HC4067.h"
 
 #include "PianoKeyboardPimoroniHAT.h"
@@ -124,6 +126,12 @@ private:
     static const uint8_t SHIFT_REGISTER_IN_COUNT  = 3;
     static const uint8_t SHIFT_REGISTER_OUT_COUNT = 3;
     
+    static const uint16_t MAX_OSC_FREQ = 2000;
+    
+    static const uint16_t MAX_ENVELOPE_ATTACK_DURATION_MS  = 1500;
+    static const uint16_t MAX_ENVELOPE_DECAY_DURATION_MS   = 1500;
+    static const uint16_t MAX_ENVELOPE_RELEASE_DURATION_MS = 1500;
+    
 public:
     AppSynthesizer1(const AppSynthesizer1Config &cfg)
     : cfg_(cfg)
@@ -132,6 +140,16 @@ public:
     , srOut_(cfg_.pinSipoClock, cfg_.pinSipoLatch, cfg_.pinSipoSerial)
     , srOutput_(srOut_)
     , mux_(cfg_.pinMuxBit0, cfg_.pinMuxBit1, cfg_.pinMuxBit2, cfg_.pinMuxBit3, cfg_.pinMuxAnalog)
+    , piaOsc1Freq_(cfg_.pinMuxAnalog)
+    , piaOsc2Freq_(cfg_.pinMuxAnalog)
+    , piaOscBalance_(cfg_.pinMuxAnalog)
+    , piaLfoFreq_(cfg_.pinMuxAnalog)
+    , piaLfoTromello_(cfg_.pinMuxAnalog)
+    , piaLfoVibrato_(cfg_.pinMuxAnalog)
+    , piaEnvAttack_(cfg_.pinMuxAnalog)
+    , piaEnvDecay_(cfg_.pinMuxAnalog)
+    , piaEnvSustain_(cfg_.pinMuxAnalog)
+    , piaEnvRelease_(cfg_.pinMuxAnalog)
     {
         // Nothing to do
     }
@@ -161,6 +179,9 @@ private:
         // Setup Button Inputs
         SetupButtonInputs();
         
+        // Setup analog inputs
+        SetupAnalogInputs();
+        
         // Setup synthesizer defaults
         midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
@@ -181,6 +202,7 @@ private:
         SetupOsc1Inputs();
         SetupOsc2Inputs();
         SetupLfoInputs();
+        SetupEnvelopeInputs();
     }
     
     void SetupOsc1Inputs()
@@ -335,6 +357,119 @@ private:
             srOutput_.DigitalWrite(pinLogical, LOW);
         }
     }
+    
+    void SetupEnvelopeInputs()
+    {
+        
+        srInput_.SetCallback(cfg_.pinLogicalPisoEnvEnable,
+                             [this](uint8_t logicLevel){
+            
+            midiSynth_.SetCfgItem({SET_ENVELOPE_ON_OFF, logicLevel});
+        },
+                             LEVEL_RISING_AND_FALLING);
+        
+        srInput_.SetCallback(cfg_.pinLogicalPisoEnvPulse,
+                             [this](uint8_t logicLevel){
+            if (logicLevel)
+            {
+                midiSynth_.OnKeyDown();
+            }
+            else
+            {
+                midiSynth_.OnKeyUp();
+            }
+        },
+                             LEVEL_RISING_AND_FALLING);
+        
+    }
+    
+    void SetupAnalogInputs()
+    {
+        // Configure all analog inputs to use mux as input source
+        PinInputAnalog *piaList[] = {
+            &piaOsc1Freq_,
+            &piaOsc2Freq_,
+            &piaOscBalance_,
+            &piaLfoFreq_,
+            &piaLfoTromello_,
+            &piaLfoVibrato_,
+            &piaEnvAttack_,
+            &piaEnvDecay_,
+            &piaEnvSustain_,
+            &piaEnvRelease_,
+        };
+
+        uint8_t channel = 0;
+        for (auto pia : piaList)
+        {
+            pia->SetAnalogReadFunction([=](uint8_t pin){
+                mux_.ConnectToChannel(channel);
+        
+                return PAL.AnalogRead(pin);
+            });
+            
+            ++channel;
+        }
+        
+        // Set callbacks
+        piaOsc1Freq_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, AnalogToFreq(val)});
+        });
+        
+        piaOsc2Freq_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, AnalogToFreq(val)});
+        });
+        
+        piaOscBalance_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_OSCILLATOR_BALANCE, ScaleTo8(val, 255)});
+        });
+        
+        piaLfoFreq_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_LFO_FREQUENCY, AnalogToFreq(val)});
+        });
+        
+        piaLfoTromello_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_LFO_TROMOLO_PCT, ScaleTo8(val, 255)});
+        });
+        
+        piaLfoVibrato_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_LFO_VIBRATO_PCT, ScaleTo8(val, 255)});
+        });
+        
+        piaEnvAttack_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_ENVELOPE_ATTACK_DURATION_MS,
+                                   ScaleTo16(val, MAX_ENVELOPE_ATTACK_DURATION_MS)});
+        });
+        
+        piaEnvDecay_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_ENVELOPE_DECAY_DURATION_MS,
+                                   ScaleTo16(val, MAX_ENVELOPE_DECAY_DURATION_MS)});
+        });
+        
+        piaEnvSustain_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_ENVELOPE_SUSTAIN_LEVEL_PCT, ScaleTo8(val, 100)});
+        });
+        
+        piaEnvRelease_.SetCallback([this](uint16_t val){
+            midiSynth_.SetCfgItem({SET_ENVELOPE_RELEASE_DURATION_MS,
+                                   ScaleTo16(val, MAX_ENVELOPE_RELEASE_DURATION_MS)});
+        });
+    }
+    
+    uint16_t AnalogToFreq(uint16_t val)
+    {
+        return (double)val / PAL.AnalogMaxValue() * MAX_OSC_FREQ;
+    }
+    
+    uint8_t ScaleTo8(uint16_t val, uint8_t top)
+    {
+        return (double)val / PAL.AnalogMaxValue() * top;
+    }
+    
+    uint16_t ScaleTo16(uint16_t val, uint16_t top)
+    {
+        return (double)val / PAL.AnalogMaxValue() * top;
+    }
 
 
 
@@ -349,6 +484,17 @@ private:
     ShiftRegisterOutput<SHIFT_REGISTER_OUT_COUNT> srOutput_;
     
     MuxAnalogDigitalCD74HC4067 mux_;
+    
+    PinInputAnalog piaOsc1Freq_;
+    PinInputAnalog piaOsc2Freq_;
+    PinInputAnalog piaOscBalance_;
+    PinInputAnalog piaLfoFreq_;
+    PinInputAnalog piaLfoTromello_;
+    PinInputAnalog piaLfoVibrato_;
+    PinInputAnalog piaEnvAttack_;
+    PinInputAnalog piaEnvDecay_;
+    PinInputAnalog piaEnvSustain_;
+    PinInputAnalog piaEnvRelease_;
     
     MIDICommandFromSerial  midiReader_;
     MIDISynthesizer        midiSynth_;

@@ -8,7 +8,7 @@
 
 
 class MIDISynthesizer
-: private Synthesizer
+: public Synthesizer
 {
 public:
 
