@@ -176,15 +176,15 @@ private:
 
     void SetUpInputsAndDefaults()
     {
-        // Setup Button Inputs
-        SetupButtonInputs();
-        
-        // Setup analog inputs
-        SetupAnalogInputs();
-        
         // Setup synthesizer defaults
         midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
         midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
+        
+        // Setup Button Inputs
+        SetupDigitalInputs();
+        
+        // Setup analog inputs
+        SetupAnalogInputs();
         
         // Direct inbound MIDI to the synthesizer
         midiReader_.SetCallbackOnMIDICommand([this](MIDICommand cmd){
@@ -197,11 +197,13 @@ private:
         hatToMidi_.Init();
     }
     
-    void SetupButtonInputs()
+    void SetupDigitalInputs()
     {
         srInputSC_.SetCallback([this](uint8_t pinLogical, uint8_t logicLevel){
             OnPinChange(pinLogical, logicLevel);
         });
+        
+        srInputSC_.Init();
     }
     
     void OnPinChange(uint8_t pinLogical, uint8_t logicLevel)
@@ -392,7 +394,8 @@ private:
     
     void SetupAnalogInputs()
     {
-        // Configure all analog inputs to use mux as input source
+        // Configure all analog inputs to use mux as input source and
+        // enable input monitoring
         {
             PinInputAnalog *piaList[] = {
                 &piaOsc1Freq_,
@@ -415,6 +418,8 @@ private:
             
                     return PAL.AnalogRead(pin);
                 });
+                
+                pia->Enable();
                 
                 ++channel;
             }
