@@ -393,74 +393,130 @@ private:
     void SetupAnalogInputs()
     {
         // Configure all analog inputs to use mux as input source
-        PinInputAnalog *piaList[] = {
-            &piaOsc1Freq_,
-            &piaOsc2Freq_,
-            &piaOscBalance_,
-            &piaLfoFreq_,
-            &piaLfoTromello_,
-            &piaLfoVibrato_,
-            &piaEnvAttack_,
-            &piaEnvDecay_,
-            &piaEnvSustain_,
-            &piaEnvRelease_,
-        };
-
-        uint8_t channel = 0;
-        for (auto pia : piaList)
         {
-            pia->SetAnalogReadFunction([=](uint8_t pin){
-                mux_.ConnectToChannel(channel);
-        
-                return PAL.AnalogRead(pin);
-            });
+            PinInputAnalog *piaList[] = {
+                &piaOsc1Freq_,
+                &piaOsc2Freq_,
+                &piaOscBalance_,
+                &piaLfoFreq_,
+                &piaLfoTromello_,
+                &piaLfoVibrato_,
+                &piaEnvAttack_,
+                &piaEnvDecay_,
+                &piaEnvSustain_,
+                &piaEnvRelease_,
+            };
+
+            uint8_t channel = 0;
+            for (auto pia : piaList)
+            {
+                pia->SetAnalogReadFunction([=](uint8_t pin){
+                    mux_.ConnectToChannel(channel);
             
-            ++channel;
+                    return PAL.AnalogRead(pin);
+                });
+                
+                ++channel;
+            }
         }
         
         // Set callbacks
-        piaOsc1Freq_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_1_FREQUENCY, AnalogToFreq(val)});
-        });
+        // Broken out into loops to minimize lambda creation and therefore
+        // vtable ram usage as a result of distinct function<> types
+        {
+            PinInputAnalog *piaList[] = {
+                &piaOsc1Freq_,
+                &piaOsc2Freq_,
+                &piaLfoFreq_,
+            };
+            
+            uint8_t cfgTypeList[] = {
+                SET_OSCILLATOR_1_FREQUENCY,
+                SET_OSCILLATOR_2_FREQUENCY,
+                SET_LFO_FREQUENCY,
+            };
+            
+            uint8_t count = 0;
+            for (auto pia : piaList)
+            {
+                uint8_t cfgType = cfgTypeList[count];
+                
+                pia->SetCallback([=](uint16_t val){
+                    midiSynth_.SetCfgItem({cfgType, AnalogToFreq(val)});
+                });
+                
+                ++count;
+            }
+        }
         
-        piaOsc2Freq_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_2_FREQUENCY, AnalogToFreq(val)});
-        });
+        {
+            PinInputAnalog *piaList[] = {
+                &piaOscBalance_,
+                &piaLfoTromello_,
+                &piaLfoVibrato_,
+                &piaEnvSustain_,
+            };
+            
+            uint8_t cfgTypeList[] = {
+                SET_OSCILLATOR_BALANCE,
+                SET_LFO_TROMOLO_PCT,
+                SET_LFO_VIBRATO_PCT,
+                SET_ENVELOPE_SUSTAIN_LEVEL_PCT,
+            };
+            
+            uint8_t scaleToList[] = {
+                255,
+                255,
+                255,
+                100
+            };
+            
+            uint8_t count = 0;
+            for (auto pia : piaList)
+            {
+                uint8_t cfgType = cfgTypeList[count];
+                uint8_t scaleTo = scaleToList[count];
+                
+                pia->SetCallback([=](uint16_t val){
+                    midiSynth_.SetCfgItem({cfgType, ScaleTo8(val, scaleTo)});
+                });
+                
+                ++count;
+            }
+        }
         
-        piaOscBalance_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_OSCILLATOR_BALANCE, ScaleTo8(val, 255)});
-        });
-        
-        piaLfoFreq_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_LFO_FREQUENCY, AnalogToFreq(val)});
-        });
-        
-        piaLfoTromello_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_LFO_TROMOLO_PCT, ScaleTo8(val, 255)});
-        });
-        
-        piaLfoVibrato_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_LFO_VIBRATO_PCT, ScaleTo8(val, 255)});
-        });
-        
-        piaEnvAttack_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_ENVELOPE_ATTACK_DURATION_MS,
-                                   ScaleTo16(val, MAX_ENVELOPE_ATTACK_DURATION_MS)});
-        });
-        
-        piaEnvDecay_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_ENVELOPE_DECAY_DURATION_MS,
-                                   ScaleTo16(val, MAX_ENVELOPE_DECAY_DURATION_MS)});
-        });
-        
-        piaEnvSustain_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_ENVELOPE_SUSTAIN_LEVEL_PCT, ScaleTo8(val, 100)});
-        });
-        
-        piaEnvRelease_.SetCallback([this](uint16_t val){
-            midiSynth_.SetCfgItem({SET_ENVELOPE_RELEASE_DURATION_MS,
-                                   ScaleTo16(val, MAX_ENVELOPE_RELEASE_DURATION_MS)});
-        });
+        {
+            PinInputAnalog *piaList[] = {
+                &piaEnvAttack_,
+                &piaEnvDecay_,
+                &piaEnvRelease_,
+            };
+            
+            uint8_t cfgTypeList[] = {
+                SET_ENVELOPE_ATTACK_DURATION_MS,
+                SET_ENVELOPE_DECAY_DURATION_MS,
+                SET_ENVELOPE_RELEASE_DURATION_MS,
+            };
+            
+            uint16_t scaleToList[] = {
+                MAX_ENVELOPE_ATTACK_DURATION_MS,
+                MAX_ENVELOPE_DECAY_DURATION_MS,
+                MAX_ENVELOPE_RELEASE_DURATION_MS,
+            };
+            
+            uint8_t count = 0;
+            for (auto pia : piaList)
+            {
+                uint8_t  cfgType = cfgTypeList[count];
+                uint16_t scaleTo = scaleToList[count];
+                
+                pia->SetCallback([=](uint16_t val){
+                    midiSynth_.SetCfgItem({cfgType, ScaleTo16(val, scaleTo)});
+                });
+                
+                ++count;
+            }
+        }
     }
     
     uint16_t AnalogToFreq(uint16_t val)
