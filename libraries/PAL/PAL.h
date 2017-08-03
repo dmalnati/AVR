@@ -32,6 +32,8 @@ public:
     static const uint8_t PORT_C = 1;
     static const uint8_t PORT_D = 2;
     
+    static const uint16_t ANALOG_MAX_VALUE = 1024;  // 10-bit
+    
     PlatformAbstractionLayer()
     : mcusrCache_(MCUSR)
     {
@@ -82,13 +84,6 @@ public:
             }
         }
     }
-    
-    #if 0
-    static inline uint16_t AnalogRead(uint8_t physicalPin)
-    {
-        return analogRead(GetArduinoPinFromPhysicalPin(physicalPin));
-    }
-    #endif
     
     enum class ADCPrescaler : uint8_t
     {
@@ -170,6 +165,11 @@ public:
     {
         // Turn off conversion and batch mode
         ADCSRA &= ~(_BV(ADSC) | _BV(ADATE));
+    }
+    
+    static inline uint16_t AnalogMaxValue()
+    {
+        return ANALOG_MAX_VALUE;
     }
     
     
