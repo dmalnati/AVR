@@ -66,6 +66,8 @@ public:
     : sro_(sro)
     {
         memset(buf, 0, BUF_SIZE);
+        
+        SendBuf();
     }
     
     ShiftRegisterOutputPin GetPin(uint8_t pinLogical)
@@ -87,11 +89,16 @@ public:
             buf[bufIdx] &= ~_BV(bit);
         }
         
-        sro_.ShiftOut(buf, BUF_SIZE);
+        SendBuf();
     }
 
     
 private:
+
+    void SendBuf()
+    {
+        sro_.ShiftOut(buf, BUF_SIZE);
+    }
 
     ShiftRegisterOut &sro_;
 

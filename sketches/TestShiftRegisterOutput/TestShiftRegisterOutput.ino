@@ -4,9 +4,9 @@
 static const uint8_t SHIFT_REGISTERS = 2;
 
 
-static const uint8_t PIN_CLOCK  = 13;
-static const uint8_t PIN_LATCH  = 12;
-static const uint8_t PIN_SERIAL = 11;
+static const uint8_t PIN_CLOCK  = 23;
+static const uint8_t PIN_LATCH  = 24;
+static const uint8_t PIN_SERIAL = 25;
 
 static ShiftRegisterOut sr(PIN_CLOCK, PIN_LATCH, PIN_SERIAL);
 static ShiftRegisterOutput<SHIFT_REGISTERS> sroo(sr);

@@ -34,7 +34,13 @@ public:
     {
         PAL.DigitalWrite(pinLatch_, LOW);
         
-        for (uint16_t i = 0; i < bufLen; ++i)
+        // Consider the first byte to be the most significant.
+        // Because the output shift registers are chained, it means the first
+        // register is actually the last to receive bits.
+        // Therefore, if we're treating the first register as if it's the first
+        // byte, we should then instead reverse the order that we shift the
+        // bytes out.
+        for (int16_t i = bufLen - 1; i >= 0; --i)
         {
             ClockOutOneByte(buf[i]);
         }
