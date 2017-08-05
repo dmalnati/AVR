@@ -123,10 +123,13 @@ private:
     
     static const uint16_t BAUD = 31250;
     
+    static const uint32_t DEFAULT_ANALOG_POLL_PERIOD_MS = 20;
+    static const uint16_t DEFAULT_ANALOG_MINIMUM_CHANGE = 5;
+    
     static const uint8_t SHIFT_REGISTER_IN_COUNT  = 3;
     static const uint8_t SHIFT_REGISTER_OUT_COUNT = 3;
     
-    static const uint16_t MAX_OSC_FREQ = 2000;
+    static const uint16_t MAX_OSC_FREQ = 1000;
     
     static const uint16_t MAX_ENVELOPE_ATTACK_DURATION_MS  = 1500;
     static const uint16_t MAX_ENVELOPE_DECAY_DURATION_MS   = 1500;
@@ -140,16 +143,16 @@ public:
     , srOut_(cfg_.pinSipoClock, cfg_.pinSipoLatch, cfg_.pinSipoSerial)
     , srOutput_(srOut_)
     , mux_(cfg_.pinMuxBit0, cfg_.pinMuxBit1, cfg_.pinMuxBit2, cfg_.pinMuxBit3, cfg_.pinMuxAnalog)
-    , piaOsc1Freq_(cfg_.pinMuxAnalog)
-    , piaOsc2Freq_(cfg_.pinMuxAnalog)
-    , piaOscBalance_(cfg_.pinMuxAnalog)
-    , piaLfoFreq_(cfg_.pinMuxAnalog)
-    , piaLfoTromello_(cfg_.pinMuxAnalog)
-    , piaLfoVibrato_(cfg_.pinMuxAnalog)
-    , piaEnvAttack_(cfg_.pinMuxAnalog)
-    , piaEnvDecay_(cfg_.pinMuxAnalog)
-    , piaEnvSustain_(cfg_.pinMuxAnalog)
-    , piaEnvRelease_(cfg_.pinMuxAnalog)
+    , piaOsc1Freq_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaOsc2Freq_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaOscBalance_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaLfoFreq_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaLfoTromello_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaLfoVibrato_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaEnvAttack_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaEnvDecay_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaEnvSustain_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
+    , piaEnvRelease_(cfg_.pinMuxAnalog, DEFAULT_ANALOG_POLL_PERIOD_MS)
     {
         // Nothing to do
     }
@@ -424,11 +427,14 @@ private:
                     return PAL.AnalogRead(pin);
                 });
                 
+                pia->SetMinimumChange(DEFAULT_ANALOG_MINIMUM_CHANGE);
                 pia->Enable();
                 
                 ++channel;
             }
         }
+        
+        
         
         // Set callbacks
         // Broken out into loops to minimize lambda creation and therefore
