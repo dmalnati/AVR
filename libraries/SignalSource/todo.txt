@@ -35,6 +35,8 @@ Stop using templates for SynthesizerVoice and TimerHelper
 
 Move SignalSource files to appropriate locations (if better ones exist)
 
+Why is there seemingly a 10us ISR wakeup?
+
 
 Circuit
 -------
