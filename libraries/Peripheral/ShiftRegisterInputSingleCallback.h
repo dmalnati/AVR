@@ -45,6 +45,21 @@ public:
         
         DoScan(forceRefresh);
     }
+    
+    uint8_t DigitalReadCached(uint8_t pinLogical)
+    {
+        uint8_t retVal = 0;
+        
+        if (pinLogical <= ((REGISTER_COUNT * 8) - 1))
+        {
+            uint8_t bufIdx = pinLogical / 8;
+            uint8_t bit    = pinLogical % 8;
+            
+            retVal = !!(buf[bufIdx] & _BV(bit));
+        }
+        
+        return retVal;
+    }
 
 
 private:
