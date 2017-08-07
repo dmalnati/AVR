@@ -179,10 +179,6 @@ private:
 
     void SetUpInputsAndDefaults()
     {
-        // Setup synthesizer defaults
-        midiSynth_.SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        midiSynth_.SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::SINE});
-        
         // Setup Button Inputs
         SetupDigitalInputs();
         
@@ -198,6 +194,14 @@ private:
         // Set up keyboard
         hatToMidi_.GetHat().EnableLEDs();
         hatToMidi_.Init();
+        
+        // Set up defaults by simulating button presses
+        OnPinChange(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine, 1);
+        OnPinChange(cfg_.pinLogicalPisoOsc2ButtonWaveTypeNone, 1);
+        OnPinChange(cfg_.pinLogicalPisoLfoButtonWaveTypeNone, 1);
+        
+        OnPinChange(cfg_.pinLogicalPisoEnvEnable,
+                    srInputSC_.DigitalReadCached(cfg_.pinLogicalPisoEnvEnable));
     }
     
     void SetupDigitalInputs()
@@ -331,7 +335,6 @@ private:
         }
         
         // Examine Envelope pins.
-        // Possibly redundant, but no real harm, and clearer code results
         if (pinLogical == cfg_.pinLogicalPisoEnvEnable)
         {
             midiSynth_.SetCfgItem({SET_ENVELOPE_ON_OFF, logicLevel});
