@@ -2,7 +2,7 @@
 #define __SENSOR_CAPACITIVE_TOUCH_CAP1188_H__
 
 
-#include "TWI.h"
+#include "I2C.h"
 
 
 // http://ww1.microchip.com/downloads/en/DeviceDoc/CAP1188%20.pdf
@@ -26,31 +26,31 @@ public:
     
     void EnableLEDs()
     {
-        TWI.WriteRegister(addr_, REG_SENSOR_INPUT_LED_LINKING, 0xFF);
+        I2C.WriteRegister(addr_, REG_SENSOR_INPUT_LED_LINKING, 0xFF);
     }
     
     void DisableLEDs()
     {
         // This is the default
-        TWI.WriteRegister(addr_, REG_SENSOR_INPUT_LED_LINKING, 0x00);
+        I2C.WriteRegister(addr_, REG_SENSOR_INPUT_LED_LINKING, 0x00);
     }
     
     void EnableMultiTouch()
     {
         // This is the default
-        TWI.WriteRegister(addr_, REG_MULTIPLE_TOUCH_CONFIGURATION, 0x00);
+        I2C.WriteRegister(addr_, REG_MULTIPLE_TOUCH_CONFIGURATION, 0x00);
     }
     
     void DisableMultiTouch()
     {
-        TWI.WriteRegister(addr_, REG_MULTIPLE_TOUCH_CONFIGURATION, 0x80);
+        I2C.WriteRegister(addr_, REG_MULTIPLE_TOUCH_CONFIGURATION, 0x80);
     }
     
     uint8_t GetTouched()
     {
         // Get current value
         uint8_t touched = 0;
-        TWI.ReadRegister(addr_, REG_SENSOR_INPUT_STATUS, touched);
+        I2C.ReadRegister(addr_, REG_SENSOR_INPUT_STATUS, touched);
 
         // Tell sensor to clear non-current touches, so next read will
         // only show what is current (as opposed to what has been touched
@@ -60,9 +60,9 @@ public:
         // to zero when you want this to occur.
         // That flag is a single bit at 0b00000001
         uint8_t regVal;
-        TWI.ReadRegister(addr_, REG_MAIN_CONTROL, regVal);
+        I2C.ReadRegister(addr_, REG_MAIN_CONTROL, regVal);
         regVal &= 0b11111110;
-        TWI.WriteRegister(addr_, REG_MAIN_CONTROL, regVal);
+        I2C.WriteRegister(addr_, REG_MAIN_CONTROL, regVal);
         
         return touched;
     }

@@ -340,7 +340,7 @@ private:
 
 
 // Singleton
-extern TWIClass TWI;
+extern TWIClass I2C;
 
 
 
