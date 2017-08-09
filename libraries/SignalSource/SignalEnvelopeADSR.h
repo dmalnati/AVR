@@ -68,6 +68,13 @@ public:
         Reset();
         
         state_ = State::ATTACK;
+        // Serial.println("Attack");
+        // Serial.print("attackDurationMs_ "); Serial.print(attackDurationMs_);
+        // Serial.print("decayDurationMs_ "); Serial.print(decayDurationMs_);
+        // Serial.print("sustainLevelPct_ "); Serial.print(sustainLevelPct_);
+        // Serial.print("sustainLevel_ "); Serial.print(sustainLevel_);
+        // Serial.print("releaseDurationMs_ "); Serial.print(releaseDurationMs_);
+        // Serial.println();
     }
     
     void StartRelease()
@@ -166,9 +173,11 @@ private:
     
     double CalculateLinearStepSize(uint16_t deltaY, uint16_t durationMs)
     {
+        uint16_t durationMsUse = durationMs ? durationMs : 1;
+        
         double stepSize =
             (double)(deltaY) / 
-            (((double)sampleRate_ / 1000.0) * (double)durationMs);
+            (((double)sampleRate_ / 1000.0) * (double)durationMsUse);
             
         return stepSize;
     }
