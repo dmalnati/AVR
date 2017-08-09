@@ -24,7 +24,6 @@ public:
                    uint32_t pollPeriodMs = DEFAULT_POLL_PERIOD_MS)
     : pin_(pin)
     , pollPeriodMs_(pollPeriodMs)
-    , minimumChange_(-1)
     , valLast_(-1)
     {
         SetMinimumChange(DEFAULT_MINIMUM_CHANGE);
@@ -78,32 +77,25 @@ private:
     {
         uint16_t val = fnAnalogRead_(pin_);
         
-        if (minimumChange_ != -1)
-        {
-            // Fire when:
-            // - never fired before
-            // - changed by the minimum
-            // - hit either extreme of the spectrum of values
-            if (valLast_ == -1                        ||
-                abs(valLast_ - val) >= minimumChange_ ||
-                (val == 1023 && valLast_ != 1023)     ||
-                (val == 0    && valLast_ != 0))
-            {
-                cbFn_(val);
-                
-                valLast_ = val;
-            }
-        }
-        else
+        // Fire when:
+        // - never fired before
+        // - changed by the minimum
+        // - hit either extreme of the spectrum of values
+        if (valLast_ == -1                        ||
+            abs(valLast_ - val) >= minimumChange_ ||
+            (val == 1023 && valLast_ != 1023)     ||
+            (val == 0    && valLast_ != 0))
         {
             cbFn_(val);
+            
+            valLast_ = val;
         }
     }
 
     uint8_t                      pin_;
     uint32_t                     pollPeriodMs_;
-    int32_t                      minimumChange_;
-    int32_t                      valLast_;
+    uint16_t                     minimumChange_;
+    int16_t                      valLast_;
     function<void(uint16_t val)> cbFn_;
     function<uint16_t(uint8_t)>  fnAnalogRead_;
 };
