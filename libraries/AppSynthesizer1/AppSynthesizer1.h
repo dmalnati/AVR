@@ -20,6 +20,8 @@
 #include "MIDICommandFromSerial.h"
 #include "MIDISynthesizer.h"
 
+#include "LCDFrentaly20x4.h"
+
 
 struct AppSynthesizer1Config
 {
@@ -117,9 +119,9 @@ struct AppSynthesizer1Config
 class AppSynthesizer1
 {
 private:
-    static const uint8_t C_IDLE  = 10;
+    static const uint8_t C_IDLE  = 0;
     static const uint8_t C_TIMED = 30;
-    static const uint8_t C_INTER = 10;
+    static const uint8_t C_INTER = 0;
     
     static const uint16_t BAUD = 31250;
     
@@ -130,6 +132,7 @@ private:
     static const uint8_t SHIFT_REGISTER_OUT_COUNT = 3;
     
     static const uint16_t MAX_OSC_FREQ = 1000;
+    static const uint16_t MAX_LFO_FREQ =   60;
     
     static const uint16_t MAX_ENVELOPE_ATTACK_DURATION_MS  = 1500;
     static const uint16_t MAX_ENVELOPE_DECAY_DURATION_MS   = 1500;
@@ -194,6 +197,9 @@ private:
         // Set up keyboard
         hatToMidi_.GetHat().EnableLEDs();
         hatToMidi_.Init();
+        
+        // Set up LCD Printer
+        printer_.Init();
         
         // Set up defaults by simulating button presses
         OnPinChange(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine, 1);
@@ -455,13 +461,22 @@ private:
                 SET_LFO_FREQUENCY,
             };
             
+            uint16_t scaleToList[] = {
+                MAX_OSC_FREQ,
+                MAX_OSC_FREQ,
+                MAX_LFO_FREQ,
+            };
+            
             uint8_t count = 0;
             for (auto pia : piaList)
             {
-                uint8_t cfgType = cfgTypeList[count];
+                uint8_t  cfgType = cfgTypeList[count];
+                uint16_t scaleTo = scaleToList[count];
                 
                 pia->SetCallback([=](uint16_t val){
-                    midiSynth_.SetCfgItem({cfgType, AnalogToFreq(val)});
+                    midiSynth_.SetCfgItem({cfgType, ScaleTo16(val, scaleTo)});
+                    
+                    printer_.OnParamChange({cfgType, ScaleTo16(val, scaleTo)});
                 });
                 
                 ++count;
@@ -498,6 +513,8 @@ private:
                 
                 pia->SetCallback([=](uint16_t val){
                     midiSynth_.SetCfgItem({cfgType, ScaleTo8(val, scaleTo)});
+                    
+                    printer_.OnParamChange({cfgType, ScaleTo8(val, scaleTo)});
                 });
                 
                 ++count;
@@ -531,16 +548,13 @@ private:
                 
                 pia->SetCallback([=](uint16_t val){
                     midiSynth_.SetCfgItem({cfgType, ScaleTo16(val, scaleTo)});
+                    
+                    printer_.OnParamChange({cfgType, ScaleTo16(val, scaleTo)});
                 });
                 
                 ++count;
             }
         }
-    }
-    
-    uint16_t AnalogToFreq(uint16_t val)
-    {
-        return (double)val / PAL.AnalogMaxValue() * MAX_OSC_FREQ;
     }
     
     uint8_t ScaleTo8(uint16_t val, uint8_t top)
@@ -582,7 +596,122 @@ private:
     MIDISynthesizer        midiSynth_;
     
     MIDICommandFromPianoKeyboardPimoroniHAT  hatToMidi_;
+    
+    
+    /*
+     * 01234567890123456789
+     *  
+     * O1  xxxxx  O2 xxxxx
+     * LFO xxxxx VT xxx xxx
+     * A xxxxms   D xxxxms
+     * S  xxx%    R xxxxms
+     */
+    class LCDPrinter
+    {
+        // Space for 5-digit 16-bit number, plus null
+        static const uint8_t MAX_WIDTH = 5;
+        static const uint8_t BUF_SIZE  = MAX_WIDTH + 1;
+        
+    public:
 
+        void Init()
+        {
+            lcd_.Init();
+            
+            lcd_.PrintAt( 0, 0, "O1");
+            lcd_.PrintAt(11, 0, "O2");
+            lcd_.PrintAt( 0, 1, "LFO");
+            lcd_.PrintAt(10, 1, "VT");
+            lcd_.PrintAt( 0, 2, 'A');
+            lcd_.PrintAt(11, 2, 'D');
+            lcd_.PrintAt( 0, 3, 'S');
+            lcd_.PrintAt(11, 3, 'R');
+            
+            struct { uint8_t x; uint8_t y; } xyList[] = {
+                {  6, 2 },
+                { 17, 2 },
+                { 17, 3 },
+            };
+            
+            for (auto xy : xyList)
+            {
+                lcd_.PrintAt(xy.x, xy.y, "ms");
+            }
+            
+            lcd_.PrintAt(6, 3, '%');
+        }
+
+        void OnParamChange(CfgItem c)
+        {
+            if (c.type == SET_OSCILLATOR_1_FREQUENCY)
+            {
+                lcd_.PrintAt(4, 0, ToStr((uint16_t)c, 5));
+            }
+            else if (c.type == SET_OSCILLATOR_2_FREQUENCY)
+            {
+                lcd_.PrintAt(14, 0, ToStr((uint16_t)c, 5));
+            }
+            else if (c.type == SET_LFO_FREQUENCY)
+            {
+                lcd_.PrintAt(4, 1, ToStr((uint16_t)c, 5));
+            }
+            else if (c.type == SET_LFO_VIBRATO_PCT)
+            {
+                lcd_.PrintAt(13, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+            }
+            else if (c.type == SET_LFO_TROMOLO_PCT)
+            {
+                lcd_.PrintAt(17, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+            }
+            else if (c.type == SET_ENVELOPE_ATTACK_DURATION_MS)
+            {
+                lcd_.PrintAt(2, 2, ToStr((uint16_t)c, 4));
+            }
+            else if (c.type == SET_ENVELOPE_DECAY_DURATION_MS)
+            {
+                lcd_.PrintAt(13, 2, ToStr((uint16_t)c, 4));
+            }
+            else if (c.type == SET_ENVELOPE_SUSTAIN_LEVEL_PCT)
+            {
+                lcd_.PrintAt(3, 3, ToStr((uint8_t)c, 3));
+            }
+            else if (c.type == SET_ENVELOPE_RELEASE_DURATION_MS)
+            {
+                lcd_.PrintAt(13, 3, ToStr((uint16_t)c, 4));
+            }
+        }
+
+    private:
+    
+        char *ToStr(uint16_t val, uint8_t width)
+        {
+            char *retVal = buf_;
+            
+            buf_[0] = 'E'; buf_[1] = 'R'; buf_[2] = 'R'; buf_[3] = '\0';
+            
+            // Make sure it fits and can't become negative upon conversion
+            if (width <= MAX_WIDTH && val <= (UINT16_MAX / 2))
+            {
+                utoa((int16_t)val, buf_, 10);
+                
+                uint8_t len = strlen(buf_);
+                
+                if (len < width)
+                {
+                    memmove(&buf_[width - len], buf_, len + 1);
+                    memset(buf_, ' ', width - len);
+                }
+            }
+            
+            return retVal;
+        }
+
+        LCDFrentaly20x4 lcd_;
+        
+        char buf_[BUF_SIZE];
+    };
+    
+    LCDPrinter printer_;
 };
 
 
