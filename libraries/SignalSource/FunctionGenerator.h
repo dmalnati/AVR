@@ -49,19 +49,18 @@ public:
     FunctionGenerator()
     : phaseLock_(0)
     , osc1_(ssNone_.GetSample)
-    , osc1Enabled_(0)
     , osc1Factor_(0.5)
     , osc2_(ssNone_.GetSample)
-    , osc2Enabled_(0)
     , osc2Factor_(0.5)
     , lfo_(ssNone_.GetSample)
-    , lfoEnabled_(0)
     , lfoVibratoPctInt_(127)
     , lfoVibratoPct_(lfoVibratoPctInt_)
     , lfoTromoloPctInt_(127)
     , lfoTromoloPct_(lfoTromoloPctInt_)
     {
-        // Nothing to do
+        SetCfgItem({SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+        SetCfgItem({SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)OscillatorType::NONE});
+        SetCfgItem({SET_LFO_WAVE_TYPE,          (uint8_t)OscillatorType::NONE});
     }
     
     ~FunctionGenerator()
@@ -259,13 +258,25 @@ public:
         {
             c = CfgItem{SET_OSCILLATOR_1_FREQUENCY, osc1_.GetFrequency()};
         }
+        else if (type == SET_OSCILLATOR_1_WAVE_TYPE)
+        {
+            c = CfgItem{SET_OSCILLATOR_1_WAVE_TYPE, (uint8_t)osc1WaveType_};
+        }
         else if (type == SET_OSCILLATOR_2_FREQUENCY)
         {
             c = CfgItem{SET_OSCILLATOR_2_FREQUENCY, osc2_.GetFrequency()};
         }
+        else if (type == SET_OSCILLATOR_2_WAVE_TYPE)
+        {
+            c = CfgItem{SET_OSCILLATOR_2_WAVE_TYPE, (uint8_t)osc2WaveType_};
+        }
         else if (type == SET_LFO_FREQUENCY)
         {
             c = CfgItem{SET_LFO_FREQUENCY, lfo_.GetFrequency()};
+        }
+        else if (type == SET_LFO_WAVE_TYPE)
+        {
+            c = CfgItem{SET_LFO_WAVE_TYPE, (uint8_t)lfoWaveType_};
         }
         else if (type == SET_LFO_VIBRATO_PCT)
         {
@@ -335,6 +346,8 @@ private:
     
     void SetOscillator1WaveType(OscillatorType type)
     {
+        osc1WaveType_ = type;
+        
         SetOscillator(osc1_, osc1Enabled_, type);
     }
     
@@ -362,6 +375,8 @@ private:
 
     void SetOscillator2WaveType(OscillatorType type)
     {
+        osc2WaveType_ = type;
+        
         SetOscillator(osc2_, osc2Enabled_, type);
     }
     
@@ -425,6 +440,8 @@ private:
     
     void SetLFOWaveType(OscillatorType type)
     {
+        lfoWaveType_ = type;
+        
         SetOscillator(lfo_, lfoEnabled_, type);
         
         if (!lfoEnabled_)
@@ -518,14 +535,17 @@ private:
     uint8_t phaseLock_;
     
     SignalOscillator osc1_;
+    OscillatorType   osc1WaveType_;
     uint8_t          osc1Enabled_;
     Q08              osc1Factor_;
     
     SignalOscillator osc2_;
+    OscillatorType   osc2WaveType_;
     uint8_t          osc2Enabled_;
     Q08              osc2Factor_;
     
     SignalOscillator lfo_;
+    OscillatorType   lfoWaveType_;
     uint8_t          lfoEnabled_;
     uint8_t          lfoVibratoPctInt_;
     Q08              lfoVibratoPct_;
