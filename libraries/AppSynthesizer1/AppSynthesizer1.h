@@ -202,6 +202,9 @@ private:
         printer_.Init();
         
         // Set up defaults by simulating button presses
+        OnPinChange(cfg_.pinLogicalPisoPhaseLock,
+                    srInputSC_.DigitalReadCached(cfg_.pinLogicalPisoPhaseLock));
+        
         OnPinChange(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine, 1);
         OnPinChange(cfg_.pinLogicalPisoOsc2ButtonWaveTypeNone, 1);
         OnPinChange(cfg_.pinLogicalPisoLfoButtonWaveTypeNone, 1);
@@ -221,7 +224,12 @@ private:
     
     void OnPinChange(uint8_t pinLogical, uint8_t logicLevel)
     {
-        // Group wave selection first, and only examine if logic level
+        if (pinLogical == cfg_.pinLogicalPisoPhaseLock)
+        {
+            midiSynth_.SetCfgItem({SET_PHASE_LOCK, logicLevel});
+        }
+        
+        // Group wave selection , and only examine if logic level
         // is rising, since that's all they care about
         if (logicLevel)
         {
