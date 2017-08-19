@@ -191,6 +191,11 @@ public:
             SynthesizerVoiceClass::SetCfgItem(c);
         }
     }
+    
+    uint8_t GetCfgItem(uint8_t type, CfgItem &c)
+    {
+        return SynthesizerVoiceClass::GetCfgItem(type, c);
+    }
 
 
 private:

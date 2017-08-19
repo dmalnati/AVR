@@ -211,6 +211,35 @@ public:
         }
     }
     
+    uint8_t GetCfgItem(uint8_t type, CfgItem &c)
+    {
+        uint8_t retVal = 1;
+        
+        if (type == SET_ENVELOPE_ATTACK_DURATION_MS)
+        {
+            c = CfgItem{SET_ENVELOPE_ATTACK_DURATION_MS, envADSR_.GetAttackDuration()};
+        }
+        else if (type == SET_ENVELOPE_DECAY_DURATION_MS)
+        {
+            c = CfgItem{SET_ENVELOPE_DECAY_DURATION_MS, envADSR_.GetDecayDuration()};
+        }
+        else if (type == SET_ENVELOPE_SUSTAIN_LEVEL_PCT)
+        {
+            c = CfgItem{SET_ENVELOPE_SUSTAIN_LEVEL_PCT, envADSR_.GetSustainLevelPct()};
+        }
+        else if (type == SET_ENVELOPE_RELEASE_DURATION_MS)
+        {
+            c = CfgItem{SET_ENVELOPE_RELEASE_DURATION_MS, envADSR_.GetReleaseDuration()};
+        }
+        else
+        {
+            retVal = FunctionGenerator::GetCfgItem(type, c);
+        }
+        
+        return retVal;
+    }
+
+    
 private:
     
     void SetDefaultValues()

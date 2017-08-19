@@ -28,11 +28,18 @@ public:
     
     void SetFrequency(uint16_t frequency)
     {
+        frequency_ = frequency;
+        
         // Use full-resolution double for an infrequently-called function
         // to calculate step size for stepper
         stepSize_ = stepSizePerHz_ * frequency;
         
         rotation_.SetStepSize(stepSize_);
+    }
+    
+    uint16_t GetFrequency()
+    {
+        return frequency_;
     }
 
     void ApplyFrequencyOffsetPctIncreaseFromBase(Q08 pctIncrease)
@@ -81,6 +88,7 @@ private:
     SignalSourceFn          ssFn_;
     FixedPointStepper<Q88>  rotation_;
     int8_t                  phaseOffset_ = 0;
+    uint16_t                frequency_ = 0;
 };
 
 

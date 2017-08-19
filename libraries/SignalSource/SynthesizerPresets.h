@@ -66,8 +66,8 @@ void SetEnvelopeFast()
 {
     SetCfgItemList((CfgItem[]){
         {SET_ENVELOPE_ATTACK_DURATION_MS,  150},
-        {SET_ENVELOPE_DECAY_DURATION_MS,   255},
-        {SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   255},
+        {SET_ENVELOPE_DECAY_DURATION_MS,     0},
+        {SET_ENVELOPE_SUSTAIN_LEVEL_PCT,   100},
         {SET_ENVELOPE_RELEASE_DURATION_MS, 150},
     });
 }

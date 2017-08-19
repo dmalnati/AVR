@@ -191,6 +191,8 @@ private:
         // Direct inbound MIDI to the synthesizer
         midiReader_.SetCallbackOnMIDICommand([this](MIDICommand cmd){
             midiSynth_.ProcessCommand(cmd);
+            
+            UpdateLCDAfterMidiCommand();
         });
         midiReader_.Start();
         
@@ -575,6 +577,31 @@ private:
         return (double)val / PAL.AnalogMaxValue() * top;
     }
 
+    
+    void UpdateLCDAfterMidiCommand()
+    {
+        uint8_t cfgTypeList[] = {
+            SET_OSCILLATOR_1_FREQUENCY,
+            SET_OSCILLATOR_2_FREQUENCY,
+            SET_LFO_FREQUENCY,
+            SET_LFO_VIBRATO_PCT,
+            SET_LFO_TROMOLO_PCT,
+            SET_ENVELOPE_ATTACK_DURATION_MS,
+            SET_ENVELOPE_DECAY_DURATION_MS,
+            SET_ENVELOPE_SUSTAIN_LEVEL_PCT,
+            SET_ENVELOPE_RELEASE_DURATION_MS,
+        };
+
+        for (auto cfgType : cfgTypeList)
+        {
+            CfgItem c;
+            
+            if (midiSynth_.GetCfgItem(cfgType, c))
+            {
+                printer_.OnParamChange(c);
+            }
+        }
+    }
 
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;

@@ -41,11 +41,21 @@ public:
         Recalculate();
     }
     
+    uint16_t GetAttackDuration()
+    {
+        return attackDurationMs_;
+    }
+    
     void SetDecayDuration(uint16_t durationMs)
     {
         decayDurationMs_ = durationMs;
         
         Recalculate();
+    }
+    
+    uint16_t GetDecayDuration()
+    {
+        return decayDurationMs_;
     }
     
     void SetSustainLevelPct(uint8_t pct)
@@ -55,11 +65,21 @@ public:
         Recalculate();
     }
     
+    uint8_t GetSustainLevelPct()
+    {
+        return sustainLevelPct_;
+    }
+    
     void SetReleaseDuration(uint16_t durationMs)
     {
         releaseDurationMs_ = durationMs;
         
         Recalculate();
+    }
+    
+    uint16_t GetReleaseDuration()
+    {
+        return releaseDurationMs_;
     }
 
     

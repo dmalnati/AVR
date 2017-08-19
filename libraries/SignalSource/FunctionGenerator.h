@@ -56,8 +56,10 @@ public:
     , osc2Factor_(0.5)
     , lfo_(ssNone_.GetSample)
     , lfoEnabled_(0)
-    , lfoVibratoPct_(0.5)
-    , lfoTromoloPct_(0.5)
+    , lfoVibratoPctInt_(127)
+    , lfoVibratoPct_(lfoVibratoPctInt_)
+    , lfoTromoloPctInt_(127)
+    , lfoTromoloPct_(lfoTromoloPctInt_)
     {
         // Nothing to do
     }
@@ -249,6 +251,38 @@ public:
         }
     }
     
+    uint8_t GetCfgItem(uint8_t type, CfgItem &c)
+    {
+        uint8_t retVal = 1;
+        
+        if (type == SET_OSCILLATOR_1_FREQUENCY)
+        {
+            c = CfgItem{SET_OSCILLATOR_1_FREQUENCY, osc1_.GetFrequency()};
+        }
+        else if (type == SET_OSCILLATOR_2_FREQUENCY)
+        {
+            c = CfgItem{SET_OSCILLATOR_2_FREQUENCY, osc2_.GetFrequency()};
+        }
+        else if (type == SET_LFO_FREQUENCY)
+        {
+            c = CfgItem{SET_LFO_FREQUENCY, lfo_.GetFrequency()};
+        }
+        else if (type == SET_LFO_VIBRATO_PCT)
+        {
+            c = CfgItem{SET_LFO_VIBRATO_PCT, lfoVibratoPctInt_};
+        }
+        else if (type == SET_LFO_TROMOLO_PCT)
+        {
+            c = CfgItem{SET_LFO_TROMOLO_PCT, lfoTromoloPctInt_};
+        }
+        else
+        {
+            retVal = 0;
+        }
+        
+        return retVal;
+    }
+    
 protected:
 
     ///////////////////////////////////////////////////////////////////////
@@ -418,12 +452,14 @@ private:
     
     void SetLFOVibratoPct(uint8_t vibratoPct)
     {
-        lfoVibratoPct_ = vibratoPct;
+        lfoVibratoPct_    = vibratoPct;
+        lfoVibratoPctInt_ = vibratoPct;
     }
     
     void SetLFOTromoloPct(uint8_t tromoloPct)
     {
-        lfoTromoloPct_ = tromoloPct;
+        lfoTromoloPct_    = tromoloPct;
+        lfoTromoloPctInt_ = tromoloPct;
     }
     
 
@@ -491,7 +527,9 @@ private:
     
     SignalOscillator lfo_;
     uint8_t          lfoEnabled_;
+    uint8_t          lfoVibratoPctInt_;
     Q08              lfoVibratoPct_;
+    uint8_t          lfoTromoloPctInt_;
     Q08              lfoTromoloPct_;
     
     SignalSourceNoneWave           ssNone_;
