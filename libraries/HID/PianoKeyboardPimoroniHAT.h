@@ -33,6 +33,10 @@ public:
             OnPoll();
         });
         ted_.RegisterForTimedEventInterval(DEFAULT_POLL_PERIOD);
+        
+        // Make keys 8x sensitive instead of the default 32x
+        cap1_.SetSensitivity(3);
+        cap2_.SetSensitivity(3);
     }
     
     void EnableLEDs()
@@ -50,6 +54,15 @@ public:
     void SetIgnoreKeyCNextOctave(uint8_t ignoreKeyCNextOctave)
     {
         ignoreKeyCNextOctave_ = ignoreKeyCNextOctave;
+        
+        if (ignoreKeyCNextOctave_)
+        {
+            cap2_.SetInputEnable(0b11110111);
+        }
+        else
+        {
+            cap2_.SetInputEnable(0b11111111);
+        }
     }
 
     void SetCallbackOnKeyDown(function<void(uint8_t)> cbFnOnKeyDown)

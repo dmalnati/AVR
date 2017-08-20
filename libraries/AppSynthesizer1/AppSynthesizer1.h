@@ -199,6 +199,7 @@ private:
         
         // Set up keyboard
         hatToMidi_.GetHat().EnableLEDs();
+        hatToMidi_.GetHat().SetIgnoreKeyCNextOctave(1);
         hatToMidi_.Init();
         
         // Set up LCD Printer
