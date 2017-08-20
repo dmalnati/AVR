@@ -2,6 +2,7 @@
 #define __SENSOR_CAPACITIVE_TOUCH_CAP1188_H__
 
 
+#include "PAL.h"
 #include "I2C.h"
 
 
@@ -11,8 +12,10 @@ class SensorCapacitiveTouchCAP1188
 {
     static const uint8_t REG_MAIN_CONTROL                 = 0x00;
     static const uint8_t REG_SENSOR_INPUT_STATUS          = 0x03;
-    static const uint8_t REG_SENSOR_INPUT_LED_LINKING     = 0x72;
+    static const uint8_t REG_SENSITIVITY_CONTROL          = 0x1F;
+    static const uint8_t REG_SENSOR_INPUT_ENABLE          = 0x21;
     static const uint8_t REG_MULTIPLE_TOUCH_CONFIGURATION = 0x2A;
+    static const uint8_t REG_SENSOR_INPUT_LED_LINKING     = 0x72;
     
 public:
     SensorCapacitiveTouchCAP1188(uint8_t addr)
@@ -44,6 +47,40 @@ public:
     void DisableMultiTouch()
     {
         I2C.WriteRegister(addr_, REG_MULTIPLE_TOUCH_CONFIGURATION, 0x80);
+    }
+    
+    // Multiplying factor, 2^x
+    // Inputs range 0-7, for a result range of 1-128
+    // Higher the value, the more sensitive
+    void SetSensitivity(uint8_t multFactor)
+    {
+        if (multFactor > 7)
+        {
+            multFactor = 7;
+        }
+        
+        // For some unknowable reason, the implementation in the chip
+        // essentially backwards in the sense that flipping the bits of the
+        // input to this function is what yields the correct value.
+        //
+        // http://ww1.microchip.com/downloads/en/DeviceDoc/CAP1188%20.pdf
+        // pdf p. 45
+        // DELTA_SENSE[2:0] (a 3 bit range)
+        
+        uint8_t regVal;
+        I2C.ReadRegister(addr_, REG_SENSITIVITY_CONTROL, regVal);
+        regVal = 0b10001111 | (~multFactor << 4);
+        I2C.WriteRegister(addr_, REG_SENSITIVITY_CONTROL, regVal);
+    }
+    
+    // Set which inputs are monitored by the chip
+    // Input to this function is a bitmap corresponding to 01234567
+    // (this is despite the fact that the chip wants preferences specified in
+    //  reverse of that)
+    void SetInputEnable(uint8_t bitmap)
+    {
+        uint8_t bitmapUse = PAL.BitReverse(bitmap);
+        I2C.WriteRegister(addr_, REG_SENSOR_INPUT_ENABLE, bitmapUse);
     }
     
     uint8_t GetTouched()
