@@ -615,7 +615,7 @@ private:
             }
         }
     }
-    
+
     void UpdateLEDsAfterMidiCommand()
     {
         uint8_t cfgTypeList[] = {
@@ -767,39 +767,102 @@ private:
         {
             if (c.type == SET_OSCILLATOR_1_FREQUENCY)
             {
-                lcd_.PrintAt(4, 0, ToStr((uint16_t)c, 5));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(4, 0, ToStr((uint16_t)c, 5));
+                }
+                
+                valLast = (uint16_t)c;
             }
             else if (c.type == SET_OSCILLATOR_2_FREQUENCY)
             {
-                lcd_.PrintAt(14, 0, ToStr((uint16_t)c, 5));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(14, 0, ToStr((uint16_t)c, 5));
+                }
+                
+                valLast = (uint16_t)c;
             }
             else if (c.type == SET_LFO_FREQUENCY)
             {
-                lcd_.PrintAt(4, 1, ToStr((uint16_t)c, 5));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(4, 1, ToStr((uint16_t)c, 5));
+                }
+                
+                valLast = (uint16_t)c;
             }
             else if (c.type == SET_LFO_VIBRATO_PCT)
             {
-                lcd_.PrintAt(13, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+                static uint8_t valLast = UINT8_MAX;
+                
+                if (valLast == UINT8_MAX || valLast != (uint8_t)c)
+                {
+                    lcd_.PrintAt(13, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+                }
+                
+                valLast = (uint8_t)c;
             }
             else if (c.type == SET_LFO_TROMOLO_PCT)
             {
-                lcd_.PrintAt(17, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+                static uint8_t valLast = UINT8_MAX;
+                
+                if (valLast == UINT8_MAX || valLast != (uint8_t)c)
+                {
+                    lcd_.PrintAt(17, 1, ToStr(((uint8_t)c * 100.0 / 255.0), 3));
+                }
+                
+                valLast = (uint8_t)c;
             }
             else if (c.type == SET_ENVELOPE_ATTACK_DURATION_MS)
             {
-                lcd_.PrintAt(2, 2, ToStr((uint16_t)c, 4));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(2, 2, ToStr((uint16_t)c, 4));
+                }
+                
+                valLast = (uint16_t)c;
             }
             else if (c.type == SET_ENVELOPE_DECAY_DURATION_MS)
             {
-                lcd_.PrintAt(13, 2, ToStr((uint16_t)c, 4));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(13, 2, ToStr((uint16_t)c, 4));
+                }
+                
+                valLast = (uint16_t)c;
             }
             else if (c.type == SET_ENVELOPE_SUSTAIN_LEVEL_PCT)
             {
-                lcd_.PrintAt(3, 3, ToStr((uint8_t)c, 3));
+                static uint8_t valLast = UINT8_MAX;
+                
+                if (valLast == UINT8_MAX || valLast != (uint8_t)c)
+                {
+                    lcd_.PrintAt(3, 3, ToStr((uint8_t)c, 3));
+                }
+                
+                valLast = (uint8_t)c;
             }
             else if (c.type == SET_ENVELOPE_RELEASE_DURATION_MS)
             {
-                lcd_.PrintAt(13, 3, ToStr((uint16_t)c, 4));
+                static uint16_t valLast = UINT16_MAX;
+                
+                if (valLast == UINT16_MAX || valLast != (uint16_t)c)
+                {
+                    lcd_.PrintAt(13, 3, ToStr((uint16_t)c, 4));
+                }
+                
+                valLast = (uint16_t)c;
             }
         }
 
