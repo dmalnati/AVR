@@ -209,7 +209,7 @@ private:
         OnPinChange(cfg_.pinLogicalPisoPhaseLock,
                     srInputSC_.DigitalReadCached(cfg_.pinLogicalPisoPhaseLock));
         
-        OnPinChange(cfg_.pinLogicalPisoOsc1ButtonWaveTypeSine, 1);
+        OnPinChange(cfg_.pinLogicalPisoOsc1ButtonWaveTypeNone, 1);
         OnPinChange(cfg_.pinLogicalPisoOsc2ButtonWaveTypeNone, 1);
         OnPinChange(cfg_.pinLogicalPisoLfoButtonWaveTypeNone, 1);
         

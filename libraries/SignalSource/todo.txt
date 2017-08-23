@@ -2,30 +2,21 @@
 
 
 Software
-- how to track settings when presets or MIDI changes settings
-- what happens when osc1 freq == 0 and osc2 != 0?
-  - balance does what?
 - move files around
   - especially all peripherals/hid/etc
-- analog input snap to high/low values 
 - new instrument presets
 
 
 Circuit
-- MIDI optocoupler
 - caps on power, why can I hear I2C?
 - Should MIDI out->in work?
-- Amp/Volume
-  - is low-pass filter too aggressive?
-- aux out
- 
+- aux out voltage divider
+
  
 Physical
 - wire up buttons/leds/etc
 - power
-- enough LEDs?
-  - too bright?
-- wood carve labels
+- draw labels
 
  
 Plan
