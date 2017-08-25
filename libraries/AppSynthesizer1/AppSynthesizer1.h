@@ -126,7 +126,7 @@ private:
     static const uint16_t BAUD = 31250;
     
     static const uint32_t DEFAULT_ANALOG_POLL_PERIOD_MS = 20;
-    static const uint16_t DEFAULT_ANALOG_MINIMUM_CHANGE = 5;
+    static const uint16_t DEFAULT_ANALOG_MINIMUM_CHANGE = 15;
     
     static const uint8_t SHIFT_REGISTER_IN_COUNT  = 3;
     static const uint8_t SHIFT_REGISTER_OUT_COUNT = 3;
