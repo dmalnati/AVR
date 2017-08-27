@@ -5,32 +5,28 @@
 #include "PAL.h"
 #include "Timer1.h"
 #include "Container.h"
-#include "SignalSourceSineWave.h"
-#include "SignalDAC.h"
+#include "ModemAnalog.h"
 
 
 // Physical layer handler
 
-// Need to handle being configured to:
-// - send LSB or MSB first for a given byte
+// Will
+// - send LSB first for a given byte
 // - encoding - NRZI
-// - Bit stuffing might best be done here...
+// - Bit stuffing after 5th consecutive 1
 
 class ModemBell202
 {
+    static const uint16_t SAMPLE_RATE = 40000;
+    
     static const uint16_t BAUD = 1200;
     
     static const uint16_t BELL_202_FREQ_SPACE = 2200;
     static const uint16_t BELL_202_FREQ_MARK  = 1200;
     
-    static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
+    static const uint8_t BIT_STUFF_AFTER_COUNT = 3;
     
     static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
-    
-    constexpr static const double AVR_CLOCK_SCALING_FACTOR = 1.0085;
-    
-    using SignalDACType = SignalDAC<SignalSourceSineWave>;
-    
     
 
     // Build the messages from the main thread to the ISR thread which will
@@ -45,10 +41,7 @@ class ModemBell202
     {
         CommandType cmdType;
         
-        union
-        {
-            SignalDACType::FrequencyConfig *dacCfg;
-        };
+        ModemAnalogFrequencyConfig fc;
     };
 
     using CommandQueue = Queue<Command, COMMAND_QUEUE_CAPACITY>;
@@ -56,19 +49,22 @@ class ModemBell202
     
 public:
     ModemBell202()
-    : dacCfgList_{&dacCfg1200_, &dacCfg2200_}
-    , timerChannelA_(timer_.GetTimerChannelA())
+    : timerChannelA_(timer_.GetTimerChannelA())
     , timerChannelOvf_(timer_.GetTimerOverflowHandler())
     , timerTopValue_(CalculateTimerTopValue())
     {
         Reset();
-        
-        // Get configuration for both frequencies to be used
-        dac_.GetFrequencyConfig(BELL_202_FREQ_SPACE, &dacCfg2200_);
-        dac_.GetFrequencyConfig(BELL_202_FREQ_MARK,  &dacCfg1200_);
     }
     
     ~ModemBell202() {}
+    
+    void Init()
+    {
+        ma_.SetSampleRate(SAMPLE_RATE);
+        
+        fcList_[0] = ma_.GetFrequencyConfig(BELL_202_FREQ_MARK);
+        fcList_[1] = ma_.GetFrequencyConfig(BELL_202_FREQ_SPACE);
+    }
     
     void Start()
     {
@@ -78,7 +74,7 @@ public:
             
             // Doesn't matter which frequency starts, it's NRZI, so
             // it's really the transitions which matter
-            dac_.SetInitialFrequency(dacCfgList_[dacCfgListIdx_]);
+            ma_.SetFrequencyByConfig(fcList_[freqListIdx_]);
             
             // Set up timer to count fast (high-res) and high (16-bit) so that
             // we can specify a long duration between match events
@@ -93,7 +89,7 @@ public:
             // Set up handler for when the wrap (actually equality) occurs.
             // We're looking for the main-thread code to have pushed commands
             // onto our queue, which represent bit transitions.
-            // These bit transitions will cause us to change the DAC output
+            // These bit transitions will cause us to change the output
             // frequency.
             timerChannelA_->SetInterruptHandler([this](){
                 Command cmd;
@@ -102,23 +98,17 @@ public:
                 {
                     if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
                     {
-                        dac_.ChangeFrequencyNonAtomic(cmd.dacCfg);
+                        ma_.SetFrequencyByConfig(cmd.fc);
                     }
                 }
             });
             timerChannelA_->RegisterForInterrupt();
             
-            
             // Debug only -- Check period of bit transition timeout
             timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
             
-            
-            // Shut off Timer0, it interferes
-            //PAL.PowerDownTimer0();
-            
-            
-            // Get DAC going
-            dac_.Start();
+            // Get output signal going
+            ma_.Start();
             
             // Get our timer going.
             // Expected operation is that immediately after Start the Send
@@ -130,7 +120,7 @@ public:
     void Send(uint8_t *buf, uint8_t  bufLen, uint8_t  bitStuff = 1)
     {
         // Bit counting re-sets every Send
-        bitStuffCount_ = 0;
+        consecutiveOnes_ = 0;
         
         for (uint8_t i = 0; i < bufLen; ++i)
         {
@@ -150,20 +140,16 @@ public:
         
         while (cmdQueue_.Size()) {}
 
-        
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             // Stop the DAC
-            dac_.Stop();
+            ma_.Stop();
             
             // Don't let any potentially queued interrupts fire
             timerChannelOvf_->DeRegisterForInterrupt();
             
             // Stop the timer
             timer_.StopTimer();
-            
-            // Turn on Timer0 again
-            //PAL.PowerUpTimer0();
         }
     }
 
@@ -172,8 +158,8 @@ private:
 
     void Reset()
     {
-        dacCfgListIdx_ = 0;
-        bitStuffCount_ = 0;
+        freqListIdx_ = 0;
+        consecutiveOnes_ = 0;
         
         cmdQueue_.Clear();
     }
@@ -184,7 +170,7 @@ private:
         
         for (uint8_t i = 0; i < 8; ++i)
         {
-            // Get next bit -- assume LSB first
+            // Get next bit -- LSB first
             uint8_t bitVal = bTmp & 0x01;
             
             // Set up byte for next iteration
@@ -202,19 +188,19 @@ private:
                 // Is this a 1?  We're watching for consecutive 1s.
                 if (bitVal)
                 {
-                    ++bitStuffCount_;
+                    ++consecutiveOnes_;
                     
-                    if (bitStuffCount_ == BIT_STUFF_AFTER_COUNT)
+                    if (consecutiveOnes_ == BIT_STUFF_AFTER_COUNT)
                     {
                         SendBit(0);
                         
                         // reset
-                        bitStuffCount_ = 0;
+                        consecutiveOnes_ = 0;
                     }
                 }
                 else
                 {
-                    bitStuffCount_ = 0;
+                    consecutiveOnes_ = 0;
                 }
             }
         }
@@ -227,14 +213,14 @@ private:
         if (!bitVal)
         {
             // do transition
-            dacCfgListIdx_ = !dacCfgListIdx_;
+            freqListIdx_ = !freqListIdx_;
             
             // Push a ChangeFrequency command onto the queue for the
             // next baud interval
             Command cmd;
             
             cmd.cmdType = CommandType::CHANGE_FREQUENCY;
-            cmd.dacCfg  = dacCfgList_[dacCfgListIdx_];
+            cmd.fc  = fcList_[freqListIdx_];
             
             cmdQueue_.PushAtomic(cmd);
         }
@@ -262,11 +248,8 @@ private:
         // Start with the actual period you want
         double periodLogicalUs = 1000.0 / BAUD * 1000.0;
 
-        // Now account for AVR clock running at not quite wall-clock speed
-        double periodUs = periodLogicalUs * AVR_CLOCK_SCALING_FACTOR;
-
         // Convert the duration in us into ticks of the timer
-        double ticksPerPeriod = periodUs / US_PER_TICK;
+        double ticksPerPeriod = periodLogicalUs / US_PER_TICK;
 
         uint16_t top = ticksPerPeriod - 1;
         
@@ -276,13 +259,12 @@ private:
 
     
     
-    uint8_t bitStuffCount_;    
+    uint8_t consecutiveOnes_;    
+    
+    ModemAnalog ma_;
 
-    SignalDACType                    dac_;
-    SignalDACType::FrequencyConfig   dacCfg1200_;
-    SignalDACType::FrequencyConfig   dacCfg2200_;
-    SignalDACType::FrequencyConfig  *dacCfgList_[2];
-    uint8_t                          dacCfgListIdx_;
+    ModemAnalogFrequencyConfig fcList_[2];
+    uint8_t   freqListIdx_;
     
     Timer1          timer_;
     TimerChannel   *timerChannelA_;

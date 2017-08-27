@@ -6,6 +6,13 @@
 #include "FixedPointStepper.h"
 
 
+struct SignalOscillatorFrequencyConfig
+{
+    uint16_t frequency = 1;
+    Q88      stepSize;
+};
+
+
 class SignalOscillator
 {
     static const uint16_t VALUE_COUNT = 256;
@@ -24,6 +31,25 @@ public:
     void SetSampleRate(uint16_t sampleRate)
     {
         stepSizePerHz_ = (double)VALUE_COUNT / (double)sampleRate;
+    }
+    
+    SignalOscillatorFrequencyConfig GetFrequencyConfig(uint16_t frequency)
+    {
+        SignalOscillatorFrequencyConfig fc;
+        
+        fc.frequency = frequency;
+        
+        // Use full-resolution double for an infrequently-called function
+        // to calculate step size for stepper
+        fc.stepSize = stepSizePerHz_ * fc.frequency;
+        
+        return fc;
+    }
+    
+    void SetFrequencyByConfig(SignalOscillatorFrequencyConfig fc)
+    {
+        frequency_ = fc.frequency;
+        rotation_.SetStepSize(fc.stepSize);
     }
     
     void SetFrequency(uint16_t frequency)
