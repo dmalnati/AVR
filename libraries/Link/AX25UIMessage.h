@@ -38,8 +38,6 @@ public:
         // Nothing to do
     }
     
-    ~AX25UIMessage() {}
-
     void Init(uint8_t *buf)
     {
         SetBuf(buf);
@@ -62,16 +60,94 @@ public:
         bufIdxPID_     = 0;
     }
     
+    void SetDstAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
+    
+    void SetSrcAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
+    
+    void AddRepeaterAddress(const char *addr, uint8_t addrSSID)
+    {
+        AppendAddress(addr, addrSSID);
+    }
 
-    // Does not try to set stop bit.
+    void AppendInfo(uint8_t *buf, uint8_t bufSize)
+    {
+        memcpy((void *)&(buf_[bufIdxNextByte_]), buf, bufSize);
+        bufIdxNextByte_ += bufSize;
+    }
+    
+    // Returns number of bytes used
+    uint8_t Finalize()
+    {
+        SetControl(AX25_CHAR_CONTROL);
+        SetPID(AX25_CHAR_PID);
+        CalcFCS();
+        
+        return bufIdxNextByte_;
+    }
+
+
+private:
+
+    void AppendAddress(const char *addr, uint8_t addrSSID)
+    {
+        // undo any stop-bit from prior address append.
+        // cope with situation where this is the first.
+        if (bufIdxNextByte_ != 0)
+        {
+            // reverse idxNextByte by the control and pid bytes from last time.
+            bufIdxNextByte_ -= 2;
+            
+            // undo the stop-bit of the prior address
+            buf_[bufIdxNextByte_ - 1] &= 0b11111110;
+        }
+        
+        // encode this address
+        EncodeAddress(addr, addrSSID);
+        
+        // set stop bit of this address
+        buf_[bufIdxNextByte_ - 1] |= 0b00000001;
+        
+        // calculate location of control field
+        // (already pointed to by bufIdxNextByte_)
+        bufIdxControl_ = bufIdxNextByte_;
+        
+        // calculate location of pid field
+        ++bufIdxNextByte_;
+        bufIdxPID_ = bufIdxNextByte_;
+        
+        // calculate starting location of data
+        ++bufIdxNextByte_;
+    }
+    
+    // Does not set stop bit, left for higher-level logic
     void EncodeAddress(const char *addr, uint8_t ssid)
     {
-        // should be of form: ascii string, 6 char, space padded on right
+        // This will fill the next 7 bytes of the buffer.
+        // The format is <SIGN>[spaces]<SSID>
+        // The callsign is left-aligned, occupying up to 6 characters.
+        // Any callsign less than 6 characters is space-padded on the right.
+        // The 7th byte is for the SSID.
+        // The formatting of the actual data is:
+        // SIGN bytes
+        // - each ascii chater is shifted 1 bit to the left, allowing for the
+        //   least-significant-bit to represent flag data.
+        // SSID byte
+        // - HRRSSIDS
+        //   - H    - "has been repeated" - set to 0 as we're doing initial send
+        //   - RR   - Reserved.  Set each bit to 1.
+        //   - SSID - The actual binary SSID, 0-15.
+        //   - S    - Stop bit.  Set to 0 here, we aren't in charge of this.
         
-        // validate anyway
+        // validate length
         uint8_t addrLen = strlen(addr);
         
-        // Assume well formed
+        // Initialize to max length supported
         uint8_t useByteCount = 6;
         uint8_t padByteCount = 0;
         
@@ -107,141 +183,6 @@ public:
         ++bufIdxNextByte_;
     }
     
-    void AppendAddress(const char *addr, uint8_t addrSSID)
-    {
-        // undo any stop-bit from prior address append.
-        // cope with situation where this is the first.
-        if (bufIdxNextByte_ != 0)
-        {
-            // reverse idxNextByte by the control and pid bytes from last time.
-            bufIdxNextByte_ -= 2;
-            
-            // undo the stop-bit of the prior address
-            //buf_[bufIdxNextByte_ - 1] &= 0b11111110;
-            
-            // Debug -- set high bit also
-            buf_[bufIdxNextByte_ - 1] &= 0b01111110;
-        }
-        
-        // encode this address
-        EncodeAddress(addr, addrSSID);
-        
-        // set stop bit of this address
-        //buf_[bufIdxNextByte_ - 1] |= 0b00000001;
-        
-        // Debug -- set high bit also
-        buf_[bufIdxNextByte_ - 1] |= 0b10000001;
-
-        // calculate location of control field
-        // (already pointed to by bufIdxNextByte_)
-        bufIdxControl_ = bufIdxNextByte_;
-        
-        // calculate location of pid field
-        ++bufIdxNextByte_;
-        bufIdxPID_ = bufIdxNextByte_;
-        
-        // calculate starting location of data
-        ++bufIdxNextByte_;
-    }
-    
-    void SetDstAddress(const char *addr, uint8_t addrSSID)
-    {
-        AppendAddress(addr, addrSSID);
-    }
-    
-    void SetSrcAddress(const char *addr, uint8_t addrSSID)
-    {
-        AppendAddress(addr, addrSSID);
-    }
-    
-    void AddRepeaterAddress(const char *addr, uint8_t addrSSID)
-    {
-        AppendAddress(addr, addrSSID);
-    }
-
-    void SetAddress(const char *addrDst,
-                    uint8_t     addrDstSSID,
-                    const char *addrSrc,
-                    uint8_t     addrSrcSSID)
-    {
-        EncodeAddress(addrDst, addrDstSSID);
-        EncodeAddress(addrSrc, addrSrcSSID);
-        
-        // set stop-bit on final byte of address
-        buf_[bufIdxNextByte_ - 1] |= 0x01;
-        
-        
-        // calculate location of control field
-        // (already pointed to by bufIdxNextByte_)
-        bufIdxControl_ = bufIdxNextByte_;
-        
-        // calculate location of pid field
-        ++bufIdxNextByte_;
-        bufIdxPID_ = bufIdxNextByte_;
-        
-        // calculate starting location of data
-        ++bufIdxNextByte_;
-        
-        
-        
-        // each byte needs to be shifted left 1 bit to indicate either:
-        // 0 - another byte follows
-        // 1 - end of bytes
-        
-        // Indicate 1 only after dst
-        
-        // 14 bytes for non-repeater point-to-point transmission.
-        // online doc shows typical format.
-        
-        // each callsign must space separate itself from the SSID.
-        // (consider using 4 params to this fn?)
-        
-        // Unclear how repeater-based transmission should look
-        // (such as how they know the end of the repeater vs src
-        //  since the field widths aren't 7 and 7 for dst and src anymore)
-        
-        /*
-        
-          Wait, clearer now.
-          Unconditionally encode the 14 bytes as described above.
-          If repeaters are being used, they are appended to the end of the
-          address field contiguously.
-          This also means that the stop-bit on the end of the src address is not
-          used in this case, and instead is used at the end of the repeater
-          addressing data.
-          
-          The most-significant bit in the final octet of the SSID of the last
-          repeater is set to 0 on initial transmission, and 1 once repeated.
-          (this doesn't seem problematic since numeric ASCII characters don't
-           make use of that bit even when shifted left 1 bit, as is necessary
-           for the stop-bit encoding)
-        
-         */
-    }
-
-    // max 256 bytes pre-stuffing
-    void AppendInfo(uint8_t *buf, uint8_t bufSize)
-    {
-        memcpy((void *)&(buf_[bufIdxNextByte_]), buf, bufSize);
-        bufIdxNextByte_ += bufSize;
-    }
-    
-    
-    // Returns number of bytes used or 0 on error.
-    uint8_t Finalize()
-    {
-        SetControl(AX25_CHAR_CONTROL);
-        SetPID(AX25_CHAR_PID);
-        CalcFCS();
-        
-        return bufIdxNextByte_;
-    }
-    
-
-
-private:
-
-    
     void SetControl(uint8_t control)
     {
         buf_[bufIdxControl_] = control;
@@ -252,6 +193,9 @@ private:
         buf_[bufIdxPID_] = pid;
     }
     
+    
+public:
+
     // Taken from:
     // http://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=2449&context=theses
     // (light reformatting and removal of compiler warnings about comparing
@@ -293,51 +237,23 @@ private:
     }    
     
 
+private:
+
     void CalcFCS()
     {
-        // ISO 3309 (HDLC)
-        
-        // reverse bits when done for transmission
-        // Is the number supposed to be big-endian on the wire
-        // (not considering the bit switching)?
-
-        
-        // So...
-        // calc a 16 bit int
-        // Make it BigEndian in RAM
-        // Reverse bits of each byte
-        // That way, when streamed least-significant-bit first, the end result
-        // will be what the spec calls for.
-        //    This relies on the transmission of the binary data to uniformally
-        //    transmit all bytes lsb first.
-        
-        
-        
-        // EX:
-        // BigEndian          : 0x95D3 -- 1001 0101  1101 0011
-        // Swapped 8-bit bytes: 0xA9CB -- 1010 1001  1100 1011
-        
+        // The CRC Function below already takes into account the special
+        // requirements for transmitting the FCS, and the output of that
+        // is suitable for placing in the byte stream and sending each byte
+        // least-significant-bit first along with everything else.
         
         // Apply to Address, Control, PID, Info
         uint16_t crc = calc_crc(buf_, bufIdxNextByte_);
         
-        // Get BigEndian representation
-        uint16_t crcBigEndian = PAL.htons(crc);
-        
-        // Get copy to swap the bits of each byte around within
-        uint16_t crcBigEndianBitSwap = crcBigEndian;
-        
-        // Reverse the bits of each byte
-        PAL.BitReverse((uint8_t *)&crcBigEndianBitSwap,
-                       sizeof(crcBigEndianBitSwap));
-        
         // Put the bytes into our buffer
-        memcpy((void *)&(buf_[bufIdxNextByte_]),
-               (void *)&crcBigEndianBitSwap,
-               sizeof(crcBigEndianBitSwap));
+        memcpy((void *)&(buf_[bufIdxNextByte_]), (void *)&crc, sizeof(crc));
         
         // Move to next position
-        bufIdxNextByte_ += sizeof(crcBigEndianBitSwap);
+        bufIdxNextByte_ += sizeof(crc);
     }
 
     
