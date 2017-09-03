@@ -22,7 +22,7 @@ void Send(uint8_t *buf, uint8_t bufLen)
 
     // Send preamble, which also will serve as the flag byte
     // Send lots, like APRSDroid
-    for (uint8_t i = 0; i < 3; ++i)
+    for (uint8_t i = 0; i < 6; ++i)
     {
         bitStuff = 0;
         modem->Send(flagList, flagListLen, bitStuff);
@@ -88,6 +88,31 @@ void Test2()
     Send(buf, bytesUsed);
 }
 
+void Test3()
+{
+    uint8_t *buf = bufShared;
+    
+    msg.Init(buf);
+
+    msg.SetDstAddress("APDR14", 0);
+    msg.SetSrcAddress("FAKE", 9);
+    msg.AddRepeaterAddress("WIDE1", 1);
+
+    const char *info = ":KD2KDD   :hi2{2";
+    uint8_t infoLen = strlen(info);   // 16
+    msg.AppendInfo((uint8_t *)info, infoLen);
+
+    // hack in the has-been-repeated bit on the dst address,
+    buf[6] |= 0b10000000;
+    
+    uint8_t bytesUsed = msg.Finalize();
+
+
+    Send(buf, bytesUsed);
+}
+
+
+
 
 void setup()
 {
@@ -101,6 +126,9 @@ void setup()
 
     while (1)
     {
+        Test3();
+        PAL.Delay(1000);
+        
         Test2();
         PAL.Delay(1000);
     }

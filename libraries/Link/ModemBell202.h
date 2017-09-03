@@ -24,6 +24,8 @@ class ModemBell202
     static const uint16_t BELL_202_FREQ_SPACE = 2200;
     static const uint16_t BELL_202_FREQ_MARK  = 1200;
     
+    constexpr static const uint8_t BELL_202_FREQ_MARK_PRE_EMPHASIS = 3;
+    
     static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
     
     static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
@@ -62,7 +64,8 @@ public:
     {
         ma_.SetSampleRate(SAMPLE_RATE);
         
-        fcList_[0] = ma_.GetFrequencyConfig(BELL_202_FREQ_MARK);
+        fcList_[0] = ma_.GetFrequencyConfig(BELL_202_FREQ_MARK,
+                                            BELL_202_FREQ_MARK_PRE_EMPHASIS);
         fcList_[1] = ma_.GetFrequencyConfig(BELL_202_FREQ_SPACE);
     }
     

@@ -12,6 +12,7 @@
 struct ModemAnalogFrequencyConfig
 {
     SignalOscillatorFrequencyConfig fc;
+    uint8_t                         preEmph;
 };
 
 
@@ -65,11 +66,13 @@ public:
         }
     }
     
-    static ModemAnalogFrequencyConfig GetFrequencyConfig(uint16_t frequency)
+    static ModemAnalogFrequencyConfig GetFrequencyConfig(uint16_t frequency,
+                                                         uint8_t  preEmph = 1)
     {
         ModemAnalogFrequencyConfig fc;
         
-        fc.fc = osc_.GetFrequencyConfig(frequency);
+        fc.fc      = osc_.GetFrequencyConfig(frequency);
+        fc.preEmph = preEmph;
         
         return fc;
     }
@@ -77,6 +80,7 @@ public:
     static void SetFrequencyByConfig(ModemAnalogFrequencyConfig *fc)
     {
         osc_.SetFrequencyByConfig(&fc->fc);
+        preEmph_ = fc->preEmph;
     }
     
     static void SetFrequency(uint16_t frequency)
@@ -110,7 +114,7 @@ public:
             TimerClass::GetTimerChannelA()->DeRegisterForInterrupt();
 
             // Set output value to zero
-            PORTD = 0;
+            PORTD = 128;
 
             // Reset oscillator for next time
             osc_.Reset();
@@ -136,7 +140,7 @@ private:
     static inline void OnInterrupt()
     {
         // Adjust to 0-255 range
-        uint8_t val = 128 + osc_.GetNextSample();
+        uint8_t val = 128 + (osc_.GetNextSample() / preEmph_);
         
         PORTD = val;
     }
@@ -144,11 +148,13 @@ private:
 
     static SignalSourceSineWave  ssSine_;
     static SignalOscillator      osc_;
+    static uint8_t               preEmph_;
 
 };
 
 SignalSourceSineWave ModemAnalog::ssSine_;
 SignalOscillator     ModemAnalog::osc_(&ModemAnalog::ssSine_.GetSample);
+uint8_t              ModemAnalog::preEmph_(1);
 
 
 #endif  // __MODEM_ANALOG_H__
