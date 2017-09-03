@@ -7,6 +7,7 @@
 
 void ss_init(AX25Ctx *ax25);
 
+void ss_messageCallbackRaw(uint8_t *buf, uint8_t bufLen);
 void ss_messageCallback(struct AX25Msg *msg);
 void ss_serialCallback(void *_buffer, size_t length, AX25Ctx *ctx);
 

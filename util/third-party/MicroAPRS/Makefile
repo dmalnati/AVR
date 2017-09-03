@@ -1,5 +1,6 @@
 # AVR Sample makefile written by Eric B. Weddington, Jörg Wunsch, et al.
 # Modified (bringing often-changed options to the top) by Elliot Williams
+#
 
 # make all = Make software and program
 # make clean = Clean out built project files.
@@ -33,7 +34,7 @@ FORMAT = ihex
 
 # List C source files here. (C dependencies are automatically generated.)
 #SRC = $(TARGET).c
-SRC = main.c hardware/Serial.c hardware/AFSK.c util/CRC-CCIT.c protocol/AX25.c protocol/KISS.c protocol/SimpleSerial.c
+SRC = main.c hardware/Serial.c hardware/AFSK.c util/CRC-CCIT.c protocol/AX25.c protocol/KISS.c protocol/SimpleSerial.c protocol/UtlStreamBlob.c
 
 # If there is more than one source file, append them above, or modify and
 # uncomment the following:

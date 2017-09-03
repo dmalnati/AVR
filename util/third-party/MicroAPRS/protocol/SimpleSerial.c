@@ -12,6 +12,8 @@
 #include "SimpleSerial.h"
 #include "util/time.h"
 
+#include "UtlStreamBlob.h"
+
 #define countof(a) sizeof(a)/sizeof(a[0])
 
 bool PRINT_SRC = true;
@@ -189,8 +191,17 @@ void ss_saveSettings(void) {
     if (!VERBOSE && !SILENT) printf_P(PSTR("1\n"));
 }
 
+void ss_messageCallbackRaw(uint8_t *buf, uint8_t bufLen)
+{
+    printf("\r\n");
+    printf_P(PSTR("Message callback, %i bytes, dump: \r\n"), bufLen);
+    StreamBlob(buf, bufLen, 1, 1);
+    printf("\r\n");
+}
+
 void ss_messageCallback(struct AX25Msg *msg) {
-    if (PRINT_SRC) {
+    
+   if (PRINT_SRC) {
         if (PRINT_INFO) printf_P(PSTR("SRC: "));
         printf_P(PSTR("[%.6s-%d] "), msg->src.call, msg->src.ssid);
     }

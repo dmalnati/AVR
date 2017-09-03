@@ -19,12 +19,15 @@ void ax25_init(AX25Ctx *ctx, FILE *channel, ax25_callback_t hook) {
     ctx->crc_in = ctx->crc_out = CRC_CCIT_INIT_VAL;
 }
 
+#include "SimpleSerial.h"
 static void ax25_decode(AX25Ctx *ctx) {
     #if SERIAL_PROTOCOL == PROTOCOL_KISS
         if (ctx->hook) ctx->hook(ctx);
     #endif
 
     #if SERIAL_PROTOCOL == PROTOCOL_SIMPLE_SERIAL
+        ss_messageCallbackRaw(ctx->buf, ctx->frame_len);
+    
         AX25Msg msg;
         uint8_t *buf = ctx->buf;
 

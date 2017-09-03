@@ -10,17 +10,17 @@
 
 // ADC settings
 #define OPEN_SQUELCH false
-#define ADC_REFERENCE REF_3V3
+//#define ADC_REFERENCE REF_3V3
 // OR
-//#define ADC_REFERENCE REF_5V
+#define ADC_REFERENCE REF_5V
 
 // Sampling & timer setup
 #define CONFIG_AFSK_DAC_SAMPLERATE 9600
 
 // Serial protocol settings
-#define SERIAL_PROTOCOL PROTOCOL_KISS
+//#define SERIAL_PROTOCOL PROTOCOL_KISS
 // OR
-//#define SERIAL_PROTOCOL PROTOCOL_SIMPLE_SERIAL
+#define SERIAL_PROTOCOL PROTOCOL_SIMPLE_SERIAL
 
 // AX25 settings
 #if SERIAL_PROTOCOL == PROTOCOL_SIMPLE_SERIAL
@@ -28,7 +28,11 @@
 #endif
 
 // Serial settings
-#define BAUD 9600
+//#define BAUD 9600
+//#define BAUD 31250
+//#define BAUD 115200
+//#define BAUD 57600
+#define BAUD 85000
 #define SERIAL_DEBUG false
 #define TX_MAXWAIT 2UL
 

@@ -188,6 +188,11 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
     // And then put the newest bit from the 
     // demodulator into the byte.
     hdlc->demodulatedBits |= bit ? 1 : 0;
+    
+    if (hdlc->receiving)
+    {
+        putchar(bit ? '1' : '0');
+    }
 
     // Now we'll look at the last 8 received bits, and
     // check if we have received a HDLC flag (01111110)
@@ -221,6 +226,9 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         // of the received bytes.
         hdlc->currentByte = 0;
         hdlc->bitIndex = 0;
+        
+        putchar('F');
+        putchar('\n');
         return ret;
     }
 
@@ -232,10 +240,17 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
     // be an endless stream of ones, which this AND operation
     // will also detect.
     if ((hdlc->demodulatedBits & HDLC_RESET) == HDLC_RESET) {
+        if (hdlc->receiving)
+        {
+            putchar('R');
+            putchar('\n');
+        }
+        
         // If we have, something probably went wrong at the
         // transmitting end, and we abort the reception.
         hdlc->receiving = false;
         LED_RX_OFF();
+        
         return ret;
     }
 
@@ -243,7 +258,10 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
     // a transmission is actually taking place, don't bother
     // with anything.
     if (!hdlc->receiving)
+    {
+        //putchar('-');
         return ret;
+    }
 
     // First check if what we are seeing is a stuffed bit.
     // Since the different HDLC control characters like
@@ -262,7 +280,10 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
     // if the result of the operation is 00111110 (0x3e), we
     // have detected a stuffed bit.
     if ((hdlc->demodulatedBits & 0x3f) == 0x3e)
+    {
+        putchar('s');
         return ret;
+    }
 
     // If we have an actual 1 bit, push this to the current byte
     // If it's a zero, we don't need to do anything, since the
@@ -287,6 +308,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
             // We also need to check that our received data buffer
             // is not full before putting more data in
             if (!fifo_isfull(fifo)) {
+                putchar('e');
                 fifo_push(fifo, AX25_ESC);
             } else {
                 // If it is, abort and return false
@@ -299,6 +321,7 @@ static bool hdlcParse(Hdlc *hdlc, bool bit, FIFOBuffer *fifo) {
         // Push the actual byte to the received data FIFO,
         // if it isn't full.
         if (!fifo_isfull(fifo)) {
+            putchar('\n');
             fifo_push(fifo, hdlc->currentByte);
         } else {
             // If it is, well, you know by now!
