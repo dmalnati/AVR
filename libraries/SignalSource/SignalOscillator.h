@@ -46,10 +46,10 @@ public:
         return fc;
     }
     
-    void SetFrequencyByConfig(SignalOscillatorFrequencyConfig fc)
+    void SetFrequencyByConfig(SignalOscillatorFrequencyConfig *fc)
     {
-        frequency_ = fc.frequency;
-        rotation_.SetStepSize(fc.stepSize);
+        frequency_ = fc->frequency;
+        rotation_.SetStepSize(fc->stepSize);
     }
     
     void SetFrequency(uint16_t frequency)

@@ -59,6 +59,9 @@ public:
             // Code doesn't necessarily make sense here, but follows the
             // resetting of channel A above by the timer configuration.
             TimerClass::GetTimerChannelA()->SetInterruptHandlerRaw(OnInterrupt);
+            
+            // Debug
+            TimerClass::GetTimerChannelA()->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
         }
     }
     
@@ -71,9 +74,9 @@ public:
         return fc;
     }
     
-    static void SetFrequencyByConfig(ModemAnalogFrequencyConfig fc)
+    static void SetFrequencyByConfig(ModemAnalogFrequencyConfig *fc)
     {
-        osc_.SetFrequencyByConfig(fc.fc);
+        osc_.SetFrequencyByConfig(&fc->fc);
     }
     
     static void SetFrequency(uint16_t frequency)

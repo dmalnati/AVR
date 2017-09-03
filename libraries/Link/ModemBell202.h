@@ -17,14 +17,14 @@
 
 class ModemBell202
 {
-    static const uint16_t SAMPLE_RATE = 40000;
+    static const uint16_t SAMPLE_RATE = 15000;
     
     static const uint16_t BAUD = 1200;
     
     static const uint16_t BELL_202_FREQ_SPACE = 2200;
     static const uint16_t BELL_202_FREQ_MARK  = 1200;
     
-    static const uint8_t BIT_STUFF_AFTER_COUNT = 3;
+    static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
     
     static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
     
@@ -74,7 +74,7 @@ public:
             
             // Doesn't matter which frequency starts, it's NRZI, so
             // it's really the transitions which matter
-            ma_.SetFrequencyByConfig(fcList_[freqListIdx_]);
+            ma_.SetFrequencyByConfig(&fcList_[freqListIdx_]);
             
             // Set up timer to count fast (high-res) and high (16-bit) so that
             // we can specify a long duration between match events
@@ -91,17 +91,7 @@ public:
             // onto our queue, which represent bit transitions.
             // These bit transitions will cause us to change the output
             // frequency.
-            timerChannelA_->SetInterruptHandler([this](){
-                Command cmd;
-                
-                if (cmdQueue_.Pop(cmd))
-                {
-                    if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
-                    {
-                        ma_.SetFrequencyByConfig(cmd.fc);
-                    }
-                }
-            });
+            timerChannelA_->SetInterruptHandlerRaw(OnInterrupt);
             timerChannelA_->RegisterForInterrupt();
             
             // Debug only -- Check period of bit transition timeout
@@ -114,6 +104,19 @@ public:
             // Expected operation is that immediately after Start the Send
             // function is called to start pushing bits into the command queue.
             timer_.StartTimer();
+        }
+    }
+    
+    static void OnInterrupt()
+    {
+        Command cmd;
+        
+        if (cmdQueue_.Pop(cmd))
+        {
+            if (cmd.cmdType == CommandType::CHANGE_FREQUENCY)
+            {
+                ma_.SetFrequencyByConfig(&cmd.fc);
+            }
         }
     }
     
@@ -251,7 +254,9 @@ private:
         // Convert the duration in us into ticks of the timer
         double ticksPerPeriod = periodLogicalUs / US_PER_TICK;
 
-        uint16_t top = ticksPerPeriod - 1;
+        //uint16_t top = ticksPerPeriod - 1;
+        // Fixes timing, but why?
+        uint16_t top = ticksPerPeriod + 75;
         
         return top;
     }
@@ -261,7 +266,7 @@ private:
     
     uint8_t consecutiveOnes_;    
     
-    ModemAnalog ma_;
+    static ModemAnalog ma_;
 
     ModemAnalogFrequencyConfig fcList_[2];
     uint8_t   freqListIdx_;
@@ -272,12 +277,12 @@ private:
 
     uint16_t  timerTopValue_;
     
-    CommandQueue  cmdQueue_;
+    static CommandQueue  cmdQueue_;
 };
 
 
-
-
+ModemAnalog ModemBell202::ma_;
+ModemBell202::CommandQueue ModemBell202::cmdQueue_;
 
 
 #endif  // __MODEM_BELL_202_H__
