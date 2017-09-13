@@ -20,7 +20,6 @@ void BuildMessage()
     aprm.SetLatitude(40, 44, 13.87);
     aprm.SetSymbolTableID('/');
     aprm.SetLongitude(-74, 2, 2.32);
-    aprm.SetLongitude(-74, 2, 59.99);
     aprm.SetSymbolCode('O');
     
     
@@ -28,17 +27,23 @@ void BuildMessage()
     Serial.print("bytesUsed: ");
     Serial.print(aprm.GetBytesUsed());
     Serial.println();
+    Serial.println(buf);
+    Serial.println();
 
     aprm.SetCommentCourseAndSpeed(273, 777);
     Serial.println("After Comment Course/Speed");
     Serial.print("bytesUsed: ");
     Serial.print(aprm.GetBytesUsed());
     Serial.println();
+    Serial.println(buf);
+    Serial.println();
 
     aprm.SetCommentAltitude(444);
     Serial.println("After Comment Altitude");
     Serial.print("bytesUsed: ");
     Serial.print(aprm.GetBytesUsed());
+    Serial.println();
+    Serial.println(buf);
     Serial.println();
 
     aprm.AppendCommentString("hi mom!");

@@ -321,7 +321,7 @@ private:
         return byteCount <= GetCommentBytesRemaining();
     }
     
-    void U32ToStrPadLeft(char *bufTarget, uint8_t val, uint8_t width, char pad)
+    void U32ToStrPadLeft(char *bufTarget, uint32_t val, uint8_t width, char pad)
     {
         // Allocate local space so the NULL terminator doesn't spill beyond the
         // width specified in the target buffer.

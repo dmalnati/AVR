@@ -68,7 +68,6 @@ void SetupMessage()
         aprm.SetLatitude(40, 44, 13.87);
         aprm.SetSymbolTableID('/');
         aprm.SetLongitude(-74, 2, 2.32);
-        aprm.SetLongitude(-74, 2, 59.99);
         aprm.SetSymbolCode('O');
         aprm.SetCommentCourseAndSpeed(273, 777);
         aprm.SetCommentAltitude(444);
