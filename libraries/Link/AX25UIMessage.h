@@ -38,14 +38,15 @@ public:
         // Nothing to do
     }
     
-    void Init(uint8_t *buf)
+    void Init(uint8_t *buf, uint8_t bufSize)
     {
-        SetBuf(buf);
+        SetBuf(buf, bufSize);
     }
     
-    void SetBuf(uint8_t *buf)
+    void SetBuf(uint8_t *buf, uint8_t bufSize)
     {
-        buf_ = buf;
+        buf_     = buf;
+        bufSize_ = bufSize;
         
         Reset();
     }
@@ -73,6 +74,26 @@ public:
     void AddRepeaterAddress(const char *addr, uint8_t addrSSID)
     {
         AppendAddress(addr, addrSSID);
+    }
+    
+    uint8_t GetUnsafePtrInfo(uint8_t **buf, uint8_t *bufSize)
+    {
+        uint8_t retVal = 0;
+        
+        if (buf && bufSize)
+        {
+            retVal = 1;
+            
+            *buf     = &(buf_[bufIdxNextByte_]);
+            *bufSize = bufSize_ - (&(buf_[bufIdxNextByte_]) - buf_);
+        }
+        
+        return retVal;
+    }
+    
+    void AssertInfoBytesUsed(uint8_t bytesUsed)
+    {
+        bufIdxNextByte_ += bytesUsed;
     }
 
     void AppendInfo(uint8_t *buf, uint8_t bufSize)
@@ -259,6 +280,7 @@ private:
     
 
     uint8_t *buf_;
+    uint8_t  bufSize_;
     uint8_t  bufIdxNextByte_;
     uint8_t  bufIdxControl_;
     uint8_t  bufIdxPID_;

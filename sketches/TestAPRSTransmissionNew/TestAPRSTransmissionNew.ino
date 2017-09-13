@@ -1,12 +1,15 @@
 #include "PAL.h"
+#include "UtlStreamBlob.h"
 #include "AX25UIMessage.h"
+#include "APRSPositionReportMessage.h"
 #include "ModemBell202.h"
 
 
-static const uint8_t BUF_SIZE = 60;
+static const uint8_t BUF_SIZE = 200;
 static uint8_t bufShared[BUF_SIZE] = { 0 };
 
 static AX25UIMessage msg;
+static APRSPositionReportMessage aprm;
 static ModemBell202 *modem;
 
 
@@ -39,78 +42,51 @@ void Send(uint8_t *buf, uint8_t bufLen)
     modem->Stop();
 }
 
-void Test()
+
+
+void SetupMessage()
 {
     uint8_t *buf = bufShared;
 
-    // Create buffer the way as seen in the example checksum page
-    // http://practicingelectronics.com/articles/article-100003/article.php
-    msg.Init(buf);
-
-    //msg.SetDstAddress("CQ",     0);
-    msg.SetDstAddress("KD2KDD",     6);
-    msg.SetSrcAddress("KB2BRD", 2);
-
-    msg.AppendInfo((uint8_t *)"A\r", 2);
-
-    // hack in the has-been-repeated bit on the final address,
-    // as was seen in the example on the website
-    //buf[13] |= 0b10000000;
+    Serial.println("SetupMessage");
     
-    uint8_t bytesUsed = msg.Finalize();
+    msg.Init(buf, BUF_SIZE);
 
-
-    Send(buf, bytesUsed);
-}
-
-
-
-void Test2()
-{
-    uint8_t *buf = bufShared;
-    
-    msg.Init(buf);
-
-    msg.SetDstAddress("APDR14", 0);
+    msg.SetDstAddress("APZ001", 0);
     msg.SetSrcAddress("KD2KDD", 9);
     msg.AddRepeaterAddress("WIDE1", 1);
 
-    const char *info = ":KD2KDD   :hi2{2";
-    uint8_t infoLen = strlen(info);   // 16
-    msg.AppendInfo((uint8_t *)info, infoLen);
+    // Add APRS data
+    uint8_t *bufInfo    = NULL;
+    uint8_t  bufInfoLen = 0;
 
-    // hack in the has-been-repeated bit on the dst address,
-    buf[6] |= 0b10000000;
+    if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
+    {
+        aprm.SetTargetBuf(bufInfo, bufInfoLen);
     
+        aprm.SetTimeLocal(19, 14, 7);
+        aprm.SetLatitude(40, 44, 13.87);
+        aprm.SetSymbolTableID('/');
+        aprm.SetLongitude(-74, 2, 2.32);
+        aprm.SetLongitude(-74, 2, 59.99);
+        aprm.SetSymbolCode('O');
+        aprm.SetCommentCourseAndSpeed(273, 777);
+        aprm.SetCommentAltitude(444);
+        aprm.AppendCommentString("hi mom!");
+
+        msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
+    }
+
     uint8_t bytesUsed = msg.Finalize();
 
+    Serial.print("Bytes used: ");
+    Serial.print(bytesUsed);
+    Serial.println();
+    StreamBlob(Serial, buf, bytesUsed, 1, 1);
+    Serial.println();
 
     Send(buf, bytesUsed);
 }
-
-void Test3()
-{
-    uint8_t *buf = bufShared;
-    
-    msg.Init(buf);
-
-    msg.SetDstAddress("APDR14", 0);
-    msg.SetSrcAddress("FAKE", 9);
-    msg.AddRepeaterAddress("WIDE1", 1);
-
-    const char *info = ":KD2KDD   :hi2{2";
-    uint8_t infoLen = strlen(info);   // 16
-    msg.AppendInfo((uint8_t *)info, infoLen);
-
-    // hack in the has-been-repeated bit on the dst address,
-    buf[6] |= 0b10000000;
-    
-    uint8_t bytesUsed = msg.Finalize();
-
-
-    Send(buf, bytesUsed);
-}
-
 
 
 
@@ -126,10 +102,7 @@ void setup()
 
     while (1)
     {
-        Test3();
-        PAL.Delay(1000);
-        
-        Test2();
+        SetupMessage();
         PAL.Delay(1000);
     }
 }

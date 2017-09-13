@@ -22,9 +22,8 @@ void BuildMessage()
     aprm.SetLongitude(-74, 2, 2.32);
     aprm.SetLongitude(-74, 2, 59.99);
     aprm.SetSymbolCode('O');
-
-
-
+    
+    
     Serial.println("Before Comment appendages");
     Serial.print("bytesUsed: ");
     Serial.print(aprm.GetBytesUsed());
