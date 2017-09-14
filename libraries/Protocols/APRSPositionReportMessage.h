@@ -213,13 +213,16 @@ public:
         uint8_t strLen      = strlen(str);
         uint8_t bytesToCopy = strLen;
         
-        if (!CanFitCommentBytes(strLen))
+        if (buf_)
         {
-            bytesToCopy = GetCommentBytesRemaining();
+            if (!CanFitCommentBytes(strLen))
+            {
+                bytesToCopy = GetCommentBytesRemaining();
+            }
+            
+            memcpy(commentNextByte_, str, bytesToCopy);
+            commentNextByte_ += bytesToCopy;
         }
-        
-        memcpy(commentNextByte_, str, bytesToCopy);
-        commentNextByte_ += bytesToCopy;
     }
     
     void AppendCommentU32PadLeft(uint32_t val,
@@ -228,7 +231,7 @@ public:
                                  uint32_t limUpper)
     {
         // Check bounds
-        if (width <= GetCommentBytesRemaining())
+        if (buf_ && width <= GetCommentBytesRemaining())
         {
             // Constrain values
             if (val < limLower) { val = limLower; }
@@ -261,14 +264,9 @@ public:
     //
     void SetCommentCourseAndSpeed(uint16_t course, uint16_t speed)
     {
-        const uint8_t WIDTH = 7;
-        
-        if (WIDTH <= GetCommentBytesRemaining())
-        {
-            AppendCommentU32PadLeft(course, 3, 1, 360);
-            AppendCommentString("/");
-            AppendCommentU32PadLeft(speed, 3, 0, 999);
-        }
+        AppendCommentU32PadLeft(course, 3, 1, 360);
+        AppendCommentString("/");
+        AppendCommentU32PadLeft(speed, 3, 0, 999);
     }
     
 
@@ -278,13 +276,8 @@ public:
     //
     void SetCommentAltitude(uint32_t altitude)
     {
-        const uint8_t WIDTH = 9;
-        
-        if (WIDTH <= GetCommentBytesRemaining())
-        {
-            AppendCommentString("/A=");
-            AppendCommentU32PadLeft(altitude, 6, 0, 999999);
-        }
+        AppendCommentString("/A=");
+        AppendCommentU32PadLeft(altitude, 6, 0, 999999);
     }
 
 
@@ -294,11 +287,14 @@ private:
     {
         const uint8_t BUF_LOCATION = 0;
         
-        // Get location in buffer
-        char *p = &(buf_[BUF_LOCATION]);
-        
-        // Set MessageType (no messaging, w/ timestamp)
-        *p = '/';
+        if (buf_)
+        {
+            // Get location in buffer
+            char *p = &(buf_[BUF_LOCATION]);
+            
+            // Set MessageType (no messaging, w/ timestamp)
+            *p = '/';
+        }
     }
     
     uint8_t GetCommentBytesRemaining()
