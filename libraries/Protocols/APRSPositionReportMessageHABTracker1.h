@@ -29,9 +29,9 @@ public:
     
     // 2-char field
     // Same units as above.
-    void SetCommentBarometricPressureBinary(double pressure)
+    void SetCommentBarometricPressureBinaryEncoded(double pressure)
     {
-        AppendCommentU16(round(pressure));
+        AppendCommentU16Encoded(round(pressure));
     }
     
     
@@ -59,9 +59,9 @@ public:
     
     // 1-char field
     // Same units as above.
-    void SetCommentTemperatureBinary(double temperatureF)
+    void SetCommentTemperatureBinaryEncoded(double temperatureF)
     {
-        AppendCommentI8(temperatureF);
+        AppendCommentI8Encoded(temperatureF);
     }
     
     
@@ -96,11 +96,11 @@ public:
     
     // 3-char field
     // Same units as above
-    void SetCommentMagneticsBinary(double xGauss, double yGauss, double zGauss)
+    void SetCommentMagneticsBinaryEncoded(double xGauss, double yGauss, double zGauss)
     {
-        AppendCommentI8(round(xGauss * 100));
-        AppendCommentI8(round(yGauss * 100));
-        AppendCommentI8(round(zGauss * 100));
+        AppendCommentI8Encoded(round(xGauss * 100));
+        AppendCommentI8Encoded(round(yGauss * 100));
+        AppendCommentI8Encoded(round(zGauss * 100));
     }
     
     
@@ -140,11 +140,11 @@ public:
     // So since 1 byte apiece, -12.8 - 12.7 Gs.
     //
     // Inputs in milli-Gs
-    void SetCommentAccelerationBinary(double xmGs, double ymGs, double zmGs)
+    void SetCommentAccelerationBinaryEncoded(double xmGs, double ymGs, double zmGs)
     {
-        AppendCommentI8(round(xmGs / 100));
-        AppendCommentI8(round(ymGs / 100));
-        AppendCommentI8(round(zmGs / 100));
+        AppendCommentI8Encoded(round(xmGs / 100));
+        AppendCommentI8Encoded(round(ymGs / 100));
+        AppendCommentI8Encoded(round(zmGs / 100));
     }
     
     
@@ -161,16 +161,16 @@ public:
         AppendCommentU32PadLeft(round(fabs(voltage) * 10), 2, 0, 99);
     }
     
-    void SetCommentVoltageBinary(double voltage)
+    void SetCommentVoltageBinaryEncoded(double voltage)
     {
-        AppendCommentU8(round(fabs(voltage) * 10));
+        AppendCommentU8Encoded(round(fabs(voltage) * 10));
     }
     
     
     // 2-char field
-    void SetCommentSeqNo(uint16_t seqNo)
+    void SetCommentSeqNoBinaryEncoded(uint16_t seqNo)
     {
-        AppendCommentU16(seqNo);
+        AppendCommentU16Encoded(seqNo);
     }
     
     

@@ -245,16 +245,6 @@ public:
     }
     
     
-    void AppendCommentI8(int8_t val)
-    {
-        if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
-        {
-            memcpy(commentNextByte_, &val, sizeof(val));
-            
-            commentNextByte_ += sizeof(val);
-        }
-    }
-    
     void AppendCommentU8(uint8_t val)
     {
         if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
@@ -265,19 +255,32 @@ public:
         }
     }
     
-    void AppendCommentU16(uint16_t val)
+    void AppendCommentI8Encoded(int8_t val)
     {
-        if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
+        AppendCommentU8Encoded(val);
+    }
+    
+    void AppendCommentU8Encoded(uint8_t val)
+    {
+        if (buf_ && (sizeof(val) * 2) <= GetCommentBytesRemaining())
         {
-            uint16_t valBigEndian = PAL.htons(val);
+            uint8_t b1 = (uint8_t)((val & 0b11110000) >> 4) + 32;
+            uint8_t b2 = (uint8_t) (val & 0b00001111)       + 32;
             
-            memcpy(commentNextByte_, &valBigEndian, sizeof(val));
-            
-            commentNextByte_ += sizeof(val);
+            AppendCommentU8(b1);
+            AppendCommentU8(b2);
         }
     }
     
-    
+    void AppendCommentU16Encoded(uint16_t val)
+    {
+        uint16_t valBigEndian = PAL.htons(val);
+        
+        uint8_t *p = (uint8_t *)&valBigEndian;
+        
+        AppendCommentU8Encoded(p[0]);
+        AppendCommentU8Encoded(p[1]);
+    }
     
     
     //

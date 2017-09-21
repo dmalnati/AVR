@@ -75,15 +75,15 @@ void SetupMessage()
         aprm.SetCommentAltitude(444);
 
         // my extensions
-        aprm.SetCommentBarometricPressureBinary(10132);   // sea level
-        aprm.SetCommentTemperatureBinary(72); // first thermometer, inside(?)
-        aprm.SetCommentMagneticsBinary(-0.2051, 0.0527, 0.0742);    // on my desk
-        aprm.SetCommentAccelerationBinary(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
-        aprm.SetCommentTemperatureBinary(74); // the other thermometer, outside(?)
-        aprm.SetCommentVoltageBinary(4.723);
+        aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
+        aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
+        aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
+        aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
+        aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
+        aprm.SetCommentVoltageBinaryEncoded(4.723);
 
         static uint16_t seqNo = 0;
-        aprm.SetCommentSeqNo(++seqNo);
+        aprm.SetCommentSeqNoBinaryEncoded(++seqNo);
 
         msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
     }
