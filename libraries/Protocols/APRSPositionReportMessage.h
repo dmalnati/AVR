@@ -245,6 +245,39 @@ public:
     }
     
     
+    void AppendCommentI8(int8_t val)
+    {
+        if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
+        {
+            memcpy(commentNextByte_, &val, sizeof(val));
+            
+            commentNextByte_ += sizeof(val);
+        }
+    }
+    
+    void AppendCommentU8(uint8_t val)
+    {
+        if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
+        {
+            memcpy(commentNextByte_, &val, sizeof(val));
+            
+            commentNextByte_ += sizeof(val);
+        }
+    }
+    
+    void AppendCommentU16(uint16_t val)
+    {
+        if (buf_ && sizeof(val) <= GetCommentBytesRemaining())
+        {
+            uint16_t valBigEndian = PAL.htons(val);
+            
+            memcpy(commentNextByte_, &valBigEndian, sizeof(val));
+            
+            commentNextByte_ += sizeof(val);
+        }
+    }
+    
+    
     
     
     //

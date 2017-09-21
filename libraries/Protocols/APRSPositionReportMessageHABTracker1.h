@@ -27,6 +27,13 @@ public:
         AppendCommentU32PadLeft(round(pressure), 5, 0, 99999);
     }
     
+    // 2-char field
+    // Same units as above.
+    void SetCommentBarometricPressureBinary(double pressure)
+    {
+        AppendCommentU16(round(pressure));
+    }
+    
     
     //
     // 4-character field
@@ -48,6 +55,13 @@ public:
             AppendCommentString("-");
             AppendCommentU32PadLeft(round(fabs(temperatureF)), 2, 0, 99);
         }
+    }
+    
+    // 1-char field
+    // Same units as above.
+    void SetCommentTemperatureBinary(double temperatureF)
+    {
+        AppendCommentI8(temperatureF);
     }
     
     
@@ -80,6 +94,15 @@ public:
         }
     }
     
+    // 3-char field
+    // Same units as above
+    void SetCommentMagneticsBinary(double xGauss, double yGauss, double zGauss)
+    {
+        AppendCommentI8(round(xGauss * 100));
+        AppendCommentI8(round(yGauss * 100));
+        AppendCommentI8(round(zGauss * 100));
+    }
+    
     
     //
     // 13-character field
@@ -110,6 +133,20 @@ public:
         }
     }
     
+    // 3-char field
+    // Different units than above.
+    //
+    // Store as 2 whole digits and 1 fractional.
+    // So since 1 byte apiece, -12.8 - 12.7 Gs.
+    //
+    // Inputs in milli-Gs
+    void SetCommentAccelerationBinary(double xmGs, double ymGs, double zmGs)
+    {
+        AppendCommentI8(round(xmGs / 100));
+        AppendCommentI8(round(ymGs / 100));
+        AppendCommentI8(round(zmGs / 100));
+    }
+    
     
     //
     // 3-character field
@@ -122,6 +159,18 @@ public:
     {
         AppendCommentString("V");
         AppendCommentU32PadLeft(round(fabs(voltage) * 10), 2, 0, 99);
+    }
+    
+    void SetCommentVoltageBinary(double voltage)
+    {
+        AppendCommentU8(round(fabs(voltage) * 10));
+    }
+    
+    
+    // 2-char field
+    void SetCommentSeqNo(uint16_t seqNo)
+    {
+        AppendCommentU16(seqNo);
     }
     
     
