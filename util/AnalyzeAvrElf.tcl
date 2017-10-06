@@ -13,7 +13,8 @@ set AVR_BUILD_DIR_ROOT "/cygdrive/c/Users/doug/AppData/Local/Temp"
 proc GetMostRecentBuildDir { } {
     global AVR_BUILD_DIR_ROOT
 
-    set contentList [exec -- ls -rt $AVR_BUILD_DIR_ROOT | grep ^build]
+    #set contentList [exec -- ls -rt $AVR_BUILD_DIR_ROOT | grep ^build]
+    set contentList [exec -- ls -rt $AVR_BUILD_DIR_ROOT | grep arduino_build]
 
     return [lindex $contentList end]
 }
@@ -253,13 +254,10 @@ proc GetVarList { } {
 
     array set ul_dataList [list]
 
+puts GetVarList
     foreach { symbol type size special class templateArgs member } $DATA {
         if { ($type == "DATA" || $type == "BSS") && $special == "" } {
-            set idxUnderscore [string first "_" $class]
-
-            if { $idxUnderscore == -1 || $idxUnderscore != 0 } {
-                set ul_dataList($symbol) ""
-            }
+            set ul_dataList($symbol) ""
         }
     }
 
