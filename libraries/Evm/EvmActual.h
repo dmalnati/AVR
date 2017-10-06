@@ -39,7 +39,7 @@ public:
     void MainLoop();
     
     virtual
-    void HoldStackDangerously(uint32_t timeout);
+    void HoldStackDangerously(uint32_t timeout = 0);
     
     virtual
     void EndMainLoop();

@@ -278,7 +278,7 @@ EndMainLoop()
 
 template <uint8_t A, uint8_t B, uint8_t C>
 void EvmActual<A,B,C>::
-HoldStackDangerously(uint32_t timeout = 0)
+HoldStackDangerously(uint32_t timeout)
 {
     if (!mainLoopStackLevelTemporary_)
     {
