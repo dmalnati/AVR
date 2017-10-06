@@ -10,6 +10,15 @@
 // buffer and field reordering won't be taken into consideration.
 // That way is to fill out the fields in the order they appear in the message.
 //
+//
+// Sizing:
+// Minimum size possible:  18 bytes  (dst, src, no route paths, control, pid, no info, checksum)
+// Max legal size       : 330 bytes  (max frame payload plus checksum of HDLC)
+//
+// Sizing determined by:
+// - Number of Routing Paths (each takes 7 bytes)
+// - Size of Information Field
+//
 // Usage:
 // - Init (can be done once regardless of number of times messages constructed)
 // - Reset (each time a new message is to be created)
@@ -19,6 +28,11 @@
 //            (provided the buffer was large enough)
 class AX25UIMessage
 {
+public:
+    static const uint8_t MIN_BUF_SIZE = 18;
+
+private:
+    
     // We are sending a UI message, with no P/F request-for-response
     static const uint8_t AX25_CHAR_CONTROL = 0x03;
     
