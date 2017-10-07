@@ -9,48 +9,45 @@
 
 #ifdef __AVR_ATmega328P__
 
-/*
- * Meant as a mapping for pins for IO.
- */
-static int8_t physicalPin__arduinoPin[] = {
-/* Physical | Arduino | Alias */
-    
-    /*  0 */  -1,   /* DNE  */
-    /*  1 */  -1,
-    /*  2 */   0,
-    /*  3 */   1,
-    /*  4 */   2,
-    /*  5 */   3,
-    /*  6 */   4,
-    /*  7 */  -1,   /* VCC  */
-    /*  8 */  -1,   /* GND  */
-    /*  9 */  -1,
-    /* 10 */  -1,
-    /* 11 */   5,
-    /* 12 */   6,
-    /* 13 */   7,
-    /* 14 */   8,
-    /* 15 */   9,
-    /* 16 */  10,   /* SS   */
-    /* 17 */  11,   /* MOSI */
-    /* 18 */  12,   /* MISO */
-    /* 19 */  13,   /* SCK  */
-    /* 20 */  -1,   /* AVCC */
-    /* 21 */  -1,   /* AREF */
-    /* 22 */  -1,   /* GND  */
-    /* 23 */  14,   /* A0   */
-    /* 24 */  15,   /* A1   */
-    /* 25 */  16,   /* A2   */
-    /* 26 */  17,   /* A3   */
-    /* 27 */  18,   /* A4   */ /* SDA */
-    /* 28 */  19    /* A5   */ /* SDL */
-};
-
 
 int8_t
 PlatformAbstractionLayer::GetArduinoPinFromPhysicalPin(uint8_t physicalPin)
 {
-    return physicalPin__arduinoPin[physicalPin];
+    int8_t retVal = -1;
+    
+    /* Physical | Arduino | Alias */
+
+    if      (physicalPin ==  0) { retVal = -1; }   /* DNE  */
+    else if (physicalPin ==  1) { retVal = -1; }
+    else if (physicalPin ==  2) { retVal =  0; }
+    else if (physicalPin ==  3) { retVal =  1; }
+    else if (physicalPin ==  4) { retVal =  2; }
+    else if (physicalPin ==  5) { retVal =  3; }
+    else if (physicalPin ==  6) { retVal =  4; }
+    else if (physicalPin ==  7) { retVal = -1; }   /* VCC  */
+    else if (physicalPin ==  8) { retVal = -1; }   /* GND  */
+    else if (physicalPin ==  9) { retVal = -1; }
+    else if (physicalPin == 10) { retVal = -1; }
+    else if (physicalPin == 11) { retVal =  5; }
+    else if (physicalPin == 12) { retVal =  6; }
+    else if (physicalPin == 13) { retVal =  7; }
+    else if (physicalPin == 14) { retVal =  8; }
+    else if (physicalPin == 15) { retVal =  9; }
+    else if (physicalPin == 16) { retVal = 10; }   /* SS   */
+    else if (physicalPin == 17) { retVal = 11; }   /* MOSI */
+    else if (physicalPin == 18) { retVal = 12; }   /* MISO */
+    else if (physicalPin == 19) { retVal = 13; }   /* SCK  */
+    else if (physicalPin == 20) { retVal = -1; }   /* AVCC */
+    else if (physicalPin == 21) { retVal = -1; }   /* AREF */
+    else if (physicalPin == 22) { retVal = -1; }   /* GND  */
+    else if (physicalPin == 23) { retVal = 14; }   /* A0   */
+    else if (physicalPin == 24) { retVal = 15; }   /* A1   */
+    else if (physicalPin == 25) { retVal = 16; }   /* A2   */
+    else if (physicalPin == 26) { retVal = 17; }   /* A3   */
+    else if (physicalPin == 27) { retVal = 18; }   /* A4   */ /* SDA */
+    else if (physicalPin == 28) { retVal = 19; }   /* A5   */ /* SDL */
+    
+    return retVal;
 }
 
 
