@@ -43,6 +43,12 @@ proc GetAvrNmOutput { } {
     set output [read -nonewline $fd]
     close $fd
 
+    if { $VERBOSE } {
+        puts ""
+        puts $output
+        puts ""
+    }
+
     return $output
 }
 
@@ -254,7 +260,6 @@ proc GetVarList { } {
 
     array set ul_dataList [list]
 
-puts GetVarList
     foreach { symbol type size special class templateArgs member } $DATA {
         if { ($type == "DATA" || $type == "BSS") && $special == "" } {
             set ul_dataList($symbol) ""
