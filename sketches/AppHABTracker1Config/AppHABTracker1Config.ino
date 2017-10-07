@@ -1,16 +1,25 @@
-#define IVM_DISABLE
-
 #include "AppHABTracker1.h"
 
 
-// Dummy values just to get it to compile
-static AppHABTracker1Config cfg = {
+static AppHABTracker1Config cfg =
+{
+    // Application configuration
+    .reportIntervalMs = 1000,
+    
     // SD Logger
-    .pinSerialTxSdLogger = 4,
+    .pinSerialTxSdLogger = 25,
 
     // GPS
-    .pinSerialRxGPS = 5,
-    .pinSerialTxGPS = 6
+    .pinSerialRxGPS = 23,
+    .pinSerialTxGPS = 24,
+
+    // APRS
+    .dstCallsign      = "APZ001",
+    .dstSsid          = 0,
+    .srcCallsign      = "KD2KDD",
+    .srcSsid          = 9,
+    .repeaterCallsign = "WIDE1",
+    .repeaterSsid     = 1,
 };
 
 static AppHABTracker1 app(cfg);
