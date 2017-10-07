@@ -53,15 +53,6 @@ public:
         timer_.RegisterForTimedEventInterval(POLL_PERIOD_MS);
     }
     
-    void OnTimeout()
-    {
-        // We only want to consume serial data, not extract measurements.
-        while (ss_.available() > 0)
-        {
-            tgps_.encode(ss_.read());
-        }
-    }
-    
     struct Measurement
     {
         uint32_t msSinceLastFix;
@@ -96,6 +87,15 @@ public:
 
 private:
 
+    void OnTimeout()
+    {
+        // We only want to consume serial data, not extract measurements.
+        while (ss_.available() > 0)
+        {
+            tgps_.encode(ss_.read());
+        }
+    }
+    
     void SetHighAltitudeMode()
     {
         ubxMessage_.Reset();
