@@ -19,6 +19,94 @@ proc GetMostRecentBuildDir { } {
     return [lindex $contentList end]
 }
 
+
+proc GetReadElfOutput { } {
+    global AVR_BIN_DIR
+    global AVR_BUILD_DIR_ROOT
+    global VERBOSE
+
+    cd $AVR_BUILD_DIR_ROOT/[GetMostRecentBuildDir]
+
+    set cmd ""
+
+    append cmd "$AVR_BIN_DIR/avr-readelf.exe "
+    append cmd "-a -A -W "
+    append cmd "*.elf"
+
+    if { $VERBOSE } {
+        puts ""
+        puts "cd $AVR_BUILD_DIR_ROOT/[GetMostRecentBuildDir]"
+        puts $cmd
+    }
+
+    set output ""
+    set fd [open "| $cmd"]
+    set output [read -nonewline $fd]
+    close $fd
+
+    if { $VERBOSE } {
+        puts ""
+        puts $output
+        puts ""
+    }
+
+    return $output
+}
+
+
+# Looking for this section, specifically for the data, text, and bss sections
+# Section Headers:
+#   [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+#   [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+#   [ 1] .data             PROGBITS        00800100 004f6c 0002cc 00  WA  0   0  1
+#   [ 2] .text             PROGBITS        00000000 000094 004ed8 00  AX  0   0  2
+#   [ 3] .bss              NOBITS          008003cc 005238 0003d3 00  WA  0   0  1
+#   [ 4] .comment          PROGBITS        00000000 005238 000011 01  MS  0   0  1
+#   [ 5] .note.gnu.avr.deviceinfo NOTE            00000000 00524c 000040 00      0   0  4
+#   [ 6] .debug_aranges    PROGBITS        00000000 00528c 0000e0 00      0   0  1
+#   [ 7] .debug_info       PROGBITS        00000000 00536c 015d2e 00      0   0  1
+#   [ 8] .debug_abbrev     PROGBITS        00000000 01b09a 003669 00      0   0  1
+#   [ 9] .debug_line       PROGBITS        00000000 01e703 004b6f 00      0   0  1
+#   [10] .debug_frame      PROGBITS        00000000 023274 001134 00      0   0  4
+#   [11] .debug_str        PROGBITS        00000000 0243a8 0040ae 00      0   0  1
+#   [12] .debug_loc        PROGBITS        00000000 028456 008941 00      0   0  1
+#   [13] .debug_ranges     PROGBITS        00000000 030d97 0007d0 00      0   0  1
+#   [14] .shstrtab         STRTAB          00000000 034ed5 0000b4 00      0   0  1
+#   [15] .symtab           SYMTAB          00000000 031568 001810 10     16 123  4
+#   [16] .strtab           STRTAB          00000000 032d78 00215d 00      0   0  1
+set ELF_DATA_SIZE 0
+set ELF_TEXT_SIZE 0
+set ELF_BSS_SIZE 0
+proc AnalyzeReadElfOutput { str } {
+    global ELF_DATA_SIZE
+    global ELF_TEXT_SIZE
+    global ELF_BSS_SIZE
+
+    set lineList [split $str "\n"]
+
+    foreach { line } $lineList {
+        set linePart [string range $line 7 end]
+
+        if { [string index $linePart 0] == "." } {
+            set sectionName [lindex $linePart 0]
+            set size        [string trimleft [lindex $linePart 4] "0"]
+            catch { scan $size %x size }
+
+            if { $sectionName == ".data" } {
+                set ELF_DATA_SIZE $size
+            } elseif { $sectionName == ".text" } {
+                set ELF_TEXT_SIZE $size
+            } elseif { $sectionName == ".bss" } {
+                set ELF_BSS_SIZE $size
+            }
+        }
+    }
+
+#    puts "ELF_DATA_SIZE($ELF_DATA_SIZE)"
+#    puts "ELF_TEXT_SIZE($ELF_TEXT_SIZE)"
+#    puts "ELF_BSS_SIZE($ELF_BSS_SIZE)"
+}
+
 proc GetAvrNmOutput { } {
     global AVR_BIN_DIR
     global AVR_BUILD_DIR_ROOT
@@ -102,7 +190,7 @@ proc GetAvrNmOutput { } {
 #
 # Notably, there are many duplicate lines (not sure why)
 #
-proc AnalyzeOutput { output } {
+proc AnalyzeNmOutput { output } {
     set lineList [split $output "\n"]
 
     # eliminate duplicate lines
@@ -584,12 +672,20 @@ proc FlagType { line } {
 
 proc Report { } {
     global VERBOSE
+    global ELF_DATA_SIZE
+    global ELF_TEXT_SIZE
+    global ELF_BSS_SIZE
 
-    set sizeTextTotal    [GetCumulativeSizeText]
+    set sizeTextTotal        $ELF_TEXT_SIZE
+    set sizeTextKnownTotal   [GetCumulativeSizeText]
+    set sizeTextUnknownTotal [expr $sizeTextTotal - $sizeTextKnownTotal]
+
+
     set sizeVarTotal     [GetCumulativeSizeDataVariables]
     set sizeSpecialTotal [GetCumulativeSizeDataSpecial]
-    set sizeSramTotal    [expr $sizeVarTotal + $sizeSpecialTotal]
+    set sizeSramTotal    [expr $ELF_DATA_SIZE + $ELF_BSS_SIZE]
 
+    set sizeSramUnknown  [expr $sizeSramTotal - ($sizeVarTotal + $sizeSpecialTotal)]
 
     puts ""
 
@@ -599,7 +695,7 @@ proc Report { } {
     puts "---------------------------------"
 
 
-    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of TEXT\]"
+    set formatStrHdr    "\[Total: %5i Bytes, %3i%% of TEXT\]"
     set formatStrHdrLen [string length $formatStrHdr]
     set formatStr       "$formatStrHdr   %s"
 
@@ -627,7 +723,7 @@ proc Report { } {
 
 
 
-    set formatStrHdr    "\[Total: %5i Bytes, %2i%% of Vars, %2i%% of DATA/BSS\]"
+    set formatStrHdr    "\[Total: %5i Bytes, %3i%% of Vars, %2i%% of DATA/BSS\]"
     set formatStrHdrLen [string length $formatStrHdr]
     set formatStr       "$formatStrHdr   %s"
 
@@ -686,21 +782,29 @@ proc Report { } {
     puts "--------------------------------------------"
     puts "\[       SUMMARY                            \]"
     puts "--------------------------------------------"
+
+    set sizeTextKnownPctTotal   [expr int(double($sizeTextKnownTotal)   / double($sizeTextTotal) * 100.0)]
+    set sizeTextUnknownPctTotal [expr int(double($sizeTextUnknownTotal) / double($sizeTextTotal) * 100.0)]
+
     set sizeVarPctTotalSram     [expr int(double($sizeVarTotal)     / double($sizeSramTotal) * 100.0)]
     set sizeSpecialPctTotalSram [expr int(double($sizeSpecialTotal) / double($sizeSramTotal) * 100.0)]
+    set sizeUnknownPctTotalSram [expr int(double($sizeSramUnknown)  / double($sizeSramTotal) * 100.0)]
 
     puts "PROGMEM : [format "%5i Bytes" $sizeTextTotal]"
+    puts " Known  :[format " %5i Bytes ( %2i%% )" $sizeTextKnownTotal   $sizeTextKnownPctTotal]"
+    puts " Unknown:[format " %5i Bytes ( %2i%% )" $sizeTextUnknownTotal $sizeTextUnknownPctTotal]"
     puts "DATA/BSS: [format "%5i Bytes" $sizeSramTotal]"
-    puts " Vars   :[format " %5i Bytes ( %2i%% )"    $sizeVarTotal     $sizeVarPctTotalSram]"
+    puts " Vars   :[format " %5i Bytes ( %2i%% )" $sizeVarTotal     $sizeVarPctTotalSram]"
     puts " Special:[format " %5i Bytes ( %2i%% )" $sizeSpecialTotal $sizeSpecialPctTotalSram]"
+    puts " Unknown:[format " %5i Bytes ( %2i%% )" $sizeSramUnknown  $sizeUnknownPctTotalSram]"
     puts ""
 }
 
 
 proc Analyze { } {
-    set output [GetAvrNmOutput]
+    AnalyzeReadElfOutput [GetReadElfOutput]
 
-    AnalyzeOutput $output
+    AnalyzeNmOutput [GetAvrNmOutput]
 }
 
 
