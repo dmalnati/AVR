@@ -48,6 +48,7 @@ public:
     , bufIdxNextByte_(1)
     , bufIdxControl_(0)
     , bufIdxPID_(0)
+    , isFinalized_(0)
     {
         // Nothing to do
     }
@@ -73,6 +74,9 @@ public:
         // These aren't correct, they will need to be calculated later.
         bufIdxControl_ = 0;
         bufIdxPID_     = 0;
+        
+        // Keep track of whether buffer finalized already
+        isFinalized_ = 0;
     }
     
     void SetDstAddress(const char *addr, uint8_t addrSSID)
@@ -119,9 +123,14 @@ public:
     // Returns number of bytes used
     uint8_t Finalize()
     {
-        SetControl(AX25_CHAR_CONTROL);
-        SetPID(AX25_CHAR_PID);
-        CalcFCS();
+        if (!isFinalized_)
+        {
+            SetControl(AX25_CHAR_CONTROL);
+            SetPID(AX25_CHAR_PID);
+            CalcFCS();
+            
+            isFinalized_ = 1;
+        }
         
         return bufIdxNextByte_;
     }
@@ -298,6 +307,8 @@ private:
     uint8_t  bufIdxNextByte_;
     uint8_t  bufIdxControl_;
     uint8_t  bufIdxPID_;
+    
+    uint8_t isFinalized_;
 };
 
 
