@@ -20,6 +20,12 @@ static AppHABTracker1Config cfg =
     .srcSsid          = 9,
     .repeaterCallsign = "WIDE1",
     .repeaterSsid     = 1,
+
+    // Transmitter
+    .flagStartDurationMs     = 300,
+    .flagEndDurationMs       = 10,
+    .transmitCount           = 2,
+    .delayMsBetweenTransmits = 2000,
 };
 
 static AppHABTracker1 app(cfg);
