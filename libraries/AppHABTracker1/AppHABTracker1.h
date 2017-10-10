@@ -3,6 +3,7 @@
 
 
 #include "Evm.h"
+#include "SoftwareSerial.h"
 #include "TimedEventHandler.h"
 #include "PeripheralOpenLog.h"
 #include "SensorGPSUblox.h"
@@ -25,13 +26,21 @@ struct AppHABTracker1Config
     uint8_t pinSerialTxGPS;
     
     // APRS
-    char    *dstCallsign;
-    uint8_t  dstSsid;
-    char    *srcCallsign;
-    uint8_t  srcSsid;
-    char    *repeaterCallsign;
-    uint8_t  repeaterSsid;
+    const char *dstCallsign;
+    uint8_t     dstSsid;
+    const char *srcCallsign;
+    uint8_t     srcSsid;
+    const char *repeaterCallsign;
+    uint8_t     repeaterSsid;
+    
+    // Transmitter
+    uint32_t flagStartDurationMs;
+    uint32_t flagEndDurationMs;
+    uint8_t  transmitCount;
+    uint32_t delayMsBetweenTransmits;
 };
+
+
 
 
 class AppHABTracker1
@@ -40,14 +49,18 @@ class AppHABTracker1
     
     using PeripheralOpenLogType = PeripheralOpenLog<SD_LOGGER_FILE_HANDLE_COUNT>;
     
-    static const uint8_t C_IDLE  = 10;
+    static const uint8_t PIN_SERIAL_TX = 26;
+    
+    static const uint8_t C_IDLE  =  0;
     static const uint8_t C_TIMED = 10;
-    static const uint8_t C_INTER = 10;
+    static const uint8_t C_INTER =  0;
 
     
 public:
     AppHABTracker1(AppHABTracker1Config &cfg)
-    : cfg_(cfg)
+    : ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
+          PAL.GetArduinoPinFromPhysicalPin(PIN_SERIAL_TX))
+    , cfg_(cfg)
     , sdLogger_(cfg_.pinSerialTxSdLogger)
     , logOp_(NULL)
     , logCsv_(NULL)
@@ -62,8 +75,8 @@ public:
     void Run()
     {
         // Support serial output at all times
-        Serial.begin(9600);
-        Serial.println("Starting");
+        ss_.begin(9600);
+        ss_.println("Starting");
         
         // SD Logger
         sdLogger_.Init();
@@ -80,17 +93,18 @@ public:
         barometer_.Init();
         
         // Transmitter
+        amt_.SetFlagStartDurationMs(cfg_.flagStartDurationMs);
+        amt_.SetFlagEndDurationMs(cfg_.flagEndDurationMs);
+        amt_.SetTransmitCount(cfg_.transmitCount);
+        amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
-        amt_.SetFlagStartDurationMs(300);
-        amt_.SetFlagEndDurationMs(10);
-        amt_.SetTransmitCount(2);
-        amt_.SetDelayMsBetweenTransmits(2000);
         
         // Set up timed callback to drive operational cycle
         ted_.SetCallback([this](){ OnTimeout(); });
         ted_.RegisterForTimedEventInterval(cfg_.reportIntervalMs);
         
         // Handle events
+        ss_.println("Evm Begin");
         evm_.MainLoop();
     }
 
@@ -98,88 +112,89 @@ private:
 
     void OnTimeout()
     {
-        Serial.println("OnTimeout");
+        ss_.println();
+        ss_.println("OnTimeout");
         
         {
             if (gps_.GetMeasurement(&gpsMeasurement_))
             {
-                Serial.println("GPS Measurement Success");
+                //ss_.println("GPS Measurement Success");
                 #if 0
-                Serial.println("---------------");
+                ss_.println("---------------");
                 
-                Serial.print("msSinceLastFix: "); Serial.println(gpsMeasurement_.msSinceLastFix);
-                Serial.print("date          : "); Serial.println(gpsMeasurement_.date);
-                Serial.print("time          : "); Serial.println(gpsMeasurement_.time);
-                Serial.print("latitude      : "); Serial.println(gpsMeasurement_.latitude);
-                Serial.print("longitude     : "); Serial.println(gpsMeasurement_.longitude);
-                Serial.print("altitude      : "); Serial.println(gpsMeasurement_.altitude);
+                ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
+                ss_.print("date          : "); ss_.println(gpsMeasurement_.date);
+                ss_.print("time          : "); ss_.println(gpsMeasurement_.time);
+                ss_.print("latitude      : "); ss_.println(gpsMeasurement_.latitude);
+                ss_.print("longitude     : "); ss_.println(gpsMeasurement_.longitude);
+                ss_.print("altitude      : "); ss_.println(gpsMeasurement_.altitude);
 
                 #endif
             }
             else
             {
-                Serial.println("GPS Measurement Fail");
+                //ss_.println("GPS Measurement Fail");
             }
         }
         
         {
             if (barometer_.GetMeasurement(&barometerMeasurement_))
             {
-                Serial.println("Barometer Measurement Success");
+                //ss_.println("Barometer Measurement Success");
                 #if 0
-                Serial.println("---------------");
+                ss_.println("---------------");
                 
-                Serial.print("tempF: ");
-                Serial.println(barometerMeasurement_.tempF);
-                //Serial.print("tempC: ");
-                //Serial.println(barometerMeasurement_.tempC);
-                Serial.print("pressureMilliBarAbsolute: ");
-                Serial.println(barometerMeasurement_.pressureMilliBarAbsolute);
+                ss_.print("tempF: ");
+                ss_.println(barometerMeasurement_.tempF);
+                //ss_.print("tempC: ");
+                //ss_.println(barometerMeasurement_.tempC);
+                ss_.print("pressureMilliBarAbsolute: ");
+                ss_.println(barometerMeasurement_.pressureMilliBarAbsolute);
                 /*
-                Serial.print("pressureInchesMercuryAbsolute: ");
-                Serial.println(barometerMeasurement_.pressureInchesMercuryAbsolute);
-                Serial.print("pressureKiloPascalsAbsolute: ");
-                Serial.println(barometerMeasurement_.pressureKiloPascalsAbsolute);
-                Serial.print("pressureMilliBarSeaLevelAdjusted: ");
-                Serial.println(barometerMeasurement_.pressureMilliBarSeaLevelAdjusted);
-                Serial.print("pressureInchesMercurySeaLevelAdjusted: ");
-                Serial.println(barometerMeasurement_.pressureInchesMercurySeaLevelAdjusted);
-                Serial.print("pressureKiloPascalsSeaLevelAdjusted: ");
-                Serial.println(barometerMeasurement_.pressureKiloPascalsSeaLevelAdjusted);
-                Serial.print("altitudeFeetDerived: ");
-                Serial.println(barometerMeasurement_.altitudeFeetDerived);
-                Serial.print("altitudeMetersDerived: ");
-                Serial.println(barometerMeasurement_.altitudeMetersDerived);
+                ss_.print("pressureInchesMercuryAbsolute: ");
+                ss_.println(barometerMeasurement_.pressureInchesMercuryAbsolute);
+                ss_.print("pressureKiloPascalsAbsolute: ");
+                ss_.println(barometerMeasurement_.pressureKiloPascalsAbsolute);
+                ss_.print("pressureMilliBarSeaLevelAdjusted: ");
+                ss_.println(barometerMeasurement_.pressureMilliBarSeaLevelAdjusted);
+                ss_.print("pressureInchesMercurySeaLevelAdjusted: ");
+                ss_.println(barometerMeasurement_.pressureInchesMercurySeaLevelAdjusted);
+                ss_.print("pressureKiloPascalsSeaLevelAdjusted: ");
+                ss_.println(barometerMeasurement_.pressureKiloPascalsSeaLevelAdjusted);
+                ss_.print("altitudeFeetDerived: ");
+                ss_.println(barometerMeasurement_.altitudeFeetDerived);
+                ss_.print("altitudeMetersDerived: ");
+                ss_.println(barometerMeasurement_.altitudeMetersDerived);
                 */
                 #endif
             }
             else
             {
-                Serial.println("Barometer Measurement Fail");
+                //ss_.println("Barometer Measurement Fail");
             }
         }
         
         {
             if (compass_.GetMeasurement(&compassMeasurement_))
             {
-                Serial.println("Compass Measurement Success");
+                //ss_.println("Compass Measurement Success");
                 #if 0
-                Serial.println("---------------");
+                ss_.println("---------------");
                 
-                Serial.print("accelX: ");
-                Serial.println(compassMeasurement_.accelX);
-                Serial.print("accelY: ");
-                Serial.println(compassMeasurement_.accelY);
-                Serial.print("accelZ: ");
-                Serial.println(compassMeasurement_.accelZ);
-                Serial.print("magX: ");
-                Serial.println(compassMeasurement_.magX);
-                Serial.print("magY: ");
-                Serial.println(compassMeasurement_.magY);
-                Serial.print("magZ: ");
-                Serial.println(compassMeasurement_.magZ);
-                Serial.print("tempF: ");
-                Serial.println(compassMeasurement_.tempF);
+                ss_.print("accelX: ");
+                ss_.println(compassMeasurement_.accelX);
+                ss_.print("accelY: ");
+                ss_.println(compassMeasurement_.accelY);
+                ss_.print("accelZ: ");
+                ss_.println(compassMeasurement_.accelZ);
+                ss_.print("magX: ");
+                ss_.println(compassMeasurement_.magX);
+                ss_.print("magY: ");
+                ss_.println(compassMeasurement_.magY);
+                ss_.print("magZ: ");
+                ss_.println(compassMeasurement_.magZ);
+                ss_.print("tempF: ");
+                ss_.println(compassMeasurement_.tempF);
                 #endif
             }
             else
@@ -188,8 +203,6 @@ private:
             }
         }
 
-        Serial.println();
-        
         
         {
             logCsv_->Append(gpsMeasurement_.msSinceLastFix);
@@ -213,7 +226,8 @@ private:
     
     void OnTransmit()
     {
-        #if 0
+        ss_.println("Transmitting");
+        
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
         msg.SetDstAddress(cfg_.dstCallsign, cfg_.dstSsid);
@@ -255,7 +269,6 @@ private:
         }
 
         amt_.Transmit();
-        #endif
     }
     
     
@@ -337,6 +350,8 @@ private:
 private:
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
+    
+    SoftwareSerial ss_;
     
     AppHABTracker1Config &cfg_;
     
