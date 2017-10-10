@@ -56,6 +56,8 @@ public:
     
     AX25UIMessage *GetAX25UIMessage()
     {
+        msg_.Reset();
+        
         return &msg_;
     }
     
@@ -101,6 +103,8 @@ public:
                 PAL.Delay(delayMsBetweenTransmits_);
             }
         }
+        
+        msg_.Reset();
     }
     
 private:
