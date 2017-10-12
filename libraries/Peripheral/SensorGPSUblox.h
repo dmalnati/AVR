@@ -53,6 +53,17 @@ public:
         timer_.RegisterForTimedEventInterval(POLL_PERIOD_MS);
     }
     
+    void DisableSerialInput()
+    {
+        ss_.stopListening();
+    }
+    
+    void EnableSerialInput()
+    {
+        ss_.begin(BAUD);
+        ss_.listen();
+    }
+    
     struct Measurement
     {
         uint32_t msSinceLastFix;
