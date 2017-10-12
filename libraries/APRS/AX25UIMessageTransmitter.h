@@ -40,10 +40,14 @@ class AX25UIMessageTransmitter
     
 public:
 
-    AX25UIMessageTransmitter()
-    : transmitCount_(DEFAULT_TRANSMIT_COUNT)
+    AX25UIMessageTransmitter(uint8_t pinTxEnable)
+    : pinTxEnable_(pinTxEnable)
+    , transmitCount_(DEFAULT_TRANSMIT_COUNT)
     , delayMsBetweenTransmits_(DEFAULT_DELAY_MS_BETWEEN_TRANSMITS)
     {
+        PAL.PinMode(pinTxEnable_, OUTPUT);
+        PAL.DigitalWrite(pinTxEnable_, LOW);
+        
         SetFlagStartDurationMs(DEFAULT_DURATION_MS_FLAG_START);
         SetFlagEndDurationMs(DEFAULT_DURATION_MS_FLAG_END);
     }
@@ -59,6 +63,11 @@ public:
         msg_.Reset();
         
         return &msg_;
+    }
+    
+    void SetRadioWarmupDurationMs(uint32_t radioWarmupDurationMs)
+    {
+        radioWarmupDurationMs_ = radioWarmupDurationMs;
     }
     
     void SetFlagStartDurationMs(uint32_t durationMs)
@@ -94,7 +103,10 @@ public:
         uint8_t transmitCountRemaining = transmitCount_;
         while (transmitCountRemaining)
         {
+            PAL.DigitalWrite(pinTxEnable_, HIGH);
+            PAL.Delay(radioWarmupDurationMs_);
             TransmitPrivate(buf_, bytesUsed);
+            PAL.DigitalWrite(pinTxEnable_, LOW);
             
             --transmitCountRemaining;
             
@@ -153,7 +165,11 @@ private:
     AX25UIMessage  msg_;
     ModemBell202   modem_;
     
-    uint8_t transmitCount_;
+    uint8_t pinTxEnable_;
+    
+    uint32_t radioWarmupDurationMs_;
+    
+    uint8_t  transmitCount_;
     uint32_t delayMsBetweenTransmits_;
     
     uint32_t flagPackStartCount_;
