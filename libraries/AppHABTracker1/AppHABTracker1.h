@@ -34,6 +34,10 @@ struct AppHABTracker1Config
     uint8_t     repeaterSsid;
     
     // Transmitter
+    uint8_t  pinTxEnable;
+    
+    uint32_t radioWarmupDurationMs;
+    
     uint32_t flagStartDurationMs;
     uint32_t flagEndDurationMs;
     uint8_t  transmitCount;
@@ -65,6 +69,7 @@ public:
     , logOp_(NULL)
     , logCsv_(NULL)
     , gps_(cfg_.pinSerialRxGPS, cfg_.pinSerialTxGPS)
+    , amt_(cfg_.pinTxEnable)
     , seqNo_(0)
     {
         // Nothing to do
@@ -78,26 +83,36 @@ public:
         ss_.begin(9600);
         ss_.println("Starting");
         
+        ss_.print("Reason: ");
+        ss_.println((uint8_t)PAL.GetStartupMode());
+        
+        
         // SD Logger
         sdLogger_.Init();
         logOp_  = sdLogger_.GetFileHandle("log.txt");
         logCsv_ = sdLogger_.GetFileHandle("log.csv");
-        
+        ss_.println("Logger Done");
+
         // GPS
         gps_.Init();
+        ss_.println("GPS Done");
         
         // Compass
         compass_.Init();
+        ss_.println("Compass Done");
         
         // Barometer
         barometer_.Init();
+        ss_.println("Barometer Done");
         
         // Transmitter
+        amt_.SetRadioWarmupDurationMs(cfg_.radioWarmupDurationMs);
         amt_.SetFlagStartDurationMs(cfg_.flagStartDurationMs);
         amt_.SetFlagEndDurationMs(cfg_.flagEndDurationMs);
         amt_.SetTransmitCount(cfg_.transmitCount);
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
+        ss_.println("Transmitter Done");
         
         // Set up timed callback to drive operational cycle
         ted_.SetCallback([this](){ OnTimeout(); });
@@ -115,14 +130,18 @@ private:
         ss_.println();
         ss_.println("OnTimeout");
         
+        ss_.print("heynow");
+        ss_.println();
+        
         {
             if (gps_.GetMeasurement(&gpsMeasurement_))
             {
                 //ss_.println("GPS Measurement Success");
+                ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
+                
                 #if 0
                 ss_.println("---------------");
                 
-                ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
                 ss_.print("date          : "); ss_.println(gpsMeasurement_.date);
                 ss_.print("time          : "); ss_.println(gpsMeasurement_.time);
                 ss_.print("latitude      : "); ss_.println(gpsMeasurement_.latitude);
@@ -133,7 +152,7 @@ private:
             }
             else
             {
-                //ss_.println("GPS Measurement Fail");
+                ss_.println("GPS Measurement Fail");
             }
         }
         
@@ -268,7 +287,9 @@ private:
             msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
         }
 
+        gps_.DisableSerialInput();
         amt_.Transmit();
+        gps_.EnableSerialInput();
     }
     
     

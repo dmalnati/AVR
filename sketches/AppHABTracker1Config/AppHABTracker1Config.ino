@@ -22,10 +22,14 @@ static AppHABTracker1Config cfg =
     .repeaterSsid     = 1,
 
     // Transmitter
-    .flagStartDurationMs     = 300,
+    .pinTxEnable = 14,
+    
+    .radioWarmupDurationMs = 20,
+    
+    .flagStartDurationMs     = 500,
     .flagEndDurationMs       = 10,
     .transmitCount           = 2,
-    .delayMsBetweenTransmits = 2000,
+    .delayMsBetweenTransmits = 10000,
 };
 
 static AppHABTracker1 app(cfg);
