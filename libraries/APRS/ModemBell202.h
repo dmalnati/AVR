@@ -98,7 +98,7 @@ public:
             timerChannelA_->RegisterForInterrupt();
             
             // Debug only -- Check period of bit transition timeout
-            timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
+            //timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
             
             // Get output signal going
             ma_.Start();
