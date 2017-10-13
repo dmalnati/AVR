@@ -4,7 +4,18 @@
 static AppHABTracker1Config cfg =
 {
     // Application configuration
-    .reportIntervalMs = 1000,
+    .pinSerialOutput = 26,
+    
+    .aprsReportIntervalMs = 10000,
+
+    .pinLedHeartbeat          = 18,
+    .heartbeatBlinkIntervalMs = 500,
+
+    .pinLedGpsLock         = 19,
+    .gpsLockGoodAgeLimitMs = 30000,
+
+    .pinLedTransmitting = 15,
+
     
     // SD Logger
     .pinSerialTxSdLogger = 25,
@@ -29,7 +40,7 @@ static AppHABTracker1Config cfg =
     .flagStartDurationMs     = 500,
     .flagEndDurationMs       = 10,
     .transmitCount           = 2,
-    .delayMsBetweenTransmits = 10000,
+    .delayMsBetweenTransmits = 5000,
 };
 
 static AppHABTracker1 app(cfg);

@@ -16,7 +16,17 @@
 struct AppHABTracker1Config
 {
     // Application configuration
-    uint32_t reportIntervalMs;
+    uint8_t pinSerialOutput;
+    
+    uint32_t aprsReportIntervalMs;
+    
+    uint8_t  pinLedHeartbeat;
+    uint32_t heartbeatBlinkIntervalMs;
+    
+    uint8_t  pinLedGpsLock;
+    uint32_t gpsLockGoodAgeLimitMs;
+    
+    uint8_t pinLedTransmitting;
     
     // SD Logger
     uint8_t pinSerialTxSdLogger;
@@ -53,8 +63,6 @@ class AppHABTracker1
     
     using PeripheralOpenLogType = PeripheralOpenLog<SD_LOGGER_FILE_HANDLE_COUNT>;
     
-    static const uint8_t PIN_SERIAL_TX = 26;
-    
     static const uint8_t C_IDLE  =  0;
     static const uint8_t C_TIMED = 10;
     static const uint8_t C_INTER =  0;
@@ -62,9 +70,10 @@ class AppHABTracker1
     
 public:
     AppHABTracker1(AppHABTracker1Config &cfg)
-    : ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
-          PAL.GetArduinoPinFromPhysicalPin(PIN_SERIAL_TX))
-    , cfg_(cfg)
+    : cfg_(cfg)
+    , ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
+          //PAL.GetArduinoPinFromPhysicalPin(26))
+          PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialOutput))
     , sdLogger_(cfg_.pinSerialTxSdLogger)
     , logOp_(NULL)
     , logCsv_(NULL)
@@ -83,8 +92,17 @@ public:
         ss_.begin(9600);
         ss_.println("Starting");
         
-        ss_.print("Reason: ");
-        ss_.println((uint8_t)PAL.GetStartupMode());
+        // Set up application
+        PAL.PinMode(cfg_.pinLedHeartbeat, OUTPUT);
+        PAL.DigitalWrite(cfg_.pinLedHeartbeat, HIGH);
+        tedHeartbeat_.SetCallback([this](){ PAL.DigitalToggle(cfg_.pinLedHeartbeat); });
+        tedHeartbeat_.RegisterForTimedEventInterval(cfg_.heartbeatBlinkIntervalMs);
+        
+        PAL.PinMode(cfg_.pinLedGpsLock, OUTPUT);
+        PAL.DigitalWrite(cfg_.pinLedGpsLock, LOW);
+        
+        PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
+        PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
         
         
         // SD Logger
@@ -116,7 +134,7 @@ public:
         
         // Set up timed callback to drive operational cycle
         ted_.SetCallback([this](){ OnTimeout(); });
-        ted_.RegisterForTimedEventInterval(cfg_.reportIntervalMs);
+        ted_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
         
         // Handle events
         ss_.println("Evm Begin");
@@ -129,9 +147,6 @@ private:
     {
         ss_.println();
         ss_.println("OnTimeout");
-        
-        ss_.print("heynow");
-        ss_.println();
         
         {
             if (gps_.GetMeasurement(&gpsMeasurement_))
@@ -239,6 +254,17 @@ private:
         }
         
         
+        // Check status of GPS Lock
+        if (gpsMeasurement_.msSinceLastFix <= cfg_.gpsLockGoodAgeLimitMs)
+        {
+            PAL.DigitalWrite(cfg_.pinLedGpsLock, HIGH);
+        }
+        else
+        {
+            PAL.DigitalWrite(cfg_.pinLedGpsLock, LOW);
+        }
+        
+        
         OnTransmit();
     }
     
@@ -288,8 +314,12 @@ private:
         }
 
         gps_.DisableSerialInput();
+        PAL.DigitalWrite(cfg_.pinLedTransmitting, HIGH);
         amt_.Transmit();
+        PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
         gps_.EnableSerialInput();
+        
+        ss_.println("Transmit Complete");
     }
     
     
@@ -372,9 +402,9 @@ private:
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
     
-    SoftwareSerial ss_;
-    
     AppHABTracker1Config &cfg_;
+    
+    SoftwareSerial ss_;
     
     PeripheralOpenLogType        sdLogger_;
     PeripheralOpenLogFileHandle *logOp_;
@@ -392,6 +422,9 @@ private:
     AX25UIMessageTransmitter<> amt_;
     uint16_t                   seqNo_;
     
+
+    TimedEventHandlerDelegate tedHeartbeat_;
+
     TimedEventHandlerDelegate ted_;
     
     
