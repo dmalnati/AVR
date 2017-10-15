@@ -62,7 +62,7 @@ public:
             TimerClass::GetTimerChannelA()->SetInterruptHandlerRaw(OnInterrupt);
             
             // Debug
-            TimerClass::GetTimerChannelA()->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
+            //TimerClass::GetTimerChannelA()->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
         }
     }
     
