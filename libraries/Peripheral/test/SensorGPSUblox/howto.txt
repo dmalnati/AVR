@@ -1,0 +1,15 @@
+# two pins in use:
+# receive from GPS on 26
+# send    to   GPS on 19
+
+
+#
+# listen
+#
+./testSerialRaw.py 26
+
+
+#
+# send test data, with \n translated to \r\n
+#
+cat pubx.txt | awk '{printf "%s\r\n", $0}' | ~/py/dev/testSerialRaw.py - 19
