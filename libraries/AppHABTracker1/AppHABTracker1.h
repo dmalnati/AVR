@@ -63,6 +63,8 @@ class AppHABTracker1
     
     using PeripheralOpenLogType = PeripheralOpenLog<SD_LOGGER_FILE_HANDLE_COUNT>;
     
+    static const uint16_t BAUD = 9600;
+    
     static const uint8_t C_IDLE  =  0;
     static const uint8_t C_TIMED = 10;
     static const uint8_t C_INTER =  0;
@@ -72,7 +74,6 @@ public:
     AppHABTracker1(AppHABTracker1Config &cfg)
     : cfg_(cfg)
     , ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
-          //PAL.GetArduinoPinFromPhysicalPin(26))
           PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialOutput))
     , sdLogger_(cfg_.pinSerialTxSdLogger)
     , logOp_(NULL)
@@ -89,7 +90,7 @@ public:
     void Run()
     {
         // Support serial output at all times
-        ss_.begin(9600);
+        ss_.begin(BAUD);
         ss_.println("Starting");
         
         // Set up application
@@ -263,7 +264,6 @@ private:
         {
             PAL.DigitalWrite(cfg_.pinLedGpsLock, LOW);
         }
-        
         
         OnTransmit();
     }
