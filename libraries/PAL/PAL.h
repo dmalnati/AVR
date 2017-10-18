@@ -198,7 +198,7 @@ public:
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            *port__pinxPtr[pin.port_] |= pin.pinMask_;
+            *port__pinxPtr[pin.port_] = pin.pinMask_;
         }
     }
     
