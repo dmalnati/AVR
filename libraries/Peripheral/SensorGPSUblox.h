@@ -71,6 +71,15 @@ public:
         uint32_t date;
         uint32_t time;
         
+        uint16_t year;
+        uint8_t  month;
+        uint8_t  day;
+        uint8_t  hour;
+        uint8_t  minute;
+        uint8_t  second;
+        uint8_t  hundredths;
+        uint32_t fixAge;
+        
         int32_t  latitude;
         int32_t  longitude;
         
@@ -84,6 +93,14 @@ public:
         // Ask TinyGPS for decoded data
         tgps_.get_position(&m->latitude, &m->longitude, &m->msSinceLastFix);
         tgps_.get_datetime(&m->date, &m->time, &m->msSinceLastFix);
+        tgps_.crack_datetime(&m->year,
+                             &m->month,
+                             &m->day,
+                             &m->hour,
+                             &m->minute,
+                             &m->second,
+                             &m->hundredths,
+                             &m->fixAge);
         m->altitude = tgps_.altitude();
         
         // Check for valid data
