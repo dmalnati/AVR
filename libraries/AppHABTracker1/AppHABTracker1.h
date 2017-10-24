@@ -2,6 +2,7 @@
 #define __APP_HAB_TRACKER_1_H__
 
 
+#include "StrFormat.h"
 #include "Evm.h"
 #include "SoftwareSerial.h"
 #include "TimedEventHandler.h"
@@ -104,6 +105,7 @@ public:
         
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
+        ss_.println("LEDs Done");
         
         
         // SD Logger
@@ -144,6 +146,37 @@ public:
 
 private:
 
+
+    void SerializeGpsTimestamp()
+    {
+        // Hold space for each two-byte time element
+        char buf[2];
+        
+        // HH
+        U32ToStrPadLeft(buf, gpsMeasurement_.hour, 2, '0');
+        ss_.write(buf, 2);
+        
+        // MM
+        U32ToStrPadLeft(buf, gpsMeasurement_.minute, 2, '0');
+        ss_.write(buf, 2);
+        
+        // SS
+        U32ToStrPadLeft(buf, gpsMeasurement_.second, 2, '0');
+        ss_.write(buf, 2);
+        
+        // h
+        ss_.print('h');
+    }
+    
+    void SerializeGpsLatitude()
+    {
+        return;
+        char buf[8];
+        
+        U32ToStrPadLeft(buf, gpsMeasurement_.latitude, 8, '0');
+        ss_.write(buf, 2);
+    }
+
     void OnTimeout()
     {
         ss_.println();
@@ -154,14 +187,26 @@ private:
             {
                 //ss_.println("GPS Measurement Success");
                 ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
+                ss_.print("HH: "); ss_.println(gpsMeasurement_.hour);
+                ss_.print("MM: "); ss_.println(gpsMeasurement_.minute);
+                ss_.print("SS: "); ss_.println(gpsMeasurement_.second);
+                ss_.print("lat : "); ss_.println(gpsMeasurement_.latitude);
+                ss_.print("long: "); ss_.println(gpsMeasurement_.longitude);
+                
+                SerializeGpsTimestamp();
+                ss_.print(',');
+                
+                SerializeGpsLatitude();
+                ss_.print(',');
+                
+                ss_.println();
+                
                 
                 #if 0
                 ss_.println("---------------");
                 
                 ss_.print("date          : "); ss_.println(gpsMeasurement_.date);
                 ss_.print("time          : "); ss_.println(gpsMeasurement_.time);
-                ss_.print("latitude      : "); ss_.println(gpsMeasurement_.latitude);
-                ss_.print("longitude     : "); ss_.println(gpsMeasurement_.longitude);
                 ss_.print("altitude      : "); ss_.println(gpsMeasurement_.altitude);
 
                 #endif
