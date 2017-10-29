@@ -393,7 +393,10 @@ private:
             // clearly a new entry when we add one, and more interesting to be
             // able to see from the ground how many packets got lost at a given
             // time.
-            uint8_t incrSeqNo = 0;
+            
+            // DEBUG, just to provoke decoder to see different values
+            //uint8_t incrSeqNo = 0;
+            uint8_t incrSeqNo = 1;
             FillOutPositionReport(aprm, bufInfo, bufInfoLen, incrSeqNo);
             
             uint8_t bytesUsed = aprm.GetBytesUsed();
