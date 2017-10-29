@@ -225,15 +225,18 @@ private:
             if (compass_.GetMeasurement(&compassMeasurement_))
             {
                 //ss_.println("Compass Measurement Success");
-                #if 0
-                ss_.println("---------------");
+                //ss_.println("---------------");
                 
+                #if 1
                 ss_.print("accelX: ");
                 ss_.println(compassMeasurement_.accelX);
                 ss_.print("accelY: ");
                 ss_.println(compassMeasurement_.accelY);
                 ss_.print("accelZ: ");
                 ss_.println(compassMeasurement_.accelZ);
+                #endif
+                
+                #if 0
                 ss_.print("magX: ");
                 ss_.println(compassMeasurement_.magX);
                 ss_.print("magY: ");
@@ -443,11 +446,20 @@ private:
         aprm.SetCommentAltitude(gpsMeasurement_.altitudeFt);
 
         // my extensions
-        aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
-        aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
-        aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
-        aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
-        aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
+        
+        // BMP180
+        aprm.SetCommentBarometricPressureBinaryEncoded(barometerMeasurement_.pressureMilliBarAbsolute);
+        aprm.SetCommentTemperatureBinaryEncoded(barometerMeasurement_.tempF);
+        
+        // LSM303C
+        aprm.SetCommentMagneticsBinaryEncoded(compassMeasurement_.magX,
+                                              compassMeasurement_.magY,
+                                              compassMeasurement_.magZ);
+        aprm.SetCommentAccelerationBinaryEncoded(compassMeasurement_.accelX,
+                                                 compassMeasurement_.accelY,
+                                                 compassMeasurement_.accelZ);
+        aprm.SetCommentTemperatureBinaryEncoded(compassMeasurement_.tempF);
+        
         aprm.SetCommentVoltageBinaryEncoded(4.723);
 
         if (incrSeqNo)
