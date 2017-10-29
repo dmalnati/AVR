@@ -2,7 +2,6 @@
 #define __APP_HAB_TRACKER_1_H__
 
 
-#include "StrFormat.h"
 #include "Evm.h"
 #include "SoftwareSerial.h"
 #include "TimedEventHandler.h"
@@ -20,6 +19,7 @@ struct AppHABTracker1Config
     uint8_t pinSerialOutput;
     
     uint32_t aprsReportIntervalMs;
+    uint32_t logIntervalMs;
     
     uint8_t  pinLedHeartbeat;
     uint32_t heartbeatBlinkIntervalMs;
@@ -105,26 +105,26 @@ public:
         
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
-        ss_.println("LEDs Done");
+        //ss_.println("LEDs");
         
         
         // SD Logger
         sdLogger_.Init();
         logOp_  = sdLogger_.GetFileHandle("log.txt");
         logCsv_ = sdLogger_.GetFileHandle("log.csv");
-        ss_.println("Logger Done");
+        //ss_.println("Logger Done");
 
         // GPS
         gps_.Init();
-        ss_.println("GPS Done");
+        //ss_.println("GPS");
         
         // Compass
         compass_.Init();
-        ss_.println("Compass Done");
+        //ss_.println("Compass");
         
         // Barometer
         barometer_.Init();
-        ss_.println("Barometer Done");
+        //ss_.println("Barometer");
         
         // Transmitter
         amt_.SetRadioWarmupDurationMs(cfg_.radioWarmupDurationMs);
@@ -133,11 +133,14 @@ public:
         amt_.SetTransmitCount(cfg_.transmitCount);
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
-        ss_.println("Transmitter Done");
+        //ss_.println("Transmitter");
         
         // Set up timed callback to drive operational cycle
-        ted_.SetCallback([this](){ OnTimeout(); });
-        ted_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
+        tedTransmit_.SetCallback([this](){ OnTimeout(); });
+        tedTransmit_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
+        
+        tedLog_.SetCallback([this](){ OnLogTimeout(); });
+        tedLog_.RegisterForTimedEventInterval(cfg_.logIntervalMs);
         
         // Handle events
         ss_.println("Evm Begin");
@@ -146,36 +149,11 @@ public:
 
 private:
 
-
-    void SerializeGpsTimestamp()
-    {
-        // Hold space for each two-byte time element
-        char buf[2];
-        
-        // HH
-        U32ToStrPadLeft(buf, gpsMeasurement_.hour, 2, '0');
-        ss_.write(buf, 2);
-        
-        // MM
-        U32ToStrPadLeft(buf, gpsMeasurement_.minute, 2, '0');
-        ss_.write(buf, 2);
-        
-        // SS
-        U32ToStrPadLeft(buf, gpsMeasurement_.second, 2, '0');
-        ss_.write(buf, 2);
-        
-        // h
-        ss_.print('h');
-    }
-    
-    void SerializeGpsLatitude()
-    {
-        return;
-        char buf[8];
-        
-        U32ToStrPadLeft(buf, gpsMeasurement_.latitude, 8, '0');
-        ss_.write(buf, 2);
-    }
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // Sensor Reading
+    //
+    ////////////////////////////////////////////////////////////////////////
 
     void OnTimeout()
     {
@@ -186,20 +164,14 @@ private:
             if (gps_.GetMeasurement(&gpsMeasurement_))
             {
                 //ss_.println("GPS Measurement Success");
+                #if 1
                 ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
-                ss_.print("HH: "); ss_.println(gpsMeasurement_.hour);
-                ss_.print("MM: "); ss_.println(gpsMeasurement_.minute);
-                ss_.print("SS: "); ss_.println(gpsMeasurement_.second);
+                //ss_.print("HH: "); ss_.println(gpsMeasurement_.hour);
+                //ss_.print("MM: "); ss_.println(gpsMeasurement_.minute);
+                //ss_.print("SS: "); ss_.println(gpsMeasurement_.second);
                 ss_.print("lat : "); ss_.println(gpsMeasurement_.latitude);
                 ss_.print("long: "); ss_.println(gpsMeasurement_.longitude);
-                
-                SerializeGpsTimestamp();
-                ss_.print(',');
-                
-                SerializeGpsLatitude();
-                ss_.print(',');
-                
-                ss_.println();
+                #endif
                 
                 
                 #if 0
@@ -314,7 +286,19 @@ private:
     }
     
     
+    
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // Transmitting
+    //
+    ////////////////////////////////////////////////////////////////////////
+    
     void OnTransmit()
+    {
+        ss_.println("OnTransmit");
+    }
+    
+    void OnTransmitOld()
     {
         ss_.println("Transmitting");
         
@@ -366,6 +350,126 @@ private:
         
         ss_.println("Transmit Complete");
     }
+    
+    
+    
+    
+    
+    
+    
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // Logging
+    //
+    ////////////////////////////////////////////////////////////////////////
+    
+    void OnLogTimeout()
+    {
+        ss_.println("OnLog");
+        
+        ss_.print("d: ");
+        ss_.println(gpsMeasurement_.latitudeDegrees);
+        ss_.print("m: ");
+        ss_.println(gpsMeasurement_.latitudeMinutes);
+        ss_.print("s: ");
+        ss_.println(gpsMeasurement_.latitudeSeconds);
+        ss_.print("d: ");
+        ss_.println(gpsMeasurement_.longitudeDegrees);
+        ss_.print("m: ");
+        ss_.println(gpsMeasurement_.longitudeMinutes);
+        ss_.print("s: ");
+        ss_.println(gpsMeasurement_.longitudeSeconds);
+
+        
+        // Make use of the transmitter buffer and formatting capabilities but
+        // not for actually transmitting.
+        //
+        // Instead, format up the same message and serialize to the SD card.
+        //
+        // This keeps the code uniform and the decoding done later will be
+        // identical.
+        
+        AX25UIMessage                        &msg = *amt_.GetAX25UIMessage();
+        APRSPositionReportMessageHABTracker1  aprm;
+
+        uint8_t *bufInfo    = NULL;
+        uint8_t  bufInfoLen = 0;
+
+        if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
+        {
+            ss_.print("UsedB: ");
+            ss_.println(aprm.GetBytesUsed());
+            ss_.print("BI: ");
+            ss_.println((uint32_t)bufInfo);
+            ss_.print("Avail: ");
+            ss_.println(bufInfoLen);
+            
+            // We don't want to increment the sequence number here, because it's
+            // clearly a new entry when we add one, and more interesting to be
+            // able to see from the ground how many packets got lost at a given
+            // time.
+            uint8_t incrSeqNo = 0;
+            FillOutPositionReport(aprm, bufInfo, bufInfoLen, incrSeqNo);
+            
+            uint8_t bytesUsed = aprm.GetBytesUsed();
+            
+            ss_.print("UsedA: ");
+            ss_.println(bytesUsed);
+            
+            if (bytesUsed)
+            {
+                // write to sd card
+                sdLogger_.Append(bufInfo, bytesUsed);
+                sdLogger_.Append('\n');
+                
+                ss_.write(bufInfo, bytesUsed);
+                ss_.println();
+                ss_.println();
+            }
+        }
+    }
+    
+    
+    void FillOutPositionReport(APRSPositionReportMessageHABTracker1 &aprm,
+                               uint8_t                              *bufInfo,
+                               uint8_t                               bufInfoLen,
+                               uint8_t                               incrSeqNo)
+    {
+        aprm.SetTargetBuf(bufInfo, bufInfoLen);
+    
+        aprm.SetTimeLocal(gpsMeasurement_.hour,
+                          gpsMeasurement_.minute,
+                          gpsMeasurement_.second);
+        //aprm.SetLatitude(40, 44, 13.87);
+        aprm.SetLatitude(gpsMeasurement_.latitudeDegrees,
+                         gpsMeasurement_.latitudeMinutes,
+                         gpsMeasurement_.latitudeSeconds);
+        aprm.SetSymbolTableID('/');
+        //aprm.SetLongitude(-74, 2, 2.32);
+        aprm.SetLongitude(gpsMeasurement_.longitudeDegrees,
+                          gpsMeasurement_.longitudeMinutes,
+                          gpsMeasurement_.longitudeSeconds);
+        aprm.SetSymbolCode('O');
+        
+        // extended
+        aprm.SetCommentCourseAndSpeed(273, 777);
+        aprm.SetCommentAltitude(444);
+
+        // my extensions
+        aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
+        aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
+        aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
+        aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
+        aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
+        aprm.SetCommentVoltageBinaryEncoded(4.723);
+
+        if (incrSeqNo)
+        {
+            ++seqNo_;
+        }
+        aprm.SetCommentSeqNoBinaryEncoded(seqNo_);
+    }
+    
     
     
 
@@ -469,8 +573,8 @@ private:
     
 
     TimedEventHandlerDelegate tedHeartbeat_;
-
-    TimedEventHandlerDelegate ted_;
+    TimedEventHandlerDelegate tedTransmit_;
+    TimedEventHandlerDelegate tedLog_;
     
     
     
