@@ -56,8 +56,6 @@ struct AppHABTracker1Config
 };
 
 
-
-
 class AppHABTracker1
 {
     static const uint8_t SD_LOGGER_FILE_HANDLE_COUNT = 2;
@@ -87,18 +85,35 @@ public:
         // Nothing to do
     }
     
-    ~AppHABTracker1() {}
-    
     void Run()
     {
         // Support serial output at all times
         ss_.begin(BAUD);
         ss_.println("Starting");
         
-        // Set up application
+        // Initialize
+        InitApplication();
+        InitPeripherals();
+        
+        // Handle events
+        ss_.println("Evm");
+        evm_.MainLoop();
+    }
+    
+private:
+    
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // Initialization
+    //
+    ////////////////////////////////////////////////////////////////////////
+    
+    void InitApplication()
+    {
+        // Set up Status monitoring
         PAL.PinMode(cfg_.pinLedHeartbeat, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedHeartbeat, HIGH);
-        tedHeartbeat_.SetCallback([this](){ PAL.DigitalToggle(cfg_.pinLedHeartbeat); });
+        tedHeartbeat_.SetCallback([this](){ OnTimeoutHeartbeat(); });
         tedHeartbeat_.RegisterForTimedEventInterval(cfg_.heartbeatBlinkIntervalMs);
         
         PAL.PinMode(cfg_.pinLedGpsLock, OUTPUT);
@@ -108,7 +123,17 @@ public:
         PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
         //ss_.println("LEDs");
         
+        // Set up timed events to drive application
+        tedTransmit_.SetCallback([this](){ OnTimeoutTransmit(); });
+        tedTransmit_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
         
+        tedLog_.SetCallback([this](){ OnTimeoutLog(); });
+        tedLog_.RegisterForTimedEventInterval(cfg_.logIntervalMs);
+        //ss_.println("Callbacks");
+    }
+    
+    void InitPeripherals()
+    {
         // SD Logger
         sdLogger_.Init();
         logOp_  = sdLogger_.GetFileHandle("log.txt");
@@ -135,130 +160,37 @@ public:
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
         //ss_.println("Transmitter");
-        
-        // Set up timed callback to drive operational cycle
-        tedTransmit_.SetCallback([this](){ OnTimeout(); });
-        tedTransmit_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
-        
-        tedLog_.SetCallback([this](){ OnLogTimeout(); });
-        tedLog_.RegisterForTimedEventInterval(cfg_.logIntervalMs);
-        
-        // Handle events
-        ss_.println("Evm Begin");
-        evm_.MainLoop();
     }
 
-private:
 
     ////////////////////////////////////////////////////////////////////////
     //
-    // Sensor Reading
+    // Application Event Driving and Status Monitoring
     //
     ////////////////////////////////////////////////////////////////////////
-
-    void OnTimeout()
+    
+    void OnTimeoutHeartbeat()
     {
-        ss_.println();
-        ss_.println("OnTimeout");
-        
-        {
-            if (gps_.GetMeasurement(&gpsMeasurement_))
-            {
-                //ss_.println("GPS Measurement Success");
-                #if 1
-                ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
-                #endif
-                
-                
-                #if 0
-                ss_.println("---------------");
-                
-                ss_.print("date          : "); ss_.println(gpsMeasurement_.date);
-                ss_.print("time          : "); ss_.println(gpsMeasurement_.time);
-                ss_.print("altitude      : "); ss_.println(gpsMeasurement_.altitude);
-
-                #endif
-            }
-            else
-            {
-                ss_.println("GPS Measurement Fail");
-            }
-        }
-        
-        {
-            if (barometer_.GetMeasurement(&barometerMeasurement_))
-            {
-                //ss_.println("Barometer Measurement Success");
-                #if 0
-                ss_.println("---------------");
-                
-                ss_.print("tempF: ");
-                ss_.println(barometerMeasurement_.tempF);
-                //ss_.print("tempC: ");
-                //ss_.println(barometerMeasurement_.tempC);
-                ss_.print("pressureMilliBarAbsolute: ");
-                ss_.println(barometerMeasurement_.pressureMilliBarAbsolute);
-                /*
-                ss_.print("pressureInchesMercuryAbsolute: ");
-                ss_.println(barometerMeasurement_.pressureInchesMercuryAbsolute);
-                ss_.print("pressureKiloPascalsAbsolute: ");
-                ss_.println(barometerMeasurement_.pressureKiloPascalsAbsolute);
-                ss_.print("pressureMilliBarSeaLevelAdjusted: ");
-                ss_.println(barometerMeasurement_.pressureMilliBarSeaLevelAdjusted);
-                ss_.print("pressureInchesMercurySeaLevelAdjusted: ");
-                ss_.println(barometerMeasurement_.pressureInchesMercurySeaLevelAdjusted);
-                ss_.print("pressureKiloPascalsSeaLevelAdjusted: ");
-                ss_.println(barometerMeasurement_.pressureKiloPascalsSeaLevelAdjusted);
-                ss_.print("altitudeFeetDerived: ");
-                ss_.println(barometerMeasurement_.altitudeFeetDerived);
-                ss_.print("altitudeMetersDerived: ");
-                ss_.println(barometerMeasurement_.altitudeMetersDerived);
-                */
-                #endif
-            }
-            else
-            {
-                //ss_.println("Barometer Measurement Fail");
-            }
-        }
-        
-        {
-            if (compass_.GetMeasurement(&compassMeasurement_))
-            {
-                //ss_.println("Compass Measurement Success");
-                //ss_.println("---------------");
-                
-                #if 1
-                ss_.print("accelX: ");
-                ss_.println(compassMeasurement_.accelX);
-                ss_.print("accelY: ");
-                ss_.println(compassMeasurement_.accelY);
-                ss_.print("accelZ: ");
-                ss_.println(compassMeasurement_.accelZ);
-                #endif
-                
-                #if 0
-                ss_.print("magX: ");
-                ss_.println(compassMeasurement_.magX);
-                ss_.print("magY: ");
-                ss_.println(compassMeasurement_.magY);
-                ss_.print("magZ: ");
-                ss_.println(compassMeasurement_.magZ);
-                ss_.print("tempF: ");
-                ss_.println(compassMeasurement_.tempF);
-                #endif
-            }
-            else
-            {
-                // Not actually possible
-            }
-        }
-        
-        
-        // Take voltage measurement
-        vccMeasurement_ = PAL.ReadVccMillivolts() / 1000.0;
-
-        
+        PAL.DigitalToggle(cfg_.pinLedHeartbeat);
+    }
+    
+    void OnTimeoutLog()
+    {
+        TakeMeasurements();
+        SetGPSLockStatus();
+        LogData();
+    }
+    
+    void OnTimeoutTransmit()
+    {
+        TakeMeasurements();
+        SetGPSLockStatus();
+        Transmit();
+        LogData();
+    }
+    
+    void SetGPSLockStatus()
+    {
         // Check status of GPS Lock
         if (gpsMeasurement_.msSinceLastFix <= cfg_.gpsLockGoodAgeLimitMs)
         {
@@ -267,81 +199,26 @@ private:
         else
         {
             PAL.DigitalWrite(cfg_.pinLedGpsLock, LOW);
-        }
-        
-        OnTransmit();
+        }        
     }
-    
-    
-    
+
+
     ////////////////////////////////////////////////////////////////////////
     //
-    // Transmitting
+    // Sensor Reading
     //
     ////////////////////////////////////////////////////////////////////////
-    
-    void OnTransmit()
+
+    void TakeMeasurements()
     {
-        ss_.println("OnTransmit");
+        gps_.GetMeasurement(&gpsMeasurement_);
+        
+        barometer_.GetMeasurement(&barometerMeasurement_);
+        
+        compass_.GetMeasurement(&compassMeasurement_);
+        
+        vccMeasurement_ = PAL.ReadVccMillivolts() / 1000.0;
     }
-    
-    void OnTransmitOld()
-    {
-        ss_.println("Transmitting");
-        
-        AX25UIMessage &msg = *amt_.GetAX25UIMessage();
-
-        msg.SetDstAddress(cfg_.dstCallsign, cfg_.dstSsid);
-        msg.SetSrcAddress(cfg_.srcCallsign, cfg_.srcSsid);
-        msg.AddRepeaterAddress(cfg_.repeaterCallsign, cfg_.repeaterSsid);
-
-        // Add APRS data
-        uint8_t *bufInfo    = NULL;
-        uint8_t  bufInfoLen = 0;
-
-        APRSPositionReportMessageHABTracker1 aprm;
-
-        if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
-        {
-            aprm.SetTargetBuf(bufInfo, bufInfoLen);
-        
-            aprm.SetTimeLocal(19, 14, 7);
-            aprm.SetLatitude(40, 44, 13.87);
-            aprm.SetSymbolTableID('/');
-            aprm.SetLongitude(-74, 2, 2.32);
-            aprm.SetSymbolCode('O');
-            
-            // extended
-            aprm.SetCommentCourseAndSpeed(273, 777);
-            aprm.SetCommentAltitude(444);
-
-            // my extensions
-            aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
-            aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
-            aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
-            aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
-            aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
-            aprm.SetCommentVoltageBinaryEncoded(4.723);
-
-            ++seqNo_;
-            aprm.SetCommentSeqNoBinaryEncoded(seqNo_);
-
-            msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
-        }
-
-        gps_.DisableSerialInput();
-        PAL.DigitalWrite(cfg_.pinLedTransmitting, HIGH);
-        amt_.Transmit();
-        PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
-        gps_.EnableSerialInput();
-        
-        ss_.println("Transmit Complete");
-    }
-    
-    
-    
-    
-    
     
     
     ////////////////////////////////////////////////////////////////////////
@@ -350,30 +227,10 @@ private:
     //
     ////////////////////////////////////////////////////////////////////////
     
-    void OnLogTimeout()
+    void LogData()
     {
-        ss_.println("OnLog");
-        
-        // ss_.print("d: ");
-        // ss_.println(gpsMeasurement_.latitudeDegrees);
-        // ss_.print("m: ");
-        // ss_.println(gpsMeasurement_.latitudeMinutes);
-        // ss_.print("s: ");
-        // ss_.println(gpsMeasurement_.latitudeSeconds);
-        // ss_.print("d: ");
-        // ss_.println(gpsMeasurement_.longitudeDegrees);
-        // ss_.print("m: ");
-        // ss_.println(gpsMeasurement_.longitudeMinutes);
-        // ss_.print("s: ");
-        // ss_.println(gpsMeasurement_.longitudeSeconds);
-        ss_.print("c: ");
-        ss_.println(gpsMeasurement_.courseDegrees);
-        ss_.print("s: ");
-        ss_.println(gpsMeasurement_.speedKnots);
-        ss_.print("a: ");
-        ss_.println(gpsMeasurement_.altitudeFt);
+        ss_.println("LS");
 
-        
         // Make use of the transmitter buffer and formatting capabilities but
         // not for actually transmitting.
         //
@@ -382,57 +239,105 @@ private:
         // This keeps the code uniform and the decoding done later will be
         // identical.
         
-        AX25UIMessage                        &msg = *amt_.GetAX25UIMessage();
-        APRSPositionReportMessageHABTracker1  aprm;
+        AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
         uint8_t *bufInfo    = NULL;
         uint8_t  bufInfoLen = 0;
 
         if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
         {
-            ss_.print("UsedB: ");
-            ss_.println(aprm.GetBytesUsed());
-            ss_.print("BI: ");
-            ss_.println((uint32_t)bufInfo);
-            ss_.print("Avail: ");
-            ss_.println(bufInfoLen);
+            APRSPositionReportMessageHABTracker1 aprm;
             
+            aprm.SetTargetBuf(bufInfo, bufInfoLen);
+    
             // We don't want to increment the sequence number here, because it's
             // clearly a new entry when we add one, and more interesting to be
             // able to see from the ground how many packets got lost at a given
             // time.
-            
-            // DEBUG, just to provoke decoder to see different values
-            //uint8_t incrSeqNo = 0;
-            uint8_t incrSeqNo = 1;
-            FillOutPositionReport(aprm, bufInfo, bufInfoLen, incrSeqNo);
+            uint8_t incrSeqNo = 0;
+            FillOutPositionReport(aprm, incrSeqNo);
             
             uint8_t bytesUsed = aprm.GetBytesUsed();
             
-            ss_.print("UsedA: ");
-            ss_.println(bytesUsed);
-            
             if (bytesUsed)
             {
-                // write to sd card
+                // Write to SD card
                 sdLogger_.Append(bufInfo, bytesUsed);
                 sdLogger_.Append('\n');
                 
+                // Debug
                 ss_.write(bufInfo, bytesUsed);
-                ss_.println();
                 ss_.println();
             }
         }
+        
+        ss_.println("LE");
+        ss_.println();
     }
     
     
-    void FillOutPositionReport(APRSPositionReportMessageHABTracker1 &aprm,
-                               uint8_t                              *bufInfo,
-                               uint8_t                               bufInfoLen,
-                               uint8_t                               incrSeqNo)
-    {
-        aprm.SetTargetBuf(bufInfo, bufInfoLen);
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // Transmitting
+    //
+    ////////////////////////////////////////////////////////////////////////
     
+    void Transmit()
+    {
+        ss_.println("TS");
+        
+        // Fill out basic AX.25 UI Frame details
+        AX25UIMessage &msg = *amt_.GetAX25UIMessage();
+
+        msg.SetDstAddress(cfg_.dstCallsign, cfg_.dstSsid);
+        msg.SetSrcAddress(cfg_.srcCallsign, cfg_.srcSsid);
+        msg.AddRepeaterAddress(cfg_.repeaterCallsign, cfg_.repeaterSsid);
+
+        // Add APRS data to the payload
+        uint8_t *bufInfo    = NULL;
+        uint8_t  bufInfoLen = 0;
+
+        if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
+        {
+            APRSPositionReportMessageHABTracker1 aprm;
+            
+            aprm.SetTargetBuf(bufInfo, bufInfoLen);
+        
+            uint8_t incrSeqNo = 1;
+            FillOutPositionReport(aprm, incrSeqNo);
+        
+            msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
+        }
+
+        // Transmit
+        //
+        // Turning off the GPS serial input avoids interrupts from disrupting
+        // the operation of the modem.
+        //
+        // The LED indicating transmitting is operated here as well.
+        //
+        gps_.DisableSerialInput();
+        PAL.DigitalWrite(cfg_.pinLedTransmitting, HIGH);
+        
+        amt_.Transmit();
+        
+        PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
+        gps_.EnableSerialInput();
+        
+        ss_.println("TE");
+    }
+    
+    
+    ////////////////////////////////////////////////////////////////////////
+    //
+    // APRS Message Formatting
+    //
+    ////////////////////////////////////////////////////////////////////////
+    
+    void FillOutPositionReport(APRSPositionReportMessageHABTracker1 &aprm,
+                               uint8_t                              incrSeqNo)
+    {
+        // Set standard APRS Position Report fields
         aprm.SetTimeLocal(gpsMeasurement_.hour,
                           gpsMeasurement_.minute,
                           gpsMeasurement_.second);
@@ -445,12 +350,13 @@ private:
                           gpsMeasurement_.longitudeSeconds);
         aprm.SetSymbolCode('O');
         
-        // extended
+        // Set extended standard fields
         aprm.SetCommentCourseAndSpeed(gpsMeasurement_.courseDegrees,
                                       gpsMeasurement_.speedKnots);
         aprm.SetCommentAltitude(gpsMeasurement_.altitudeFt);
 
-        // my extensions
+        
+        // Set my own custom fields
         
         // BMP180
         aprm.SetCommentBarometricPressureBinaryEncoded(barometerMeasurement_.pressureMilliBarAbsolute);
@@ -491,34 +397,6 @@ private:
         // Also need to log state changes and events.
     }
 
-    void Features()
-    {
-        // LED indicator as to whether GPS lock achieved?
-    }
-    
-    void OperationalPhases()
-    {
-        /*
-         * Should you transmit before having GPS lock?  Yes, why wait, other sensors work.
-         *
-         * 
-         *
-         *
-         */
-    }
-    
-    void FailureHardening()
-    {
-        // Protect against any device failing completely at any time.
-        // I2C is known to be problematic with infinite while loops.
-        
-        // Where are you at risk of starving out processing GPS serial stream?
-    }
-    
-    
-    
-    
-    
     
     
 private:
