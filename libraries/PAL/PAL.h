@@ -107,10 +107,30 @@ public:
         ADCSRA = ((ADCSRA & 0xF8) | ((uint8_t)adcPrescaler & 0x07));
     }
     
+    // Technique adapted from:
+    // https://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
+    static inline uint16_t ReadVccMillivolts()
+    {
+        static const uint8_t ADC_CHANNEL_BITS_1_1V_INTERNAL_REF = 0b00001110;
+        
+        uint16_t retVal = AnalogReadInternal(ADC_CHANNEL_BITS_1_1V_INTERNAL_REF);
+        
+        retVal = 1125300L / retVal; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+        
+        return retVal;
+    }
+    
     static inline uint16_t AnalogRead(Pin pin)
     {
+        return AnalogReadInternal(pin.adcChannelBits_);
+    }
+    
+private:
+
+    static inline uint16_t AnalogReadInternal(uint8_t adcChannelBits)
+    {
         // Ensure the voltage reference is fixed to AVcc.  Left adjust disabled.
-        ADMUX = (_BV(REFS0) | pin.adcChannelBits_);
+        ADMUX = (_BV(REFS0) | adcChannelBits);
         
         // Decide what to do whether in batch mode or not1
         if (ADCSRA & _BV(ADATE))
@@ -151,6 +171,8 @@ public:
         
         return retVal;
     }
+    
+public:
     
     // Between BatchBegin and BatchEnd, you can only read from a single channel
     static inline void AnalogReadBatchBegin()
