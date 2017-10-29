@@ -82,25 +82,30 @@ public:
         uint8_t  hundredths;
         uint32_t fixAge;
         
-        int32_t  latitude;
+        uint32_t courseDegrees;
+        uint32_t speedKnots;
+        
         int16_t  latitudeDegrees;
         uint8_t  latitudeMinutes;
         double   latitudeSeconds;
         
-        int32_t  longitude;
         int16_t  longitudeDegrees;
         uint8_t  longitudeMinutes;
         double   longitudeSeconds;
         
-        uint32_t altitude;
+        uint32_t altitudeFt;
     };
     
     uint8_t GetMeasurement(Measurement *m)
     {
+        constexpr static const double CM_TO_FT = 0.0328084;
+        
         uint8_t retVal = 0;
         
         // Ask TinyGPS for decoded data
-        tgps_.get_position(&m->latitude, &m->longitude, &m->msSinceLastFix);
+        int32_t latitude;
+        int32_t longitude;
+        tgps_.get_position(&latitude, &longitude, &m->msSinceLastFix);
         tgps_.get_datetime(&m->date, &m->time, &m->msSinceLastFix);
         tgps_.crack_datetime(&m->year,
                              &m->month,
@@ -110,17 +115,21 @@ public:
                              &m->second,
                              &m->hundredths,
                              &m->fixAge);
-        m->altitude = tgps_.altitude();
-        
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->latitude,
+ 
+        m->courseDegrees = tgps_.course() / 100;    // convert from 100ths of a degree
+        m->speedKnots    = tgps_.speed() / 100;     // convert from 100ths of a knot
+ 
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(latitude,
                                                      m->latitudeDegrees,
                                                      m->latitudeMinutes,
                                                      m->latitudeSeconds);
         
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->longitude,
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(longitude,
                                                      m->longitudeDegrees,
                                                      m->longitudeMinutes,
                                                      m->longitudeSeconds);
+
+        m->altitudeFt = tgps_.altitude() * CM_TO_FT; // convert from cm to ft
         
         // Check for valid data
         if (m->msSinceLastFix != TinyGPS::GPS_INVALID_AGE)
