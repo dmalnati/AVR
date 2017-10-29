@@ -166,11 +166,6 @@ private:
                 //ss_.println("GPS Measurement Success");
                 #if 1
                 ss_.print("msSinceLastFix: "); ss_.println(gpsMeasurement_.msSinceLastFix);
-                //ss_.print("HH: "); ss_.println(gpsMeasurement_.hour);
-                //ss_.print("MM: "); ss_.println(gpsMeasurement_.minute);
-                //ss_.print("SS: "); ss_.println(gpsMeasurement_.second);
-                ss_.print("lat : "); ss_.println(gpsMeasurement_.latitude);
-                ss_.print("long: "); ss_.println(gpsMeasurement_.longitude);
                 #endif
                 
                 
@@ -255,22 +250,6 @@ private:
             }
         }
 
-        
-        {
-            logCsv_->Append(gpsMeasurement_.msSinceLastFix);
-            logCsv_->Append(',');
-            logCsv_->Append(gpsMeasurement_.date);
-            logCsv_->Append(',');
-            logCsv_->Append(gpsMeasurement_.time);
-            logCsv_->Append(',');
-            logCsv_->Append(gpsMeasurement_.latitude);
-            logCsv_->Append(',');
-            logCsv_->Append(gpsMeasurement_.longitude);
-            logCsv_->Append(',');
-            logCsv_->Append(gpsMeasurement_.altitude);
-            logCsv_->Append('\n');
-        }
-        
         
         // Check status of GPS Lock
         if (gpsMeasurement_.msSinceLastFix <= cfg_.gpsLockGoodAgeLimitMs)
@@ -367,18 +346,24 @@ private:
     {
         ss_.println("OnLog");
         
-        ss_.print("d: ");
-        ss_.println(gpsMeasurement_.latitudeDegrees);
-        ss_.print("m: ");
-        ss_.println(gpsMeasurement_.latitudeMinutes);
+        // ss_.print("d: ");
+        // ss_.println(gpsMeasurement_.latitudeDegrees);
+        // ss_.print("m: ");
+        // ss_.println(gpsMeasurement_.latitudeMinutes);
+        // ss_.print("s: ");
+        // ss_.println(gpsMeasurement_.latitudeSeconds);
+        // ss_.print("d: ");
+        // ss_.println(gpsMeasurement_.longitudeDegrees);
+        // ss_.print("m: ");
+        // ss_.println(gpsMeasurement_.longitudeMinutes);
+        // ss_.print("s: ");
+        // ss_.println(gpsMeasurement_.longitudeSeconds);
+        ss_.print("c: ");
+        ss_.println(gpsMeasurement_.courseDegrees);
         ss_.print("s: ");
-        ss_.println(gpsMeasurement_.latitudeSeconds);
-        ss_.print("d: ");
-        ss_.println(gpsMeasurement_.longitudeDegrees);
-        ss_.print("m: ");
-        ss_.println(gpsMeasurement_.longitudeMinutes);
-        ss_.print("s: ");
-        ss_.println(gpsMeasurement_.longitudeSeconds);
+        ss_.println(gpsMeasurement_.speedKnots);
+        ss_.print("a: ");
+        ss_.println(gpsMeasurement_.altitudeFt);
 
         
         // Make use of the transmitter buffer and formatting capabilities but
@@ -440,20 +425,19 @@ private:
         aprm.SetTimeLocal(gpsMeasurement_.hour,
                           gpsMeasurement_.minute,
                           gpsMeasurement_.second);
-        //aprm.SetLatitude(40, 44, 13.87);
         aprm.SetLatitude(gpsMeasurement_.latitudeDegrees,
                          gpsMeasurement_.latitudeMinutes,
                          gpsMeasurement_.latitudeSeconds);
         aprm.SetSymbolTableID('/');
-        //aprm.SetLongitude(-74, 2, 2.32);
         aprm.SetLongitude(gpsMeasurement_.longitudeDegrees,
                           gpsMeasurement_.longitudeMinutes,
                           gpsMeasurement_.longitudeSeconds);
         aprm.SetSymbolCode('O');
         
         // extended
-        aprm.SetCommentCourseAndSpeed(273, 777);
-        aprm.SetCommentAltitude(444);
+        aprm.SetCommentCourseAndSpeed(gpsMeasurement_.courseDegrees,
+                                      gpsMeasurement_.speedKnots);
+        aprm.SetCommentAltitude(gpsMeasurement_.altitudeFt);
 
         // my extensions
         aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
