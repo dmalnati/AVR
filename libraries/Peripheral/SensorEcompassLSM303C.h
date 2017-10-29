@@ -46,9 +46,9 @@ public:
         // a total of ~8ms.
         sensor_.begin();
         
-        m->accelX = sensor_.readAccelX() / 1000.0;
-        m->accelY = sensor_.readAccelY() / 1000.0;
-        m->accelZ = sensor_.readAccelZ() / 1000.0;
+        m->accelX = sensor_.readAccelX();
+        m->accelY = sensor_.readAccelY();
+        m->accelZ = sensor_.readAccelZ();
         
         m->magX   = sensor_.readMagX();
         m->magY   = sensor_.readMagY();
