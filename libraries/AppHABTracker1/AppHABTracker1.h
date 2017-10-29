@@ -80,6 +80,7 @@ public:
     , logOp_(NULL)
     , logCsv_(NULL)
     , gps_(cfg_.pinSerialRxGPS, cfg_.pinSerialTxGPS)
+    , vccMeasurement_(0.0)
     , amt_(cfg_.pinTxEnable)
     , seqNo_(0)
     {
@@ -252,6 +253,10 @@ private:
                 // Not actually possible
             }
         }
+        
+        
+        // Take voltage measurement
+        vccMeasurement_ = PAL.ReadVccMillivolts() / 1000.0;
 
         
         // Check status of GPS Lock
@@ -460,7 +465,7 @@ private:
                                                  compassMeasurement_.accelZ);
         aprm.SetCommentTemperatureBinaryEncoded(compassMeasurement_.tempF);
         
-        aprm.SetCommentVoltageBinaryEncoded(4.723);
+        aprm.SetCommentVoltageBinaryEncoded(vccMeasurement_);
 
         if (incrSeqNo)
         {
@@ -566,6 +571,8 @@ private:
     
     SensorBarometerBMP180               barometer_;
     SensorBarometerBMP180::Measurement  barometerMeasurement_;
+    
+    double vccMeasurement_;
     
     AX25UIMessageTransmitter<> amt_;
     uint16_t                   seqNo_;
