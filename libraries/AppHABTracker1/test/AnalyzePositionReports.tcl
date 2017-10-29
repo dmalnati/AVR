@@ -203,6 +203,12 @@ proc ProcessAltitudeFt { alt } {
 proc ProcessSpeed { speedKnots } {
     set KNOTS_TO_MPH 1.15078
 
+    set speedKnots [string trimleft $speedKnots "0"]
+
+    if { $speedKnots == "" } {
+        set speedKnots 0
+    }
+
     return [format "%.01f" [expr $speedKnots * $KNOTS_TO_MPH]]
 }
 
@@ -234,7 +240,7 @@ proc ProcessTime { time } {
     set timeO ""
     append timeO [string range $time 0 1]:
     append timeO [string range $time 2 3]:
-    append timeO [string range $time 3 4]
+    append timeO [string range $time 4 5]
 
     return $timeO
 }
