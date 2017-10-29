@@ -2,6 +2,8 @@
 #define __SENSOR_GPS_UBLOX_H__
 
 
+#include <math.h>
+
 #include "SoftwareSerial.h"
 
 #include "PAL.h"
@@ -71,7 +73,7 @@ public:
         uint32_t date;
         uint32_t time;
         
-        uint16_t year;
+        int16_t  year;
         uint8_t  month;
         uint8_t  day;
         uint8_t  hour;
@@ -81,7 +83,14 @@ public:
         uint32_t fixAge;
         
         int32_t  latitude;
+        int16_t  latitudeDegrees;
+        uint8_t  latitudeMinutes;
+        double   latitudeSeconds;
+        
         int32_t  longitude;
+        int16_t  longitudeDegrees;
+        uint8_t  longitudeMinutes;
+        double   longitudeSeconds;
         
         uint32_t altitude;
     };
@@ -102,6 +111,16 @@ public:
                              &m->hundredths,
                              &m->fixAge);
         m->altitude = tgps_.altitude();
+        
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->latitude,
+                                                     m->latitudeDegrees,
+                                                     m->latitudeMinutes,
+                                                     m->latitudeSeconds);
+        
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->longitude,
+                                                     m->longitudeDegrees,
+                                                     m->longitudeMinutes,
+                                                     m->longitudeSeconds);
         
         // Check for valid data
         if (m->msSinceLastFix != TinyGPS::GPS_INVALID_AGE)
@@ -219,6 +238,97 @@ private:
         ubxMessage_.GetBuf(&buf, &bufLen);
         
         ss_.write(buf, bufLen);
+    }
+    
+    /* 
+     * Formats
+     * -------
+     * LAT:  4044.21069,N in TinyGPS is  40736878
+     * LNG: 07402.03027,W in TinyGPS is -74033790
+     *
+     * The above GPGGA NMEA message lat/long values are defined as
+     * being degrees and minutes with fractional minutes
+     * eg: 4807.038,N   Latitude 48 deg 07.038' N
+     * (http://www.gpsinformation.org/dale/nmea.htm#GGA)
+     *
+     * Whereas the TinyGPS values are in millionths of a degree.
+     * Their example is:
+     *   so instead of 90°30’00″, get_position() returns a longitude
+     *        value of 90,500,000, or 90.5 degrees.
+     * (http://arduiniana.org/libraries/tinygps/)
+     *
+     *
+     * Convert from TinyGPS to deg/min/sec
+     * -----------------------------------
+     * 40736878
+     * 40 and (0.736878 * 60) minutes
+     * -> 40 deg 44.21268 minutes
+     *
+     * extract seconds from 44.21268 minutes
+     * .21268 * 60 = 12.7608 seconds
+     *
+     * so should be
+     * 40 deg 44 min 12.7608 sec
+     *
+     * or in Google Maps terms
+     * 40 44 12.7608
+     *
+     *
+     * Convert from GPS to deg/min/sec
+     * -------------------------------
+     * 4044.21069,N
+     *
+     * 40 deg and 44.21069 minutes
+     *
+     * extract seconds from 44.21069 minutes
+     * .21069 * 60 = 12.6414 seconds
+     *
+     * so should be
+     * 40 deg 44 min 12.6414 seconds
+     *
+     * or in Google Maps terms
+     * 40 44 12.6414
+     *
+     *
+     * Google Maps Notation
+     * --------------------
+     * Google Maps for TinyGPS Conversion
+     * 40 44 12.7608, -74 2 2.32
+     *
+     * Google Maps for GPS Conversion
+     * 40 44 12.6414, -74 2 2.32
+     *
+     * They're right next to each other.  Ok tolerance.
+     * https://www.google.com/maps/dir/40+44+12.6414,+-74+2+2.32/40.736878,-74.0339778/@40.7368945,-74.0342609,19.67z/data=!4m7!4m6!1m3!2m2!1d-74.0339778!2d40.7368448!1m0!3e3
+     *
+     */
+    void ConvertTinyGPSLatLongToDegreesMinutesSeconds(int32_t   latOrLong,
+                                                      int16_t  &degrees,
+                                                      uint8_t  &minutes,
+                                                      double   &seconds)
+    {
+        static const uint32_t ONE_MILLION     = 1000000;
+        static const uint8_t  MIN_PER_DEGREE  = 60;
+        static const uint8_t  SECONDS_PER_MIN = 60;
+        
+        // Capture input value for manipulation
+        double valRemaining = latOrLong;                                // eg 40736878
+        
+        // Calculate degrees
+        degrees = valRemaining / ONE_MILLION;                           // eg 40
+        
+        // Calculate minutes by converting millionths of a degree
+        valRemaining = fabs(valRemaining) -
+                       (abs(degrees) * ONE_MILLION);                   // eg   736878
+        valRemaining = (valRemaining / ONE_MILLION) * MIN_PER_DEGREE;  // eg   44.21268
+        
+        minutes = valRemaining;                                         // eg 44
+        
+        // Calculate seconds by converting the fractional minutes
+        valRemaining -= minutes;                                        // eg .21268
+        valRemaining *= SECONDS_PER_MIN;                                // eg 12.7608
+        
+        seconds = valRemaining;                                         // eg 12.7608
     }
 
 
