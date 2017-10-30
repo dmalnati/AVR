@@ -2,6 +2,9 @@
 #define __APRS_POSITION_REPORT_MESSAGE_H__
 
 
+#include "StrFormat.h"
+
+
 class APRSPositionReportMessage
 {
     // Minimum size of valid message with empty comment section
@@ -10,10 +13,7 @@ class APRSPositionReportMessage
     // Maximum size of valid message with full comment section (+ 43 bytes)
     static const uint8_t MAX_BUF_SIZE = 70;
     
-    // Deal with buffer needed to hold a U32 plus NULL
-    static const uint8_t U32_MAX_STR_LEN     = 10;
-    static const uint8_t U32_TO_STR_BUF_SIZE = U32_MAX_STR_LEN + 1;
-   
+
 public:
  
     uint8_t SetTargetBuf(uint8_t *buf, uint8_t bufSize)
@@ -356,45 +356,12 @@ private:
     {
         return byteCount <= GetCommentBytesRemaining();
     }
+
     
-    void U32ToStrPadLeft(char *bufTarget, uint32_t val, uint8_t width, char pad)
-    {
-        // Convert to ASCII representation, plus NULL, base 10
-        ultoa(val, u32StrBuf_, 10);
-       
-        // Determine actual length of numeric string
-        uint8_t len = strlen(u32StrBuf_);
-        
-        // Calculate number of pad bytes and number of bytes to copy
-        // given that it's both possible the destination buffer is smaller than
-        // necessary to fit the entire thing, or that it's larger than the
-        // numeric string.
-        uint8_t padBytes;
-        uint8_t bytesToCopy;
-        
-        if (width <= len)
-        {
-            padBytes    = 0;
-            bytesToCopy = width;
-        }
-        else
-        {
-            padBytes    = width - len;
-            bytesToCopy = len;
-        }
-        
-        // Actually do some copying
-        memset(bufTarget, pad, padBytes);
-        memcpy(&bufTarget[padBytes], u32StrBuf_, bytesToCopy);
-    }
-
-
-
+    
     char    *buf_             = NULL;
     uint8_t  bufSize_         = 0;
     char    *commentNextByte_ = NULL;
-    
-    char u32StrBuf_[U32_TO_STR_BUF_SIZE];
 };
 
 
