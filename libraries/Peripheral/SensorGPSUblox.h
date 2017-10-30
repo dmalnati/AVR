@@ -24,7 +24,6 @@ public:
 private:
     static const uint32_t BAUD                  = 9600;
     static const uint32_t POLL_PERIOD_MS        = 25;
-    static const uint16_t GPS_MESSAGE_INTERVAL  = 5000;
     static const uint16_t GPS_WARMUP_TIME_MS    = 2000;
     static const uint8_t  MAX_UBX_MESSAGE_SIZE  = 44;
     
@@ -36,7 +35,7 @@ public:
         // nothing to do
     }
     
-    void Init()
+    void Init(uint16_t messageIntervalMs = 0)
     {
         // Give the GPS a moment to warm up and do stuff
         PAL.Delay(GPS_WARMUP_TIME_MS);
@@ -48,7 +47,11 @@ public:
         // Configure GPS
         SetHighAltitudeMode();
         EnableOnlyGGAAndRMC();
-        SetMessageInterval(GPS_MESSAGE_INTERVAL);
+        
+        if (messageIntervalMs)
+        {
+            SetMessageInterval(messageIntervalMs);
+        }
         
         // Set timers to come read serial data periodically
         timer_.SetCallback([this]() { this->OnTimeout(); });
