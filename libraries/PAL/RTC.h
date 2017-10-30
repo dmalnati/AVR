@@ -41,10 +41,22 @@ public:
     
     struct Time
     {
-        uint8_t  hour   = 0;
-        uint8_t  minute = 0;
-        uint8_t  second = 0;
-        uint32_t ms     = 0;
+        Time(uint8_t hourInput   = 0,
+             uint8_t minuteInput = 0,
+             uint8_t secondInput = 0,
+             uint32_t msInput    = 0)
+        : hour(hourInput)
+        , minute(minuteInput)
+        , second(secondInput)
+        , ms(msInput)
+        {
+            // Nothing to do
+        }
+        
+        uint8_t  hour;
+        uint8_t  minute;
+        uint8_t  second;
+        uint32_t ms;
     };
     
     Time GetTime()
@@ -112,10 +124,15 @@ public:
     {
         GetTime();
         
+        return GetStringFromTime(t_);
+    }
+    
+    char *GetStringFromTime(Time &t)
+    {
         char *p = buf_;
         
         // HH
-        U32ToStrPadLeft(p, t_.hour, 2, '0');
+        U32ToStrPadLeft(p, t.hour, 2, '0');
         p += 2;
         
         // :
@@ -123,7 +140,7 @@ public:
         p += 1;
         
         // MM
-        U32ToStrPadLeft(p, t_.minute, 2, '0');
+        U32ToStrPadLeft(p, t.minute, 2, '0');
         p += 2;
         
         // :
@@ -131,7 +148,7 @@ public:
         p += 1;
         
         // SS
-        U32ToStrPadLeft(p, t_.second, 2, '0');
+        U32ToStrPadLeft(p, t.second, 2, '0');
         p += 2;
         
         // .
@@ -139,7 +156,7 @@ public:
         p += 1;
         
         // mmm
-        U32ToStrPadLeft(p, t_.ms, 3, '0');
+        U32ToStrPadLeft(p, t.ms, 3, '0');
         p += 3;
         
         // NULL
