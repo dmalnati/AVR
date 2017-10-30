@@ -6,6 +6,9 @@
 #include "StrFormat.h"
 
 
+/*
+ * On 8MHz AVR test program, was seen to be approx 1s fast for each minute.
+ */
 class RTC
 {
     static const uint32_t MS_PER_HOUR   = 60 * 60 * 1000L;
