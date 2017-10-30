@@ -3,6 +3,7 @@
 
 
 #include "Evm.h"
+#include "RTC.h"
 #include "SoftwareSerial.h"
 #include "TimedEventHandler.h"
 #include "PeripheralOpenLog.h"
@@ -61,6 +62,8 @@ class AppHABTracker1
     static const uint8_t SD_LOGGER_FILE_HANDLE_COUNT = 2;
     
     using PeripheralOpenLogType = PeripheralOpenLog<SD_LOGGER_FILE_HANDLE_COUNT>;
+    
+    static const uint16_t GPS_MESSAGE_INTERVAL_MS = 2000;
     
     static const uint16_t BAUD = 9600;
     
@@ -141,7 +144,7 @@ private:
         //ss_.println("Logger Done");
 
         // GPS
-        gps_.Init();
+        gps_.Init(GPS_MESSAGE_INTERVAL_MS);
         //ss_.println("GPS");
         
         // Compass
@@ -212,9 +215,10 @@ private:
     void TakeMeasurements()
     {
         gps_.GetMeasurement(&gpsMeasurement_);
-        gpsClock_.SyncToGPS(gpsMeasurement_.hour,
-                            gpsMeasurement_.minute,
-                            gpsMeasurement_.second);
+        rtc_.Sync(gpsMeasurement_.hour,
+                  gpsMeasurement_.minute,
+                  gpsMeasurement_.second,
+                  0);
         
         barometer_.GetMeasurement(&barometerMeasurement_);
         
@@ -341,21 +345,12 @@ private:
                                uint8_t                              incrSeqNo)
     {
         // Set standard APRS Position Report fields
-        //GPSClock::Time t = gpsClock_.GetTime();
         
-        ss_.print("h:"); ss_.println(gpsMeasurement_.hour);
-        ss_.print("m:"); ss_.println(gpsMeasurement_.minute);
-        ss_.print("s:"); ss_.println(gpsMeasurement_.second);
-        // ss_.print("h:"); ss_.println(t.hour);
-        // ss_.print("m:"); ss_.println(t.minute);
-        // ss_.print("s:"); ss_.println(t.second);
-        
-        aprm.SetTimeLocal(gpsMeasurement_.hour,
-                          gpsMeasurement_.minute,
-                          gpsMeasurement_.second);
-        // aprm.SetTimeLocal(t.hour,
-                          // t.minute,
-                          // t.second);
+        RTC::Time t = rtc_.GetTime();
+
+        aprm.SetTimeLocal(t.hour,
+                          t.minute,
+                          t.second);
         aprm.SetLatitude(gpsMeasurement_.latitudeDegrees,
                          gpsMeasurement_.latitudeMinutes,
                          gpsMeasurement_.latitudeSeconds);
@@ -424,89 +419,7 @@ private:
     };
     
     
-    class GPSClock
-    {
-        static const uint32_t MS_PER_HOUR   = 60 * 60 * 1000L;
-        static const uint32_t MS_PER_MINUTE =      60 * 1000L;
-        static const uint32_t MS_PER_SECOND =           1000L;
 
-    public:
-        void SyncToGPS(uint8_t hour, uint8_t minute, uint8_t second)
-        {
-            if (hour != gpsHour_ && minute != gpsMinute_ && second != gpsSecond_)
-            {
-                gpsHour_   = hour;
-                gpsMinute_ = minute;
-                gpsSecond_ = second;
-
-                timeAtLastFix_ = PAL.Millis();
-            }
-        }
-        
-        struct Time
-        {
-            uint8_t hour   = 0;
-            uint8_t minute = 0;
-            uint8_t second = 0;
-        };
-        
-        Time GetTime()
-        {
-            // Calculate duration since last sync
-            uint32_t timeNow = PAL.Millis();
-            
-            uint32_t timeDiffMs = timeNow - timeAtLastFix_;
-            
-            uint32_t timeDiffRemainingMs = timeDiffMs;
-            
-            // Calculate time that has passed            
-            uint8_t hourOffset = timeDiffRemainingMs / MS_PER_HOUR;
-            timeDiffRemainingMs -= (hourOffset * MS_PER_HOUR);
-            
-            uint8_t minuteOffset = timeDiffRemainingMs / MS_PER_MINUTE;
-            timeDiffRemainingMs -= (minuteOffset * MS_PER_MINUTE);
-            
-            uint8_t secondOffset = timeDiffRemainingMs / MS_PER_SECOND;
-            
-            
-            // Add time to last known sync'd clock
-            Time t;
-            t.hour   = gpsHour_;
-            t.minute = gpsMinute_;
-            t.second = gpsSecond_;
-            
-            t.second += secondOffset;
-            if (t.second >= 60)
-            {
-                minuteOffset += 1;
-                
-                t.second -= 60;
-            }
-            
-            t.minute += minuteOffset;
-            if (t.minute >= 60)
-            {
-                hourOffset += 1;
-                
-                t.minute -= 60;
-            }
-            
-            t.hour += hourOffset;
-            if (t.hour >= 24)
-            {
-                t.hour -= 24;
-            }
-            
-            return t;
-        }
-    
-    private:
-        uint8_t gpsHour_;
-        uint8_t gpsMinute_;
-        uint8_t gpsSecond_;
-        
-        uint32_t timeAtLastFix_;
-    };
 
     
 private:
@@ -536,7 +449,7 @@ private:
     uint16_t                   seqNo_;
     
     
-    GPSClock gpsClock_;
+    RTC rtc_;
     
 
     TimedEventHandlerDelegate tedHeartbeat_;
