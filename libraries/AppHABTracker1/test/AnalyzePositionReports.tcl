@@ -50,6 +50,12 @@ proc Init { } {
 
 
 proc ProcessPosReport { strAltReport } {
+    if { [catch { ProcessPosReportCatchMe $strAltReport } err] } {
+        puts "ERR strAltReport($strAltReport)"
+    }
+}
+
+proc ProcessPosReportCatchMe { strAltReport } {
     global FIELD_IDX_START_IDX_END_LIST
     global FIELD_TYPE_LIST
 
