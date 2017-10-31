@@ -131,8 +131,13 @@ private:
         tedTransmit_.RegisterForTimedEventInterval(cfg_.aprsReportIntervalMs);
         
         tedLog_.SetCallback([this](){ OnTimeoutLog(); });
-        tedLog_.RegisterForTimedEventInterval(cfg_.logIntervalMs);
+        ScheduleTimeoutLog();
         //ss_.println("Callbacks");
+    }
+    
+    void ScheduleTimeoutLog()
+    {
+        tedLog_.RegisterForTimedEventInterval(cfg_.logIntervalMs);
     }
     
     void InitPeripherals()
@@ -190,6 +195,12 @@ private:
         SetGPSLockStatus();
         Transmit();
         LogData();
+        
+        // Likely the log timeout is way overdue at this point due to the long
+        // time it takes to transmit.  Instead of having that timer go off
+        // immediately, duplicating the effort expended logging here,
+        // reschedule the log timer.
+        ScheduleTimeoutLog();
     }
     
     void SetGPSLockStatus()
