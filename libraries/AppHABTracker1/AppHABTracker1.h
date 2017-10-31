@@ -59,11 +59,12 @@ struct AppHABTracker1Config
 
 class AppHABTracker1
 {
-    static const uint8_t SD_LOGGER_FILE_HANDLE_COUNT = 2;
+    static const uint8_t SD_LOGGER_FILE_HANDLE_COUNT = 1;
     
     using PeripheralOpenLogType = PeripheralOpenLog<SD_LOGGER_FILE_HANDLE_COUNT>;
     
-    static const uint16_t GPS_MESSAGE_INTERVAL_MS = 2000;
+    static const uint16_t GPS_MESSAGE_INTERVAL_MS =  2000;
+    static const uint16_t GPS_RE_INIT_INTERVAL_MS = 30000;
     
     static const uint16_t BAUD = 9600;
     
@@ -78,7 +79,6 @@ public:
     , ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
           PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialOutput))
     , sdLogger_(cfg_.pinSerialTxSdLogger)
-    , logOp_(NULL)
     , logCsv_(NULL)
     , gps_(cfg_.pinSerialRxGPS, cfg_.pinSerialTxGPS)
     , vccMeasurement_(0.0)
@@ -124,7 +124,6 @@ private:
         
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
-        //ss_.println("LEDs");
         
         // Set up timed events to drive application
         tedTransmit_.SetCallback([this](){ OnTimeoutTransmit(); });
@@ -132,7 +131,9 @@ private:
         
         tedLog_.SetCallback([this](){ OnTimeoutLog(); });
         ScheduleTimeoutLog();
-        //ss_.println("Callbacks");
+        
+        tedGpsReInit_.SetCallback([this](){ OnTimeoutGpsReInit(); });
+        tedGpsReInit_.RegisterForTimedEventInterval(GPS_RE_INIT_INTERVAL_MS);
     }
     
     void ScheduleTimeoutLog()
@@ -144,21 +145,16 @@ private:
     {
         // SD Logger
         sdLogger_.Init();
-        logOp_  = sdLogger_.GetFileHandle("log.txt");
         logCsv_ = sdLogger_.GetFileHandle("log.csv");
-        //ss_.println("Logger Done");
 
         // GPS
-        gps_.Init(GPS_MESSAGE_INTERVAL_MS);
-        //ss_.println("GPS");
+        OnTimeoutGpsReInit();
         
         // Compass
         compass_.Init();
-        //ss_.println("Compass");
         
         // Barometer
         barometer_.Init();
-        //ss_.println("Barometer");
         
         // Transmitter
         amt_.SetRadioWarmupDurationMs(cfg_.radioWarmupDurationMs);
@@ -167,7 +163,6 @@ private:
         amt_.SetTransmitCount(cfg_.transmitCount);
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
-        //ss_.println("Transmitter");
     }
 
 
@@ -201,6 +196,11 @@ private:
         // immediately, duplicating the effort expended logging here,
         // reschedule the log timer.
         ScheduleTimeoutLog();
+    }
+    
+    void OnTimeoutGpsReInit()
+    {
+        gps_.Init(GPS_MESSAGE_INTERVAL_MS);
     }
     
     void SetGPSLockStatus()
@@ -247,8 +247,6 @@ private:
     
     void LogData()
     {
-        ss_.println("LS");
-
         // Make use of the transmitter buffer and formatting capabilities but
         // not for actually transmitting.
         //
@@ -288,9 +286,6 @@ private:
                 ss_.println();
             }
         }
-        
-        ss_.println("LE");
-        ss_.println();
     }
     
     
@@ -302,8 +297,6 @@ private:
     
     void Transmit()
     {
-        ss_.println("TS");
-        
         // Fill out basic AX.25 UI Frame details
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
@@ -341,8 +334,6 @@ private:
         
         PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
         gps_.EnableSerialInput();
-        
-        ss_.println("TE");
     }
     
     
@@ -419,18 +410,6 @@ private:
     }
 
     
-    
-private:
-    
-    class OperationalLogger
-    {
-    public:
-    
-    private:
-    };
-    
-    
-
 
     
 private:
@@ -442,7 +421,6 @@ private:
     SoftwareSerial ss_;
     
     PeripheralOpenLogType        sdLogger_;
-    PeripheralOpenLogFileHandle *logOp_;
     PeripheralOpenLogFileHandle *logCsv_;
     
     SensorGPSUblox               gps_;
@@ -459,16 +437,12 @@ private:
     AX25UIMessageTransmitter<> amt_;
     uint16_t                   seqNo_;
     
-    
     RTC rtc_;
-    
 
     TimedEventHandlerDelegate tedHeartbeat_;
     TimedEventHandlerDelegate tedTransmit_;
     TimedEventHandlerDelegate tedLog_;
-    
-    
-    
+    TimedEventHandlerDelegate tedGpsReInit_;
 };
 
 
