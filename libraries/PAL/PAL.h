@@ -22,6 +22,22 @@
  *   
  */
 
+
+enum class WatchdogTimeout : uint8_t
+{
+    TIMEOUT_15_MS   = WDTO_15MS,
+    TIMEOUT_30_MS   = WDTO_30MS,
+    TIMEOUT_60_MS   = WDTO_60MS,
+    TIMEOUT_120_MS  = WDTO_120MS,
+    TIMEOUT_250_MS  = WDTO_250MS,
+    TIMEOUT_500_MS  = WDTO_500MS,
+    TIMEOUT_1000_MS = WDTO_1S,
+    TIMEOUT_2000_MS = WDTO_2S,
+    TIMEOUT_4000_MS = WDTO_4S,
+    TIMEOUT_8000_MS = WDTO_8S,
+};
+
+
 // Necessary to allow Watchdog to be disabled after soft reboot.
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 
@@ -40,7 +56,7 @@ public:
         // Clear reset flag register value now that copy has been taken
         MCUSR = 0;
         
-        DisableWatchdogAfterSoftReset();
+        WatchdogDisable();
     }
     
     static void PinMode(Pin pin, uint8_t mode)
@@ -348,14 +364,24 @@ public:
         return (uint32_t)F_CPU / GetCpuPrescalerValue();
     }
     
-    static void DisableWatchdogAfterSoftReset()
+    static void WatchdogEnable(WatchdogTimeout wt)
+    {
+        wdt_enable((uint8_t)wt);
+    }
+    
+    static void WatchdogReset()
+    {
+        wdt_reset();
+    }
+    
+    static void WatchdogDisable()
     {
         wdt_disable();
     }
     
     void SoftReset()
     {
-        wdt_enable(WDTO_15MS);
+        WatchdogEnable(WatchdogTimeout::TIMEOUT_15_MS);
         for(;;) { }
     }
     
