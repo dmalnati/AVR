@@ -68,6 +68,8 @@ class AppHABTracker1
     
     static const uint16_t BAUD = 9600;
     
+    static const WatchdogTimeout WATCHDOG_TIMEOUT = WatchdogTimeout::TIMEOUT_8000_MS;
+    
     static const uint8_t C_IDLE  =  0;
     static const uint8_t C_TIMED = 10;
     static const uint8_t C_INTER =  0;
@@ -79,7 +81,7 @@ public:
     , ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
           PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialOutput))
     , sdLogger_(cfg_.pinSerialTxSdLogger)
-    , logCsv_(NULL)
+    , logTxt_(NULL)
     , gps_(cfg_.pinSerialRxGPS, cfg_.pinSerialTxGPS)
     , vccMeasurement_(0.0)
     , amt_(cfg_.pinTxEnable)
@@ -92,11 +94,14 @@ public:
     {
         // Support serial output at all times
         ss_.begin(BAUD);
-        ss_.println("Starting");
+        ss_.print("Starting: ");
+        ss_.print((uint8_t)PAL.GetStartupMode());
+        ss_.println();
         
         // Initialize
         InitApplication();
         InitPeripherals();
+        InitWatchdog();
         
         // Handle events
         ss_.println("Evm");
@@ -145,7 +150,7 @@ private:
     {
         // SD Logger
         sdLogger_.Init();
-        logCsv_ = sdLogger_.GetFileHandle("log.csv");
+        logTxt_ = sdLogger_.GetFileHandle("log.txt");
 
         // GPS
         OnTimeoutGpsReInit();
@@ -164,6 +169,11 @@ private:
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
     }
+    
+    void InitWatchdog()
+    {
+        PAL.WatchdogEnable(WATCHDOG_TIMEOUT);
+    }
 
 
     ////////////////////////////////////////////////////////////////////////
@@ -174,6 +184,8 @@ private:
     
     void OnTimeoutHeartbeat()
     {
+        PAL.WatchdogReset();
+        
         PAL.DigitalToggle(cfg_.pinLedHeartbeat);
     }
     
@@ -278,8 +290,8 @@ private:
             if (bytesUsed)
             {
                 // Write to SD card
-                sdLogger_.Append(bufInfo, bytesUsed);
-                sdLogger_.Append('\n');
+                logTxt_->Append(bufInfo, bytesUsed);
+                logTxt_->Append('\n');
                 
                 // Debug
                 ss_.write(bufInfo, bytesUsed);
@@ -421,7 +433,7 @@ private:
     SoftwareSerial ss_;
     
     PeripheralOpenLogType        sdLogger_;
-    PeripheralOpenLogFileHandle *logCsv_;
+    PeripheralOpenLogFileHandle *logTxt_;
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsMeasurement_;

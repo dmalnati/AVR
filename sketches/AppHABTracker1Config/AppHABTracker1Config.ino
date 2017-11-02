@@ -41,7 +41,7 @@ static AppHABTracker1Config cfg =
     .flagStartDurationMs     = 500,
     .flagEndDurationMs       = 10,
     .transmitCount           = 2,
-    .delayMsBetweenTransmits = 5000,
+    .delayMsBetweenTransmits = 3000,
 };
 
 static AppHABTracker1 app(cfg);
