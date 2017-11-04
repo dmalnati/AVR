@@ -5,7 +5,7 @@
 
 
 
-static const int8_t PIN_LOGGER_TX = 5;
+static const int8_t PIN_LOGGER_TX = 25;
 
 static const uint32_t DEBUG_INTERVAL_MS = 1000;
 
@@ -17,6 +17,8 @@ static PeripheralOpenLog<2> logger(PIN_LOGGER_TX);
 
 void setup()
 {
+    Serial.begin(9600);
+    Serial.println("Starting");
     logger.Init();
 
     PeripheralOpenLogFileHandle *fhOne = logger.GetFileHandle("one.txt");
@@ -29,11 +31,13 @@ void setup()
 
         if ((count % 2))
         {
+            Serial.println("Appending ONE");
             fhOne->Append(count);
             fhOne->Append(" ");
         }
         else
         {
+            Serial.println("Appending TWO");
             fhTwo->Append(count);
             fhTwo->Append(" ");
         }
