@@ -100,8 +100,8 @@ public:
         
         // Initialize
         InitApplication();
-        InitPeripherals();
         InitWatchdog();
+        InitPeripherals();
         
         // Handle events
         ss_.println("Evm");
@@ -191,13 +191,19 @@ private:
     
     void OnTimeoutLog()
     {
+        PAL.WatchdogReset();
+        
         TakeMeasurements();
         SetGPSLockStatus();
         LogData();
+        
+        PAL.WatchdogReset();
     }
     
     void OnTimeoutTransmit()
     {
+        PAL.WatchdogReset();
+        
         TakeMeasurements();
         SetGPSLockStatus();
         Transmit();
@@ -208,11 +214,17 @@ private:
         // immediately, duplicating the effort expended logging here,
         // reschedule the log timer.
         ScheduleTimeoutLog();
+        
+        PAL.WatchdogReset();
     }
     
     void OnTimeoutGpsReInit()
     {
+        PAL.WatchdogReset();
+        
         gps_.Init(GPS_MESSAGE_INTERVAL_MS);
+
+        PAL.WatchdogReset();
     }
     
     void SetGPSLockStatus()

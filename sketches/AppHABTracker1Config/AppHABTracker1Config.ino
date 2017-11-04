@@ -6,7 +6,8 @@ static AppHABTracker1Config cfg =
     // Application configuration
     .pinSerialOutput = 26,
     
-    .aprsReportIntervalMs = 10000,
+    //.aprsReportIntervalMs = 10000,
+    .aprsReportIntervalMs = 5000,
     .logIntervalMs        =  1000,
 
     .pinLedHeartbeat          = 18,
