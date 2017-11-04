@@ -2,7 +2,8 @@
 #include "APRSPositionReportMessageHABTracker1.h"
 
 
-static AX25UIMessageTransmitter<> amt;
+static uint8_t PIN_TX_ENABLE = 14;
+static AX25UIMessageTransmitter<> amt(PIN_TX_ENABLE);
 
 
 void Test()
