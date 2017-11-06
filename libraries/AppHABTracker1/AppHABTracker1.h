@@ -17,13 +17,13 @@
 struct AppHABTracker1Config
 {
     // Application configuration
-    uint8_t pinSerialOutput;
+    uint8_t pinSerialDebugOutput;
     
     uint32_t aprsReportIntervalMs;
     uint32_t logIntervalMs;
     
     uint8_t  pinLedHeartbeat;
-    uint32_t heartbeatBlinkIntervalMs;
+    uint32_t heartbeatIntervalMs;
     
     uint8_t  pinLedGpsLock;
     uint32_t gpsLockGoodAgeLimitMs;
@@ -79,7 +79,7 @@ public:
     AppHABTracker1(AppHABTracker1Config &cfg)
     : cfg_(cfg)
     , ss_(PAL.GetArduinoPinFromPhysicalPin(-1),
-          PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialOutput))
+          PAL.GetArduinoPinFromPhysicalPin(cfg_.pinSerialDebugOutput))
     , sdLogger_(cfg_.pinSerialTxSdLogger)
     , logTxt_(NULL)
     , gps_(cfg_.pinSerialRxGPS, cfg_.pinSerialTxGPS)
@@ -122,7 +122,7 @@ private:
         PAL.PinMode(cfg_.pinLedHeartbeat, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedHeartbeat, HIGH);
         tedHeartbeat_.SetCallback([this](){ OnTimeoutHeartbeat(); });
-        tedHeartbeat_.RegisterForTimedEventInterval(cfg_.heartbeatBlinkIntervalMs);
+        tedHeartbeat_.RegisterForTimedEventInterval(cfg_.heartbeatIntervalMs);
         
         PAL.PinMode(cfg_.pinLedGpsLock, OUTPUT);
         PAL.DigitalWrite(cfg_.pinLedGpsLock, LOW);
@@ -151,15 +151,27 @@ private:
         // SD Logger
         sdLogger_.Init();
         logTxt_ = sdLogger_.GetFileHandle("log.txt");
+        
+        PAL.WatchdogReset();
+
 
         // GPS
         OnTimeoutGpsReInit();
         
+        PAL.WatchdogReset();
+        
+        
         // Compass
         compass_.Init();
         
+        PAL.WatchdogReset();
+        
+        
         // Barometer
         barometer_.Init();
+        
+        PAL.WatchdogReset();
+        
         
         // Transmitter
         amt_.SetRadioWarmupDurationMs(cfg_.radioWarmupDurationMs);
@@ -168,6 +180,8 @@ private:
         amt_.SetTransmitCount(cfg_.transmitCount);
         amt_.SetDelayMsBetweenTransmits(cfg_.delayMsBetweenTransmits);
         amt_.Init();
+        
+        PAL.WatchdogReset();
     }
     
     void InitWatchdog()
@@ -249,11 +263,15 @@ private:
 
     void TakeMeasurements()
     {
-        gps_.GetMeasurement(&gpsMeasurement_);
-        rtc_.Sync(gpsMeasurement_.hour,
-                  gpsMeasurement_.minute,
-                  gpsMeasurement_.second,
-                  0);
+        uint8_t retValGps = gps_.GetMeasurement(&gpsMeasurement_);
+        
+        if (retValGps)
+        {
+            rtc_.Sync(gpsMeasurement_.hour,
+                      gpsMeasurement_.minute,
+                      gpsMeasurement_.second,
+                      0);
+        }
         
         barometer_.GetMeasurement(&barometerMeasurement_);
         
