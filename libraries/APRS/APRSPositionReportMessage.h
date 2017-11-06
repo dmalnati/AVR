@@ -304,7 +304,7 @@ public:
     //
     void SetCommentCourseAndSpeed(uint16_t course, uint16_t speed)
     {
-        AppendCommentU32PadLeft(course, 3, 1, 360);
+        AppendCommentU32PadLeft(course, 3, 0, 359);
         AppendCommentString("/");
         AppendCommentU32PadLeft(speed, 3, 0, 999);
     }
