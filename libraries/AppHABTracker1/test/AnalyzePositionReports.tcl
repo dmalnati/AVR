@@ -3,6 +3,13 @@
 exec tclsh "$0" "$@"
 
 
+proc Puts { str } {
+    puts $str
+
+    flush stdout
+}
+
+
 set FIELD_IDX_START_IDX_END_LIST {
     time               1  6
     latitude           8  15
@@ -45,13 +52,13 @@ proc GetCsvColumnList { } {
 }
 
 proc Init { } {
-    puts [join [GetCsvColumnList] ","]
+    Puts [join [GetCsvColumnList] ","]
 }
 
 
 proc ProcessPosReport { strAltReport } {
     if { [catch { ProcessPosReportCatchMe $strAltReport } err] } {
-        puts "ERR strAltReport($strAltReport)"
+        Puts "ERR strAltReport($strAltReport)"
     }
 }
 
@@ -66,7 +73,7 @@ proc ProcessPosReportCatchMe { strAltReport } {
 
         upvar 0 $field val
 
-        #puts "${field}($val)"
+        #Puts "${field}($val)"
 
         lappend valList $val
     }
@@ -88,7 +95,7 @@ proc ProcessPosReportCatchMe { strAltReport } {
 
         upvar 0 $field val
 
-        #puts "${field}($val)"
+        #Puts "${field}($val)"
 
         lappend valList $val
 
@@ -98,7 +105,7 @@ proc ProcessPosReportCatchMe { strAltReport } {
                                 [EncodeTypeToEncodedByteLen $type]]
     }
 
-    #puts [join $valList ","]
+    #Puts [join $valList ","]
 
 
 
@@ -107,86 +114,86 @@ proc ProcessPosReportCatchMe { strAltReport } {
 
     # Time
     set timeO [ProcessTime $time]
-    #puts $timeO
+    #Puts $timeO
     lappend valListO $timeO
 
     # latitude
     set latitudeO [ProcessLatLong $latitude]
-    #puts $latitudeO
+    #Puts $latitudeO
     lappend valListO $latitudeO
 
     # longitude
     set longitudeO [ProcessLatLong $longitude]
-    #puts $longitudeO
+    #Puts $longitudeO
     lappend valListO $longitudeO
 
     # courseDegrees (no change necessary)
-    #puts $courseDegrees
+    #Puts $courseDegrees
     lappend valListO $courseDegrees
 
     # speedMph (actually in knots, not mph, but I fake the header for the csv)
     set speedMphO [ProcessSpeed $speedMph]
-    #puts $speedMphO
+    #Puts $speedMphO
     lappend valListO $speedMphO
 
     # altitudeFt (no change necessary)
     set altitudeFtO [ProcessAltitudeFt $altitudeFt]
-    #puts $altitudeFtO
+    #Puts $altitudeFtO
     lappend valListO $altitudeFtO
 
     # barometricPressureMbar (no change necessary)
-    #puts $barometricPressureMbar
+    #Puts $barometricPressureMbar
     lappend valListO $barometricPressureMbar
 
     # tempF1 (no change necessary)
-    #puts $tempF1
+    #Puts $tempF1
     lappend valListO $tempF1
 
     # magX
     set magXO [ProcessMag $magX]
-    #puts $magXO
+    #Puts $magXO
     lappend valListO $magXO
 
     # magY
     set magYO [ProcessMag $magY]
-    #puts $magYO
+    #Puts $magYO
     lappend valListO $magYO
 
     # magZ
     set magZO [ProcessMag $magZ]
-    #puts $magZO
+    #Puts $magZO
     lappend valListO $magZO
 
     # accelX
     set accelXO [ProcessAccel $accelX]
-    #puts $accelXO
+    #Puts $accelXO
     lappend valListO $accelXO
 
     # accelY
     set accelYO [ProcessAccel $accelY]
-    #puts $accelYO
+    #Puts $accelYO
     lappend valListO $accelYO
 
     # accelZ
     set accelZO [ProcessAccel $accelZ]
-    #puts $accelZO
+    #Puts $accelZO
     lappend valListO $accelZO
 
     # tempF2 (no change necessary)
-    #puts $tempF2
+    #Puts $tempF2
     lappend valListO $tempF2
 
     # voltage
     set voltageO [ProcessVoltage $voltage]
-    #puts $voltageO
+    #Puts $voltageO
     lappend valListO $voltageO
 
     # seqNo (no change necessary)
-    #puts $seqNo
+    #Puts $seqNo
     lappend valListO $seqNo
 
 
-    puts [join $valListO ","]
+    Puts [join $valListO ","]
 
 }
 
@@ -366,7 +373,7 @@ proc Main { } {
     global argv0
 
     if { $argc != 1 || [lindex $argv 0] != "-" } {
-        puts "Usage: $argv0 -"
+        Puts "Usage: $argv0 -"
         exit -1
     }
 
