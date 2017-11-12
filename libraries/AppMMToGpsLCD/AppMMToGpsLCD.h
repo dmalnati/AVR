@@ -46,10 +46,11 @@ public:
         
         lcd_.Init();
         lcd_.PrintAt( 0, 0, "time: -");
+        lcd_.PrintAt(14, 0, "(0   )");
         lcd_.PrintAt( 0, 1, "lat : -");
         lcd_.PrintAt( 0, 2, "lng : -");
-        lcd_.PrintAt( 0, 3, "age : -");
-        lcd_.PrintAt(13, 3, "f: -");
+        lcd_.PrintAt( 0, 3, "alt : -");
+        lcd_.PrintAt(13, 3, "f: 0");
         
         ted_.SetCallback([this](){ OnSecondInterval(); });
         ted_.RegisterForTimedEventInterval(ONE_SECOND_IN_MS);
@@ -80,7 +81,7 @@ private:
     // 001221h   = time
     // 2400.00S  = latitude
     // 18000.00E = longitude
-    
+    // A=999999  = altitude
     
     void OnSerialPoll()
     {
@@ -117,6 +118,10 @@ private:
                         
                         GetBytesFromQueueAsString(71, buf, 9);
                         PrintLng(buf);
+                        Serial.println(buf);
+                        
+                        GetBytesFromQueueAsString(91, buf, 6);
+                        PrintAlt(buf);
                         Serial.println(buf);
                         
                         secsSinceLast_ = 0;
@@ -173,10 +178,10 @@ private:
      * 00000000001111111111
      * 01234567890123456789
      *                     
-     * time: 001221h       
+     * time: 001221h (0000)       
      * lat : 2400.00S      
      * lng : 18000.00E     
-     * age : aaaaa  f: ffff
+     * alt : aaaaaa f: ffff
      *
      */
 
@@ -197,8 +202,13 @@ private:
     
     void PrintAge()
     {
-        lcd_.PrintAt(6, 3, "     ");
-        lcd_.PrintAt(6, 3, secsSinceLast_);
+        lcd_.PrintAt(15, 0, "    ");
+        lcd_.PrintAt(15, 0, secsSinceLast_);
+    }
+    
+    void PrintAlt(const char *str)
+    {
+        lcd_.PrintAt(6, 3, str);
     }
     
     void PrintFiltered()
