@@ -12,8 +12,8 @@ class LCDFrentaly20x4
     static const uint8_t ROW_COUNT = 4;
     
 public:
-    LCDFrentaly20x4()
-    : lcd_(I2C_ADDR, COL_COUNT, ROW_COUNT)
+    LCDFrentaly20x4(uint8_t i2cAddr = I2C_ADDR)
+    : lcd_(i2cAddr, COL_COUNT, ROW_COUNT)
     {
         // Nothing to do
     }
