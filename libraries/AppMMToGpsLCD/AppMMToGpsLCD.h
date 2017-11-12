@@ -13,6 +13,8 @@ struct AppMMToGpsLCDConfig
 {
     uint32_t baud;
     uint8_t  i2cAddrLcd;
+    
+    const char *callsign;
 };
 
 class AppMMToGpsLCD
@@ -31,7 +33,8 @@ public:
     AppMMToGpsLCD(AppMMToGpsLCDConfig &cfg)
     : cfg_(cfg)
     , lcd_(cfg_.i2cAddrLcd)
-    , secsSinceLast_(-1)
+    , secsSinceLast_(0)
+    , filteredCount_(0)
     {
         
     }
@@ -39,12 +42,14 @@ public:
     void Run()
     {
         Serial.begin(cfg_.baud);
+        Serial.println("Starting");
         
         lcd_.Init();
-        lcd_.PrintAt(0, 0, "time: -");
-        lcd_.PrintAt(0, 1, "lat : -");
-        lcd_.PrintAt(0, 2, "lng : -");
-        lcd_.PrintAt(0, 3, "age : -");
+        lcd_.PrintAt( 0, 0, "time: -");
+        lcd_.PrintAt( 0, 1, "lat : -");
+        lcd_.PrintAt( 0, 2, "lng : -");
+        lcd_.PrintAt( 0, 3, "age : -");
+        lcd_.PrintAt(13, 3, "f: -");
         
         ted_.SetCallback([this](){ OnSecondInterval(); });
         ted_.RegisterForTimedEventInterval(ONE_SECOND_IN_MS);
@@ -61,12 +66,9 @@ private:
 
     void OnSecondInterval()
     {
-        if (secsSinceLast_ != -1)
-        {
-            ++secsSinceLast_;
-            
-            PrintAge();
-        }
+        ++secsSinceLast_;
+        
+        PrintAge();
     }
 
 
@@ -93,32 +95,46 @@ private:
                 static const uint8_t BUF_SIZE = 20;
                 char buf[BUF_SIZE] = { 0 };
                 
-                GetBytesFromQueueAsString(0, buf, 3);
-                
                 // Now look for whether this line looks like what we want
+                GetBytesFromQueueAsString(0, buf, 3);
                 if (!strcmp(buf, "SRC"))
                 {
-                    // this is it, extract data
+                    // this is the right line, confirm from me
                     
-                    Serial.println();
-                    Serial.println("PARSED");
-                    
-                    GetBytesFromQueueAsString(55, buf, 6);
-                    PrintTime(buf);
-                    Serial.println(buf);
-                    
-                    GetBytesFromQueueAsString(62, buf, 8);
-                    PrintLat(buf);
-                    Serial.println(buf);
-                    
-                    GetBytesFromQueueAsString(71, buf, 9);
-                    PrintLng(buf);
-                    Serial.println(buf);
-                    
-                    secsSinceLast_ = 0;
-                    PrintAge();
-                    
-                    Serial.println();
+                    GetBytesFromQueueAsString(6, buf, strlen(cfg_.callsign));
+                    if (!strcmp(buf, cfg_.callsign))
+                    {
+                        Serial.println();
+                        Serial.println("PARSED");
+                        
+                        GetBytesFromQueueAsString(55, buf, 6);
+                        PrintTime(buf);
+                        Serial.println(buf);
+                        
+                        GetBytesFromQueueAsString(62, buf, 8);
+                        PrintLat(buf);
+                        Serial.println(buf);
+                        
+                        GetBytesFromQueueAsString(71, buf, 9);
+                        PrintLng(buf);
+                        Serial.println(buf);
+                        
+                        secsSinceLast_ = 0;
+                        PrintAge();
+                        
+                        Serial.println();
+                    }
+                    else
+                    {
+                        ++filteredCount_;
+                        
+                        PrintFiltered();
+                        
+                        Serial.println();
+                        Serial.println("FILTERED");
+                        Serial.println(buf);
+                        Serial.println();
+                    }
                 }
                 
                 // blow away buffer, either not the line we want or we just used
@@ -154,12 +170,13 @@ private:
     /*
      * LCD display map
      *
+     * 00000000001111111111
      * 01234567890123456789
-     *  
-     * time: 001221h
-     * lat : 2400.00S
-     * lng : 18000.00E
-     * age : <secsSinceLast>
+     *                     
+     * time: 001221h       
+     * lat : 2400.00S      
+     * lng : 18000.00E     
+     * age : aaaaa  f: ffff
      *
      */
 
@@ -180,8 +197,14 @@ private:
     
     void PrintAge()
     {
-        lcd_.PrintAt(6, 3, "          ");
+        lcd_.PrintAt(6, 3, "     ");
         lcd_.PrintAt(6, 3, secsSinceLast_);
+    }
+    
+    void PrintFiltered()
+    {
+        lcd_.PrintAt(16, 3, "    ");
+        lcd_.PrintAt(16, 3, filteredCount_);
     }
     
     
@@ -192,7 +215,8 @@ private:
 
     LCDFrentaly20x4 lcd_;
     
-    int32_t secsSinceLast_;
+    uint32_t secsSinceLast_;
+    uint32_t filteredCount_;
     
     TimedEventHandlerDelegate ted_;
     IdleTimeEventHandlerDelegate ied_;
