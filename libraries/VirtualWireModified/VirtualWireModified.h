@@ -160,7 +160,7 @@
 #undef round
 
 /// Maximum number of bytes in a message, counting the byte count and FCS
-#define VW_MAX_MESSAGE_LEN 30
+#define VW_MAX_MESSAGE_LEN 40
 
 /// The maximum payload length
 #define VW_MAX_PAYLOAD VW_MAX_MESSAGE_LEN-3
