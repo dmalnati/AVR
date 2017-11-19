@@ -1,5 +1,5 @@
-#ifndef __APP_MM_TO_GPS_LCD_H__
-#define __APP_MM_TO_GPS_LCD_H__
+#ifndef __APP_HAB_TRACKER_1_RECEIVER_H__
+#define __APP_HAB_TRACKER_1_RECEIVER_H__
 
 
 #include "Container.h"
@@ -10,7 +10,7 @@
 #include "LCDFrentaly20x4.h"
 
 
-struct AppMMToGpsLCDConfig
+struct AppHABTracker1ReceiverConfig
 {
     // APRS Modem configuration
     uint32_t baud;
@@ -24,7 +24,7 @@ struct AppMMToGpsLCDConfig
     uint8_t  i2cAddrLcd;
 };
 
-class AppMMToGpsLCD
+class AppHABTracker1Receiver
 {
     static const uint8_t C_IDLE  = 10;
     static const uint8_t C_TIMED = 10;
@@ -71,7 +71,7 @@ class AppMMToGpsLCD
 
 public:
     
-    AppMMToGpsLCD(AppMMToGpsLCDConfig &cfg)
+    AppHABTracker1Receiver(AppHABTracker1ReceiverConfig &cfg)
     : cfg_(cfg)
     , lcd_(cfg_.i2cAddrLcd)
     , activeSource_(ActiveSource::PRIMARY)
@@ -414,7 +414,7 @@ private:
 private:
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
     
-    AppMMToGpsLCDConfig &cfg_;
+    AppHABTracker1ReceiverConfig &cfg_;
 
     LCDFrentaly20x4 lcd_;
     
@@ -434,7 +434,7 @@ private:
 
 
 
-#endif  // __APP_MM_TO_GPS_LCD_H__
+#endif  // __APP_HAB_TRACKER_1_RECEIVER_H__
 
 
 

@@ -1,7 +1,7 @@
-#include "AppMMToGpsLCD.h"
+#include "AppHABTracker1Receiver.h"
 
 
-static AppMMToGpsLCDConfig cfg =
+static AppHABTracker1ReceiverConfig cfg =
 {
     // APRS Modem configuration
     .baud       = 85000,
@@ -14,7 +14,7 @@ static AppMMToGpsLCDConfig cfg =
     .i2cAddrLcd = 0x27,
 };
 
-static AppMMToGpsLCD app(cfg);
+static AppHABTracker1Receiver app(cfg);
 
 
 void setup()
