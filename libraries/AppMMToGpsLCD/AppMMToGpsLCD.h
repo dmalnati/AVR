@@ -6,26 +6,67 @@
 #include "Evm.h"
 #include "TimedEventHandler.h"
 #include "IdleTimeEventHandler.h"
+#include "RFLink.h"
 #include "LCDFrentaly20x4.h"
 
 
 struct AppMMToGpsLCDConfig
 {
+    // APRS Modem configuration
     uint32_t baud;
-    uint8_t  i2cAddrLcd;
     
     const char *callsign;
+    
+    // 433MHz configuration
+    uint8_t pinRfRx;
+    
+    // Circuit configuration
+    uint8_t  i2cAddrLcd;
 };
 
 class AppMMToGpsLCD
 {
-    static const uint8_t C_IDLE  = 1;
-    static const uint8_t C_TIMED = 1;
+    static const uint8_t C_IDLE  = 10;
+    static const uint8_t C_TIMED = 10;
     static const uint8_t C_INTER = 0;
+    
+    static const uint8_t RF_REALM    = 2;
+    static const uint8_t RF_SRC_ADDR = 2;
+    static const uint8_t RF_DST_ADDR = 1;
+    static const uint8_t PROTOCOL_ID = 2;
     
     static const uint32_t ONE_SECOND_IN_MS = 1000;
     
     static const uint8_t BUF_BYTES = 200;
+
+    struct PayloadBuffer
+    {
+        char timeStr[6] = { 0 };    // 191148
+        char latStr[8]  = { 0 };     // 4044.23N
+        char lngStr[9]  = { 0 };     // 07402.04W
+        char altStr[6]  = { 0 };     // 000123
+    };
+    
+    struct SourceState
+    {
+        SourceState(const char *srcNameInput)
+        {
+            srcName = srcNameInput;
+        }
+        
+        const char *srcName;
+        
+        PayloadBuffer payloadBuffer;
+        
+        uint32_t secsSinceLast = 0;
+        uint32_t filteredCount = 0;
+    };
+    
+    enum class ActiveSource : uint8_t
+    {
+        PRIMARY,
+        SECONDARY
+    };
 
 
 public:
@@ -33,10 +74,11 @@ public:
     AppMMToGpsLCD(AppMMToGpsLCDConfig &cfg)
     : cfg_(cfg)
     , lcd_(cfg_.i2cAddrLcd)
-    , secsSinceLast_(0)
-    , filteredCount_(0)
+    , activeSource_(ActiveSource::PRIMARY)
+    , sourceStateSerial_("PRI")
+    , sourceStateRf_("SEC")
     {
-        
+        // Nothing to do
     }
     
     void Run()
@@ -44,20 +86,34 @@ public:
         Serial.begin(cfg_.baud);
         Serial.println("Starting");
         
+        // Set up LCD
         lcd_.Init();
-        lcd_.PrintAt( 0, 0, "time: -");
-        lcd_.PrintAt(14, 0, "(0   )");
-        lcd_.PrintAt( 0, 1, "lat : -");
-        lcd_.PrintAt( 0, 2, "lng : -");
-        lcd_.PrintAt( 0, 3, "alt : -");
-        lcd_.PrintAt(13, 3, "f: 0");
+        lcd_.PrintAt( 8, 1, ",");
+        lcd_.PrintAt(13, 2, "(0    )");
+        lcd_.PrintAt( 0, 3, "(0    )");
+        lcd_.PrintAt(13, 3, "(0    )");
+        OnPrimaryDataRefreshed();
         
-        ted_.SetCallback([this](){ OnSecondInterval(); });
-        ted_.RegisterForTimedEventInterval(ONE_SECOND_IN_MS);
-        
+        // Set up primary source
         ied_.SetCallback([this](){ OnSerialPoll(); });
         ied_.RegisterForIdleTimeEvent();
         
+        // Set up secondary source
+        rfLink_.SetRealm(RF_REALM);
+        rfLink_.SetSrcAddr(RF_SRC_ADDR);
+        rfLink_.SetDstAddr(RF_DST_ADDR);
+        rfLink_.SetOnMessageReceivedCallback([this](RFLinkHeader *hdr,
+                                                    uint8_t      *buf,
+                                                    uint8_t       bufLen) {
+            OnMsgRcv(hdr, buf, bufLen);
+        });
+        rfLink_.Init(cfg_.pinRfRx, -1);
+        
+        // Set up time keeping
+        ted_.SetCallback([this](){ OnSecondInterval(); });
+        ted_.RegisterForTimedEventInterval(ONE_SECOND_IN_MS);
+        
+        // Begin
         evm_.MainLoop();
     }
     
@@ -65,12 +121,13 @@ public:
 
 private:
 
-    void OnSecondInterval()
-    {
-        ++secsSinceLast_;
-        
-        PrintAge();
-    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Primary data sourcing
+    //
+    ////////////////////////////////////////////////////////////////////////////
+
 
 
     // String you're looking for:
@@ -105,41 +162,29 @@ private:
                     GetBytesFromQueueAsString(6, buf, strlen(cfg_.callsign));
                     if (!strcmp(buf, cfg_.callsign))
                     {
-                        Serial.println();
-                        Serial.println("PARSED");
-                        
                         GetBytesFromQueueAsString(55, buf, 6);
-                        PrintTime(buf);
-                        Serial.println(buf);
+                        memcpy(sourceStateSerial_.payloadBuffer.timeStr, buf, 6);
                         
                         GetBytesFromQueueAsString(62, buf, 8);
-                        PrintLat(buf);
-                        Serial.println(buf);
+                        memcpy(sourceStateSerial_.payloadBuffer.latStr, buf, 8);
                         
                         GetBytesFromQueueAsString(71, buf, 9);
-                        PrintLng(buf);
-                        Serial.println(buf);
+                        memcpy(sourceStateSerial_.payloadBuffer.lngStr, buf, 9);
                         
                         GetBytesFromQueueAsString(91, buf, 6);
-                        PrintAlt(buf);
-                        Serial.println(buf);
+                        memcpy(sourceStateSerial_.payloadBuffer.altStr, buf, 6);
                         
-                        secsSinceLast_ = 0;
-                        PrintAge();
+                        sourceStateSerial_.secsSinceLast = 0;
                         
-                        Serial.println();
+                        SetSourcePrimary();
                     }
                     else
                     {
-                        ++filteredCount_;
+                        ++sourceStateSerial_.filteredCount;
                         
-                        PrintFiltered();
-                        
-                        Serial.println();
-                        Serial.println("FILTERED");
-                        Serial.println(buf);
-                        Serial.println();
+                        OnPrimaryDataRefreshed();
                     }
+                    
                 }
                 
                 // blow away buffer, either not the line we want or we just used
@@ -172,50 +217,198 @@ private:
         }
     }
     
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Secondary data sourcing
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    
+    void OnMsgRcv(RFLinkHeader * /*hdr*/, uint8_t *buf, uint8_t bufLen)
+    {
+        // Data received over RF, make sure it's the right size and take a copy
+        if (bufLen == sizeof(sourceStateRf_.payloadBuffer))
+        {
+            memcpy((uint8_t *)&sourceStateRf_.payloadBuffer, buf, bufLen);
+            
+            sourceStateRf_.secsSinceLast = 0;
+            
+            SetSourceSecondary();
+        }
+        else
+        {
+            ++sourceStateRf_.filteredCount;
+            
+            OnSecondaryDataRefreshed();
+        }
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Time Keeping
+    //
+    ////////////////////////////////////////////////////////////////////////////
+
+    void OnSecondInterval()
+    {
+        ++sourceStateSerial_.secsSinceLast;
+        if (sourceStateSerial_.secsSinceLast > 99999)
+        {
+            sourceStateSerial_.secsSinceLast = 0;
+        }
+        
+        ++sourceStateRf_.secsSinceLast;
+        if (sourceStateSerial_.secsSinceLast > 99999)
+        {
+            sourceStateSerial_.secsSinceLast = 0;
+        }
+        
+        OnAgeDataRefreshed();
+    }
+    
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Source Switching
+    //
+    ////////////////////////////////////////////////////////////////////////////
+
+    void SetSourcePrimary()
+    {
+        activeSource_ = ActiveSource::PRIMARY;
+        
+        OnPrimaryDataRefreshed();
+    }
+    
+    void SetSourceSecondary()
+    {
+        activeSource_ = ActiveSource::SECONDARY;
+        
+        OnSecondaryDataRefreshed();
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // LCD Redraw
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    
+    void OnPrimaryDataRefreshed()
+    {
+        if (activeSource_ == ActiveSource::PRIMARY)
+        {
+            PrintStateToLcd(sourceStateSerial_);
+        }
+        
+        OnAgeDataRefreshed();
+    }
+    
+    void OnSecondaryDataRefreshed()
+    {
+        if (activeSource_ == ActiveSource::SECONDARY)
+        {
+            PrintStateToLcd(sourceStateRf_);
+        }
+        
+        OnAgeDataRefreshed();
+    }
+    
+    void OnAgeDataRefreshed()
+    {
+        PrintAge(sourceStateSerial_.secsSinceLast,
+                 sourceStateRf_.secsSinceLast);
+    }
+
+    
+    void PrintStateToLcd(SourceState &s)
+    {
+        char buf[20];
+        
+        PayloadBuffer &b = s.payloadBuffer;
+        
+        memcpy(buf, b.timeStr, 6);
+        buf[6] = '\0';
+        PrintTime(buf);
+        
+        PrintSource(s.srcName);
+        
+        memcpy(buf, b.latStr, 8);
+        buf[8] = '\0';
+        PrintLat(buf);
+        
+        memcpy(buf, b.lngStr, 9);
+        buf[9] = '\0';
+        PrintLng(buf);
+        
+        memcpy(buf, b.altStr, 6);
+        buf[6] = '\0';
+        PrintAlt(buf);
+        
+        PrintFiltered(s.filteredCount);
+    }
+
+    
     /*
      * LCD display map
+     *
+     * Line 1: <time> <source>
+     * Line 2: <lat> <lng>
+     * Line 3: <alt> <filtered>
+     * Line 4: <primarySecs> <secondarySecs>
+     *
+     * <source> = PRI or SEC
      *
      * 00000000001111111111
      * 01234567890123456789
      *                     
-     * time: 001221h (0000)       
-     * lat : 2400.00S      
-     * lng : 18000.00E     
-     * alt : aaaaaa f: ffff
-     *
+     * hhmmss           SRC
+     * 2400.00S, 18000.00E 
+     * aaaaaa       (fffff)
+     * (sssss)      (sssss)
      */
 
     void PrintTime(const char *str)
     {
-        lcd_.PrintAt(6, 0, str);
+        lcd_.PrintAt(0, 0, str);
+    }
+    
+    void PrintSource(const char *str)
+    {
+        lcd_.PrintAt(17, 0, str);
     }
     
     void PrintLat(const char *str)
     {
-        lcd_.PrintAt(6, 1, str);
+        lcd_.PrintAt(0, 1, str);
     }
     
     void PrintLng(const char *str)
     {
-        lcd_.PrintAt(6, 2, str);
-    }
-    
-    void PrintAge()
-    {
-        lcd_.PrintAt(15, 0, "    ");
-        lcd_.PrintAt(15, 0, secsSinceLast_);
+        lcd_.PrintAt(10, 1, str);
     }
     
     void PrintAlt(const char *str)
     {
-        lcd_.PrintAt(6, 3, str);
+        lcd_.PrintAt(0, 2, str);
     }
     
-    void PrintFiltered()
+    void PrintFiltered(uint32_t filteredCount)
     {
-        lcd_.PrintAt(16, 3, "    ");
-        lcd_.PrintAt(16, 3, filteredCount_);
+        lcd_.PrintAt(14, 2, "    ");
+        lcd_.PrintAt(14, 2, filteredCount);
     }
+    
+    void PrintAge(uint32_t primarySecs, uint32_t secondarySecs)
+    {
+        // Primary
+        lcd_.PrintAt(1, 3, "     ");
+        lcd_.PrintAt(1, 3, primarySecs);
+        
+        // Secondary
+        lcd_.PrintAt(14, 3, "     ");
+        lcd_.PrintAt(14, 3, secondarySecs);
+    }
+
     
     
 private:
@@ -225,13 +418,16 @@ private:
 
     LCDFrentaly20x4 lcd_;
     
-    uint32_t secsSinceLast_;
-    uint32_t filteredCount_;
-    
     TimedEventHandlerDelegate ted_;
     IdleTimeEventHandlerDelegate ied_;
     
+    ActiveSource activeSource_;
+    
     Queue<uint8_t, BUF_BYTES> q_;
+    SourceState sourceStateSerial_;
+    
+    RFLink       rfLink_;
+    SourceState  sourceStateRf_;
 };
 
 
