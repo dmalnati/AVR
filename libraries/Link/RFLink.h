@@ -3,6 +3,7 @@
 
 
 #include "PAL.h"
+#include "Function.h"
 #include "TimedEventHandler.h"
 #include "VirtualWireModified.h"
 
@@ -20,12 +21,8 @@
 //
 
 
-template <typename T>
 class RFLink_Raw
-: private TimedEventHandler
 {
-    typedef void (T::*OnRxAvailableCbFn)(uint8_t *buf, uint8_t bufSize);
-    
 public:
     static const uint8_t C_IDLE  = 1;
     static const uint8_t C_TIMED = 0;
@@ -36,48 +33,40 @@ public:
     static const uint8_t  POLL_PERIOD_MS = 10;
 
     RFLink_Raw()
-    : obj_(NULL)
-    , rxCb_(NULL)
-    , txEnabled_(0)
     {
         // Nothing to do
     }
     
-    virtual ~RFLink_Raw()
+    void SetOnMessageReceivedCallback(function<void(uint8_t *buf, uint8_t bufSize)> rxCb)
     {
-        if (rxCb_) { vw_rx_stop(); }
+        rxCb_ = rxCb;
     }
     
-    uint8_t Init(T                 *obj,
-                 int8_t             rxPin,
-                 OnRxAvailableCbFn  rxCb,
-                 int8_t             txPin,
-                 uint16_t           baud = DEFAULT_BAUD)
+    uint8_t Init(int8_t   rxPin,
+                 int8_t   txPin,
+                 uint16_t baud = DEFAULT_BAUD)
     {
-        obj_       = obj;
-        rxCb_      = (rxPin != -1 && obj_ ? rxCb : NULL);
-        txEnabled_ = (txPin != -1);
-        
         // Determine Arduino pin for handoff to VirtualWire
         uint8_t arduinoRxPin = PAL.GetArduinoPinFromPhysicalPin(rxPin);
         uint8_t arduinoTxPin = PAL.GetArduinoPinFromPhysicalPin(txPin);
         
         // Handle RX functions
-        if (rxCb_) { vw_set_rx_pin(arduinoRxPin); }
+        if (rxPin != -1) { vw_set_rx_pin(arduinoRxPin); }
         
         // Handle TX functions
-        if (txEnabled_) { vw_set_tx_pin(arduinoTxPin); }
+        if (txPin != -1) { vw_set_tx_pin(arduinoTxPin); }
         
         // Configure bitrate, common between RX and TX
-        if (rxCb_ || txEnabled_) { vw_setup(baud); }
+        if (rxPin != -1 || txPin != -1) { vw_setup(baud); }
         
         // Handle RX functions
-        if (rxCb_) { vw_rx_start(); }
+        if (rxPin != -1) { vw_rx_start(); }
         
         // Start Idle processing if necessary
-        if (rxCb_) { RegisterForTimedEventInterval(POLL_PERIOD_MS); }
+        ted_.SetCallback([this](){ CheckForRxData(); });
+        if (rxPin != -1) { ted_.RegisterForTimedEventInterval(POLL_PERIOD_MS); }
         
-        return (rxCb_ || txEnabled_);
+        return (rxPin != -1 || txPin != -1);
     }
     
     uint8_t Send(uint8_t* buf, uint8_t len)
@@ -87,11 +76,9 @@ public:
         // VirtualWire synchronously finishes sending the prior message if the
         // next is sent before completion.
         // That is an appropriate simplification.
-        if (txEnabled_)
-        {
-            // pass-through to VirtualWire
-            retVal = vw_send(buf, len);
-        }
+
+        // pass-through to VirtualWire
+        retVal = vw_send(buf, len);
         
         return retVal;
     }
@@ -99,7 +86,7 @@ public:
     uint8_t GetTxBuf(uint8_t **buf, uint8_t *bufLen)
     {
         *buf    = txBuf_;
-        *bufLen = VW_MAX_MESSAGE_LEN;
+        *bufLen = VW_MAX_PAYLOAD;
         
         return 1;
     }
@@ -110,35 +97,29 @@ public:
     }
     
 private:
-    // Implement the Timed event
-    virtual void OnTimedEvent()
-    {
-        if (rxCb_) { CheckForRxData(); }
-    }
     
     void CheckForRxData()
     {
         uint8_t *buf    = NULL;
-        uint8_t  bufLen = VW_MAX_MESSAGE_LEN;
+        uint8_t  bufLen = VW_MAX_PAYLOAD;
         
         if (vw_get_message(&buf, &bufLen))
         {
             // Call back listener
-            ((*obj_).*rxCb_)(buf, bufLen);
+            rxCb_(buf, bufLen);
             
             vw_get_message_completed();
         }
     }
         
-    // Object owning the callback functions
-    T *obj_;
-    
     // RX Members
-    OnRxAvailableCbFn rxCb_;
+    function<void(uint8_t *buf, uint8_t bufSize)> rxCb_;
 
     // TX Members
-    uint8_t txBuf_[VW_MAX_MESSAGE_LEN];
-    uint8_t txEnabled_;
+    uint8_t txBuf_[VW_MAX_PAYLOAD];
+    
+    // Misc
+    TimedEventHandlerDelegate ted_;
 };
 
 
@@ -158,56 +139,41 @@ struct RFLinkHeader
     uint8_t protocolId;
 };
 
-template <typename T>
 class RFLink
-: private RFLink_Raw<RFLink<T>>
+: private RFLink_Raw
 {
-    typedef void (T::*OnRxAvailableCbFn)(RFLinkHeader *hdr,
-                                         uint8_t      *buf,
-                                         uint8_t       bufSize);
-    
 public:
 
-    static const uint8_t C_IDLE  = RFLink_Raw<RFLink<T>>::C_IDLE;
-    static const uint8_t C_TIMED = RFLink_Raw<RFLink<T>>::C_TIMED;
-    static const uint8_t C_INTER = RFLink_Raw<RFLink<T>>::C_INTER;
+    static const uint8_t C_IDLE  = RFLink_Raw::C_IDLE;
+    static const uint8_t C_TIMED = RFLink_Raw::C_TIMED;
+    static const uint8_t C_INTER = RFLink_Raw::C_INTER;
 
 
     RFLink()
-    : obj_(NULL)
-    , rxCb_(NULL)
-    , txEnabled_(0)
-    , realm_(0)
+    : realm_(0)
     , srcAddr_(0)
     , dstAddr_(0)
     , promiscuousMode_(0)
     {
         // Nothing to do
     }
+    
+    void SetOnMessageReceivedCallback(function<void(RFLinkHeader *hdr,
+                                                    uint8_t      *buf,
+                                                    uint8_t       bufSize)> rxCb)
+    {
+        rxCb_ = rxCb;
+    }
 
     uint8_t Init(
-         T                 *obj,
-         int8_t             rxPin,
-         OnRxAvailableCbFn  rxCb,
-         int8_t             txPin,
-         uint16_t           baud = RFLink_Raw<RFLink<T>>::DEFAULT_BAUD)
+         int8_t   rxPin,
+         int8_t   txPin,
+         uint16_t baud = RFLink_Raw::DEFAULT_BAUD)
     {
-        uint8_t retVal = RFLink_Raw<RFLink>::Init(
-            this,
-            rxPin,
-            rxCb ? &RFLink<T>::OnRxAvailable : NULL, // intercepted
-            txPin,
-            baud
-        );
+        uint8_t retVal = RFLink_Raw::Init(rxPin, txPin, baud);
         
-        if (retVal)
-        {
-            obj_       = obj;
-            rxCb_      = rxCb;
-            txEnabled_ = (txPin != -1),
-            
-            retVal = (rxCb_ || txEnabled_);
-        }
+        // Intercept this interface
+        RFLink_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){ OnRxAvailable(buf, bufSize); });
         
         return retVal;
     }
@@ -246,12 +212,12 @@ public:
         uint8_t retVal = 0;
         
         // First check to see if it can all fit
-        if (((sizeof(RFLinkHeader) + bufSize) <= VW_MAX_MESSAGE_LEN) && txEnabled_)
+        if (((sizeof(RFLinkHeader) + bufSize) <= VW_MAX_PAYLOAD))
         {
             // Reserve space to craft outbound message
             uint8_t *bufNew     = NULL;
             uint8_t  bufSizeNew = 0;
-            RFLink_Raw<RFLink<T>>::GetTxBuf(&bufNew, &bufSizeNew);
+            RFLink_Raw::GetTxBuf(&bufNew, &bufSizeNew);
             
             bufSizeNew = sizeof(RFLinkHeader) + bufSize;
             
@@ -267,7 +233,7 @@ public:
             memcpy(&(bufNew[sizeof(RFLinkHeader)]), buf, bufSize);
             
             // Hand off to RFLink_Raw, note success value
-            retVal = RFLink_Raw<RFLink<T>>::SendFromTxBuf(bufSizeNew);
+            retVal = RFLink_Raw::SendFromTxBuf(bufSizeNew);
         }
         
         return retVal;
@@ -294,19 +260,15 @@ private:
                 // Filter criteria passed.
                 
                 // Pass data upward, but stripping off the header data
-                ((*obj_).*rxCb_)(hdr,
-                                 &(buf[sizeof(RFLinkHeader)]),
-                                 bufSize - sizeof(RFLinkHeader));
+                rxCb_(hdr,
+                      &(buf[sizeof(RFLinkHeader)]),
+                      bufSize - sizeof(RFLinkHeader));
             }
         }
     }
     
     // Receive members
-    T                 *obj_;
-    OnRxAvailableCbFn  rxCb_;
-    
-    // Send members
-    uint8_t txEnabled_;
+    function<void(RFLinkHeader *hdr, uint8_t *buf, uint8_t bufSize)> rxCb_;
     
     // Addressing members
     uint8_t realm_;
