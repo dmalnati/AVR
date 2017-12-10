@@ -12,13 +12,22 @@ static const uint8_t PIN_SS = 15;
 static const uint8_t PIN_SHUTDOWN = 14;
 
 
+
+
 void PowerOnReset()
 {
-    PAL.DigitalWrite(PIN_SHUTDOWN, HIGH);
+    uint32_t DELAY_MS = 50;
+    
     PAL.PinMode(PIN_SHUTDOWN, OUTPUT);
-    PAL.Delay(10);
+
     PAL.DigitalWrite(PIN_SHUTDOWN, LOW);
-    PAL.Delay(10);
+    PAL.Delay(DELAY_MS);
+    
+    PAL.DigitalWrite(PIN_SHUTDOWN, HIGH);
+    PAL.Delay(DELAY_MS);
+    
+    PAL.DigitalWrite(PIN_SHUTDOWN, LOW);
+    PAL.Delay(DELAY_MS);
 }
 
 
@@ -26,12 +35,12 @@ void PowerOnReset()
 
 
 
-
-
-void SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
+void SendAndWaitAndReceiveOld(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
 {
     SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
     PAL.DigitalWrite(PIN_SS, LOW);
+    
+    PAL.DelayMicroseconds(30);
 
     // Send req, then send READ_CMD_BUFF command, then clock in CTS
     SPI.transfer(req);
@@ -51,13 +60,15 @@ void SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
     {
         repBuf[i] = SPI.transfer(0x00);
     }
+
+    PAL.DelayMicroseconds(30);
     
     PAL.DigitalWrite(PIN_SS, HIGH);
     SPI.endTransaction();
 }
 
 
-void SendAndWaitAndReceiveNew(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
+void SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
 {
     SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
     PAL.DigitalWrite(PIN_SS, LOW);
@@ -65,7 +76,7 @@ void SendAndWaitAndReceiveNew(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
     // Send req, then send READ_CMD_BUFF command, then clock in CTS
     SPI.transfer(req);
 
-    PAL.Delay(1);
+    PAL.DelayMicroseconds(50);
     PAL.DigitalWrite(PIN_SS, HIGH);
     SPI.endTransaction();
 
@@ -92,16 +103,18 @@ void SendAndWaitAndReceiveNew(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
             }
         }
 
-        PAL.Delay(1);
+        PAL.DelayMicroseconds(50);
         PAL.DigitalWrite(PIN_SS, HIGH);
         SPI.endTransaction();
     }
 }
 
 
+
 void DoReqRep(const char *op, uint8_t req, uint8_t repBufLen)
 {
     uint8_t repBuf[repBufLen];
+    memset(repBuf, 0, repBufLen);
     
     Serial.print(op);
     Serial.print(": ");
@@ -146,22 +159,29 @@ void setup()
     Serial.begin(9600);
     Serial.println("Starting");
 
+    
+
     SPI.begin();
 
-    PowerOnReset();
+
+    
 
     PAL.PinMode(PIN_SS, OUTPUT);
     PAL.DigitalWrite(PIN_SS, HIGH);
+
+    PowerOnReset();
 
     while (1)
     {
         Serial.println();
         Serial.println("Loop start");
-
+        
         DoNOP();
         DoPART_INFO();
         DoFUNC_INFO();
         DoGET_PH_STATUS();
+
+        
 
         PAL.Delay(1500);
     }
