@@ -1,9 +1,18 @@
+// Some notes regarding implementation were taken from here:
+// https://github.com/Yveaux/RadioHead/blob/master/RadioHead/RH_RF24.cpp
+//
+// Such as:
+// - Waiting briefly to let SS pin go high after transfer
+// - Using two transactions for command and reading of response
+// - Power-on-Reset functionality being necessary above tying Shutdown to GND
+//
+
 #include <SPI.h>
 
 #include "PAL.h"
 
 
-static const uint32_t SPI_SPEED           = 10000;
+static const uint32_t SPI_SPEED           = 1000000;
 static const uint8_t  SPI_BIT_ORIENTATION = MSBFIRST;
 static const uint8_t  SPI_MODE            = SPI_MODE0;
 
@@ -35,41 +44,10 @@ void PowerOnReset()
 
 
 
-void SendAndWaitAndReceiveOld(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
-{
-    SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
-    PAL.DigitalWrite(PIN_SS, LOW);
-    
-    PAL.DelayMicroseconds(30);
-
-    // Send req, then send READ_CMD_BUFF command, then clock in CTS
-    SPI.transfer(req);
-    SPI.transfer(0x44);
-    uint8_t rep = SPI.transfer(0x00);
-
-    // Wait for CTS (clear to send) to equal 0xFF
-    while (rep != 0xFF)
-    {
-        // Just send zeros, it's not real data, we're just driving the
-        // clock in order to extract a response from the slave
-        rep = SPI.transfer(0x00);
-    }
-
-    // Consume as many bytes of response as are expected, could be zero
-    for (uint16_t i = 0; i < repBufLen; ++i)
-    {
-        repBuf[i] = SPI.transfer(0x00);
-    }
-
-    PAL.DelayMicroseconds(30);
-    
-    PAL.DigitalWrite(PIN_SS, HIGH);
-    SPI.endTransaction();
-}
-
-
 void SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
 {
+    static const uint8_t READ_ATTEMPT_LIMIT = 100;
+    
     SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
     PAL.DigitalWrite(PIN_SS, LOW);
 
@@ -86,8 +64,11 @@ void SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
 
 
     // Wait for CTS (clear to send) to equal 0xFF
-    while (rep != 0xFF)
+    uint8_t readAttempts = 0;
+    while (rep != 0xFF && readAttempts < READ_ATTEMPT_LIMIT)
     {
+        ++readAttempts;
+        
         SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
         PAL.DigitalWrite(PIN_SS, LOW);
 
