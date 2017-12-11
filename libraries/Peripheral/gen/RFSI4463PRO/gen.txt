@@ -2,6 +2,45 @@
 
 
 
+PART_INFO
+CMD 0x01
+REQ {
+}
+REP {
+    CHIPREV {
+        CHIPREV[7:0]
+    }
+    
+    PART1 {
+        PART1[7:0]
+    }
+    
+    PART2 {
+        PART2[7:0]
+    }
+    
+    PBUILD {
+        PBUILD[7:0]
+    }
+    
+    ID1 {
+        ID1[7:0]
+    }
+    
+    ID2 {
+        ID2[7:0]
+    }
+    
+    CUSTOMER {
+        CUSTOMER[7:0]
+    }
+    
+    ROMID {
+        ROMID[7:0]
+    }
+}
+
+
 
 GET_CHIP_STATUS
 CMD 0x23

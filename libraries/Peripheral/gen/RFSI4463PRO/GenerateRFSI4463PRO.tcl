@@ -138,6 +138,75 @@ proc GetByteCount { byteDefList } {
 }
 
 proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
+    GenerateDebugCode $name $cmd $reqByteDefList $repByteDefList
+    GenerateCode      $name $cmd $reqByteDefList $repByteDefList
+}
+
+proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
+    # Nice header
+    gend "////////////////////////////////////////////////////////////////////"
+    gend "//"
+    gend "// ${name} ($cmd)"
+    gend "//"
+    gend "////////////////////////////////////////////////////////////////////"
+    gend ""
+
+    # Determine field padding
+    set maxLen [GetMaxFieldLen $repByteDefList]
+    set formatStr "%-${maxLen}s"
+
+    # Calculate number of bytes received
+    set byteCount [GetByteCount $repByteDefList]
+
+    # Generate code
+    gend "void Print(RFSI4463PRO::${name}_REP &val)"
+    gend "\{"
+    gend "    Serial.println(\"${name}_REP\");"
+    gend ""
+
+    for { set i 0 } { $i < $byteCount } { incr i } {
+        set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
+        set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
+        set fieldOffsetListLen [llength $fieldOffsetList]
+
+        foreach { field offset } $fieldOffsetList {
+            set varName "${byte}.$field"
+            set varStr [format $formatStr $varName]
+
+            gend "    Serial.print(\"${varStr}: \");"
+            gend "    Serial.print(val.${varName});"
+            gend "    Serial.print(\" (0x\");"
+            gend "    Serial.print(val.${varName}, HEX);"
+            gend "    Serial.print(\")\");"
+            gend "    Serial.println();"
+        }
+    }
+
+    gend "\}"
+
+    gend ""
+}
+
+proc GetMaxFieldLen { byteDefList } {
+    set maxLen 0
+
+    foreach { byte fieldOffsetList } $byteDefList {
+
+        foreach { field offset } $fieldOffsetList {
+            set name    "${byte}.${field}"
+            set nameLen [string length $name]
+
+            if { $nameLen > $maxLen } {
+                set maxLen $nameLen
+            }
+        }
+    }
+
+    return $maxLen
+}
+
+
+proc GenerateCode { name cmd reqByteDefList repByteDefList } {
 #    puts "OnConfigBlockParsed"
 #    puts "name: $name"
 #    puts "cmd: $cmd"
@@ -146,71 +215,75 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
 
 
+    # Nice header
+    gen "////////////////////////////////////////////////////////////////////"
+    gen "//"
+    gen "// ${name} ($cmd)"
+    gen "//"
+    gen "////////////////////////////////////////////////////////////////////"
+    gen ""
+
+
     # Generate struct for reply
 
     set sep ""
-    puts "struct ${name}_REP"
-    puts "\{"
+    gen "struct ${name}_REP"
+    gen "\{"
     foreach { byte fieldOffsetList } $repByteDefList {
-        puts -nonewline $sep
+        gen -nonewline $sep
         set sep "\n"
 
-        puts "    struct"
-        puts "    \{"
+        gen "    struct"
+        gen "    \{"
         foreach { field offset } $fieldOffsetList {
-            puts "        uint8_t $field;"
+            gen "        uint8_t $field;"
 
             set varName "${byte}.$field"
         }
-        puts "    \} ${byte};"
+        gen "    \} ${byte};"
     }
-    puts "\};"
+    gen "\};"
 
 
 
-    puts ""
+    gen ""
 
 
     # Generate function to get reply from chip
 
-    set bufSizeRep [GetByteCount $repByteDefList]
+    set byteCount [GetByteCount $repByteDefList]
 
 
-    puts "uint8_t Command_${name}(${name}_REP &retVal)"
-    puts "\{"
-    puts "    const uint8_t CMD_ID   = $cmd;"
-    puts "    const uint8_t BUF_SIZE = $bufSizeRep;"
-    puts ""
-    puts "    uint8_t buf\[BUF_SIZE\];"
-    puts ""
-    puts "    uint8_t ok = SendAndWaitAndReceive(CMD_ID, buf, BUF_SIZE);"
-    puts ""
-    puts "    if (ok)"
-    puts "    \{"
-    puts "        BufferFieldExtractor bfe(buf, BUF_SIZE);"
-    puts ""
+    gen "uint8_t Command_${name}(${name}_REP &retVal)"
+    gen "\{"
+    gen "    const uint8_t CMD_ID   = $cmd;"
+    gen "    const uint8_t BUF_SIZE = $byteCount;"
+    gen ""
+    gen "    uint8_t buf\[BUF_SIZE\];"
+    gen ""
+    gen "    uint8_t ok = SendAndWaitAndReceive(CMD_ID, buf, BUF_SIZE);"
+    gen ""
+    gen "    if (ok)"
+    gen "    \{"
+    gen "        BufferFieldExtractor bfe(buf, BUF_SIZE);"
+    gen ""
 
 
 
+    # Determine field padding
+    set maxLen [GetMaxFieldLen $repByteDefList]
+    set formatStr "%-${maxLen}s"
 
+
+    # Generate code
     set sep ""
-    for { set i 0 } { $i < $bufSizeRep } { incr i } {
-        puts -nonewline $sep
+    for { set i 0 } { $i < $byteCount } { incr i } {
+        gen -nonewline $sep
         set sep "\n"
 
         set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
         set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
         set fieldOffsetListLen [llength $fieldOffsetList]
-
-        set maxLen 0
-        foreach { field offset } $fieldOffsetList {
-            set fieldLen [string length $field]
-
-            if { $fieldLen > $maxLen } {
-                set maxLen $fieldLen
-            }
-        }
-        set formatStr "%-${maxLen}s"
 
         #
         # Unpacking the data into struct fields can go one of 3 ways
@@ -224,7 +297,7 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
 
         if { $fieldOffsetListLen > 2 } {
-            puts "        uint8_t tmpByte${i} = bfe.GetUI8();"            
+            gen "        uint8_t tmpByte${i} = bfe.GetUI8();"            
 
             foreach { field offset } $fieldOffsetList {
                 set offsetPartList [split $offset ":"]
@@ -237,12 +310,12 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
                 set str ""
                 append str "        "
-                append str "retVal.${byte}."
-                append str [format $formatStr $field]
+                append str "retVal."
+                append str [format $formatStr "${byte}.${field}"]
                 append str " = "
                 append str "(uint8_t)((tmpByte${i} & $bitMask) >> $bitShift);"
 
-                puts $str
+                gen $str
             }
         } else {
             # it's one of the other two
@@ -255,11 +328,11 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
                 set str ""
                 append str "        "
-                append str "retVal.${byte}."
-                append str [format $formatStr $field]
+                append str "retVal."
+                append str [format $formatStr "${byte}.${field}"]
                 append str " = bfe.GetUI8();"            
 
-                puts $str
+                gen $str
             }
 
 
@@ -273,14 +346,14 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
 
     }
-    puts "    \}"
-    puts ""
-    puts "    return ok;"
-    puts "\}"
+    gen "    \}"
+    gen ""
+    gen "    return ok;"
+    gen "\}"
 
 
 
-
+    gen ""
 }
 
 proc GetBitmask { bitStart bitEnd } {
@@ -300,6 +373,51 @@ proc GetBitmask { bitStart bitEnd } {
 
 
 
+set FD_GEN_OUT     stdout
+set FD_GEN_DBG_OUT stdout
+proc SetupOutputFiles { outGenFile outGenDebugFile } {
+    global FD_GEN_OUT
+    global FD_GEN_DBG_OUT
+
+    set FD_GEN_OUT     [open $outGenFile      "w"]
+    set FD_GEN_DBG_OUT [open $outGenDebugFile "w"]
+}
+
+proc gen { args } {
+    global FD_GEN_OUT
+
+    set arg1 [lindex $args 0]
+
+    if { $arg1 == "-nonewline" } {
+        set str [lindex $args 1]
+
+        puts -nonewline $FD_GEN_OUT "$str"
+        puts -nonewline "$str"
+    } else {
+        set str $arg1
+
+        puts $FD_GEN_OUT $str
+        puts $str
+    }
+}
+
+proc gend { args } {
+    global FD_GEN_DBG_OUT
+
+    set arg1 [lindex $args 0]
+
+    if { $arg1 == "-nonewline" } {
+        set str [lindex $args 1]
+
+        puts -nonewline $FD_GEN_DBG_OUT "$str"
+        puts -nonewline "$str"
+    } else {
+        set str $arg1
+
+        puts $FD_GEN_DBG_OUT $str
+        puts $str
+    }
+}
 
 
 proc Main { } {
@@ -307,12 +425,16 @@ proc Main { } {
     global argv
     global argv0
 
-    if { $argc != 1 } {
-        puts "Usage: $argv0 <inputFile>"
+    if { $argc != 3 } {
+        puts "Usage: $argv0 <inFile> <outGenFile> <outGenDebugFile>"
         exit -1
     }
 
-    set inputFile [lindex $argv 0]
+    set inputFile       [lindex $argv 0]
+    set outGenFile      [lindex $argv 1]
+    set outGenDebugFile [lindex $argv 2]
+
+    SetupOutputFiles $outGenFile $outGenDebugFile
 
     Generate $inputFile
 }

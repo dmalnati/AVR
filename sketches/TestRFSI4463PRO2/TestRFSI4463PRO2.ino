@@ -1,9 +1,11 @@
 #include "RFSI4463PRO.h"
+#include "RFSI4463PRODebug.h"
 
 static const uint8_t PIN_SS       = 15;
 static const uint8_t PIN_SHUTDOWN = 14;
 
 static RFSI4463PRO rf(PIN_SS, PIN_SHUTDOWN);
+static RFSI4463PRODebug rfd;
 
 
 void GetPartInfo()
@@ -29,6 +31,24 @@ void GetPartInfo()
     Serial.println();
 }
 
+void GetPartInfo2()
+{
+    Serial.println("GetPartInfo2");
+    
+    RFSI4463PRO::PART_INFO_REP retVal;
+
+    if (rf.Command_PART_INFO(retVal))
+    {
+        rfd.Print(retVal);
+    }
+    else
+    {
+        Serial.println("ERR");
+    }
+
+    Serial.println();
+}
+
 void GetChipStatus()
 {
     Serial.println("GetChipStatus");
@@ -37,7 +57,7 @@ void GetChipStatus()
 
     if (rf.Command_GET_CHIP_STATUS(retVal))
     {
-        Serial.println("It worked");
+        rfd.Print(retVal);
     }
     else
     {
@@ -58,6 +78,7 @@ void setup()
     while (1)
     {
         GetPartInfo();
+        GetPartInfo2();
         GetChipStatus();
 
 
