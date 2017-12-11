@@ -12,29 +12,6 @@ void GetPartInfo()
 {
     Serial.println("GetPartInfo");
     
-    RFSI4463PRO::PartInfo partInfo;
-
-    if (rf.GetPartInfo(partInfo))
-    {
-        Serial.print("chipRevision: "); Serial.println(partInfo.chipRevision);
-        Serial.print("partNumber  : "); Serial.println(partInfo.partNumber);
-        Serial.print("partBuild   : "); Serial.println(partInfo.partBuild);
-        Serial.print("id          : "); Serial.println(partInfo.id);
-        Serial.print("customerId  : "); Serial.println(partInfo.customerId);
-        Serial.print("romId       : "); Serial.println(partInfo.romId);
-    }
-    else
-    {
-        Serial.println("ERR");
-    }
-
-    Serial.println();
-}
-
-void GetPartInfo2()
-{
-    Serial.println("GetPartInfo2");
-    
     RFSI4463PRO::PART_INFO_REP retVal;
 
     if (rf.Command_PART_INFO(retVal))
@@ -78,9 +55,7 @@ void setup()
     while (1)
     {
         GetPartInfo();
-        GetPartInfo2();
         GetChipStatus();
-
 
         PAL.Delay(5000);
     }

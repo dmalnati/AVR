@@ -34,11 +34,9 @@ class RFSI4463PRO
     // Details relating to operating this chip    
     static const uint32_t DURATION_MS_POWER_ON_RESET = 50;
     
-
     // Commands
     enum
     {
-        CMD_PART_INFO = 0x01,
         CMD_READ_CMD_BUFF = 0x44,
     };
     
@@ -49,8 +47,7 @@ class RFSI4463PRO
         VAL_CLEAR_TO_SEND = 0xFF,
     };
 
-
-
+    
 public:
     RFSI4463PRO(uint8_t pinChipSelect, uint8_t pinShutdown)
     : pinChipSelect_(pinChipSelect)
@@ -78,74 +75,6 @@ public:
 
     #include "RFSI4463PRO_Generated.h"
     
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // Part Info
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    struct PartInfo
-    {
-        uint8_t  chipRevision;
-        uint16_t partNumber;
-        uint8_t  partBuild;
-        uint16_t id;
-        uint8_t  customerId;
-        uint8_t  romId;
-    };
-    
-    uint8_t GetPartInfo(PartInfo &partInfo)
-    {
-        const uint8_t BUF_SIZE = 8;
-        uint8_t       buf[BUF_SIZE];
-        
-        uint8_t retVal = SendAndWaitAndReceive(CMD_PART_INFO, buf, BUF_SIZE);
-        
-        if (retVal)
-        {
-            BufferFieldExtractor bfe(buf, BUF_SIZE);
-            
-            partInfo.chipRevision = bfe.GetUI8();
-            partInfo.partNumber   = bfe.GetUI16NTOHS();
-            partInfo.partBuild    = bfe.GetUI8();
-            partInfo.id           = bfe.GetUI16NTOHS();
-            partInfo.customerId   = bfe.GetUI8();
-            partInfo.romId        = bfe.GetUI8();
-        }
-        
-        return retVal;
-    }
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // Interrupt Handling
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    struct ChipStatus
-    {
-        
-    };
-    
-    
-    
-private:
-
-    // DEBUG
-    void DumpBuffer(uint8_t *buf, uint8_t bufLen)
-    {
-        const char *sep = "";
-        for (uint8_t i = 0; i < bufLen; ++i)
-        {
-            Serial.print(sep);
-            Serial.print(buf[i], HEX);
-            
-            sep = " ";
-        }
-        Serial.println();
-    }
-
     
 private:
 

@@ -11,24 +11,24 @@ REP {
         CHIPREV[7:0]
     }
     
-    PART1 {
-        PART1[7:0]
+    PART {
+        PART[15:8]
     }
     
-    PART2 {
-        PART2[7:0]
+    PART {
+        PART[7:0]
     }
     
     PBUILD {
         PBUILD[7:0]
     }
     
-    ID1 {
-        ID1[7:0]
+    ID {
+        ID[15:8]
     }
     
-    ID2 {
-        ID2[7:0]
+    ID {
+        ID[7:0]
     }
     
     CUSTOMER {
@@ -73,6 +73,7 @@ REP {
         CMD_ERR_STATUS[7:0]
     }
 }
+
 
 
 

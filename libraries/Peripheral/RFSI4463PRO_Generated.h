@@ -13,13 +13,8 @@ struct PART_INFO_REP
 
     struct
     {
-        uint8_t PART1;
-    } PART1;
-
-    struct
-    {
-        uint8_t PART2;
-    } PART2;
+        uint16_t PART;
+    } PART;
 
     struct
     {
@@ -28,13 +23,8 @@ struct PART_INFO_REP
 
     struct
     {
-        uint8_t ID1;
-    } ID1;
-
-    struct
-    {
-        uint8_t ID2;
-    } ID2;
+        uint16_t ID;
+    } ID;
 
     struct
     {
@@ -62,15 +52,11 @@ uint8_t Command_PART_INFO(PART_INFO_REP &retVal)
 
         retVal.CHIPREV.CHIPREV   = bfe.GetUI8();
 
-        retVal.PART1.PART1       = bfe.GetUI8();
-
-        retVal.PART2.PART2       = bfe.GetUI8();
+        retVal.PART.PART         = bfe.GetUI16NTOHS();
 
         retVal.PBUILD.PBUILD     = bfe.GetUI8();
 
-        retVal.ID1.ID1           = bfe.GetUI8();
-
-        retVal.ID2.ID2           = bfe.GetUI8();
+        retVal.ID.ID             = bfe.GetUI16NTOHS();
 
         retVal.CUSTOMER.CUSTOMER = bfe.GetUI8();
 
