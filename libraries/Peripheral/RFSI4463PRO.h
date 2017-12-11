@@ -69,6 +69,22 @@ public:
         PowerOnReset();
     }
     
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Generated code
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
+    #include "RFSI4463PRO_Generated.h"
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Part Info
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
     struct PartInfo
     {
         uint8_t  chipRevision;
@@ -78,21 +94,6 @@ public:
         uint8_t  customerId;
         uint8_t  romId;
     };
-    
-    void DumpBuffer(uint8_t *buf, uint8_t bufLen)
-    {
-        const char *sep = "";
-        for (uint8_t i = 0; i < bufLen; ++i)
-        {
-            Serial.print(sep);
-            Serial.print(buf[i], HEX);
-            
-            sep = " ";
-        }
-        Serial.println();
-    }
-    
-
     
     uint8_t GetPartInfo(PartInfo &partInfo)
     {
@@ -116,6 +117,35 @@ public:
         return retVal;
     }
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Interrupt Handling
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    struct ChipStatus
+    {
+        
+    };
+    
+    
+    
+private:
+
+    // DEBUG
+    void DumpBuffer(uint8_t *buf, uint8_t bufLen)
+    {
+        const char *sep = "";
+        for (uint8_t i = 0; i < bufLen; ++i)
+        {
+            Serial.print(sep);
+            Serial.print(buf[i], HEX);
+            
+            sep = " ";
+        }
+        Serial.println();
+    }
+
     
 private:
 
@@ -132,11 +162,6 @@ private:
         PAL.DigitalWrite(pinShutdown_, LOW);
         PAL.Delay(DURATION_MS_POWER_ON_RESET);
     }
-    
-    
-    
-    
-    
     
     uint8_t SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
     {

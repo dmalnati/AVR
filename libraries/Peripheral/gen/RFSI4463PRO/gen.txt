@@ -4,7 +4,7 @@
 
 
 GET_CHIP_STATUS
-CMD 23
+CMD 0x23
 # parameters which are part of the command but not the command itself
 REQ {
 }
@@ -12,22 +12,22 @@ REQ {
 REP {
     CHIP_PEND {
         CAL_PEND[7:6]
-        FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND[5]
-        STATE_CHANGE_PEND[4]
-        CMD_ERROR_PEND[3]
-        CHIP_READY_PEND[2]
-        LOW_BATT_PEND[1]
-        WUT_PEND[0]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND[5:5]
+        STATE_CHANGE_PEND[4:4]
+        CMD_ERROR_PEND[3:3]
+        CHIP_READY_PEND[2:2]
+        LOW_BATT_PEND[1:1]
+        WUT_PEND[0:0]
     }
     
     CHIP_STATUS {
         CAL[7:6] 
-        FIFO_UNDERFLOW_OVERFLOW_ERROR[5]
-        STATE_CHANGE[4]
-        CMD_ERROR[3]
-        CHIP_READY[2]
-        LOW_BATT[1]
-        WUT[0]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR[5:5]
+        STATE_CHANGE[4:4]
+        CMD_ERROR[3:3]
+        CHIP_READY[2:2]
+        LOW_BATT[1:1]
+        WUT[0:0]
     }
     
     CMD_ERR_STATUS {

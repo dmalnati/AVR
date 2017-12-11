@@ -138,37 +138,31 @@ proc GetByteCount { byteDefList } {
 }
 
 proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
-    puts "OnConfigBlockParsed"
-    puts "name: $name"
-    puts "cmd: $cmd"
-    puts "reqByteDefList: $reqByteDefList"
-    puts "repByteDefList: $repByteDefList"
+#    puts "OnConfigBlockParsed"
+#    puts "name: $name"
+#    puts "cmd: $cmd"
+#    puts "reqByteDefList: $reqByteDefList"
+#    puts "repByteDefList: $repByteDefList"
 
 
 
     # Generate struct for reply
 
-    set maxVarNameLen 0
-
     set sep ""
     puts "struct ${name}_REP"
     puts "\{"
     foreach { byte fieldOffsetList } $repByteDefList {
-        puts $sep
+        puts -nonewline $sep
         set sep "\n"
 
-        puts "    struct ${byte}"
+        puts "    struct"
         puts "    \{"
         foreach { field offset } $fieldOffsetList {
             puts "        uint8_t $field;"
 
             set varName "${byte}.$field"
-            set varNameLen [string length $varName]
-            if { $varNameLen > $maxVarNameLen } {
-                set maxVarNameLen $varNameLen
-            }
         }
-        puts "    \};"
+        puts "    \} ${byte};"
     }
     puts "\};"
 
@@ -180,15 +174,14 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
     # Generate function to get reply from chip
 
     set bufSizeRep [GetByteCount $repByteDefList]
-    set formatStr  "%-${maxVarNameLen}s"
 
 
     puts "uint8_t Command_${name}(${name}_REP &retVal)"
     puts "\{"
+    puts "    const uint8_t CMD_ID   = $cmd;"
     puts "    const uint8_t BUF_SIZE = $bufSizeRep;"
-    puts "    uint8_t       buf\[BUF_SIZE\];"
     puts ""
-    puts "    const uint8_t CMD_ID = $cmd;"
+    puts "    uint8_t buf\[BUF_SIZE\];"
     puts ""
     puts "    uint8_t ok = SendAndWaitAndReceive(CMD_ID, buf, BUF_SIZE);"
     puts ""
@@ -196,12 +189,90 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
     puts "    \{"
     puts "        BufferFieldExtractor bfe(buf, BUF_SIZE);"
     puts ""
-    foreach { byte fieldOffsetList } $repByteDefList {
+
+
+
+
+    set sep ""
+    for { set i 0 } { $i < $bufSizeRep } { incr i } {
+        puts -nonewline $sep
+        set sep "\n"
+
+        set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
+        set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
+        set fieldOffsetListLen [llength $fieldOffsetList]
+
+        set maxLen 0
         foreach { field offset } $fieldOffsetList {
-            puts "        retVal.[format $formatStr ${byte}.${field}] = bfe.GetUI8();"
+            set fieldLen [string length $field]
+
+            if { $fieldLen > $maxLen } {
+                set maxLen $fieldLen
+            }
         }
+        set formatStr "%-${maxLen}s"
+
+        #
+        # Unpacking the data into struct fields can go one of 3 ways
+        # - returned data has many bitfields per-byte
+        # - returned data maps directly onto struct bytes
+        # - returned data has multiple bytes to map onto struct bytes
+        #
+
+        # Check if this byte has multi-field elements
+        # quick test, if there is more than one field in a byte, then yes
+
+
+        if { $fieldOffsetListLen > 2 } {
+            puts "        uint8_t tmpByte${i} = bfe.GetUI8();"            
+
+            foreach { field offset } $fieldOffsetList {
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                set bitMask  [GetBitmask $bitStart $bitEnd]
+                set bitShift $bitEnd
+
+                set str ""
+                append str "        "
+                append str "retVal.${byte}."
+                append str [format $formatStr $field]
+                append str " = "
+                append str "(uint8_t)((tmpByte${i} & $bitMask) >> $bitShift);"
+
+                puts $str
+            }
+        } else {
+            # it's one of the other two
+
+            foreach { field offset } $fieldOffsetList {
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                set str ""
+                append str "        "
+                append str "retVal.${byte}."
+                append str [format $formatStr $field]
+                append str " = bfe.GetUI8();"            
+
+                puts $str
+            }
+
+
+        }
+
+
+
+
+
+
+
+
     }
-    puts "\};"
     puts "    \}"
     puts ""
     puts "    return ok;"
@@ -210,6 +281,20 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 
 
 
+}
+
+proc GetBitmask { bitStart bitEnd } {
+    set str "0b"
+
+    for { set i 7 } { $i >= 0 } { incr i -1 } {
+        if { $bitEnd <= $i && $i <= $bitStart } {
+            append str "1"
+        } else {
+            append str "0"
+        }
+    }
+
+    return $str
 }
 
 
