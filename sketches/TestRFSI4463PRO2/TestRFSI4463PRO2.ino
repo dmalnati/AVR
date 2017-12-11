@@ -26,6 +26,24 @@ void GetPartInfo()
     Serial.println();
 }
 
+void GetFuncInfo()
+{
+    Serial.println("GetFuncInfo");
+    
+    RFSI4463PRO::FUNC_INFO_REP retVal;
+
+    if (rf.Command_FUNC_INFO(retVal))
+    {
+        rfd.Print(retVal);
+    }
+    else
+    {
+        Serial.println("ERR");
+    }
+
+    Serial.println();
+}
+
 void GetChipStatus()
 {
     Serial.println("GetChipStatus");
@@ -55,6 +73,7 @@ void setup()
     while (1)
     {
         GetPartInfo();
+        GetFuncInfo();
         GetChipStatus();
 
         PAL.Delay(5000);
