@@ -1,0 +1,41 @@
+
+
+
+
+
+GET_CHIP_STATUS
+CMD 23
+# parameters which are part of the command but not the command itself
+REQ {
+}
+# parameters to get back which aren't CTS
+REP {
+    CHIP_PEND {
+        CAL_PEND[7:6]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND[5]
+        STATE_CHANGE_PEND[4]
+        CMD_ERROR_PEND[3]
+        CHIP_READY_PEND[2]
+        LOW_BATT_PEND[1]
+        WUT_PEND[0]
+    }
+    
+    CHIP_STATUS {
+        CAL[7:6] 
+        FIFO_UNDERFLOW_OVERFLOW_ERROR[5]
+        STATE_CHANGE[4]
+        CMD_ERROR[3]
+        CHIP_READY[2]
+        LOW_BATT[1]
+        WUT[0]
+    }
+    
+    CMD_ERR_STATUS {
+        CMD_ERR_STATUS[7:0]
+    }
+}
+
+
+
+
+
