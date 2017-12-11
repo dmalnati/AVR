@@ -42,6 +42,38 @@ REP {
 
 
 
+FUNC_INFO
+CMD 0x10
+REQ {
+}
+REP {
+    REVEXT {
+        REVEXT[7:0]
+    }
+    
+    REVBRANCH {
+        REVBRANCH[7:0]
+    }
+    
+    REVINT {
+        REVINT[7:0]
+    }
+    
+    PATCH {
+        PATCH[15:8]
+    }
+    
+    PATCH {
+        PATCH[7:0]
+    }
+    
+    FUNC {
+        FUNC[7:0]
+    }
+}
+
+
+
 GET_CHIP_STATUS
 CMD 0x23
 # parameters which are part of the command but not the command itself

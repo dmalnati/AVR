@@ -48,6 +48,48 @@ void Print(RFSI4463PRO::PART_INFO_REP &val)
 
 ////////////////////////////////////////////////////////////////////
 //
+// FUNC_INFO (0x10)
+//
+////////////////////////////////////////////////////////////////////
+
+void Print(RFSI4463PRO::FUNC_INFO_REP &val)
+{
+    Serial.println("FUNC_INFO_REP");
+
+    Serial.print("REVEXT.REVEXT      : ");
+    Serial.print(val.REVEXT.REVEXT);
+    Serial.print(" (0x");
+    Serial.print(val.REVEXT.REVEXT, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("REVBRANCH.REVBRANCH: ");
+    Serial.print(val.REVBRANCH.REVBRANCH);
+    Serial.print(" (0x");
+    Serial.print(val.REVBRANCH.REVBRANCH, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("REVINT.REVINT      : ");
+    Serial.print(val.REVINT.REVINT);
+    Serial.print(" (0x");
+    Serial.print(val.REVINT.REVINT, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("PATCH.PATCH        : ");
+    Serial.print(val.PATCH.PATCH);
+    Serial.print(" (0x");
+    Serial.print(val.PATCH.PATCH, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("FUNC.FUNC          : ");
+    Serial.print(val.FUNC.FUNC);
+    Serial.print(" (0x");
+    Serial.print(val.FUNC.FUNC, HEX);
+    Serial.print(")");
+    Serial.println();
+}
+
+////////////////////////////////////////////////////////////////////
+//
 // GET_CHIP_STATUS (0x23)
 //
 ////////////////////////////////////////////////////////////////////

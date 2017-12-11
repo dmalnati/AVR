@@ -68,6 +68,67 @@ uint8_t Command_PART_INFO(PART_INFO_REP &retVal)
 
 ////////////////////////////////////////////////////////////////////
 //
+// FUNC_INFO (0x10)
+//
+////////////////////////////////////////////////////////////////////
+
+struct FUNC_INFO_REP
+{
+    struct
+    {
+        uint8_t REVEXT;
+    } REVEXT;
+
+    struct
+    {
+        uint8_t REVBRANCH;
+    } REVBRANCH;
+
+    struct
+    {
+        uint8_t REVINT;
+    } REVINT;
+
+    struct
+    {
+        uint16_t PATCH;
+    } PATCH;
+
+    struct
+    {
+        uint8_t FUNC;
+    } FUNC;
+};
+
+uint8_t Command_FUNC_INFO(FUNC_INFO_REP &retVal)
+{
+    const uint8_t CMD_ID   = 0x10;
+    const uint8_t BUF_SIZE = 6;
+
+    uint8_t buf[BUF_SIZE];
+
+    uint8_t ok = SendAndWaitAndReceive(CMD_ID, buf, BUF_SIZE);
+
+    if (ok)
+    {
+        BufferFieldExtractor bfe(buf, BUF_SIZE);
+
+        retVal.REVEXT.REVEXT       = bfe.GetUI8();
+
+        retVal.REVBRANCH.REVBRANCH = bfe.GetUI8();
+
+        retVal.REVINT.REVINT       = bfe.GetUI8();
+
+        retVal.PATCH.PATCH         = bfe.GetUI16NTOHS();
+
+        retVal.FUNC.FUNC           = bfe.GetUI8();
+    }
+
+    return ok;
+}
+
+////////////////////////////////////////////////////////////////////
+//
 // GET_CHIP_STATUS (0x23)
 //
 ////////////////////////////////////////////////////////////////////
