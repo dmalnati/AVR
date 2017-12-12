@@ -64,6 +64,40 @@ public:
         PAL.DigitalWrite(pinChipSelect_, HIGH);
         
         PowerOnReset();
+        //ClearInterrupts();
+    }
+    
+    uint8_t SetProperty(uint16_t property, uint8_t value)
+    {
+        RFSI4463PRO::SET_PROPERTY_REQ req;
+        
+        req.GROUP.GROUP           = (uint8_t)((property & 0xFF00) >> 8);
+        req.NUM_PROPS.NUM_PROPS   = 1;
+        req.START_PROP.START_PROP = (uint8_t)(property & 0x00FF);
+        req.DATA0.DATA0           = value;
+        
+        uint8_t retVal = Command_SET_PROPERTY(req);
+        
+        return retVal;
+    }
+    
+    uint8_t GetProperty(uint16_t property, uint8_t &value)
+    {
+        RFSI4463PRO::GET_PROPERTY_REQ req;
+        RFSI4463PRO::GET_PROPERTY_REP rep;
+        
+        req.GROUP.GROUP           = (uint8_t)((property & 0xFF00) >> 8);
+        req.NUM_PROPS.NUM_PROPS   = 1;
+        req.START_PROP.START_PROP = (uint8_t)(property & 0x00FF);
+        
+        uint8_t retVal = Command_GET_PROPERTY(req, rep);
+        
+        if (retVal)
+        {
+            value = rep.DATA0.DATA0;
+        }
+        
+        return retVal;
     }
     
     
@@ -90,6 +124,16 @@ private:
         
         PAL.DigitalWrite(pinShutdown_, LOW);
         PAL.Delay(DURATION_MS_POWER_ON_RESET);
+    }
+    
+    uint8_t ClearInterrupts()
+    {
+        RFSI4463PRO::GET_INT_STATUS_REQ req;
+        RFSI4463PRO::GET_INT_STATUS_REP rep;
+        
+        uint8_t retVal = Command_GET_INT_STATUS(req, rep);
+        
+        return retVal;
     }
     
     uint8_t SendAndWaitAndReceive(uint8_t  cmd,

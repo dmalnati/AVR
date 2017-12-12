@@ -72,6 +72,292 @@ REP {
     }
 }
 
+GET_INT_STATUS
+CMD 0x20
+REQ {
+    PH_CLR_PEND {
+        FILTER_MATCH_PEND_CLR[7:7]
+        FILTER_MISS_PEND_CLR[6:6]
+        PACKET_SENT_PEND_CLR[5:5]
+        PACKET_RX_PEND_CLR[4:4]
+        CRC_ERROR_PEND_CLR[3:3]
+        ZERO[2:2]
+        TX_FIFO_ALMOST_EMPTY_PEND_CLR[1:1]
+        RX_FIFO_ALMOST_FULL_PEND_CLR[0:0]
+    }
+    
+    MODEM_CLR_PEND {
+        ZERO[7:6]
+        INVALID_SYNC_PEND_CLR[5:5]
+        RSSI_JUMP_PEND_CLR[4:4]
+        RSSI_PEND_CLR[3:3]
+        INVALID_PREAMBLE_PEND_CLR[2:2]
+        PREAMBLE_DETECT_PEND_CLR[1:1]
+        SYNC_DETECT_PEND_CLR[0:0]
+    }
+    
+    CHIP_CLR_PEND {
+        CAL_PEND_CLR[7:6]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND_CLR[5:5]
+        STATE_CHANGE_PEND_CLR[4:4]
+        CMD_ERROR_PEND_CLR[3:3]
+        CHIP_READY_PEND_CLR[2:2]
+        LOW_BATT_PEND_CLR[1:1]
+        WUT_PEND_CLR[0:0]
+    }
+}
+REP {
+    CMD_COMPLETE {
+        CTS[7:0] 
+    }
+    
+    INT_PEND {
+        XXXXX[7:3]
+        CHIP_INT_STATUS_PEND[2:2]
+        MODEM_INT_STATUS_PEND[1:1]
+        PH_INT_STATUS_PEND[0:0]
+    }
+    
+    INT_STATUS {
+        XXXXX[7:3]
+        CHIP_INT_STATUS[2:2]
+        MODEM_INT_STATUS[1:1]
+        PH_INT_STATUS[0:0]
+    }
+    
+    PH_PEND {
+        FILTER_MATCH_PEND[7:7]
+        FILTER_MISS_PEND[6:6]
+        PACKET_SENT_PEND[5:5]
+        PACKET_RX_PEND[4:4]
+        CRC_ERROR_PEND[3:3]
+        X[2:2]
+        TX_FIFO_ALMOST_EMPTY_PEND[1:1]
+        RX_FIFO_ALMOST_FULL_PEND[0:0]
+    }
+
+    PH_STATUS {
+        FILTER_MATCH[7:7]
+        FILTER_MISS[6:6]
+        PACKET_SENT[5:5]
+        PACKET_RX[4:4]
+        CRC_ERROR[3:3]
+        X[2:2]
+        TX_FIFO_ALMOST_EMPTY[1:1]
+        RX_FIFO_ALMOST_FULL[0:0]
+    }
+    
+    MODEM_PEND {
+        XX[7:6]
+        INVALID_SYNC_PEND[5:5]
+        RSSI_JUMP_PEND[4:4]
+        RSSI_PEND[3:3]
+        INVALID_PREAMBLE_PEND[2:2]
+        PREAMBLE_DETECT_PEND[1:1]
+        SYNC_DETECT_PEND[0:0]
+    }
+    
+    MODEM_STATUS {
+        XX[7:6]
+        INVALID_SYNC[5:5]
+        RSSI_JUMP[4:4]
+        RSSI[3:3]
+        INVALID_PREAMBLE[2:2]
+        PREAMBLE_DETECT[1:1]
+        SYNC_DETECT[0:0]
+    }
+    
+    CHIP_PEND {
+        CAL_PEND[7:6]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND[5:5]
+        STATE_CHANGE_PEND[4:4]
+        CMD_ERROR_PEND[3:3]
+        CHIP_READY_PEND[2:2]
+        LOW_BATT_PEND[1:1]
+        WUT_PEND[0:0]
+    }
+    
+    CHIP_STATUS {
+        CAL[7:6]
+        FIFO_UNDERFLOW_OVERFLOW_ERROR[5:5]
+        STATE_CHANGE[4:4]
+        CMD_ERROR[3:3]
+        CHIP_READY[2:2]
+        LOW_BATT[1:1]
+        WUT[0:0]
+    }
+}
+
+
+
+
+
+POWER_UP
+CMD 0x02
+REQ {
+    BOOT_OPTIONS {
+        PATCH[7:7]
+        ZERO[6:6]
+        FUNC[5:0]
+    }
+    
+    XTAL_OPTIONS {
+        ZERO[7:1]
+        TCXO[0:0]
+    }
+    
+    XO_FREQ {
+        XO_FREQ[31:24]
+    }
+    
+    XO_FREQ {
+        XO_FREQ[23:16]
+    }
+    
+    XO_FREQ {
+        XO_FREQ[15:8]
+    }
+    
+    XO_FREQ {
+        XO_FREQ[7:0] 
+    }
+}
+REP {
+}
+
+
+
+
+SET_PROPERTY
+CMD 0x11
+REQ {
+    GROUP {
+        GROUP[7:0]
+    }
+    NUM_PROPS {
+        NUM_PROPS[7:0]
+    }
+    START_PROP {
+        START_PROP[7:0]
+    }
+    DATA0  {
+        DATA0[7:0]
+    }
+    DATA1  {
+        DATA1[7:0]
+    }
+    DATA2  {
+        DATA2[7:0]
+    }
+    DATA3  {
+        DATA3[7:0]
+    }
+    DATA4  {
+        DATA4[7:0]
+    }
+    DATA5  {
+        DATA5[7:0]
+    }
+    DATA6  {
+        DATA6[7:0]
+    }
+    DATA7  {
+        DATA7[7:0]
+    }
+    DATA8  {
+        DATA8[7:0]
+    }
+    DATA9  {
+        DATA9[7:0]
+    }
+    DATA10 {
+        DATA10[7:0]
+    }
+    DATA11 {
+        DATA11[7:0]
+    }
+}
+REP {
+}
+
+GET_PROPERTY
+CMD 0x12
+REQ {
+    GROUP {
+        GROUP[7:0]
+    }
+    NUM_PROPS {
+        NUM_PROPS[7:0]
+    }
+    START_PROP {
+        START_PROP[7:0]
+    }
+}
+REP {
+    DATA0  {
+        DATA0[7:0]
+    }
+    DATA1  {
+        DATA1[7:0]
+    }
+    DATA2  {
+        DATA2[7:0]
+    }
+    DATA3  {
+        DATA3[7:0]
+    }
+    DATA4  {
+        DATA4[7:0]
+    }
+    DATA5  {
+        DATA5[7:0]
+    }
+    DATA6  {
+        DATA6[7:0]
+    }
+    DATA7  {
+        DATA7[7:0]
+    }
+    DATA8  {
+        DATA8[7:0]
+    }
+    DATA9  {
+        DATA9[7:0]
+    }
+    DATA10 {
+        DATA10[7:0]
+    }
+    DATA11 {
+        DATA11[7:0]
+    }
+    DATA12 {
+        DATA12[7:0]
+    }
+    DATA13 {
+        DATA13[7:0]
+    }
+    DATA14 {
+        DATA14[7:0]
+    }
+    DATA15 {
+        DATA15[7:0]
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 GET_CHIP_STATUS

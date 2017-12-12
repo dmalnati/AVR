@@ -99,6 +99,35 @@ void RequestDeviceState()
     Serial.println();
 }
 
+void TestSetGetProperty()
+{
+    Serial.println("RequestDeviceState");
+
+
+
+    uint16_t propertyList[] = { 0x0100, 0x0103, 0x0200, 0x0202 };
+
+    for (auto property : propertyList)
+    {
+        uint8_t value;
+    
+        Serial.print("Property 0x");
+        Serial.print(property, HEX);
+        Serial.print(" = ");
+        if (rf.GetProperty(property, value))
+        {
+            Serial.print("0b");
+            Serial.println(value, BIN);
+        }
+        else
+        {
+            Serial.println("ERR");
+        }
+    }
+
+    Serial.println();
+}
+
 
 void setup()
 {
@@ -112,10 +141,11 @@ void setup()
         GetPartInfo();
         GetFuncInfo();
         GetChipStatus();
-        GetFifoInfo();
+        //GetFifoInfo();
         RequestDeviceState();
+        //TestSetGetProperty();
 
-        PAL.Delay(5000);
+        PAL.Delay(2000);
     }
 }
 

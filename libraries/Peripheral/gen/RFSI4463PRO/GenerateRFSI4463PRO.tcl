@@ -131,53 +131,57 @@ proc OnConfigBlockParsed { name cmd reqByteDefList repByteDefList } {
 }
 
 proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
-    # Nice header
-    gend "////////////////////////////////////////////////////////////////////"
-    gend "//"
-    gend "// ${name} ($cmd)"
-    gend "//"
-    gend "////////////////////////////////////////////////////////////////////"
-    gend ""
+    set byteCountRep [GetByteCount $repByteDefList]
 
-    # Determine field padding
-    set maxLen [GetMaxByteAndFieldLen $repByteDefList]
-    set formatStr "%-${maxLen}s"
+    if { $byteCountRep } {
+        # Nice header
+        gend "////////////////////////////////////////////////////////////////////"
+        gend "//"
+        gend "// ${name} ($cmd)"
+        gend "//"
+        gend "////////////////////////////////////////////////////////////////////"
+        gend ""
 
-    # Calculate number of bytes received
-    set byteCount [GetByteCount $repByteDefList]
+        # Determine field padding
+        set maxLen [GetMaxByteAndFieldLen $repByteDefList]
+        set formatStr "%-${maxLen}s"
 
-    # Generate code
-    gend "void Print(RFSI4463PRO::${name}_REP &val)"
-    gend "\{"
-    gend "    Serial.println(\"${name}_REP\");"
-    gend ""
+        # Calculate number of bytes received
+        set byteCount [GetByteCount $repByteDefList]
 
-    set varNameLast ""
-    for { set i 0 } { $i < $byteCount } { incr i } {
-        set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
-        set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
-        set fieldOffsetListLen [llength $fieldOffsetList]
+        # Generate code
+        gend "void Print(RFSI4463PRO::${name}_REP &val)"
+        gend "\{"
+        gend "    Serial.println(F(\"${name}_REP\"));"
+        gend ""
 
-        foreach { field offset } $fieldOffsetList {
-            set varName "${byte}.$field"
-            set varStr [format $formatStr $varName]
+        set varNameLast ""
+        for { set i 0 } { $i < $byteCount } { incr i } {
+            set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
 
-            if { $varName != $varNameLast } {
-                gend "    Serial.print(\"${varStr}: \");"
-                gend "    Serial.print(val.${varName});"
-                gend "    Serial.print(\" (0x\");"
-                gend "    Serial.print(val.${varName}, HEX);"
-                gend "    Serial.print(\")\");"
-                gend "    Serial.println();"
+            foreach { field offset } $fieldOffsetList {
+                set varName "${byte}.$field"
+                set varStr [format $formatStr $varName]
+
+                if { $varName != $varNameLast } {
+                    gend "    Serial.print(F(\"${varStr} : \"));"
+                    gend "    Serial.print(val.${varName});"
+                    gend "    Serial.print(F(\" (0x\"));"
+                    gend "    Serial.print(val.${varName}, HEX);"
+                    gend "    Serial.print(F(\")\"));"
+                    gend "    Serial.println();"
+                }
+
+                set varNameLast $varName
             }
-
-            set varNameLast $varName
         }
+
+        gend "\}"
+
+        gend ""
     }
-
-    gend "\}"
-
-    gend ""
 }
 
 proc GetMaxFieldLen { byteDefList } {
@@ -231,7 +235,6 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
     #
     ################################################################
 
-
     # Look at response size
     set byteCountReq [GetByteCount $reqByteDefList]
 
@@ -275,20 +278,24 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
                     set bitWidth [expr $bitStart + 1]
                     set varName "${byte}.$field"
 
-                    gen "    struct"
-                    gen "    \{"
-                    gen "        uint${bitWidth}_t [format $formatStr $field]\
-                                 = 0;"
-                    gen "    \} ${byte};"
+                    if { $varName != $varNameLast } {
+                        gen "    struct"
+                        gen "    \{"
+                        gen "        uint${bitWidth}_t\
+                                     [format $formatStr $field]\
+                                     = 0;"
+                        gen "    \} ${byte};"
 
-                    set varNameLast $varName
+                        set varNameLast $varName
+                    } else {
+                        set sep ""
+                    }
                 } else {
                     set varName "${byte}.$field"
                     if { $varName != $varNameLast } {
                         gen "    struct"
                         gen "    \{"
                         gen "        uint8_t [format $formatStr $field] = 0;"
-                        set varName "${byte}.$field"
                         gen "    \} ${byte};"
                     } else {
                         set sep ""
@@ -368,7 +375,6 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
                         gen "    struct"
                         gen "    \{"
                         gen "        uint8_t [format $formatStr $field] = 0;"
-                        set varName "${byte}.$field"
                         gen "    \} ${byte};"
                     } else {
                         set sep ""
@@ -475,30 +481,34 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
                 set bitEnd   [lindex $offsetPartList 1]
 
                 if { $bitStart > 7 } {
-                    set bitWidth [expr $bitStart + 1]
-                    set fnSuffix "s"
-                    if { $bitWidth > 16 } {
-                        set fnSuffix "l"
-                    }
                     set varName "${byte}.$field"
 
+                    if { $varName != $varNameLast } {
+                        set bitWidth [expr $bitStart + 1]
+                        set fnSuffix "s"
+                        if { $bitWidth > 16 } {
+                            set fnSuffix "l"
+                        }
 
-                    set tmpVarName \
-                        "tmpReqByte${i}_[expr $i + ($bitWidth / 8) - 1]"
+                        set tmpVarName \
+                            "tmpReqByte${i}_[expr $i + ($bitWidth / 8) - 1]"
 
-                    set str ""
-                    append str "    "
-                    append str "uint${bitWidth}_t $tmpVarName = "
-                    append str "PAL.hton${fnSuffix}(req.$varName);"
-                    gen $str
+                        set str ""
+                        append str "    "
+                        append str "uint${bitWidth}_t $tmpVarName = "
+                        append str "PAL.hton${fnSuffix}(req.$varName);"
+                        gen $str
 
-                    set str ""
-                    append str "    "
-                    append str "memcpy(&bufReq\[$i\],"
-                    append str " &$tmpVarName, sizeof($tmpVarName));"
-                    gen $str
+                        set str ""
+                        append str "    "
+                        append str "memcpy(&bufReq\[$i\],"
+                        append str " &$tmpVarName, sizeof($tmpVarName));"
+                        gen $str
 
-                    set varNameLast $varName
+                        set varNameLast $varName
+                    } else {
+                        set sep ""
+                    }
                 } else {
                     set varName "${byte}.$field"
 
@@ -506,9 +516,7 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
                         set str ""
                         append str "    "
                         append str "bufReq\[$i\] = "
-                        append str "req."
-                        append str [format $formatStr "${byte}.${field}"]
-                        append str ";"
+                        append str "req.${byte}.${field};"
 
                         gen $str
                     } else {
