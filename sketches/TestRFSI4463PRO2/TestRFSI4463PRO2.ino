@@ -62,6 +62,43 @@ void GetChipStatus()
     Serial.println();
 }
 
+void GetFifoInfo()
+{
+    Serial.println("GetFifoInfo");
+    
+    RFSI4463PRO::FIFO_INFO_REQ req;
+    RFSI4463PRO::FIFO_INFO_REP rep;
+
+    if (rf.Command_FIFO_INFO(req, rep))
+    {
+        rfd.Print(rep);
+    }
+    else
+    {
+        Serial.println("ERR");
+    }
+
+    Serial.println();
+}
+
+void RequestDeviceState()
+{
+    Serial.println("RequestDeviceState");
+    
+    RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
+
+    if (rf.Command_REQUEST_DEVICE_STATE(rep))
+    {
+        rfd.Print(rep);
+    }
+    else
+    {
+        Serial.println("ERR");
+    }
+
+    Serial.println();
+}
+
 
 void setup()
 {
@@ -75,6 +112,8 @@ void setup()
         GetPartInfo();
         GetFuncInfo();
         GetChipStatus();
+        GetFifoInfo();
+        RequestDeviceState();
 
         PAL.Delay(5000);
     }

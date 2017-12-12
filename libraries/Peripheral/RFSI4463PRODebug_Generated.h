@@ -190,3 +190,57 @@ void Print(RFSI4463PRO::GET_CHIP_STATUS_REP &val)
     Serial.println();
 }
 
+////////////////////////////////////////////////////////////////////
+//
+// FIFO_INFO (0x15)
+//
+////////////////////////////////////////////////////////////////////
+
+void Print(RFSI4463PRO::FIFO_INFO_REP &val)
+{
+    Serial.println("FIFO_INFO_REP");
+
+    Serial.print("RX_FIFO_COUNT.RX_FIFO_COUNT: ");
+    Serial.print(val.RX_FIFO_COUNT.RX_FIFO_COUNT);
+    Serial.print(" (0x");
+    Serial.print(val.RX_FIFO_COUNT.RX_FIFO_COUNT, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("TX_FIFO_SPACE.TX_FIFO_SPACE: ");
+    Serial.print(val.TX_FIFO_SPACE.TX_FIFO_SPACE);
+    Serial.print(" (0x");
+    Serial.print(val.TX_FIFO_SPACE.TX_FIFO_SPACE, HEX);
+    Serial.print(")");
+    Serial.println();
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// REQUEST_DEVICE_STATE (0x33)
+//
+////////////////////////////////////////////////////////////////////
+
+void Print(RFSI4463PRO::REQUEST_DEVICE_STATE_REP &val)
+{
+    Serial.println("REQUEST_DEVICE_STATE_REP");
+
+    Serial.print("CURR_STATE.ZERO                : ");
+    Serial.print(val.CURR_STATE.ZERO);
+    Serial.print(" (0x");
+    Serial.print(val.CURR_STATE.ZERO, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("CURR_STATE.MAIN_STATE          : ");
+    Serial.print(val.CURR_STATE.MAIN_STATE);
+    Serial.print(" (0x");
+    Serial.print(val.CURR_STATE.MAIN_STATE, HEX);
+    Serial.print(")");
+    Serial.println();
+    Serial.print("CURRENT_CHANNEL.CURRENT_CHANNEL: ");
+    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL);
+    Serial.print(" (0x");
+    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL, HEX);
+    Serial.print(")");
+    Serial.println();
+}
+

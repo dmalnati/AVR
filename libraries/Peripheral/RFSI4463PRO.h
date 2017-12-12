@@ -92,7 +92,11 @@ private:
         PAL.Delay(DURATION_MS_POWER_ON_RESET);
     }
     
-    uint8_t SendAndWaitAndReceive(uint8_t req, uint8_t *repBuf, uint8_t repBufLen)
+    uint8_t SendAndWaitAndReceive(uint8_t  cmd,
+                                  uint8_t *reqBuf,
+                                  uint8_t  reqBufLen,
+                                  uint8_t *repBuf,
+                                  uint8_t  repBufLen)
     {
         uint8_t retVal = 0;
         
@@ -102,7 +106,14 @@ private:
         SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
         PAL.DigitalWrite(pinChipSelect_, LOW);
 
-        SPI.transfer(req);
+        SPI.transfer(cmd);
+        
+        // Transfer as many command supplemental parameters as indicated
+        // (could be zero based on input, which is valid)
+        for (uint8_t i = 0; i < reqBufLen; ++i)
+        {
+            SPI.transfer(reqBuf[i]);
+        }
 
         PAL.DelayMicroseconds(DELAY_US_BEFORE_CHIP_SELECT_RELEASE);
         
@@ -146,7 +157,7 @@ private:
                 // Command result ready to read.
                 // Consume as many bytes of response as are expected
                 // (could be zero based on input, which is valid)
-                for (uint16_t i = 0; i < repBufLen; ++i)
+                for (uint8_t i = 0; i < repBufLen; ++i)
                 {
                     repBuf[i] = SPI.transfer(VAL_TO_SEND_WHEN_READING);
                 }

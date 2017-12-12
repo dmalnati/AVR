@@ -110,4 +110,70 @@ REP {
 
 
 
+FIFO_INFO
+CMD 0x15
+REQ {
+    FIFO {
+        ZERO[7:2]
+        RX[1:1]
+        TX[0:0]
+    }
+}
+REP {
+    RX_FIFO_COUNT {
+        RX_FIFO_COUNT[7:0]
+    }
+    TX_FIFO_SPACE {
+        TX_FIFO_SPACE[7:0]
+    }
+}
+
+
+REQUEST_DEVICE_STATE
+CMD 0x33
+REQ {
+}
+REP {
+    CURR_STATE {
+        ZERO[7:4] MAIN_STATE[3:0]
+    }
+    
+    CURRENT_CHANNEL {
+        CURRENT_CHANNEL[7:0]
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

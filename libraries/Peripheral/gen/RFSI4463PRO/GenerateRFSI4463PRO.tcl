@@ -140,7 +140,7 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
     gend ""
 
     # Determine field padding
-    set maxLen [GetMaxFieldLen $repByteDefList]
+    set maxLen [GetMaxByteAndFieldLen $repByteDefList]
     set formatStr "%-${maxLen}s"
 
     # Calculate number of bytes received
@@ -184,7 +184,23 @@ proc GetMaxFieldLen { byteDefList } {
     set maxLen 0
 
     foreach { byte fieldOffsetList } $byteDefList {
+        foreach { field offset } $fieldOffsetList {
+            set name    ${field}
+            set nameLen [string length $name]
 
+            if { $nameLen > $maxLen } {
+                set maxLen $nameLen
+            }
+        }
+    }
+
+    return $maxLen
+}
+
+proc GetMaxByteAndFieldLen { byteDefList } {
+    set maxLen 0
+
+    foreach { byte fieldOffsetList } $byteDefList {
         foreach { field offset } $fieldOffsetList {
             set name    "${byte}.${field}"
             set nameLen [string length $name]
@@ -208,178 +224,415 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
     gen "////////////////////////////////////////////////////////////////////"
     gen ""
 
+
+    ################################################################
+    #
+    # Generate Request Struct Code
+    #
+    ################################################################
+
+
     # Look at response size
-    set byteCount [GetByteCount $repByteDefList]
+    set byteCountReq [GetByteCount $reqByteDefList]
 
+    if { $byteCountReq } {
+        # Figure out field widths
+        set maxFieldLen [GetMaxFieldLen $reqByteDefList]
+        set formatStr "%-${maxFieldLen}s"
 
-    # Generate struct for reply
-    set varNameLast ""
-    set sep ""
-    gen "struct ${name}_REP"
-    gen "\{"
-    for { set i 0 } { $i < $byteCount } { incr i } {
-        set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
-        set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
-        set fieldOffsetListLen [llength $fieldOffsetList]
+        # Generate struct for reply
+        set varNameLast ""
+        set sep ""
+        gen "struct ${name}_REQ"
+        gen "\{"
+        for { set i 0 } { $i < $byteCountReq } { incr i } {
+            set byte               [lindex $reqByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $reqByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
 
-        gen -nonewline $sep
-        set sep "\n"
+            gen -nonewline $sep
+            set sep "\n"
 
-        if { $fieldOffsetListLen > 2 } {
-            gen "    struct"
-            gen "    \{"
-            foreach { field offset } $fieldOffsetList {
-                gen "        uint8_t $field;"
-
-                set varName "${byte}.$field"
-            }
-            gen "    \} ${byte};"
-        } else {
-            set field  [lindex $fieldOffsetList 0]
-            set offset [lindex $fieldOffsetList 1]
-
-            set offsetPartList [split $offset ":"]
-
-            set bitStart [lindex $offsetPartList 0]
-            set bitEnd   [lindex $offsetPartList 1]
-
-            if { $bitStart > 7 } {
-                set bitWidth [expr $bitStart + 1]
-                set varName "${byte}.$field"
-
+            if { $fieldOffsetListLen > 2 } {
                 gen "    struct"
                 gen "    \{"
-                gen "        uint${bitWidth}_t $field;"
-                gen "    \} ${byte};"
+                foreach { field offset } $fieldOffsetList {
+                    gen "        uint8_t [format $formatStr $field] = 0;"
 
-                set varNameLast $varName
-            } else {
-                set varName "${byte}.$field"
-                if { $varName != $varNameLast } {
-                    gen "    struct"
-                    gen "    \{"
-                    gen "        uint8_t $field;"
                     set varName "${byte}.$field"
-                    gen "    \} ${byte};"
-                } else {
-                    set sep ""
                 }
-            }
-        }
-    }
-    gen "\};"
+                gen "    \} ${byte};"
+            } else {
+                set field  [lindex $fieldOffsetList 0]
+                set offset [lindex $fieldOffsetList 1]
 
-    gen ""
-
-    # Generate function to get reply from chip
-    gen "uint8_t Command_${name}(${name}_REP &retVal)"
-    gen "\{"
-    gen "    const uint8_t CMD_ID   = $cmd;"
-    gen "    const uint8_t BUF_SIZE = $byteCount;"
-    gen ""
-    gen "    uint8_t buf\[BUF_SIZE\];"
-    gen ""
-    gen "    uint8_t ok = SendAndWaitAndReceive(CMD_ID, buf, BUF_SIZE);"
-    gen ""
-    gen "    if (ok)"
-    gen "    \{"
-    gen "        BufferFieldExtractor bfe(buf, BUF_SIZE);"
-    gen ""
-
-    # Determine field padding
-    set maxLen [GetMaxFieldLen $repByteDefList]
-    set formatStr "%-${maxLen}s"
-
-    # Generate code
-    set varNameLast ""
-    set sep ""
-    for { set i 0 } { $i < $byteCount } { incr i } {
-        gen -nonewline $sep
-        set sep "\n"
-
-        set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
-        set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
-        set fieldOffsetListLen [llength $fieldOffsetList]
-
-        #
-        # Unpacking the data into struct fields can go one of 3 ways
-        # - returned data has many bitfields per-byte
-        # - returned data maps directly onto struct bytes
-        # - returned data has multiple bytes to map onto struct bytes
-        #
-
-        # Check if this byte has multi-field elements
-        # quick test, if there is more than one field in a byte, then yes
-
-
-        if { $fieldOffsetListLen > 2 } {
-            gen "        uint8_t tmpByte${i} = bfe.GetUI8();"            
-
-            foreach { field offset } $fieldOffsetList {
                 set offsetPartList [split $offset ":"]
 
                 set bitStart [lindex $offsetPartList 0]
                 set bitEnd   [lindex $offsetPartList 1]
 
-                set bitMask  [GetBitmask $bitStart $bitEnd]
-                set bitShift $bitEnd
+                if { $bitStart > 7 } {
+                    set bitWidth [expr $bitStart + 1]
+                    set varName "${byte}.$field"
 
-                set str ""
-                append str "        "
-                append str "retVal."
-                append str [format $formatStr "${byte}.${field}"]
-                append str " = "
-                append str "(uint8_t)((tmpByte${i} & $bitMask) >> $bitShift);"
+                    gen "    struct"
+                    gen "    \{"
+                    gen "        uint${bitWidth}_t [format $formatStr $field]\
+                                 = 0;"
+                    gen "    \} ${byte};"
 
-                gen $str
-            }
-        } else {
-            # it's one of the other two
-            set field  [lindex $fieldOffsetList 0]
-            set offset [lindex $fieldOffsetList 1]
-
-            set offsetPartList [split $offset ":"]
-
-            set bitStart [lindex $offsetPartList 0]
-            set bitEnd   [lindex $offsetPartList 1]
-
-            if { $bitStart > 7 } {
-                set bitWidth [expr $bitStart + 1]
-                set fnSuffix "S"
-                if { $bitWidth > 16 } {
-                    set fnSuffix "L"
-                }
-                set varName "${byte}.$field"
-
-                set str ""
-                append str "        "
-                append str "retVal."
-                append str [format $formatStr "${byte}.${field}"]
-                append str " = bfe.GetUI${bitWidth}NTOH${fnSuffix}();"
-
-                gen $str
-
-                set varNameLast $varName
-            } else {
-                set varName "${byte}.$field"
-
-                if { $varName != $varNameLast } {
-                    set str ""
-                    append str "        "
-                    append str "retVal."
-                    append str [format $formatStr "${byte}.${field}"]
-                    append str " = bfe.GetUI8();"            
-
-                    gen $str
+                    set varNameLast $varName
                 } else {
-                    set sep ""
+                    set varName "${byte}.$field"
+                    if { $varName != $varNameLast } {
+                        gen "    struct"
+                        gen "    \{"
+                        gen "        uint8_t [format $formatStr $field] = 0;"
+                        set varName "${byte}.$field"
+                        gen "    \} ${byte};"
+                    } else {
+                        set sep ""
+                    }
                 }
             }
         }
+        gen "\};"
+
+        gen ""
     }
 
-    gen "    \}"
+
+
+
+
+    ################################################################
+    #
+    # Generate Reply Struct Code
+    #
+    ################################################################
+
+
+    # Look at response size
+    set byteCountRep [GetByteCount $repByteDefList]
+
+    if { $byteCountRep } {
+        # Figure out field widths
+        set maxFieldLen [GetMaxFieldLen $repByteDefList]
+        set formatStr "%-${maxFieldLen}s"
+
+        # Generate struct for reply
+        set varNameLast ""
+        set sep ""
+        gen "struct ${name}_REP"
+        gen "\{"
+        for { set i 0 } { $i < $byteCountRep } { incr i } {
+            set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
+
+            gen -nonewline $sep
+            set sep "\n"
+
+            if { $fieldOffsetListLen > 2 } {
+                gen "    struct"
+                gen "    \{"
+                foreach { field offset } $fieldOffsetList {
+                    gen "        uint8_t [format $formatStr $field] = 0;"
+
+                    set varName "${byte}.$field"
+                }
+                gen "    \} ${byte};"
+            } else {
+                set field  [lindex $fieldOffsetList 0]
+                set offset [lindex $fieldOffsetList 1]
+
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                if { $bitStart > 7 } {
+                    set bitWidth [expr $bitStart + 1]
+                    set varName "${byte}.$field"
+
+                    gen "    struct"
+                    gen "    \{"
+                    gen "        uint${bitWidth}_t [format $formatStr $field]\
+                                 = 0;"
+                    gen "    \} ${byte};"
+
+                    set varNameLast $varName
+                } else {
+                    set varName "${byte}.$field"
+                    if { $varName != $varNameLast } {
+                        gen "    struct"
+                        gen "    \{"
+                        gen "        uint8_t [format $formatStr $field] = 0;"
+                        set varName "${byte}.$field"
+                        gen "    \} ${byte};"
+                    } else {
+                        set sep ""
+                    }
+                }
+            }
+        }
+        gen "\};"
+
+        gen ""
+    }
+
+
+
+
+
+    ################################################################
+    #
+    # Generate Command Req Rep Code
+    #
+    ################################################################
+
+    # Generate function to get reply from chip
+    gen -nonewline "uint8_t Command_${name}("
+    if { $byteCountReq } {
+        gen -nonewline "${name}_REQ &req"
+    }
+    if { $byteCountRep } {
+        if { $byteCountReq } {
+            gen -nonewline ", "
+        }
+
+        gen -nonewline "${name}_REP &rep"
+    }
+    gen ")"
+    gen "\{"
+    gen "    const uint8_t CMD_ID       = $cmd;"
+    gen "    const uint8_t BUF_SIZE_REQ = $byteCountReq;"
+    gen "    const uint8_t BUF_SIZE_REP = $byteCountRep;"
     gen ""
+    gen "    uint8_t bufReq\[BUF_SIZE_REQ\];"
+    gen "    uint8_t bufRep\[BUF_SIZE_REP\];"
+    gen ""
+
+    if { $byteCountReq } {
+        gen "    // pack request data into buffer"
+
+        # Determine field padding
+        set maxLen [GetMaxByteAndFieldLen $reqByteDefList]
+        set formatStr "%-${maxLen}s"
+
+        # Generate code
+        set varNameLast ""
+        set sep ""
+        for { set i 0 } { $i < $byteCountReq } { incr i } {
+            gen -nonewline $sep
+            set sep "\n"
+
+            set byte               [lindex $reqByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $reqByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
+
+            #
+            # Packing the data into struct fields can go one of 3 ways
+            # - data has many bitfields per-byte
+            # - data maps directly onto struct bytes
+            # - data has multiple bytes to map onto struct bytes
+            #
+
+            # Check if this byte has multi-field elements
+            # quick test, if there is more than one field in a byte, then yes
+
+            if { $fieldOffsetListLen > 2 } {
+                gen "    uint8_t tmpReqByte${i} = 0;"            
+
+                foreach { field offset } $fieldOffsetList {
+                    set offsetPartList [split $offset ":"]
+
+                    set bitStart [lindex $offsetPartList 0]
+                    set bitEnd   [lindex $offsetPartList 1]
+
+                    set bitMask  [GetBitmask [expr $bitStart - $bitEnd] 0]
+                    set bitShift $bitEnd
+
+                    set str ""
+                    append str "    "
+                    append str "tmpReqByte${i} |= "
+                    append str "(uint8_t)((req."
+                    append str [format $formatStr "${byte}.${field}"]
+                    append str " & $bitMask) << $bitShift);"
+
+                    gen $str
+                }
+
+                gen "    bufReq\[$i\] = tmpReqByte${i};"
+            } else {
+                # it's one of the other two
+                set field  [lindex $fieldOffsetList 0]
+                set offset [lindex $fieldOffsetList 1]
+
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                if { $bitStart > 7 } {
+                    set bitWidth [expr $bitStart + 1]
+                    set fnSuffix "s"
+                    if { $bitWidth > 16 } {
+                        set fnSuffix "l"
+                    }
+                    set varName "${byte}.$field"
+
+
+                    set tmpVarName \
+                        "tmpReqByte${i}_[expr $i + ($bitWidth / 8) - 1]"
+
+                    set str ""
+                    append str "    "
+                    append str "uint${bitWidth}_t $tmpVarName = "
+                    append str "PAL.hton${fnSuffix}(req.$varName);"
+                    gen $str
+
+                    set str ""
+                    append str "    "
+                    append str "memcpy(&bufReq\[$i\],"
+                    append str " &$tmpVarName, sizeof($tmpVarName));"
+                    gen $str
+
+                    set varNameLast $varName
+                } else {
+                    set varName "${byte}.$field"
+
+                    if { $varName != $varNameLast } {
+                        set str ""
+                        append str "    "
+                        append str "bufReq\[$i\] = "
+                        append str "req."
+                        append str [format $formatStr "${byte}.${field}"]
+                        append str ";"
+
+                        gen $str
+                    } else {
+                        set sep ""
+                    }
+                }
+            }
+        }
+
+        gen ""
+    }
+
+
+
+    set str ""
+    append str "    "
+    append str "uint8_t ok = SendAndWaitAndReceive(CMD_ID, "
+    append str "bufReq, BUF_SIZE_REQ, bufRep, BUF_SIZE_REP);"
+    gen $str
+    gen ""
+
+    if { $byteCountRep } {
+        gen "    if (ok)"
+        gen "    \{"
+        gen "        BufferFieldExtractor bfe(bufRep, BUF_SIZE_REP);"
+        gen ""
+
+        # Determine field padding
+        set maxLen [GetMaxByteAndFieldLen $repByteDefList]
+        set formatStr "%-${maxLen}s"
+
+        # Generate code
+        set varNameLast ""
+        set sep ""
+        for { set i 0 } { $i < $byteCountRep } { incr i } {
+            gen -nonewline $sep
+            set sep "\n"
+
+            set byte               [lindex $repByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $repByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
+
+            #
+            # Unpacking the data into struct fields can go one of 3 ways
+            # - returned data has many bitfields per-byte
+            # - returned data maps directly onto struct bytes
+            # - returned data has multiple bytes to map onto struct bytes
+            #
+
+            # Check if this byte has multi-field elements
+            # quick test, if there is more than one field in a byte, then yes
+
+
+            if { $fieldOffsetListLen > 2 } {
+                gen "        uint8_t tmpByte${i} = bfe.GetUI8();"            
+
+                foreach { field offset } $fieldOffsetList {
+                    set offsetPartList [split $offset ":"]
+
+                    set bitStart [lindex $offsetPartList 0]
+                    set bitEnd   [lindex $offsetPartList 1]
+
+                    set bitMask  [GetBitmask $bitStart $bitEnd]
+                    set bitShift $bitEnd
+
+                    set str ""
+                    append str "        "
+                    append str "rep."
+                    append str [format $formatStr "${byte}.${field}"]
+                    append str " = "
+                    append str "(uint8_t)((tmpByte${i} & $bitMask) "
+                    append str ">> $bitShift);"
+
+                    gen $str
+                }
+            } else {
+                # it's one of the other two
+                set field  [lindex $fieldOffsetList 0]
+                set offset [lindex $fieldOffsetList 1]
+
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                if { $bitStart > 7 } {
+                    set bitWidth [expr $bitStart + 1]
+                    set fnSuffix "S"
+                    if { $bitWidth > 16 } {
+                        set fnSuffix "L"
+                    }
+                    set varName "${byte}.$field"
+
+                    set str ""
+                    append str "        "
+                    append str "rep."
+                    append str [format $formatStr "${byte}.${field}"]
+                    append str " = bfe.GetUI${bitWidth}NTOH${fnSuffix}();"
+
+                    gen $str
+
+                    set varNameLast $varName
+                } else {
+                    set varName "${byte}.$field"
+
+                    if { $varName != $varNameLast } {
+                        set str ""
+                        append str "        "
+                        append str "rep."
+                        append str [format $formatStr "${byte}.${field}"]
+                        append str " = bfe.GetUI8();"            
+
+                        gen $str
+                    } else {
+                        set sep ""
+                    }
+                }
+            }
+        }
+
+        gen "    \}"
+        gen ""
+    }
+
     gen "    return ok;"
     gen "\}"
 
