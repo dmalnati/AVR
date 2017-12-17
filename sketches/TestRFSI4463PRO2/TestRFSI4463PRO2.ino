@@ -135,14 +135,15 @@ void setup()
     Serial.println("Starting");
 
     rf.Init();
+    rf.ptt_on();
 
     while (1)
     {
         GetPartInfo();
-        GetFuncInfo();
-        GetChipStatus();
+        //GetFuncInfo();
+        //GetChipStatus();
         //GetFifoInfo();
-        RequestDeviceState();
+        //RequestDeviceState();
         //TestSetGetProperty();
 
         PAL.Delay(2000);

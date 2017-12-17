@@ -178,11 +178,6 @@ struct GET_INT_STATUS_REP
 {
     struct
     {
-        uint8_t CTS                                = 0;
-    } CMD_COMPLETE;
-
-    struct
-    {
         uint8_t XXXXX                              = 0;
         uint8_t CHIP_INT_STATUS_PEND               = 0;
         uint8_t MODEM_INT_STATUS_PEND              = 0;
@@ -270,7 +265,7 @@ uint8_t Command_GET_INT_STATUS(GET_INT_STATUS_REQ &req, GET_INT_STATUS_REP &rep)
 {
     const uint8_t CMD_ID       = 0x20;
     const uint8_t BUF_SIZE_REQ = 3;
-    const uint8_t BUF_SIZE_REP = 9;
+    const uint8_t BUF_SIZE_REP = 8;
 
     uint8_t bufReq[BUF_SIZE_REQ];
     uint8_t bufRep[BUF_SIZE_REP];
@@ -313,75 +308,73 @@ uint8_t Command_GET_INT_STATUS(GET_INT_STATUS_REQ &req, GET_INT_STATUS_REP &rep)
     {
         BufferFieldExtractor bfe(bufRep, BUF_SIZE_REP);
 
-        rep.CMD_COMPLETE.CTS                             = bfe.GetUI8();
+        uint8_t tmpByte0 = bfe.GetUI8();
+        rep.INT_PEND.XXXXX                               = (uint8_t)((tmpByte0 & 0b11111000) >> 3);
+        rep.INT_PEND.CHIP_INT_STATUS_PEND                = (uint8_t)((tmpByte0 & 0b00000100) >> 2);
+        rep.INT_PEND.MODEM_INT_STATUS_PEND               = (uint8_t)((tmpByte0 & 0b00000010) >> 1);
+        rep.INT_PEND.PH_INT_STATUS_PEND                  = (uint8_t)((tmpByte0 & 0b00000001) >> 0);
 
         uint8_t tmpByte1 = bfe.GetUI8();
-        rep.INT_PEND.XXXXX                               = (uint8_t)((tmpByte1 & 0b11111000) >> 3);
-        rep.INT_PEND.CHIP_INT_STATUS_PEND                = (uint8_t)((tmpByte1 & 0b00000100) >> 2);
-        rep.INT_PEND.MODEM_INT_STATUS_PEND               = (uint8_t)((tmpByte1 & 0b00000010) >> 1);
-        rep.INT_PEND.PH_INT_STATUS_PEND                  = (uint8_t)((tmpByte1 & 0b00000001) >> 0);
+        rep.INT_STATUS.XXXXX                             = (uint8_t)((tmpByte1 & 0b11111000) >> 3);
+        rep.INT_STATUS.CHIP_INT_STATUS                   = (uint8_t)((tmpByte1 & 0b00000100) >> 2);
+        rep.INT_STATUS.MODEM_INT_STATUS                  = (uint8_t)((tmpByte1 & 0b00000010) >> 1);
+        rep.INT_STATUS.PH_INT_STATUS                     = (uint8_t)((tmpByte1 & 0b00000001) >> 0);
 
         uint8_t tmpByte2 = bfe.GetUI8();
-        rep.INT_STATUS.XXXXX                             = (uint8_t)((tmpByte2 & 0b11111000) >> 3);
-        rep.INT_STATUS.CHIP_INT_STATUS                   = (uint8_t)((tmpByte2 & 0b00000100) >> 2);
-        rep.INT_STATUS.MODEM_INT_STATUS                  = (uint8_t)((tmpByte2 & 0b00000010) >> 1);
-        rep.INT_STATUS.PH_INT_STATUS                     = (uint8_t)((tmpByte2 & 0b00000001) >> 0);
+        rep.PH_PEND.FILTER_MATCH_PEND                    = (uint8_t)((tmpByte2 & 0b10000000) >> 7);
+        rep.PH_PEND.FILTER_MISS_PEND                     = (uint8_t)((tmpByte2 & 0b01000000) >> 6);
+        rep.PH_PEND.PACKET_SENT_PEND                     = (uint8_t)((tmpByte2 & 0b00100000) >> 5);
+        rep.PH_PEND.PACKET_RX_PEND                       = (uint8_t)((tmpByte2 & 0b00010000) >> 4);
+        rep.PH_PEND.CRC_ERROR_PEND                       = (uint8_t)((tmpByte2 & 0b00001000) >> 3);
+        rep.PH_PEND.X                                    = (uint8_t)((tmpByte2 & 0b00000100) >> 2);
+        rep.PH_PEND.TX_FIFO_ALMOST_EMPTY_PEND            = (uint8_t)((tmpByte2 & 0b00000010) >> 1);
+        rep.PH_PEND.RX_FIFO_ALMOST_FULL_PEND             = (uint8_t)((tmpByte2 & 0b00000001) >> 0);
 
         uint8_t tmpByte3 = bfe.GetUI8();
-        rep.PH_PEND.FILTER_MATCH_PEND                    = (uint8_t)((tmpByte3 & 0b10000000) >> 7);
-        rep.PH_PEND.FILTER_MISS_PEND                     = (uint8_t)((tmpByte3 & 0b01000000) >> 6);
-        rep.PH_PEND.PACKET_SENT_PEND                     = (uint8_t)((tmpByte3 & 0b00100000) >> 5);
-        rep.PH_PEND.PACKET_RX_PEND                       = (uint8_t)((tmpByte3 & 0b00010000) >> 4);
-        rep.PH_PEND.CRC_ERROR_PEND                       = (uint8_t)((tmpByte3 & 0b00001000) >> 3);
-        rep.PH_PEND.X                                    = (uint8_t)((tmpByte3 & 0b00000100) >> 2);
-        rep.PH_PEND.TX_FIFO_ALMOST_EMPTY_PEND            = (uint8_t)((tmpByte3 & 0b00000010) >> 1);
-        rep.PH_PEND.RX_FIFO_ALMOST_FULL_PEND             = (uint8_t)((tmpByte3 & 0b00000001) >> 0);
+        rep.PH_STATUS.FILTER_MATCH                       = (uint8_t)((tmpByte3 & 0b10000000) >> 7);
+        rep.PH_STATUS.FILTER_MISS                        = (uint8_t)((tmpByte3 & 0b01000000) >> 6);
+        rep.PH_STATUS.PACKET_SENT                        = (uint8_t)((tmpByte3 & 0b00100000) >> 5);
+        rep.PH_STATUS.PACKET_RX                          = (uint8_t)((tmpByte3 & 0b00010000) >> 4);
+        rep.PH_STATUS.CRC_ERROR                          = (uint8_t)((tmpByte3 & 0b00001000) >> 3);
+        rep.PH_STATUS.X                                  = (uint8_t)((tmpByte3 & 0b00000100) >> 2);
+        rep.PH_STATUS.TX_FIFO_ALMOST_EMPTY               = (uint8_t)((tmpByte3 & 0b00000010) >> 1);
+        rep.PH_STATUS.RX_FIFO_ALMOST_FULL                = (uint8_t)((tmpByte3 & 0b00000001) >> 0);
 
         uint8_t tmpByte4 = bfe.GetUI8();
-        rep.PH_STATUS.FILTER_MATCH                       = (uint8_t)((tmpByte4 & 0b10000000) >> 7);
-        rep.PH_STATUS.FILTER_MISS                        = (uint8_t)((tmpByte4 & 0b01000000) >> 6);
-        rep.PH_STATUS.PACKET_SENT                        = (uint8_t)((tmpByte4 & 0b00100000) >> 5);
-        rep.PH_STATUS.PACKET_RX                          = (uint8_t)((tmpByte4 & 0b00010000) >> 4);
-        rep.PH_STATUS.CRC_ERROR                          = (uint8_t)((tmpByte4 & 0b00001000) >> 3);
-        rep.PH_STATUS.X                                  = (uint8_t)((tmpByte4 & 0b00000100) >> 2);
-        rep.PH_STATUS.TX_FIFO_ALMOST_EMPTY               = (uint8_t)((tmpByte4 & 0b00000010) >> 1);
-        rep.PH_STATUS.RX_FIFO_ALMOST_FULL                = (uint8_t)((tmpByte4 & 0b00000001) >> 0);
+        rep.MODEM_PEND.XX                                = (uint8_t)((tmpByte4 & 0b11000000) >> 6);
+        rep.MODEM_PEND.INVALID_SYNC_PEND                 = (uint8_t)((tmpByte4 & 0b00100000) >> 5);
+        rep.MODEM_PEND.RSSI_JUMP_PEND                    = (uint8_t)((tmpByte4 & 0b00010000) >> 4);
+        rep.MODEM_PEND.RSSI_PEND                         = (uint8_t)((tmpByte4 & 0b00001000) >> 3);
+        rep.MODEM_PEND.INVALID_PREAMBLE_PEND             = (uint8_t)((tmpByte4 & 0b00000100) >> 2);
+        rep.MODEM_PEND.PREAMBLE_DETECT_PEND              = (uint8_t)((tmpByte4 & 0b00000010) >> 1);
+        rep.MODEM_PEND.SYNC_DETECT_PEND                  = (uint8_t)((tmpByte4 & 0b00000001) >> 0);
 
         uint8_t tmpByte5 = bfe.GetUI8();
-        rep.MODEM_PEND.XX                                = (uint8_t)((tmpByte5 & 0b11000000) >> 6);
-        rep.MODEM_PEND.INVALID_SYNC_PEND                 = (uint8_t)((tmpByte5 & 0b00100000) >> 5);
-        rep.MODEM_PEND.RSSI_JUMP_PEND                    = (uint8_t)((tmpByte5 & 0b00010000) >> 4);
-        rep.MODEM_PEND.RSSI_PEND                         = (uint8_t)((tmpByte5 & 0b00001000) >> 3);
-        rep.MODEM_PEND.INVALID_PREAMBLE_PEND             = (uint8_t)((tmpByte5 & 0b00000100) >> 2);
-        rep.MODEM_PEND.PREAMBLE_DETECT_PEND              = (uint8_t)((tmpByte5 & 0b00000010) >> 1);
-        rep.MODEM_PEND.SYNC_DETECT_PEND                  = (uint8_t)((tmpByte5 & 0b00000001) >> 0);
+        rep.MODEM_STATUS.XX                              = (uint8_t)((tmpByte5 & 0b11000000) >> 6);
+        rep.MODEM_STATUS.INVALID_SYNC                    = (uint8_t)((tmpByte5 & 0b00100000) >> 5);
+        rep.MODEM_STATUS.RSSI_JUMP                       = (uint8_t)((tmpByte5 & 0b00010000) >> 4);
+        rep.MODEM_STATUS.RSSI                            = (uint8_t)((tmpByte5 & 0b00001000) >> 3);
+        rep.MODEM_STATUS.INVALID_PREAMBLE                = (uint8_t)((tmpByte5 & 0b00000100) >> 2);
+        rep.MODEM_STATUS.PREAMBLE_DETECT                 = (uint8_t)((tmpByte5 & 0b00000010) >> 1);
+        rep.MODEM_STATUS.SYNC_DETECT                     = (uint8_t)((tmpByte5 & 0b00000001) >> 0);
 
         uint8_t tmpByte6 = bfe.GetUI8();
-        rep.MODEM_STATUS.XX                              = (uint8_t)((tmpByte6 & 0b11000000) >> 6);
-        rep.MODEM_STATUS.INVALID_SYNC                    = (uint8_t)((tmpByte6 & 0b00100000) >> 5);
-        rep.MODEM_STATUS.RSSI_JUMP                       = (uint8_t)((tmpByte6 & 0b00010000) >> 4);
-        rep.MODEM_STATUS.RSSI                            = (uint8_t)((tmpByte6 & 0b00001000) >> 3);
-        rep.MODEM_STATUS.INVALID_PREAMBLE                = (uint8_t)((tmpByte6 & 0b00000100) >> 2);
-        rep.MODEM_STATUS.PREAMBLE_DETECT                 = (uint8_t)((tmpByte6 & 0b00000010) >> 1);
-        rep.MODEM_STATUS.SYNC_DETECT                     = (uint8_t)((tmpByte6 & 0b00000001) >> 0);
+        rep.CHIP_PEND.CAL_PEND                           = (uint8_t)((tmpByte6 & 0b11000000) >> 6);
+        rep.CHIP_PEND.FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND = (uint8_t)((tmpByte6 & 0b00100000) >> 5);
+        rep.CHIP_PEND.STATE_CHANGE_PEND                  = (uint8_t)((tmpByte6 & 0b00010000) >> 4);
+        rep.CHIP_PEND.CMD_ERROR_PEND                     = (uint8_t)((tmpByte6 & 0b00001000) >> 3);
+        rep.CHIP_PEND.CHIP_READY_PEND                    = (uint8_t)((tmpByte6 & 0b00000100) >> 2);
+        rep.CHIP_PEND.LOW_BATT_PEND                      = (uint8_t)((tmpByte6 & 0b00000010) >> 1);
+        rep.CHIP_PEND.WUT_PEND                           = (uint8_t)((tmpByte6 & 0b00000001) >> 0);
 
         uint8_t tmpByte7 = bfe.GetUI8();
-        rep.CHIP_PEND.CAL_PEND                           = (uint8_t)((tmpByte7 & 0b11000000) >> 6);
-        rep.CHIP_PEND.FIFO_UNDERFLOW_OVERFLOW_ERROR_PEND = (uint8_t)((tmpByte7 & 0b00100000) >> 5);
-        rep.CHIP_PEND.STATE_CHANGE_PEND                  = (uint8_t)((tmpByte7 & 0b00010000) >> 4);
-        rep.CHIP_PEND.CMD_ERROR_PEND                     = (uint8_t)((tmpByte7 & 0b00001000) >> 3);
-        rep.CHIP_PEND.CHIP_READY_PEND                    = (uint8_t)((tmpByte7 & 0b00000100) >> 2);
-        rep.CHIP_PEND.LOW_BATT_PEND                      = (uint8_t)((tmpByte7 & 0b00000010) >> 1);
-        rep.CHIP_PEND.WUT_PEND                           = (uint8_t)((tmpByte7 & 0b00000001) >> 0);
-
-        uint8_t tmpByte8 = bfe.GetUI8();
-        rep.CHIP_STATUS.CAL                              = (uint8_t)((tmpByte8 & 0b11000000) >> 6);
-        rep.CHIP_STATUS.FIFO_UNDERFLOW_OVERFLOW_ERROR    = (uint8_t)((tmpByte8 & 0b00100000) >> 5);
-        rep.CHIP_STATUS.STATE_CHANGE                     = (uint8_t)((tmpByte8 & 0b00010000) >> 4);
-        rep.CHIP_STATUS.CMD_ERROR                        = (uint8_t)((tmpByte8 & 0b00001000) >> 3);
-        rep.CHIP_STATUS.CHIP_READY                       = (uint8_t)((tmpByte8 & 0b00000100) >> 2);
-        rep.CHIP_STATUS.LOW_BATT                         = (uint8_t)((tmpByte8 & 0b00000010) >> 1);
-        rep.CHIP_STATUS.WUT                              = (uint8_t)((tmpByte8 & 0b00000001) >> 0);
+        rep.CHIP_STATUS.CAL                              = (uint8_t)((tmpByte7 & 0b11000000) >> 6);
+        rep.CHIP_STATUS.FIFO_UNDERFLOW_OVERFLOW_ERROR    = (uint8_t)((tmpByte7 & 0b00100000) >> 5);
+        rep.CHIP_STATUS.STATE_CHANGE                     = (uint8_t)((tmpByte7 & 0b00010000) >> 4);
+        rep.CHIP_STATUS.CMD_ERROR                        = (uint8_t)((tmpByte7 & 0b00001000) >> 3);
+        rep.CHIP_STATUS.CHIP_READY                       = (uint8_t)((tmpByte7 & 0b00000100) >> 2);
+        rep.CHIP_STATUS.LOW_BATT                         = (uint8_t)((tmpByte7 & 0b00000010) >> 1);
+        rep.CHIP_STATUS.WUT                              = (uint8_t)((tmpByte7 & 0b00000001) >> 0);
     }
 
     return ok;

@@ -107,10 +107,6 @@ REQ {
     }
 }
 REP {
-    CMD_COMPLETE {
-        CTS[7:0] 
-    }
-    
     INT_PEND {
         XXXXX[7:3]
         CHIP_INT_STATUS_PEND[2:2]

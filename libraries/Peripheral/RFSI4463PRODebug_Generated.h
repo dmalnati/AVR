@@ -98,12 +98,6 @@ void Print(RFSI4463PRO::GET_INT_STATUS_REP &val)
 {
     Serial.println(F("GET_INT_STATUS_REP"));
 
-    Serial.print(F("CMD_COMPLETE.CTS                             : "));
-    Serial.print(val.CMD_COMPLETE.CTS);
-    Serial.print(F(" (0x"));
-    Serial.print(val.CMD_COMPLETE.CTS, HEX);
-    Serial.print(F(")"));
-    Serial.println();
     Serial.print(F("INT_PEND.XXXXX                               : "));
     Serial.print(val.INT_PEND.XXXXX);
     Serial.print(F(" (0x"));
