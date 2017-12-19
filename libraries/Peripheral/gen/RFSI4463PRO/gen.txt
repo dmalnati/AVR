@@ -224,6 +224,111 @@ REP {
 
 
 
+
+
+
+
+GPIO_PIN_CFG
+CMD 0x13
+REQ {
+    GPIO0 {
+        X[7:7]
+        PULL_CTL[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO1 {
+        X[7:7]
+        PULL_CTL[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO2 {
+        X[7:7]
+        PULL_CTL[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO3 {
+        X[7:7]
+        PULL_CTL[6:6]
+        GPIO_MODE[5:0]
+    }
+    NIRQ {
+        X[7:7]
+        PULL_CTL[6:6]
+        NIRQ_MODE[5:0]
+    }
+    SDO {
+        X[7:7]
+        PULL_CTL[6:6]
+        SDO_MODE[5:0]
+    }
+    GEN_CONFIG {
+        X[7:7]
+        DRV_STRENGTH[6:5]
+        XXXXX[4:0]
+    }
+}
+REP {
+    GPIO0 {
+        GPIO_STATE[7:7]
+        X[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO1 {
+        GPIO_STATE[7:7]
+        X[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO2 {
+        GPIO_STATE[7:7]
+        X[6:6]
+        GPIO_MODE[5:0]
+    }
+    GPIO3 {
+        GPIO_STATE[7:7]
+        X[6:6]
+        GPIO_MODE[5:0]
+    }
+    NIQR {
+        NIRQ_STATE[7:7]
+        X[6:6]
+        NIRQ_MODE[5:0]
+    }
+    SDO {
+        SDO_STATE[7:7]
+        X[6:6]
+        SDO_MODE[5:0]
+    }
+    GEN_CONFIG {
+        X[7:7]
+        DRV_STRENGTH[6:5]
+        XXXXX[4:0]
+    }
+}
+
+
+
+REQUEST_DEVICE_STATE
+CMD 0x33
+REQ {
+}
+REP {
+    CURR_STATE {
+        XXXX[7:4]
+        MAIN_STATE[3:0]
+    }
+    
+    CURRENT_CHANNEL {
+        CURRENT_CHANNEL[7:0]
+    }
+}
+
+
+
+
+
+
+
+
 SET_PROPERTY
 CMD 0x11
 REQ {
@@ -409,23 +514,6 @@ REP {
         TX_FIFO_SPACE[7:0]
     }
 }
-
-
-REQUEST_DEVICE_STATE
-CMD 0x33
-REQ {
-}
-REP {
-    CURR_STATE {
-        ZERO[7:4] MAIN_STATE[3:0]
-    }
-    
-    CURRENT_CHANNEL {
-        CURRENT_CHANNEL[7:0]
-    }
-}
-
-
 
 
 

@@ -440,6 +440,258 @@ uint8_t Command_POWER_UP(POWER_UP_REQ &req)
 
 ////////////////////////////////////////////////////////////////////
 //
+// GPIO_PIN_CFG (0x13)
+//
+////////////////////////////////////////////////////////////////////
+
+struct GPIO_PIN_CFG_REQ
+{
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO0;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO1;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO2;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO3;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t NIRQ_MODE    = 0;
+    } NIRQ;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t PULL_CTL     = 0;
+        uint8_t SDO_MODE     = 0;
+    } SDO;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t DRV_STRENGTH = 0;
+        uint8_t XXXXX        = 0;
+    } GEN_CONFIG;
+};
+
+struct GPIO_PIN_CFG_REP
+{
+    struct
+    {
+        uint8_t GPIO_STATE   = 0;
+        uint8_t X            = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO0;
+
+    struct
+    {
+        uint8_t GPIO_STATE   = 0;
+        uint8_t X            = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO1;
+
+    struct
+    {
+        uint8_t GPIO_STATE   = 0;
+        uint8_t X            = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO2;
+
+    struct
+    {
+        uint8_t GPIO_STATE   = 0;
+        uint8_t X            = 0;
+        uint8_t GPIO_MODE    = 0;
+    } GPIO3;
+
+    struct
+    {
+        uint8_t NIRQ_STATE   = 0;
+        uint8_t X            = 0;
+        uint8_t NIRQ_MODE    = 0;
+    } NIQR;
+
+    struct
+    {
+        uint8_t SDO_STATE    = 0;
+        uint8_t X            = 0;
+        uint8_t SDO_MODE     = 0;
+    } SDO;
+
+    struct
+    {
+        uint8_t X            = 0;
+        uint8_t DRV_STRENGTH = 0;
+        uint8_t XXXXX        = 0;
+    } GEN_CONFIG;
+};
+
+uint8_t Command_GPIO_PIN_CFG(GPIO_PIN_CFG_REQ &req, GPIO_PIN_CFG_REP &rep)
+{
+    const uint8_t CMD_ID       = 0x13;
+    const uint8_t BUF_SIZE_REQ = 7;
+    const uint8_t BUF_SIZE_REP = 7;
+
+    uint8_t bufReq[BUF_SIZE_REQ];
+    uint8_t bufRep[BUF_SIZE_REP];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((req.GPIO0.X                 & 0b00000001) << 7);
+    tmpReqByte0 |= (uint8_t)((req.GPIO0.PULL_CTL          & 0b00000001) << 6);
+    tmpReqByte0 |= (uint8_t)((req.GPIO0.GPIO_MODE         & 0b00111111) << 0);
+    bufReq[0] = tmpReqByte0;
+
+    uint8_t tmpReqByte1 = 0;
+    tmpReqByte1 |= (uint8_t)((req.GPIO1.X                 & 0b00000001) << 7);
+    tmpReqByte1 |= (uint8_t)((req.GPIO1.PULL_CTL          & 0b00000001) << 6);
+    tmpReqByte1 |= (uint8_t)((req.GPIO1.GPIO_MODE         & 0b00111111) << 0);
+    bufReq[1] = tmpReqByte1;
+
+    uint8_t tmpReqByte2 = 0;
+    tmpReqByte2 |= (uint8_t)((req.GPIO2.X                 & 0b00000001) << 7);
+    tmpReqByte2 |= (uint8_t)((req.GPIO2.PULL_CTL          & 0b00000001) << 6);
+    tmpReqByte2 |= (uint8_t)((req.GPIO2.GPIO_MODE         & 0b00111111) << 0);
+    bufReq[2] = tmpReqByte2;
+
+    uint8_t tmpReqByte3 = 0;
+    tmpReqByte3 |= (uint8_t)((req.GPIO3.X                 & 0b00000001) << 7);
+    tmpReqByte3 |= (uint8_t)((req.GPIO3.PULL_CTL          & 0b00000001) << 6);
+    tmpReqByte3 |= (uint8_t)((req.GPIO3.GPIO_MODE         & 0b00111111) << 0);
+    bufReq[3] = tmpReqByte3;
+
+    uint8_t tmpReqByte4 = 0;
+    tmpReqByte4 |= (uint8_t)((req.NIRQ.X                  & 0b00000001) << 7);
+    tmpReqByte4 |= (uint8_t)((req.NIRQ.PULL_CTL           & 0b00000001) << 6);
+    tmpReqByte4 |= (uint8_t)((req.NIRQ.NIRQ_MODE          & 0b00111111) << 0);
+    bufReq[4] = tmpReqByte4;
+
+    uint8_t tmpReqByte5 = 0;
+    tmpReqByte5 |= (uint8_t)((req.SDO.X                   & 0b00000001) << 7);
+    tmpReqByte5 |= (uint8_t)((req.SDO.PULL_CTL            & 0b00000001) << 6);
+    tmpReqByte5 |= (uint8_t)((req.SDO.SDO_MODE            & 0b00111111) << 0);
+    bufReq[5] = tmpReqByte5;
+
+    uint8_t tmpReqByte6 = 0;
+    tmpReqByte6 |= (uint8_t)((req.GEN_CONFIG.X            & 0b00000001) << 7);
+    tmpReqByte6 |= (uint8_t)((req.GEN_CONFIG.DRV_STRENGTH & 0b00000011) << 5);
+    tmpReqByte6 |= (uint8_t)((req.GEN_CONFIG.XXXXX        & 0b00011111) << 0);
+    bufReq[6] = tmpReqByte6;
+
+    uint8_t ok = SendAndWaitAndReceive(CMD_ID, bufReq, BUF_SIZE_REQ, bufRep, BUF_SIZE_REP);
+
+    if (ok)
+    {
+        BufferFieldExtractor bfe(bufRep, BUF_SIZE_REP);
+
+        uint8_t tmpByte0 = bfe.GetUI8();
+        rep.GPIO0.GPIO_STATE        = (uint8_t)((tmpByte0 & 0b10000000) >> 7);
+        rep.GPIO0.X                 = (uint8_t)((tmpByte0 & 0b01000000) >> 6);
+        rep.GPIO0.GPIO_MODE         = (uint8_t)((tmpByte0 & 0b00111111) >> 0);
+
+        uint8_t tmpByte1 = bfe.GetUI8();
+        rep.GPIO1.GPIO_STATE        = (uint8_t)((tmpByte1 & 0b10000000) >> 7);
+        rep.GPIO1.X                 = (uint8_t)((tmpByte1 & 0b01000000) >> 6);
+        rep.GPIO1.GPIO_MODE         = (uint8_t)((tmpByte1 & 0b00111111) >> 0);
+
+        uint8_t tmpByte2 = bfe.GetUI8();
+        rep.GPIO2.GPIO_STATE        = (uint8_t)((tmpByte2 & 0b10000000) >> 7);
+        rep.GPIO2.X                 = (uint8_t)((tmpByte2 & 0b01000000) >> 6);
+        rep.GPIO2.GPIO_MODE         = (uint8_t)((tmpByte2 & 0b00111111) >> 0);
+
+        uint8_t tmpByte3 = bfe.GetUI8();
+        rep.GPIO3.GPIO_STATE        = (uint8_t)((tmpByte3 & 0b10000000) >> 7);
+        rep.GPIO3.X                 = (uint8_t)((tmpByte3 & 0b01000000) >> 6);
+        rep.GPIO3.GPIO_MODE         = (uint8_t)((tmpByte3 & 0b00111111) >> 0);
+
+        uint8_t tmpByte4 = bfe.GetUI8();
+        rep.NIQR.NIRQ_STATE         = (uint8_t)((tmpByte4 & 0b10000000) >> 7);
+        rep.NIQR.X                  = (uint8_t)((tmpByte4 & 0b01000000) >> 6);
+        rep.NIQR.NIRQ_MODE          = (uint8_t)((tmpByte4 & 0b00111111) >> 0);
+
+        uint8_t tmpByte5 = bfe.GetUI8();
+        rep.SDO.SDO_STATE           = (uint8_t)((tmpByte5 & 0b10000000) >> 7);
+        rep.SDO.X                   = (uint8_t)((tmpByte5 & 0b01000000) >> 6);
+        rep.SDO.SDO_MODE            = (uint8_t)((tmpByte5 & 0b00111111) >> 0);
+
+        uint8_t tmpByte6 = bfe.GetUI8();
+        rep.GEN_CONFIG.X            = (uint8_t)((tmpByte6 & 0b10000000) >> 7);
+        rep.GEN_CONFIG.DRV_STRENGTH = (uint8_t)((tmpByte6 & 0b01100000) >> 5);
+        rep.GEN_CONFIG.XXXXX        = (uint8_t)((tmpByte6 & 0b00011111) >> 0);
+    }
+
+    return ok;
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// REQUEST_DEVICE_STATE (0x33)
+//
+////////////////////////////////////////////////////////////////////
+
+struct REQUEST_DEVICE_STATE_REP
+{
+    struct
+    {
+        uint8_t XXXX            = 0;
+        uint8_t MAIN_STATE      = 0;
+    } CURR_STATE;
+
+    struct
+    {
+        uint8_t CURRENT_CHANNEL = 0;
+    } CURRENT_CHANNEL;
+};
+
+uint8_t Command_REQUEST_DEVICE_STATE(REQUEST_DEVICE_STATE_REP &rep)
+{
+    const uint8_t CMD_ID       = 0x33;
+    const uint8_t BUF_SIZE_REQ = 0;
+    const uint8_t BUF_SIZE_REP = 2;
+
+    uint8_t bufReq[BUF_SIZE_REQ];
+    uint8_t bufRep[BUF_SIZE_REP];
+
+    uint8_t ok = SendAndWaitAndReceive(CMD_ID, bufReq, BUF_SIZE_REQ, bufRep, BUF_SIZE_REP);
+
+    if (ok)
+    {
+        BufferFieldExtractor bfe(bufRep, BUF_SIZE_REP);
+
+        uint8_t tmpByte0 = bfe.GetUI8();
+        rep.CURR_STATE.XXXX                 = (uint8_t)((tmpByte0 & 0b11110000) >> 4);
+        rep.CURR_STATE.MAIN_STATE           = (uint8_t)((tmpByte0 & 0b00001111) >> 0);
+
+        rep.CURRENT_CHANNEL.CURRENT_CHANNEL = bfe.GetUI8();
+    }
+
+    return ok;
+}
+
+////////////////////////////////////////////////////////////////////
+//
 // SET_PROPERTY (0x11)
 //
 ////////////////////////////////////////////////////////////////////
@@ -861,51 +1113,6 @@ uint8_t Command_FIFO_INFO(FIFO_INFO_REQ &req, FIFO_INFO_REP &rep)
         rep.RX_FIFO_COUNT.RX_FIFO_COUNT = bfe.GetUI8();
 
         rep.TX_FIFO_SPACE.TX_FIFO_SPACE = bfe.GetUI8();
-    }
-
-    return ok;
-}
-
-////////////////////////////////////////////////////////////////////
-//
-// REQUEST_DEVICE_STATE (0x33)
-//
-////////////////////////////////////////////////////////////////////
-
-struct REQUEST_DEVICE_STATE_REP
-{
-    struct
-    {
-        uint8_t ZERO            = 0;
-        uint8_t MAIN_STATE      = 0;
-    } CURR_STATE;
-
-    struct
-    {
-        uint8_t CURRENT_CHANNEL = 0;
-    } CURRENT_CHANNEL;
-};
-
-uint8_t Command_REQUEST_DEVICE_STATE(REQUEST_DEVICE_STATE_REP &rep)
-{
-    const uint8_t CMD_ID       = 0x33;
-    const uint8_t BUF_SIZE_REQ = 0;
-    const uint8_t BUF_SIZE_REP = 2;
-
-    uint8_t bufReq[BUF_SIZE_REQ];
-    uint8_t bufRep[BUF_SIZE_REP];
-
-    uint8_t ok = SendAndWaitAndReceive(CMD_ID, bufReq, BUF_SIZE_REQ, bufRep, BUF_SIZE_REP);
-
-    if (ok)
-    {
-        BufferFieldExtractor bfe(bufRep, BUF_SIZE_REP);
-
-        uint8_t tmpByte0 = bfe.GetUI8();
-        rep.CURR_STATE.ZERO                 = (uint8_t)((tmpByte0 & 0b11110000) >> 4);
-        rep.CURR_STATE.MAIN_STATE           = (uint8_t)((tmpByte0 & 0b00001111) >> 0);
-
-        rep.CURRENT_CHANNEL.CURRENT_CHANNEL = bfe.GetUI8();
     }
 
     return ok;

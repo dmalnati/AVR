@@ -26,6 +26,24 @@ void GetPartInfo()
     Serial.println();
 }
 
+void GetDeviceState()
+{
+    Serial.println("GetDeviceState");
+    
+    RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
+
+    if (rf.Command_REQUEST_DEVICE_STATE(rep))
+    {
+        rfd.Print(rep);
+    }
+    else
+    {
+        Serial.println("ERR");
+    }
+
+    Serial.println();
+}
+
 void GetFuncInfo()
 {
     Serial.println("GetFuncInfo");
@@ -114,8 +132,11 @@ void TestSetGetProperty()
         Serial.print("Property 0x");
         Serial.print(property, HEX);
         Serial.print(" = ");
-        if (rf.GetProperty(property, value))
+        uint8_t propGroup = (uint8_t)((property & 0xFF00) >> 8);
+        uint8_t propIdx   = (uint8_t)((property & 0x00FF) >> 0);
+        if (rf.GetProperty(propGroup, propIdx, value))
         {
+            
             Serial.print("0b");
             Serial.println(value, BIN);
         }
@@ -135,15 +156,15 @@ void setup()
     Serial.println("Starting");
 
     rf.Init();
-    rf.ptt_on();
 
     while (1)
     {
         GetPartInfo();
+        GetDeviceState();
         //GetFuncInfo();
         //GetChipStatus();
         //GetFifoInfo();
-        //RequestDeviceState();
+        RequestDeviceState();
         //TestSetGetProperty();
 
         PAL.Delay(2000);

@@ -33,6 +33,7 @@ class RFSI4463PRO
     
     // Details relating to operating this chip    
     static const uint32_t DURATION_MS_POWER_ON_RESET = 50;
+    static const uint32_t EXTERNAL_CRYSTAL_FREQ      = 30000000;
     
     // Commands
     enum
@@ -66,7 +67,8 @@ public:
         PowerOnReset();
         ClearInterrupts();
         PowerUp();
-        DoPecanSteps();
+        ConfigureGpiosForClockOutput();
+        //DoPecanSteps();
     }
     
     
@@ -205,13 +207,13 @@ void stop_tx()
 }
 
     
-    uint8_t SetProperty(uint16_t property, uint8_t value)
+    uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
     {
         RFSI4463PRO::SET_PROPERTY_REQ req;
         
-        req.GROUP.GROUP           = (uint8_t)((property & 0xFF00) >> 8);
+        req.GROUP.GROUP           = propGroup;
         req.NUM_PROPS.NUM_PROPS   = 1;
-        req.START_PROP.START_PROP = (uint8_t)(property & 0x00FF);
+        req.START_PROP.START_PROP = propIdx;
         req.DATA0.DATA0           = value;
         
         uint8_t retVal = Command_SET_PROPERTY(req);
@@ -219,14 +221,14 @@ void stop_tx()
         return retVal;
     }
     
-    uint8_t GetProperty(uint16_t property, uint8_t &value)
+    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t &value)
     {
         RFSI4463PRO::GET_PROPERTY_REQ req;
         RFSI4463PRO::GET_PROPERTY_REP rep;
         
-        req.GROUP.GROUP           = (uint8_t)((property & 0xFF00) >> 8);
+        req.GROUP.GROUP           = propGroup;
         req.NUM_PROPS.NUM_PROPS   = 1;
-        req.START_PROP.START_PROP = (uint8_t)(property & 0x00FF);
+        req.START_PROP.START_PROP = propIdx;
         
         uint8_t retVal = Command_GET_PROPERTY(req, rep);
         
@@ -252,6 +254,8 @@ private:
 
     void PowerOnReset()
     {
+        Serial.println("POR");
+        
         PAL.PinMode(pinShutdown_, OUTPUT);
 
         PAL.DigitalWrite(pinShutdown_, LOW);
@@ -280,9 +284,176 @@ private:
         
         req.BOOT_OPTIONS.FUNC = 1;
         req.XTAL_OPTIONS.TCXO = 1;
-        req.XO_FREQ.XO_FREQ   = 27000000L;
+        req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
         
         uint8_t retVal = Command_POWER_UP(req);
+        
+        return retVal;
+    }
+    
+void Print(RFSI4463PRO::GPIO_PIN_CFG_REP &val)
+{
+    Serial.println(F("GPIO_PIN_CFG_REP"));
+
+    Serial.print(F("GPIO0.GPIO_STATE        : "));
+    Serial.print(val.GPIO0.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO0.X                 : "));
+    Serial.print(val.GPIO0.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO0.GPIO_MODE         : "));
+    Serial.print(val.GPIO0.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.GPIO_STATE        : "));
+    Serial.print(val.GPIO1.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.X                 : "));
+    Serial.print(val.GPIO1.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.GPIO_MODE         : "));
+    Serial.print(val.GPIO1.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.GPIO_STATE        : "));
+    Serial.print(val.GPIO2.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.X                 : "));
+    Serial.print(val.GPIO2.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.GPIO_MODE         : "));
+    Serial.print(val.GPIO2.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.GPIO_STATE        : "));
+    Serial.print(val.GPIO3.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.X                 : "));
+    Serial.print(val.GPIO3.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.GPIO_MODE         : "));
+    Serial.print(val.GPIO3.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.NIRQ_STATE         : "));
+    Serial.print(val.NIQR.NIRQ_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.NIRQ_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.X                  : "));
+    Serial.print(val.NIQR.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.NIRQ_MODE          : "));
+    Serial.print(val.NIQR.NIRQ_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.NIRQ_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.SDO_STATE           : "));
+    Serial.print(val.SDO.SDO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.SDO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.X                   : "));
+    Serial.print(val.SDO.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.SDO_MODE            : "));
+    Serial.print(val.SDO.SDO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.SDO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.X            : "));
+    Serial.print(val.GEN_CONFIG.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.DRV_STRENGTH : "));
+    Serial.print(val.GEN_CONFIG.DRV_STRENGTH);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.DRV_STRENGTH, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.XXXXX        : "));
+    Serial.print(val.GEN_CONFIG.XXXXX);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.XXXXX, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+}
+
+    
+    uint8_t ConfigureGpiosForClockOutput()
+    {
+        SetProperty(0x00, 0x01, 0b01100001);
+        
+        
+        
+        RFSI4463PRO::GPIO_PIN_CFG_REQ req;
+        RFSI4463PRO::GPIO_PIN_CFG_REP rep;
+
+        req.GPIO0.GPIO_MODE = 7;
+        
+        uint8_t retVal = Command_GPIO_PIN_CFG(req, rep);
+        
+        Serial.println("Pins configured");
+        Print(rep);
+        
+        return retVal;
+    }
+    
+    uint8_t ConfigureGpiosForDirectDrive()
+    {
+        RFSI4463PRO::GPIO_PIN_CFG_REQ req;
+        RFSI4463PRO::GPIO_PIN_CFG_REP rep;
+
+        req.GPIO0.GPIO_MODE = 4;
+        
+        uint8_t retVal = Command_GPIO_PIN_CFG(req, rep);
+        
+        Serial.println("Pins configured");
+        Print(rep);
         
         return retVal;
     }

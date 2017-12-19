@@ -414,6 +414,174 @@ void Print(RFSI4463PRO::GET_INT_STATUS_REP &val)
 
 ////////////////////////////////////////////////////////////////////
 //
+// GPIO_PIN_CFG (0x13)
+//
+////////////////////////////////////////////////////////////////////
+
+void Print(RFSI4463PRO::GPIO_PIN_CFG_REP &val)
+{
+    Serial.println(F("GPIO_PIN_CFG_REP"));
+
+    Serial.print(F("GPIO0.GPIO_STATE        : "));
+    Serial.print(val.GPIO0.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO0.X                 : "));
+    Serial.print(val.GPIO0.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO0.GPIO_MODE         : "));
+    Serial.print(val.GPIO0.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO0.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.GPIO_STATE        : "));
+    Serial.print(val.GPIO1.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.X                 : "));
+    Serial.print(val.GPIO1.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO1.GPIO_MODE         : "));
+    Serial.print(val.GPIO1.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO1.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.GPIO_STATE        : "));
+    Serial.print(val.GPIO2.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.X                 : "));
+    Serial.print(val.GPIO2.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO2.GPIO_MODE         : "));
+    Serial.print(val.GPIO2.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO2.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.GPIO_STATE        : "));
+    Serial.print(val.GPIO3.GPIO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.GPIO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.X                 : "));
+    Serial.print(val.GPIO3.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GPIO3.GPIO_MODE         : "));
+    Serial.print(val.GPIO3.GPIO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GPIO3.GPIO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.NIRQ_STATE         : "));
+    Serial.print(val.NIQR.NIRQ_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.NIRQ_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.X                  : "));
+    Serial.print(val.NIQR.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("NIQR.NIRQ_MODE          : "));
+    Serial.print(val.NIQR.NIRQ_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.NIQR.NIRQ_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.SDO_STATE           : "));
+    Serial.print(val.SDO.SDO_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.SDO_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.X                   : "));
+    Serial.print(val.SDO.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("SDO.SDO_MODE            : "));
+    Serial.print(val.SDO.SDO_MODE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.SDO.SDO_MODE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.X            : "));
+    Serial.print(val.GEN_CONFIG.X);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.X, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.DRV_STRENGTH : "));
+    Serial.print(val.GEN_CONFIG.DRV_STRENGTH);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.DRV_STRENGTH, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("GEN_CONFIG.XXXXX        : "));
+    Serial.print(val.GEN_CONFIG.XXXXX);
+    Serial.print(F(" (0x"));
+    Serial.print(val.GEN_CONFIG.XXXXX, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// REQUEST_DEVICE_STATE (0x33)
+//
+////////////////////////////////////////////////////////////////////
+
+void Print(RFSI4463PRO::REQUEST_DEVICE_STATE_REP &val)
+{
+    Serial.println(F("REQUEST_DEVICE_STATE_REP"));
+
+    Serial.print(F("CURR_STATE.XXXX                 : "));
+    Serial.print(val.CURR_STATE.XXXX);
+    Serial.print(F(" (0x"));
+    Serial.print(val.CURR_STATE.XXXX, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("CURR_STATE.MAIN_STATE           : "));
+    Serial.print(val.CURR_STATE.MAIN_STATE);
+    Serial.print(F(" (0x"));
+    Serial.print(val.CURR_STATE.MAIN_STATE, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+    Serial.print(F("CURRENT_CHANNEL.CURRENT_CHANNEL : "));
+    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL);
+    Serial.print(F(" (0x"));
+    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL, HEX);
+    Serial.print(F(")"));
+    Serial.println();
+}
+
+////////////////////////////////////////////////////////////////////
+//
 // GET_PROPERTY (0x12)
 //
 ////////////////////////////////////////////////////////////////////
@@ -642,36 +810,6 @@ void Print(RFSI4463PRO::FIFO_INFO_REP &val)
     Serial.print(val.TX_FIFO_SPACE.TX_FIFO_SPACE);
     Serial.print(F(" (0x"));
     Serial.print(val.TX_FIFO_SPACE.TX_FIFO_SPACE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-}
-
-////////////////////////////////////////////////////////////////////
-//
-// REQUEST_DEVICE_STATE (0x33)
-//
-////////////////////////////////////////////////////////////////////
-
-void Print(RFSI4463PRO::REQUEST_DEVICE_STATE_REP &val)
-{
-    Serial.println(F("REQUEST_DEVICE_STATE_REP"));
-
-    Serial.print(F("CURR_STATE.ZERO                 : "));
-    Serial.print(val.CURR_STATE.ZERO);
-    Serial.print(F(" (0x"));
-    Serial.print(val.CURR_STATE.ZERO, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("CURR_STATE.MAIN_STATE           : "));
-    Serial.print(val.CURR_STATE.MAIN_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.CURR_STATE.MAIN_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("CURRENT_CHANNEL.CURRENT_CHANNEL : "));
-    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL);
-    Serial.print(F(" (0x"));
-    Serial.print(val.CURRENT_CHANNEL.CURRENT_CHANNEL, HEX);
     Serial.print(F(")"));
     Serial.println();
 }
