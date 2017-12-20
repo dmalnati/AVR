@@ -95,21 +95,42 @@ proc Generate { inputFile } {
                 set name__val(REP) [GetList $fd]
             } elseif { $firstWord == "CMD" } {
                 set name__val(CMD) [lindex $line 1]
+            } elseif { $firstWord == "PROP_GROUP" } {
+                set name__val(PROP_GROUP) [lindex $line 1]
+            } elseif { $firstWord == "PROP_IDX" } {
+                set name__val(PROP_IDX) [lindex $line 1]
+            } elseif { $firstWord == "PROP" } {
+                set name__val(PROP) [GetList $fd]
             } else {
                 set name__val(NAME) [lindex $line 0]
             }
         }
 
+        set handled 0
         if { [ElementsExist name__val NAME CMD REQ REP] } {
             OnConfigBlockParsed $name__val(NAME) \
                                 $name__val(CMD) \
                                 $name__val(REQ) \
                                 $name__val(REP)
 
-            unset name__val(NAME)
-            unset name__val(CMD)
-            unset name__val(REQ)
-            unset name__val(REP)
+            set handled 1
+        } elseif { [ElementsExist name__val NAME PROP_GROUP PROP_IDX PROP] } {
+            OnPropBlockParsed $name__val(NAME) \
+                              $name__val(PROP_GROUP) \
+                              $name__val(PROP_IDX) \
+                              $name__val(PROP)
+
+            set handled 1
+        }
+
+        if { $handled } {
+            catch {unset name__val(NAME)}
+            catch {unset name__val(CMD)}
+            catch {unset name__val(REQ)}
+            catch {unset name__val(REP)}
+            catch {unset name__val(PROP_GROUP)}
+            catch {unset name__val(PROP_IDX)}
+            catch {unset name__val(PROP)}
         }
 
         set line [gets $fd]
@@ -119,6 +140,220 @@ proc Generate { inputFile } {
 }
 
 
+proc OnPropBlockParsed { name propGroup propIdx propByteDefList } {
+    set byteCountProp [GetByteCount $propByteDefList]
+
+    if { $byteCountProp } {
+        # Nice header
+        gen "////////////////////////////////////////////////////////////////////"
+        gen "//"
+        gen "// PROPERTY ${name} ($propGroup $propIdx)"
+        gen "//"
+        gen "////////////////////////////////////////////////////////////////////"
+        gen ""
+
+        set maxLen [GetMaxByteAndFieldLen $propByteDefList]
+        set formatStr "%-${maxLen}s"
+
+        # Calculate number of bytes received
+        set byteCount [GetByteCount $propByteDefList]
+
+        # Generate struct for property
+        set varNameLast ""
+        set sep ""
+        gen "struct ${name}_PROP"
+        gen "\{"
+        for { set i 0 } { $i < $byteCountProp } { incr i } {
+            set byte               [lindex $propByteDefList [expr ($i * 2) + 0]]
+            set fieldOffsetList    [lindex $propByteDefList [expr ($i * 2) + 1]]
+            set fieldOffsetListLen [llength $fieldOffsetList]
+
+            gen -nonewline $sep
+            set sep "\n"
+
+            if { $fieldOffsetListLen > 2 } {
+                gen "    struct"
+                gen "    \{"
+                foreach { field offset } $fieldOffsetList {
+                    gen "        uint8_t [format $formatStr $field] = 0;"
+
+                    set varName "${byte}.$field"
+                }
+                gen "    \} ${byte};"
+            } else {
+                set field  [lindex $fieldOffsetList 0]
+                set offset [lindex $fieldOffsetList 1]
+
+                set offsetPartList [split $offset ":"]
+
+                set bitStart [lindex $offsetPartList 0]
+                set bitEnd   [lindex $offsetPartList 1]
+
+                if { $bitStart > 7 } {
+                    set bitWidth [expr $bitStart + 1]
+                    set varName "${byte}.$field"
+
+                    if { $varName != $varNameLast } {
+                        gen "    struct"
+                        gen "    \{"
+                        gen "        uint${bitWidth}_t\
+                                     [format $formatStr $field]\
+                                     = 0;"
+                        gen "    \} ${byte};"
+
+                        set varNameLast $varName
+                    } else {
+                        set sep ""
+                    }
+                } else {
+                    set varName "${byte}.$field"
+                    if { $varName != $varNameLast } {
+                        gen "    struct"
+                        gen "    \{"
+                        gen "        uint8_t [format $formatStr $field] = 0;"
+                        gen "    \} ${byte};"
+                    } else {
+                        set sep ""
+                    }
+                }
+            }
+        }
+        gen "\};"
+
+        gen ""
+
+
+        # Generate code
+        gen "uint8_t SetProperty(${name}_PROP &prop)"
+        gen "\{"
+
+
+        # Generate function to get reply from chip
+        gen "    const uint8_t PROP_GROUP = $propGroup;"
+        gen "    const uint8_t PROP_IDX   = $propIdx;"
+        gen "    const uint8_t BUF_SIZE   = $byteCountProp;"
+        gen ""
+        gen "    uint8_t buf\[BUF_SIZE\];"
+        gen ""
+
+        if { $byteCountProp } {
+            gen "    // pack request data into buffer"
+
+            # Determine field padding
+            set maxLen [GetMaxByteAndFieldLen $propByteDefList]
+            set formatStr "%-${maxLen}s"
+
+            # Generate code
+            set varNameLast ""
+            set sep ""
+            for { set i 0 } { $i < $byteCountProp } { incr i } {
+                gen -nonewline $sep
+                set sep "\n"
+
+                set byte               [lindex $propByteDefList [expr ($i * 2) + 0]]
+                set fieldOffsetList    [lindex $propByteDefList [expr ($i * 2) + 1]]
+                set fieldOffsetListLen [llength $fieldOffsetList]
+
+                #
+                # Packing the data into struct fields can go one of 3 ways
+                # - data has many bitfields per-byte
+                # - data maps directly onto struct bytes
+                # - data has multiple bytes to map onto struct bytes
+                #
+
+                # Check if this byte has multi-field elements
+                # quick test, if there is more than one field in a byte, then yes
+
+                if { $fieldOffsetListLen > 2 } {
+                    gen "    uint8_t tmpReqByte${i} = 0;"            
+
+                    foreach { field offset } $fieldOffsetList {
+                        set offsetPartList [split $offset ":"]
+
+                        set bitStart [lindex $offsetPartList 0]
+                        set bitEnd   [lindex $offsetPartList 1]
+
+                        set bitMask  [GetBitmask [expr $bitStart - $bitEnd] 0]
+                        set bitShift $bitEnd
+
+                        set str ""
+                        append str "    "
+                        append str "tmpReqByte${i} |= "
+                        append str "(uint8_t)((prop."
+                        append str [format $formatStr "${byte}.${field}"]
+                        append str " & $bitMask) << $bitShift);"
+
+                        gen $str
+                    }
+
+                    gen "    buf\[$i\] = tmpReqByte${i};"
+                } else {
+                    # it's one of the other two
+                    set field  [lindex $fieldOffsetList 0]
+                    set offset [lindex $fieldOffsetList 1]
+
+                    set offsetPartList [split $offset ":"]
+
+                    set bitStart [lindex $offsetPartList 0]
+                    set bitEnd   [lindex $offsetPartList 1]
+
+                    if { $bitStart > 7 } {
+                        set varName "${byte}.$field"
+
+                        if { $varName != $varNameLast } {
+                            set bitWidth [expr $bitStart + 1]
+                            set fnSuffix "s"
+                            if { $bitWidth > 16 } {
+                                set fnSuffix "l"
+                            }
+
+                            set tmpVarName \
+                                "tmpReqByte${i}_[expr $i + ($bitWidth / 8) - 1]"
+
+                            set str ""
+                            append str "    "
+                            append str "uint${bitWidth}_t $tmpVarName = "
+                            append str "PAL.hton${fnSuffix}(prop.$varName);"
+                            gen $str
+
+                            set str ""
+                            append str "    "
+                            append str "memcpy(&buf\[$i\],"
+                            append str " &$tmpVarName, sizeof($tmpVarName));"
+                            gen $str
+
+                            set varNameLast $varName
+                        } else {
+                            set sep ""
+                        }
+                    } else {
+                        set varName "${byte}.$field"
+
+                        if { $varName != $varNameLast } {
+                            set str ""
+                            append str "    "
+                            append str "buf\[$i\] = "
+                            append str "prop.${byte}.${field};"
+
+                            gen $str
+                        } else {
+                            set sep ""
+                        }
+                    }
+                }
+            }
+
+            gen ""
+        }
+
+        gen "    uint8_t retVal = SetProperty(PROP_GROUP, PROP_IDX, *buf);"
+        gen ""
+        gen "    return retVal;"
+
+        gen "\}"
+        gen ""
+    }
+}
 
 
 proc GetByteCount { byteDefList } {
@@ -137,7 +372,7 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
         # Nice header
         gend "////////////////////////////////////////////////////////////////////"
         gend "//"
-        gend "// ${name} ($cmd)"
+        gend "// COMMAND ${name} ($cmd)"
         gend "//"
         gend "////////////////////////////////////////////////////////////////////"
         gend ""
@@ -223,7 +458,7 @@ proc GenerateCode { name cmd reqByteDefList repByteDefList } {
     # Nice header
     gen "////////////////////////////////////////////////////////////////////"
     gen "//"
-    gen "// ${name} ($cmd)"
+    gen "// COMMAND ${name} ($cmd)"
     gen "//"
     gen "////////////////////////////////////////////////////////////////////"
     gen ""

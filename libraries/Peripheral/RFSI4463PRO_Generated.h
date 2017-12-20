@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////
 //
-// PART_INFO (0x01)
+// COMMAND PART_INFO (0x01)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -70,7 +70,7 @@ uint8_t Command_PART_INFO(PART_INFO_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// FUNC_INFO (0x10)
+// COMMAND FUNC_INFO (0x10)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -133,7 +133,7 @@ uint8_t Command_FUNC_INFO(FUNC_INFO_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// GET_INT_STATUS (0x20)
+// COMMAND GET_INT_STATUS (0x20)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -382,7 +382,7 @@ uint8_t Command_GET_INT_STATUS(GET_INT_STATUS_REQ &req, GET_INT_STATUS_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// POWER_UP (0x02)
+// COMMAND POWER_UP (0x02)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -440,7 +440,7 @@ uint8_t Command_POWER_UP(POWER_UP_REQ &req)
 
 ////////////////////////////////////////////////////////////////////
 //
-// GPIO_PIN_CFG (0x13)
+// COMMAND GPIO_PIN_CFG (0x13)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -647,7 +647,7 @@ uint8_t Command_GPIO_PIN_CFG(GPIO_PIN_CFG_REQ &req, GPIO_PIN_CFG_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// REQUEST_DEVICE_STATE (0x33)
+// COMMAND REQUEST_DEVICE_STATE (0x33)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -692,7 +692,7 @@ uint8_t Command_REQUEST_DEVICE_STATE(REQUEST_DEVICE_STATE_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// SET_PROPERTY (0x11)
+// COMMAND SET_PROPERTY (0x11)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -821,7 +821,7 @@ uint8_t Command_SET_PROPERTY(SET_PROPERTY_REQ &req)
 
 ////////////////////////////////////////////////////////////////////
 //
-// GET_PROPERTY (0x12)
+// COMMAND GET_PROPERTY (0x12)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -986,7 +986,7 @@ uint8_t Command_GET_PROPERTY(GET_PROPERTY_REQ &req, GET_PROPERTY_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// GET_CHIP_STATUS (0x23)
+// COMMAND GET_CHIP_STATUS (0x23)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -1061,7 +1061,7 @@ uint8_t Command_GET_CHIP_STATUS(GET_CHIP_STATUS_REP &rep)
 
 ////////////////////////////////////////////////////////////////////
 //
-// FIFO_INFO (0x15)
+// COMMAND FIFO_INFO (0x15)
 //
 ////////////////////////////////////////////////////////////////////
 
@@ -1116,5 +1116,115 @@ uint8_t Command_FIFO_INFO(FIFO_INFO_REQ &req, FIFO_INFO_REP &rep)
     }
 
     return ok;
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// PROPERTY MODEM_CLKGEN_BAND (0x20 0x51)
+//
+////////////////////////////////////////////////////////////////////
+
+struct MODEM_CLKGEN_BAND_PROP
+{
+    struct
+    {
+        uint8_t XXX                  = 0;
+        uint8_t FORCE_SY_RECAL       = 0;
+        uint8_t SY_SEL               = 0;
+        uint8_t BAND                 = 0;
+    } BYTE0;
+};
+
+uint8_t SetProperty(MODEM_CLKGEN_BAND_PROP &prop)
+{
+    const uint8_t PROP_GROUP = 0x20;
+    const uint8_t PROP_IDX   = 0x51;
+    const uint8_t BUF_SIZE   = 1;
+
+    uint8_t buf[BUF_SIZE];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.XXX            & 0b00000111) << 5);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.FORCE_SY_RECAL & 0b00000001) << 4);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.SY_SEL         & 0b00000001) << 3);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.BAND           & 0b00000111) << 0);
+    buf[0] = tmpReqByte0;
+
+    uint8_t retVal = SetProperty(PROP_GROUP, PROP_IDX, *buf);
+
+    return retVal;
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// PROPERTY FREQ_CONTROL_INTE (0x40 0x00)
+//
+////////////////////////////////////////////////////////////////////
+
+struct FREQ_CONTROL_INTE_PROP
+{
+    struct
+    {
+        uint8_t X          = 0;
+        uint8_t INTE       = 0;
+    } BYTE0;
+};
+
+uint8_t SetProperty(FREQ_CONTROL_INTE_PROP &prop)
+{
+    const uint8_t PROP_GROUP = 0x40;
+    const uint8_t PROP_IDX   = 0x00;
+    const uint8_t BUF_SIZE   = 1;
+
+    uint8_t buf[BUF_SIZE];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.X    & 0b00000001) << 7);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.INTE & 0b01111111) << 0);
+    buf[0] = tmpReqByte0;
+
+    uint8_t retVal = SetProperty(PROP_GROUP, PROP_IDX, *buf);
+
+    return retVal;
+}
+
+////////////////////////////////////////////////////////////////////
+//
+// PROPERTY MODEM_MOD_TYPE (0x20 0x00)
+//
+////////////////////////////////////////////////////////////////////
+
+struct MODEM_MOD_TYPE_PROP
+{
+    struct
+    {
+        uint8_t TX_DIRECT_MODE_TYPE       = 0;
+        uint8_t TX_DIRECT_MODE_GPIO       = 0;
+        uint8_t MOD_SOURCE                = 0;
+        uint8_t MOD_TYPE                  = 0;
+    } BYTE0;
+};
+
+uint8_t SetProperty(MODEM_MOD_TYPE_PROP &prop)
+{
+    const uint8_t PROP_GROUP = 0x20;
+    const uint8_t PROP_IDX   = 0x00;
+    const uint8_t BUF_SIZE   = 1;
+
+    uint8_t buf[BUF_SIZE];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.TX_DIRECT_MODE_TYPE & 0b00000001) << 7);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.TX_DIRECT_MODE_GPIO & 0b00000011) << 5);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.MOD_SOURCE          & 0b00000011) << 3);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.MOD_TYPE            & 0b00000111) << 0);
+    buf[0] = tmpReqByte0;
+
+    uint8_t retVal = SetProperty(PROP_GROUP, PROP_IDX, *buf);
+
+    return retVal;
 }
 

@@ -35,19 +35,6 @@ class RFSI4463PRO
     static const uint32_t DURATION_MS_POWER_ON_RESET = 50;
     static const uint32_t EXTERNAL_CRYSTAL_FREQ      = 30000000;
     
-    // Commands
-    enum
-    {
-        CMD_READ_CMD_BUFF = 0x44,
-    };
-    
-    // Various relevant values
-    enum
-    {
-        VAL_TO_SEND_WHEN_READING = 0xFF,
-        VAL_CLEAR_TO_SEND = 0xFF,
-    };
-
     
 public:
     RFSI4463PRO(uint8_t pinChipSelect, uint8_t pinShutdown)
@@ -59,153 +46,18 @@ public:
     
     void Init()
     {
-        SPI.begin();
-        
+        PAL.PinMode(pinShutdown_, OUTPUT);
+
         PAL.PinMode(pinChipSelect_, OUTPUT);
         PAL.DigitalWrite(pinChipSelect_, HIGH);
         
+        SPI.begin();
+        
         PowerOnReset();
-        ClearInterrupts();
         PowerUp();
-        ConfigureGpiosForClockOutput();
-        //DoPecanSteps();
+        ClearInterrupts();
+        EnableTx();
     }
-    
-    
-
-    
-    void SendCmdReceiveAnswer(uint8_t cmdAndReqBufLen, uint8_t /*bufRecvBytes*/, const char *cmdAndReqBuf)
-    {
-        SendAndWaitAndReceive(cmdAndReqBuf[0],
-                              (uint8_t *)&cmdAndReqBuf[1],
-                              cmdAndReqBufLen - 1,
-                              NULL,
-                              0);
-    }
-    
-#define VCXO_FREQ 27000000L
-    void setFrequency(unsigned long freq)
-    { 
-      
-      // Set the output divider according to recommended ranges given in Si446x datasheet  
-      int outdiv = 4;
-      int band = 0;
-      if (freq < 705000000UL) { outdiv = 6;  band = 1;};
-      if (freq < 525000000UL) { outdiv = 8;  band = 2;};
-      if (freq < 353000000UL) { outdiv = 12; band = 3;};
-      if (freq < 239000000UL) { outdiv = 16; band = 4;};
-      if (freq < 177000000UL) { outdiv = 24; band = 5;};
-      
-     
-      unsigned long f_pfd = 2 * VCXO_FREQ / outdiv;
-      
-      unsigned int n = ((unsigned int)(freq / f_pfd)) - 1;
-      
-      float ratio = (float)freq / (float)f_pfd;
-      float rest  = ratio - (float)n;
-      
-
-      unsigned long m = (unsigned long)(rest * 524288UL); 
-     
-
-
-    // set the band parameter
-      unsigned int sy_sel = 8; // 
-      char set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)}; //   
-      // send parameters
-      SendCmdReceiveAnswer(5, 1, set_band_property_command);
-
-    // Set the pll parameters
-      unsigned int m2 = m / 0x10000;
-      unsigned int m1 = (m - m2 * 0x10000) / 0x100;
-      unsigned int m0 = (m - m2 * 0x10000 - m1 * 0x100); 
-      // assemble parameter string
-      char set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
-      // send parameters
-      SendCmdReceiveAnswer(8, 1, set_frequency_property_command);
-      
-
-    }
-
-
-
-    void reset()
-    {
-        Init();
-    }
-    
-void DoPecanSteps()
-{
-    //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
-    const char gpio_pin_cfg_command[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, /*0x11*/ 11, 0x00}; 
-    SendCmdReceiveAnswer(8, 8, gpio_pin_cfg_command);
-    // SendAndWaitAndReceive(gpio_pin_cfg_command[0],
-                          // (uint8_t *)&gpio_pin_cfg_command[1],
-                          // sizeof(gpio_pin_cfg_command) - 1,
-                          // NULL,
-                          // 0);
-
-    setFrequency(144390000UL);
-    setModem(); 
-    tune_tx();
-}
-    
-void setModem()
-{
-  // Set to CW mode
-//  Serial.println("Setting modem into CW mode");  
-  char set_modem_mod_type_command[] = {0x11, 0x20, 0x01, 0x00, 0x00};
-  SendCmdReceiveAnswer(5, 1, set_modem_mod_type_command);
-  
-}
-
-void tune_tx()
-{
-  char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
-  SendCmdReceiveAnswer(2, 1, change_state_command);
-
-}
-
-void ptt_on()
-{
-  
-  // digitalWrite(VCXO_ENABLE_PIN, HIGH);
-  reset();
-  // turn on the blue LED (GPIO2) to indicate TX
-  char gpio_pin_cfg_command2[] = {0x13, 0x02, 0x02, 0x03, 0x02, 0x08, /*0x11*/11, 0x00}; //  Set GPIO2 HIGH; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
-  SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command2);
-
-  start_tx();
-  // si446x_powerlevel = 1023;
-}
-
-void ptt_off()
-{
-  stop_tx();
-  // si446x_powerlevel = 0;
-  // turn off the blue LED (GPIO2)
-  char gpio_pin_cfg_command0[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, /*0x11*/11, 0x00}; //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
-  SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command0);
-
-  // digitalWrite(RADIO_SDN_PIN, HIGH);  // active high = shutdown
-  //digitalWrite(VCXO_ENABLE_PIN, LOW); //keep enabled for now
-
-}
-
-void start_tx()
-{
-  char change_state_command[] = {0x34, 0x07}; //  Change to TX state
-  SendCmdReceiveAnswer(2, 1, change_state_command);
-
-}
-
-void stop_tx()
-{
-  char change_state_command[] = {0x34, 0x03}; //  Change to Ready state
-  SendCmdReceiveAnswer(2, 1, change_state_command);
-
-}
-
     
     uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
     {
@@ -254,10 +106,6 @@ private:
 
     void PowerOnReset()
     {
-        Serial.println("POR");
-        
-        PAL.PinMode(pinShutdown_, OUTPUT);
-
         PAL.DigitalWrite(pinShutdown_, LOW);
         PAL.Delay(DURATION_MS_POWER_ON_RESET);
         
@@ -266,6 +114,23 @@ private:
         
         PAL.DigitalWrite(pinShutdown_, LOW);
         PAL.Delay(DURATION_MS_POWER_ON_RESET);
+    }
+    
+    uint8_t PowerUp()
+    {
+        RFSI4463PRO::POWER_UP_REQ req;
+        
+        /*
+         * Full functionality, not bootloader
+         * External crystal, not internal
+         */
+        req.BOOT_OPTIONS.FUNC = 1;
+        req.XTAL_OPTIONS.TCXO = 1;
+        req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
+        
+        uint8_t retVal = Command_POWER_UP(req);
+        
+        return retVal;
     }
     
     uint8_t ClearInterrupts()
@@ -278,172 +143,26 @@ private:
         return retVal;
     }
     
-    uint8_t PowerUp()
+    void EnableTx()
     {
-        RFSI4463PRO::POWER_UP_REQ req;
+        // Select APRS Frequency
+        const uint32_t FREQUENCY_APRS = 144390000;
+        SetFrequency(FREQUENCY_APRS);
         
-        req.BOOT_OPTIONS.FUNC = 1;
-        req.XTAL_OPTIONS.TCXO = 1;
-        req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
-        
-        uint8_t retVal = Command_POWER_UP(req);
-        
-        return retVal;
+        // Drive from regular generated signal from mcu
+        SetModemTransmitOnDirectInput();
     }
     
-void Print(RFSI4463PRO::GPIO_PIN_CFG_REP &val)
-{
-    Serial.println(F("GPIO_PIN_CFG_REP"));
-
-    Serial.print(F("GPIO0.GPIO_STATE        : "));
-    Serial.print(val.GPIO0.GPIO_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO0.GPIO_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO0.X                 : "));
-    Serial.print(val.GPIO0.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO0.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO0.GPIO_MODE         : "));
-    Serial.print(val.GPIO0.GPIO_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO0.GPIO_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO1.GPIO_STATE        : "));
-    Serial.print(val.GPIO1.GPIO_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO1.GPIO_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO1.X                 : "));
-    Serial.print(val.GPIO1.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO1.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO1.GPIO_MODE         : "));
-    Serial.print(val.GPIO1.GPIO_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO1.GPIO_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO2.GPIO_STATE        : "));
-    Serial.print(val.GPIO2.GPIO_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO2.GPIO_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO2.X                 : "));
-    Serial.print(val.GPIO2.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO2.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO2.GPIO_MODE         : "));
-    Serial.print(val.GPIO2.GPIO_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO2.GPIO_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO3.GPIO_STATE        : "));
-    Serial.print(val.GPIO3.GPIO_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO3.GPIO_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO3.X                 : "));
-    Serial.print(val.GPIO3.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO3.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GPIO3.GPIO_MODE         : "));
-    Serial.print(val.GPIO3.GPIO_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GPIO3.GPIO_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("NIQR.NIRQ_STATE         : "));
-    Serial.print(val.NIQR.NIRQ_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.NIQR.NIRQ_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("NIQR.X                  : "));
-    Serial.print(val.NIQR.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.NIQR.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("NIQR.NIRQ_MODE          : "));
-    Serial.print(val.NIQR.NIRQ_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.NIQR.NIRQ_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("SDO.SDO_STATE           : "));
-    Serial.print(val.SDO.SDO_STATE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.SDO.SDO_STATE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("SDO.X                   : "));
-    Serial.print(val.SDO.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.SDO.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("SDO.SDO_MODE            : "));
-    Serial.print(val.SDO.SDO_MODE);
-    Serial.print(F(" (0x"));
-    Serial.print(val.SDO.SDO_MODE, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GEN_CONFIG.X            : "));
-    Serial.print(val.GEN_CONFIG.X);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GEN_CONFIG.X, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GEN_CONFIG.DRV_STRENGTH : "));
-    Serial.print(val.GEN_CONFIG.DRV_STRENGTH);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GEN_CONFIG.DRV_STRENGTH, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-    Serial.print(F("GEN_CONFIG.XXXXX        : "));
-    Serial.print(val.GEN_CONFIG.XXXXX);
-    Serial.print(F(" (0x"));
-    Serial.print(val.GEN_CONFIG.XXXXX, HEX);
-    Serial.print(F(")"));
-    Serial.println();
-}
-
-    
-    uint8_t ConfigureGpiosForClockOutput()
+    void SetModemTransmitOnDirectInput()
     {
-        SetProperty(0x00, 0x01, 0b01100001);
+        // Configure GPIO0 as input to be used as source of data to TX
+        ConfigureGpio0AsInput();
         
-        
-        
-        RFSI4463PRO::GPIO_PIN_CFG_REQ req;
-        RFSI4463PRO::GPIO_PIN_CFG_REP rep;
-
-        req.GPIO0.GPIO_MODE = 7;
-        
-        uint8_t retVal = Command_GPIO_PIN_CFG(req, rep);
-        
-        Serial.println("Pins configured");
-        Print(rep);
-        
-        return retVal;
+        // Drive modem as async direct
+        SetModemAsyncDirect();
     }
     
-    uint8_t ConfigureGpiosForDirectDrive()
+    uint8_t ConfigureGpio0AsInput()
     {
         RFSI4463PRO::GPIO_PIN_CFG_REQ req;
         RFSI4463PRO::GPIO_PIN_CFG_REP rep;
@@ -452,10 +171,214 @@ void Print(RFSI4463PRO::GPIO_PIN_CFG_REP &val)
         
         uint8_t retVal = Command_GPIO_PIN_CFG(req, rep);
         
-        Serial.println("Pins configured");
-        Print(rep);
-        
         return retVal;
+    }
+    
+    uint8_t SetModemAsyncDirect()
+    {
+        MODEM_MOD_TYPE_PROP prop;
+
+        // async
+        prop.BYTE0.TX_DIRECT_MODE_TYPE = 1;
+        
+        // GPIO0
+        prop.BYTE0.TX_DIRECT_MODE_GPIO = 0;
+        
+        // Real-time sourcing
+        prop.BYTE0.MOD_SOURCE = 1;
+        
+        // CW
+        prop.BYTE0.MOD_TYPE = 0;
+        
+        return SetProperty(prop);
+    }
+    
+    void SetFrequency(uint32_t freq)
+    {
+        uint8_t  band;
+        uint8_t  fcInt;
+        uint32_t fcFrac;
+        
+        GetFrequencyParameters(freq, band, fcInt, fcFrac);
+        
+        SetBand(band);
+        SetFreqControlInt(fcInt);
+        SetFreqControlFrac(fcFrac);
+        
+        // debug
+        setFrequency(freq);
+    }
+    
+    uint8_t SetBand(uint8_t band)
+    {
+        MODEM_CLKGEN_BAND_PROP prop;
+        
+        // force recalibration
+        // high-performance mode (mandated to work with equations in spec)
+        // band value passed-in
+        prop.BYTE0.SY_SEL = 1;
+        prop.BYTE0.BAND   = band;
+        
+        return SetProperty(prop);
+    }
+    
+    uint8_t SetFreqControlInt(uint8_t fcInt)
+    {
+        FREQ_CONTROL_INTE_PROP prop;
+        
+        prop.BYTE0.INTE = fcInt;
+        
+        return SetProperty(prop);
+    }
+    
+    void SetFreqControlFrac(uint32_t fcFrac)
+    {
+        // FREQ_CONTROL_FRAC
+        const uint8_t PROP_GROUP = 0x40;
+        const uint8_t PROP_IDX0  = 0x01;
+        const uint8_t PROP_IDX1  = 0x02;
+        const uint8_t PROP_IDX2  = 0x03;
+        
+        uint32_t bigEndian = PAL.htonl(fcFrac);
+        uint8_t *p = (uint8_t *)&bigEndian;
+        
+        SetProperty(PROP_GROUP, PROP_IDX0, (0b00001111 & p[1]));
+        SetProperty(PROP_GROUP, PROP_IDX1, (0b11111111 & p[2]));
+        SetProperty(PROP_GROUP, PROP_IDX2, (0b11111111 & p[3]));
+    }
+    
+    
+    
+    /*
+     *
+     * The datasheet says the module will operate at a given frequency given
+     * a number of factors.
+     * Those are:
+     * - freq_xo (crystal frequency -- fixed)
+     * - outdiv (determined by lookup table in spec for a desired frequency)
+     * - fc_inte, fc_frac -- whole and "fractional" settable values
+     *
+     * So in short, fc_inte and fc_frac are numbers you need to calculate,
+     * everything else is basically fixed.
+     *
+     * The specific formula is:
+     *
+     *              (           fc_frac  )   ( 2 * freq_xo )
+     * RF_channel = ( fc_inte + -------- ) * ( ----------- )
+     *              (             2^19   )   (    outdiv   )
+     *
+     * 
+     * The spec notes that the (fc_frac / 2^19) value is in the range of 1-2.
+     *
+     *
+     * A good solution for solving this was seen on the pecan pico implementation.
+     * https://github.com/tkrahn/pecanpico4/blob/master/radio_si446x.cpp
+     * This is reformatted for clarity below.
+     *
+     * It is basically:
+     * - calculate the known ((2*freq_xo)/outdiv) value and divide RF_channel by it.
+     * - you now know the right-hand of the equation is what you need to solve.
+     * - that is done by finding what is left over after removing 1+x from the left
+     *   hand side of the equation.
+     * 
+     */
+    void GetFrequencyParameters(uint32_t  freq,
+                                uint8_t  &band,
+                                uint8_t  &fcInt,
+                                uint32_t &fcFrac)
+    {
+        // Start with default assumption that highest-frequency chosen, fall down
+        // ladder from there.
+        //
+        // Notably this is incorporates ranges from both the 4461/2/3 and 4464.
+        uint8_t outdiv = 4;
+        band           = 0;
+        if (freq < 705000000UL) { outdiv =  6; band = 1; };
+        if (freq < 525000000UL) { outdiv =  8; band = 2; };
+        if (freq < 353000000UL) { outdiv = 12; band = 3; };
+        if (freq < 239000000UL) { outdiv = 16; band = 4; };
+        if (freq < 177000000UL) { outdiv = 24; band = 5; };
+
+        // Calculate the known part of the equation
+        double secondParenValue =
+            (2.0 * (double)EXTERNAL_CRYSTAL_FREQ) / (double)outdiv;
+
+        // Calculate what the right hand side must equal once the known part of
+        // the equation is moved to the left
+        double leftHandSide = (double)freq / secondParenValue;
+
+        // The fc_inte value is:
+        // - the left hand side
+        //   - shifted by 1 to account for the fc_frac/2^19 being at least 1
+        //   - truncated to eliminate any fractional part above 1
+        fcInt = (uint8_t)(leftHandSide - 1);
+
+        // The difference between the leftHandSide and fcInte must be equal to the
+        // fc_frac / 2^19.
+        // Calculate it in decimal first.
+        // This will be in the range of 1-2.
+        double remainingValue = leftHandSide - fcInt;
+
+        // Now scale this value to find fc_frac.
+        fcFrac = (uint32_t)(remainingValue * (uint32_t)((uint32_t)2 << 18));
+        
+        Serial.println("SetFrequency");
+        Serial.print("freq  : "); Serial.println(freq);
+        Serial.print("band  : "); Serial.println(band);
+        Serial.print("fcInt : "); Serial.println(fcInt);
+        Serial.print("rem   : "); Serial.println(remainingValue);
+        Serial.print("fcFrac: "); Serial.println(fcFrac);
+        Serial.println();
+    }
+    
+    void setFrequency(unsigned long freq)
+    { 
+      
+      // Set the output divider according to recommended ranges given in Si446x datasheet  
+      int outdiv = 4;
+      int band = 0;
+      if (freq < 705000000UL) { outdiv = 6;  band = 1;};
+      if (freq < 525000000UL) { outdiv = 8;  band = 2;};
+      if (freq < 353000000UL) { outdiv = 12; band = 3;};
+      if (freq < 239000000UL) { outdiv = 16; band = 4;};
+      if (freq < 177000000UL) { outdiv = 24; band = 5;};
+      
+     
+      //unsigned long f_pfd = 2 * VCXO_FREQ / outdiv;
+      unsigned long f_pfd = 2 * EXTERNAL_CRYSTAL_FREQ / outdiv;
+      
+      unsigned int n = ((unsigned int)(freq / f_pfd)) - 1;
+      
+      float ratio = (float)freq / (float)f_pfd;
+      float rest  = ratio - (float)n;
+      
+
+      unsigned long m = (unsigned long)(rest * 524288UL); 
+     
+
+
+    // set the band parameter
+      unsigned int sy_sel = 8; // 
+      char set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)}; //   
+      // send parameters
+      //SendCmdReceiveAnswer(5, 1, set_band_property_command);
+
+    // Set the pll parameters
+      unsigned int m2 = m / 0x10000;
+      unsigned int m1 = (m - m2 * 0x10000) / 0x100;
+      unsigned int m0 = (m - m2 * 0x10000 - m1 * 0x100); 
+      // assemble parameter string
+      char set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
+      // send parameters
+      //SendCmdReceiveAnswer(8, 1, set_frequency_property_command);
+      
+        Serial.println("setFrequency");
+        Serial.print("freq  : "); Serial.println(freq);
+        Serial.print("band  : "); Serial.println(band);
+        Serial.print("fcInt : "); Serial.println(n);
+        Serial.print("rem   : "); Serial.println(rest);
+        Serial.print("fcFrac: "); Serial.println(m);
+        Serial.println();
     }
     
     uint8_t SendAndWaitAndReceive(uint8_t  cmd,
@@ -464,6 +387,11 @@ void Print(RFSI4463PRO::GPIO_PIN_CFG_REP &val)
                                   uint8_t *repBuf,
                                   uint8_t  repBufLen)
     {
+        const uint8_t CMD_READ_CMD_BUFF = 0x44;
+    
+        const uint8_t VAL_TO_SEND_WHEN_READING = 0x00;
+        const uint8_t VAL_CLEAR_TO_SEND        = 0xFF;
+        
         uint8_t retVal = 0;
         
         //

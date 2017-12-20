@@ -26,24 +26,6 @@ void GetPartInfo()
     Serial.println();
 }
 
-void GetDeviceState()
-{
-    Serial.println("GetDeviceState");
-    
-    RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
-
-    if (rf.Command_REQUEST_DEVICE_STATE(rep))
-    {
-        rfd.Print(rep);
-    }
-    else
-    {
-        Serial.println("ERR");
-    }
-
-    Serial.println();
-}
-
 void GetFuncInfo()
 {
     Serial.println("GetFuncInfo");
@@ -80,25 +62,6 @@ void GetChipStatus()
     Serial.println();
 }
 
-void GetFifoInfo()
-{
-    Serial.println("GetFifoInfo");
-    
-    RFSI4463PRO::FIFO_INFO_REQ req;
-    RFSI4463PRO::FIFO_INFO_REP rep;
-
-    if (rf.Command_FIFO_INFO(req, rep))
-    {
-        rfd.Print(rep);
-    }
-    else
-    {
-        Serial.println("ERR");
-    }
-
-    Serial.println();
-}
-
 void RequestDeviceState()
 {
     Serial.println("RequestDeviceState");
@@ -117,38 +80,6 @@ void RequestDeviceState()
     Serial.println();
 }
 
-void TestSetGetProperty()
-{
-    Serial.println("RequestDeviceState");
-
-
-
-    uint16_t propertyList[] = { 0x0100, 0x0103, 0x0200, 0x0202 };
-
-    for (auto property : propertyList)
-    {
-        uint8_t value;
-    
-        Serial.print("Property 0x");
-        Serial.print(property, HEX);
-        Serial.print(" = ");
-        uint8_t propGroup = (uint8_t)((property & 0xFF00) >> 8);
-        uint8_t propIdx   = (uint8_t)((property & 0x00FF) >> 0);
-        if (rf.GetProperty(propGroup, propIdx, value))
-        {
-            
-            Serial.print("0b");
-            Serial.println(value, BIN);
-        }
-        else
-        {
-            Serial.println("ERR");
-        }
-    }
-
-    Serial.println();
-}
-
 
 void setup()
 {
@@ -160,13 +91,13 @@ void setup()
     while (1)
     {
         GetPartInfo();
-        GetDeviceState();
-        //GetFuncInfo();
-        //GetChipStatus();
-        //GetFifoInfo();
+        GetFuncInfo();
         RequestDeviceState();
-        //TestSetGetProperty();
-
+        
+        GetChipStatus();
+        
+        
+        Serial.println();
         PAL.Delay(2000);
     }
 }

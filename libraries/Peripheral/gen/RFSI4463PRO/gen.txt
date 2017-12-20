@@ -1,6 +1,12 @@
 
 
 
+################################################################################
+#
+# Commands
+#
+################################################################################
+
 
 PART_INFO
 CMD 0x01
@@ -326,9 +332,6 @@ REP {
 
 
 
-
-
-
 SET_PROPERTY
 CMD 0x11
 REQ {
@@ -447,20 +450,6 @@ REP {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 GET_CHIP_STATUS
 CMD 0x23
 # parameters which are part of the command but not the command itself
@@ -495,8 +484,6 @@ REP {
 
 
 
-
-
 FIFO_INFO
 CMD 0x15
 REQ {
@@ -519,6 +506,48 @@ REP {
 
 
 
+################################################################################
+#
+# Properties
+#
+################################################################################
+
+
+MODEM_CLKGEN_BAND
+PROP_GROUP 0x20
+PROP_IDX 0x51
+PROP {
+    BYTE0 {
+        XXX[7:5]
+        FORCE_SY_RECAL[4:4]
+        SY_SEL[3:3]
+        BAND[2:0]
+    }
+}
+
+
+FREQ_CONTROL_INTE
+PROP_GROUP 0x40
+PROP_IDX 0x00
+PROP {
+    BYTE0 {
+        X[7:7]
+        INTE[6:0]
+    }
+}
+
+
+MODEM_MOD_TYPE
+PROP_GROUP 0x20
+PROP_IDX 0x00
+PROP {
+    BYTE0 {
+        TX_DIRECT_MODE_TYPE[7:7]
+        TX_DIRECT_MODE_GPIO[6:5]
+        MOD_SOURCE[4:3]
+        MOD_TYPE[2:0]
+    }
+}
 
 
 
