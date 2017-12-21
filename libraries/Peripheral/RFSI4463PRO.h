@@ -151,6 +151,13 @@ private:
         
         // Drive from regular generated signal from mcu
         SetModemTransmitOnDirectInput();
+        
+        StartTx();
+    }
+    
+    void StartTx()
+    {
+        SendAndWaitAndReceive(0x31, NULL, 0, NULL, 0);
     }
     
     void SetModemTransmitOnDirectInput()
@@ -187,8 +194,8 @@ private:
         // Real-time sourcing
         prop.BYTE0.MOD_SOURCE = 1;
         
-        // CW
-        prop.BYTE0.MOD_TYPE = 0;
+        // 2FSK
+        prop.BYTE0.MOD_TYPE = 2;
         
         return SetProperty(prop);
     }
