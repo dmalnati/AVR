@@ -77,12 +77,17 @@ private:
     {
         uint16_t val = fnAnalogRead_(pin_);
         
+        int32_t valLastTmp = valLast_;
+        int32_t valTmp     = val;
+        
+        uint16_t change = abs(valLastTmp - valTmp);
+        
         // Fire when:
         // - never fired before
         // - changed by the minimum
         // - hit either extreme of the spectrum of values
         if (valLast_ == -1                        ||
-            abs(valLast_ - val) >= minimumChange_ ||
+            change >= minimumChange_              ||
             (val == 1023 && valLast_ != 1023)     ||
             (val == 0    && valLast_ != 0))
         {
