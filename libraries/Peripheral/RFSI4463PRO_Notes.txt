@@ -1,0 +1,647 @@
+
+
+
+
+
+
+/*
+Approach
+
+
+Look at RadioHead and Pecan.
+
+RadioHead seems to be using the generated header.
+Pecan isn't.  And they appear to be driving directly with signal.
+- this is what I want.
+
+
+Concerns I have:
+- I see interrupt signal go high when following the RadioHead
+  sequence.  Why?
+    - It's a "bad command" issue or something, though I think I'm
+      doing it right
+- 
+
+
+
+
+
+
+
+
+
+
+
+*/
+
+
+3.4.1. INT_CTL_ENABLE
+ Summary: Interrupt enable property
+ Purpose:
+Enables top-level interrupt sources
+ Property: 0x0100
+ Default: 0x04
+ Fields:
+CHIP_INT_STATUS_EN - default:1 If set, Enables CHIP_INT_STATUS interrupt.
+MODEM_INT_STATUS_EN - default:0 If set, Enables MODEM_INT_STATUS interrupt.
+PH_INT_STATUS_EN - default:0 If set, Enables PH_INT_STATUS interrupt.
+
+
+
+
+Seems that we want to disable all interrupts.
+- CHIP_INT_STATUS is enabled to start
+  - meaning 
+  
+- INT_CTL_CHIP_ENABLE
+  - defaults to enabled when CHIP_READY  state reached, meaning
+    can accept commands
+
+
+
+
+
+
+
+==========================================
+
+cmd_clear_all_interrupts();
+
+#define RH_RF24_CMD_GET_INT_STATUS             0x20
+
+bool RH_RF24::cmd_clear_all_interrupts()
+{
+    uint8_t write_buf[] = { 0x00, 0x00, 0x00 }; 
+    return command(RH_RF24_CMD_GET_INT_STATUS, write_buf, sizeof(write_buf));
+}
+
+// Caution: There was a bug in A1 hardware that will not handle 1 byte commands. 
+bool RH_RF24::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_len, uint8_t* read_buf, uint8_t read_len)
+{
+    bool   done = false;
+
+    ATOMIC_BLOCK_START;
+    // First send the command
+    digitalWrite(_slaveSelectPin, LOW);
+    _spi.transfer(cmd);
+
+    // Now write any write data
+    if (write_buf && write_len)
+    {
+	while (write_len--)
+	    _spi.transfer(*write_buf++);
+    }
+    // Sigh, the RFM26 at least has problems if we deselect too quickly :-(
+    // Innocuous timewaster:
+    digitalWrite(_slaveSelectPin, LOW);
+    // And finalise the command
+    digitalWrite(_slaveSelectPin, HIGH);
+
+    uint16_t count; // Number of times we have tried to get CTS
+    for (count = 0; !done && count < RH_RF24_CTS_RETRIES; count++)
+    {
+	// Wait for the CTS
+	digitalWrite(_slaveSelectPin, LOW);
+
+	_spi.transfer(RH_RF24_CMD_READ_BUF);
+	if (_spi.transfer(0) == RH_RF24_REPLY_CTS)
+	{
+	    // Now read any expected reply data
+	    if (read_buf && read_len)
+	    {
+		while (read_len--)
+		    *read_buf++ = _spi.transfer(0);
+	    }
+	    done = true;
+	}
+	// Sigh, the RFM26 at least has problems if we deselect too quickly :-(
+	// Innocuous timewaster:
+	digitalWrite(_slaveSelectPin, LOW);
+	// Finalise the read
+	digitalWrite(_slaveSelectPin, HIGH);
+    }
+    ATOMIC_BLOCK_END;
+    return done; // False if too many attempts at CTS
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////
+
+
+
+https://github.com/Yveaux/RadioHead/blob/master/RadioHead/RF24configs/radio_config_Si4464_27_434_2GFSK_5_10.h
+
+
+
+
+PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
+
+configure(RF24_CONFIGURATION_DATA);
+
+
+bool RH_RF24::configure(const uint8_t* commands)
+{
+    // Command strings are constructed in radio_config_Si4460.h 
+    // Each command starts with a count of the bytes in that command:
+    // <bytecount> <command> <bytecount-2 bytes of args/data>
+    uint8_t next_cmd_len;
+    
+    while (memcpy_P(&next_cmd_len, commands, 1), next_cmd_len > 0)
+    {
+	uint8_t buf[20]; // As least big as the biggest permitted command/property list of 15
+	memcpy_P(buf, commands+1, next_cmd_len);
+	command(buf[0], buf+1, next_cmd_len - 1);
+	commands += (next_cmd_len + 1);
+    }
+    return true;
+}
+
+
+
+
+#define RADIO_CONFIGURATION_DATA_ARRAY { \
+        0x07, RF_POWER_UP, \
+        0x08, RF_GPIO_PIN_CFG, \
+        0x06, RF_GLOBAL_XO_TUNE_2, \
+        0x05, RF_GLOBAL_CONFIG_1, \
+        0x06, RF_INT_CTL_ENABLE_2, \
+        0x08, RF_FRR_CTL_A_MODE_4, \
+        0x05, RF_PREAMBLE_TX_LENGTH_1, \
+        0x05, RF_PREAMBLE_CONFIG_1, \
+        0x07, RF_SYNC_CONFIG_3, \
+        0x05, RF_PKT_CONFIG1_1, \
+        0x05, RF_PKT_FIELD_1_CONFIG_1, \
+        0x10, RF_MODEM_MOD_TYPE_12, \
+        0x05, RF_MODEM_FREQ_DEV_0_1, \
+        0x0C, RF_MODEM_TX_RAMP_DELAY_8, \
+        0x0D, RF_MODEM_BCR_OSR_1_9, \
+        0x0B, RF_MODEM_AFC_GEAR_7, \
+        0x05, RF_MODEM_AGC_CONTROL_1, \
+        0x0D, RF_MODEM_AGC_WINDOW_SIZE_9, \
+        0x0C, RF_MODEM_OOK_CNT1_8, \
+        0x05, RF_MODEM_RSSI_COMP_1, \
+        0x05, RF_MODEM_CLKGEN_BAND_1, \
+        0x10, RF_MODEM_CHFLT_RX1_CHFLT_COE13_7_0_12, \
+        0x10, RF_MODEM_CHFLT_RX1_CHFLT_COE1_7_0_12, \
+        0x10, RF_MODEM_CHFLT_RX2_CHFLT_COE7_7_0_12, \
+        0x08, RF_PA_MODE_4, \
+        0x0B, RF_SYNTH_PFDCP_CPFF_7, \
+        0x0C, RF_FREQ_CONTROL_INTE_8, \
+        0x00 \
+ }
+
+ 
+#define RF_POWER_UP 0x02, 0x01, 0x00, 0x01, 0x9B, 0xFC, 0xC0
+ 
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////
+
+
+/*
+
+
+Pecan implementation, analyzed
+
+
+
+https://github.com/tkrahn/pecanpico4/blob/master/config.h
+
+#define RADIO_CLASS   RadioSi446x
+// This is the PTT pin to enable the transmitter and the VCXO; HIGH = on                
+#define PTT_PIN           8
+
+#define VCXO_FREQ 27000000L
+#define RADIO_FREQUENCY   144390000UL
+
+
+https://github.com/tkrahn/pecanpico4/blob/master/radio_si446x.h
+
+  #define RADIO_SDN_PIN   7
+  #define VCXO_ENABLE_PIN 8
+  
+  
+https://github.com/tkrahn/pecanpico4/blob/master/radio_si446x.cpp
+
+unsigned long active_freq = RADIO_FREQUENCY;
+
+
+
+
+
+
+// Expected use case
+
+// once
+radio.setup();
+
+// for each frame sent
+radio.ptt_on();
+radio.set_freq();   // unclear why they're doing this after ptt_on, but they are (aprs code)
+radio.ptt_off();
+
+
+
+
+
+// What happens in each case
+
+radio.setup();
+    // pin setup and modem power-on-reset
+    // they say they re-init each packet
+
+radio.ptt_on();
+    digitalWrite(VCXO_ENABLE_PIN, HIGH);
+    
+    reset();
+        digitalWrite(VCXO_ENABLE_PIN, HIGH);
+        delay(200)
+        // power-on-reset (again)
+
+        // API PART_INFO
+        // API POWER_UP
+        // API GET_INT_STATUS
+        // API GPIO_PIN_CFG
+        
+        setFrequency();
+            // API set band paramter
+            // API set PLL parameters
+        
+        setModem();
+            // API set CW mode (continuous wave?)
+        
+        tune_tx();
+            // API change state to tune state
+    
+    // API turn on the blue LED (GPIO2) to indicate TX
+    
+    start_tx();
+        // API change state to TX state
+    
+
+radio.set_freq();
+    // nothing of interest
+    
+    
+radio.ptt_off();
+    stop_tx();
+        // API change to ready state
+    
+    // API turn off the blue LED (GPIO2)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+// Concrete implementation examination
+    
+    
+        // ptt_on() // 
+    
+    // API PART_INFO
+    const char PART_INFO_command[] = {0x01}; // Part Info
+    SendCmdReceiveAnswer(1, 9, PART_INFO_command);
+    // understood
+    
+
+    // API POWER_UP
+    const char init_command[] = {0x02, 0x01, 0x01, x3, x2, x1, x0};// no patch, boot main app. img, FREQ_VCXO, return 1 byte
+    SendCmdReceiveAnswer(7, 1 ,init_command);
+    // 0x02 - cmd
+    // 0x01 - BOOT_OPTIONS
+        // PATCH - no patch
+        // FUNC - PRO 1 Power the chip up into EZRadio PRO functional mode.	
+            // seems like setting this to 1 is the only option?
+    // 0x01 - XTAL_OPTIONS
+        // - TCXO - 1 means external TCXO crystal, 0 means internal XO
+            // I was setting 1 here, which seems wrong, I don't have an external crystal
+    // x3,x2,x1,x0 - XO_FREQ
+        // basically big-endian 32-bit uint for frequency
+    // understood
+        // this is how I implement this except for the crystal, which I use internal
+            // Wait, I do have an external crystal on this module... use external
+    
+    
+    // API GET_INT_STATUS
+    const char get_int_status_command[] = {0x20, 0x00, 0x00, 0x00}; //  Clear all pending interrupts and get the interrupt status back
+    SendCmdReceiveAnswer(4, 9, get_int_status_command);
+    // 0x20 - cmd
+    // all zero parameters just clears all the bits
+    // understood
+        // this is how I implement this
+    
+    
+    // API GPIO_PIN_CFG
+    const char gpio_pin_cfg_command[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, 0x11, 0x00}; //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+    SendCmdReceiveAnswer(8, 8, gpio_pin_cfg_command);
+    // 0x13 - cmd
+    // 0x02 - GPIO[0]
+        // PULL_CTL
+            // 0 - PULL_DIS (disable pullup resistor)
+        // GPIO_MODE
+            // 2 - DRIVE0 (Pin is configured as a CMOS output and driven low)
+    // ... same for all 4 GPIOs
+    // 0x08 - NIRQ
+        // PULL_CTL
+            // 0 - PULL_DIS (disable pullup resistor)
+        // NIRQ_MODE
+            // 8 - CTS (Clear To Send signal. This output goes high when the command handler is able to receive a new command, and is low otherwise)
+    // 0x11 - SDO
+        // PULL_CTL
+            // 0 - PULL_DIS (disable pullup resistor)
+        // SDO_MODE
+            // 17 (0x11) - RX_DATA_CLK
+                // I don't believe this.  I think it's a typo for decimal 11, which is that
+                // this pin is used for its intended function, being MISO.
+    // 0x00 - GEN_CONFIG
+        // DRV_STRENGTH
+            // 0 - HIGH output strength for all pins
+    // understood
+        // do I even have a use for this?
+        // notably the module I use only exposes 2 of the GPIOs
+    
+    
+        // ptt_on()::setFrequency() // 
+    
+    // API set band parameter
+    char set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)};
+    SendCmdReceiveAnswer(5, 1, set_band_property_command);
+    // 0x11 - SET_PROPERTY
+    // 0x20 - Prop Group
+    // 0x01 - Prop Count
+    // 0x51 - Prop Start (MODEM_CLKGEN_BAND)
+    // 
+    // basically set "frequency band" enumeration based on desired output freq
+    //
+    // kind of understood
+    
+    // API set PLL parameters
+    char set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
+    SendCmdReceiveAnswer(8, 1, set_frequency_property_command);
+    //
+    // sets the integer and fractional parameters which dictate output frequency
+    //
+    // kind of understood, specific calculation methodology needs to be examined
+    //
+        
+        // ptt_on()::setModem() // 
+
+    // API set CW mode (continuous wave?)
+    char set_modem_mod_type_command[] = {0x11, 0x20, 0x01, 0x00, 0x00};
+    SendCmdReceiveAnswer(5, 1, set_modem_mod_type_command);
+    //
+    // Set property MODEM_MOD_TYPE
+    // TX_DIRECT_MODE_TYPE = synchronous (I don't want this, I want async I think)
+    // TX_DIRECT_MODE_GPIO = use GPIO0 as input for direct TX
+    // MOD_SOURCE          = packet (I want direct I think)
+    // MOD_TYPE            = CW (maybe what I want?)
+    //
+    // kind of understand
+    
+        // ptt_on()::tune_tx() // 
+
+    // API change state to tune state
+    char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
+    SendCmdReceiveAnswer(2, 1, change_state_command);
+    //
+    // CHANGE_STATE command
+    // NEW_STATE = TX_TUNE
+    // 
+    // seems to be directly changing module state to tune the PLL.
+    // docs say this isn't usually necessary as module can transition between
+    // states well itself.
+    //
+    // not really understood.
+
+        // ptt_on() // 
+    
+    // API turn on the blue LED (GPIO2) to indicate TX
+    char gpio_pin_cfg_command2[] = {0x13, 0x02, 0x02, 0x03, 0x02, 0x08, 0x11, 0x00}; //  Set GPIO2 HIGH; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+    SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command2);
+    //
+    // GPIO_PIN_CFG
+    //
+    // literally just puts GPIO0 HIGH
+    //
+    // understood
+    
+        // ptt_on()::start_tx() // 
+    
+    // API change state to TX state
+    char change_state_command[] = {0x34, 0x07}; //  Change to TX state
+    SendCmdReceiveAnswer(2, 1, change_state_command);
+    // 
+    // CHANGE_STATE command
+    // NEW_STATE = TX
+    //  
+    // perhaps all params are set at this point?  by why did we transition
+    // through the TX_TUNE state?
+    // maybe better if we directly use the START_TX command (I think this exists)
+    //
+    // kind of understand
+    
+    
+    
+    
+    
+    
+    
+    
+        // ptt_off() // 
+    
+    // API turn off the blue LED (GPIO2)
+    char gpio_pin_cfg_command0[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, 0x11, 0x00}; //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+    SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command0);    
+    
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    void SendCmdReceiveAnswer(uint8_t cmdAndReqBufLen, uint8_t /*bufRecvBytes*/, const char *cmdAndReqBuf)
+    {
+        SendAndWaitAndReceive(cmdAndReqBuf[0],
+                              (uint8_t *)&cmdAndReqBuf[1],
+                              cmdAndReqBufLen - 1,
+                              NULL,
+                              0);
+    }
+    
+#define VCXO_FREQ 27000000L
+    void setFrequency(unsigned long freq)
+    { 
+      
+      // Set the output divider according to recommended ranges given in Si446x datasheet  
+      int outdiv = 4;
+      int band = 0;
+      if (freq < 705000000UL) { outdiv = 6;  band = 1;};
+      if (freq < 525000000UL) { outdiv = 8;  band = 2;};
+      if (freq < 353000000UL) { outdiv = 12; band = 3;};
+      if (freq < 239000000UL) { outdiv = 16; band = 4;};
+      if (freq < 177000000UL) { outdiv = 24; band = 5;};
+      
+     
+      unsigned long f_pfd = 2 * VCXO_FREQ / outdiv;
+      
+      unsigned int n = ((unsigned int)(freq / f_pfd)) - 1;
+      
+      float ratio = (float)freq / (float)f_pfd;
+      float rest  = ratio - (float)n;
+      
+
+      unsigned long m = (unsigned long)(rest * 524288UL); 
+     
+
+
+    // set the band parameter
+      unsigned int sy_sel = 8; // 
+      char set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)}; //   
+      // send parameters
+      SendCmdReceiveAnswer(5, 1, set_band_property_command);
+
+    // Set the pll parameters
+      unsigned int m2 = m / 0x10000;
+      unsigned int m1 = (m - m2 * 0x10000) / 0x100;
+      unsigned int m0 = (m - m2 * 0x10000 - m1 * 0x100); 
+      // assemble parameter string
+      char set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
+      // send parameters
+      SendCmdReceiveAnswer(8, 1, set_frequency_property_command);
+      
+
+    }
+
+
+
+    void reset()
+    {
+        Init();
+    }
+    
+void DoPecanSteps()
+{
+    //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+    const char gpio_pin_cfg_command[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, /*0x11*/ 11, 0x00}; 
+    SendCmdReceiveAnswer(8, 8, gpio_pin_cfg_command);
+    // SendAndWaitAndReceive(gpio_pin_cfg_command[0],
+                          // (uint8_t *)&gpio_pin_cfg_command[1],
+                          // sizeof(gpio_pin_cfg_command) - 1,
+                          // NULL,
+                          // 0);
+
+    setFrequency(144390000UL);
+    setModem(); 
+    tune_tx();
+}
+    
+void setModem()
+{
+  // Set to CW mode
+//  Serial.println("Setting modem into CW mode");  
+  char set_modem_mod_type_command[] = {0x11, 0x20, 0x01, 0x00, 0x00};
+  SendCmdReceiveAnswer(5, 1, set_modem_mod_type_command);
+  
+}
+
+void tune_tx()
+{
+  char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
+  SendCmdReceiveAnswer(2, 1, change_state_command);
+
+}
+
+void ptt_on()
+{
+  
+  // digitalWrite(VCXO_ENABLE_PIN, HIGH);
+  reset();
+  // turn on the blue LED (GPIO2) to indicate TX
+  char gpio_pin_cfg_command2[] = {0x13, 0x02, 0x02, 0x03, 0x02, 0x08, /*0x11*/11, 0x00}; //  Set GPIO2 HIGH; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+  SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command2);
+
+  start_tx();
+  // si446x_powerlevel = 1023;
+}
+
+void ptt_off()
+{
+  stop_tx();
+  // si446x_powerlevel = 0;
+  // turn off the blue LED (GPIO2)
+  char gpio_pin_cfg_command0[] = {0x13, 0x02, 0x02, 0x02, 0x02, 0x08, /*0x11*/11, 0x00}; //  Set all GPIOs LOW; Link NIRQ to CTS; Link SDO to MISO; Max drive strength
+  SendCmdReceiveAnswer(8, 1, gpio_pin_cfg_command0);
+
+  // digitalWrite(RADIO_SDN_PIN, HIGH);  // active high = shutdown
+  //digitalWrite(VCXO_ENABLE_PIN, LOW); //keep enabled for now
+
+}
+
+void start_tx()
+{
+  char change_state_command[] = {0x34, 0x07}; //  Change to TX state
+  SendCmdReceiveAnswer(2, 1, change_state_command);
+
+}
+
+void stop_tx()
+{
+  char change_state_command[] = {0x34, 0x03}; //  Change to Ready state
+  SendCmdReceiveAnswer(2, 1, change_state_command);
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
