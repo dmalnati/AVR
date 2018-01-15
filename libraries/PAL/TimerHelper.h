@@ -43,7 +43,7 @@ public:
                 durationUsPerRequestedFrequency / a.durationUsSingleTick;
             
             // Now let's find out what the error would be at this value
-            a.tickCount = (uint8_t)round(a.tickCountPerRequestedFrequency);
+            a.tickCount = (uint16_t)round(a.tickCountPerRequestedFrequency);
             
             if (a.tickCount <= timerTickCount)
             {
@@ -89,7 +89,10 @@ public:
         TimerClass::SetTimerPrescaler(bestAttempt_.timerPrescaler);
         TimerClass::SetTimerValue(0);
         
-        TimerClass::SetTimerMode(TimerClass::TimerMode::CTC_TOP_OCRNA);
+        // Wrap on reaching channel A value.
+        // Channel B can still be used for PWM as long as you're ok with the top
+        // value.
+        TimerClass::SetTimerMode(TimerClass::TimerMode::FAST_PWM_TOP_OCRNA);
         
         uint8_t top = bestAttempt_.tickCount - 1;  // don't forget that TOP is TICKS-1
         tcA->SetValue(top);
@@ -109,7 +112,7 @@ private:
         double    timerPrescalerVal              = 0.0;
         double    durationUsSingleTick           = 0.0;
         double    tickCountPerRequestedFrequency = 0.0;
-        uint8_t   tickCount                      = 0;
+        uint16_t  tickCount                      = 0;
         double    durationUsUsingTickCount       = 0.0;
         uint16_t  frequencyUsingTickCount        = 0;
         uint16_t  error                          = 0;
