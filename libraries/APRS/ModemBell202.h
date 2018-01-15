@@ -15,16 +15,19 @@
 // - encoding - NRZI
 // - Bit stuffing after 5th consecutive 1
 
+template <typename ModemAnalogType,
+          uint8_t  preEmphMark,
+          uint8_t  preEmphSpace>
 class ModemBell202
 {
-    static const uint16_t SAMPLE_RATE = 15000;
-    
+public:
+    using ModemAnalogTypeName = ModemAnalogType;
+
+private:
     static const uint16_t BAUD = 1200;
     
     static const uint16_t BELL_202_FREQ_SPACE = 2200;
     static const uint16_t BELL_202_FREQ_MARK  = 1200;
-    
-    constexpr static const uint8_t BELL_202_FREQ_MARK_PRE_EMPHASIS = 3;
     
     static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
     
@@ -62,11 +65,10 @@ public:
     
     void Init()
     {
-        ma_.SetSampleRate(SAMPLE_RATE);
+        ma_.Init();
         
-        fcList_[0] = ma_.GetFrequencyConfig(BELL_202_FREQ_MARK,
-                                            BELL_202_FREQ_MARK_PRE_EMPHASIS);
-        fcList_[1] = ma_.GetFrequencyConfig(BELL_202_FREQ_SPACE);
+        fcList_[0] = ma_.GetFrequencyConfig(BELL_202_FREQ_MARK,  preEmphMark);
+        fcList_[1] = ma_.GetFrequencyConfig(BELL_202_FREQ_SPACE, preEmphSpace);
     }
     
     void Start()
@@ -259,7 +261,8 @@ private:
 
         //uint16_t top = ticksPerPeriod - 1;
         // Fixes timing, but why?
-        uint16_t top = ticksPerPeriod + 75;
+        //uint16_t top = ticksPerPeriod + 75;   // worked with DAC
+        uint16_t top = ticksPerPeriod - 156;    // worked with PWM
         
         return top;
     }
@@ -269,7 +272,7 @@ private:
     
     uint8_t consecutiveOnes_;    
     
-    static ModemAnalog ma_;
+    static ModemAnalogType ma_;
 
     ModemAnalogFrequencyConfig fcList_[2];
     uint8_t   freqListIdx_;
@@ -284,8 +287,17 @@ private:
 };
 
 
-ModemAnalog ModemBell202::ma_;
-ModemBell202::CommandQueue ModemBell202::cmdQueue_;
+template <typename ModemAnalogType, uint8_t  preEmphMark, uint8_t  preEmphSpace>
+typename ModemBell202<ModemAnalogType,preEmphMark,preEmphSpace>::ModemAnalogTypeName ModemBell202<ModemAnalogType,preEmphMark,preEmphSpace>::ma_;
+
+template <typename ModemAnalogType, uint8_t  preEmphMark, uint8_t  preEmphSpace>
+typename ModemBell202<ModemAnalogType,preEmphMark,preEmphSpace>::CommandQueue ModemBell202<ModemAnalogType,preEmphMark,preEmphSpace>::cmdQueue_;
+
+
+// Define a few easy to use options
+using ModemBell202Dac = ModemBell202<ModemAnalogDac, 2, 0>;
+using ModemBell202Pwm = ModemBell202<ModemAnalogPwm, 1, 1>;
+
 
 
 #endif  // __MODEM_BELL_202_H__
