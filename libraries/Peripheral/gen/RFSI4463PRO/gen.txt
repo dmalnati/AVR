@@ -229,8 +229,16 @@ REP {
 
 
 
-
-
+CHANGE_STATE
+CMD 0x34
+REQ {
+    NEXT_STATE {
+        XXXX[7:4]
+        NEW_STATE[3:0]
+    }
+}
+REP {
+}
 
 
 

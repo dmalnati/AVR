@@ -47,8 +47,9 @@ public:
     void Init()
     {
         PAL.PinMode(pinShutdown_, OUTPUT);
-
+        PAL.DigitalWrite(pinShutdown_, LOW);
         PAL.PinMode(pinChipSelect_, OUTPUT);
+
         PAL.DigitalWrite(pinChipSelect_, HIGH);
         
         SPI.begin();
@@ -56,7 +57,23 @@ public:
         PowerOnReset();
         PowerUp();
         ClearInterrupts();
-        EnableTx();
+        
+        const uint32_t FREQUENCY_APRS = 144390000;
+        SetFrequency(FREQUENCY_APRS);
+        
+        SetModemTransmitOnDirectInput();
+        
+        ChangeStateToTx();
+    }
+    
+    void Start()
+    {
+        //ChangeStateToTx();
+    }
+    
+    void Stop()
+    {
+        //ChangeStateToStandby();
     }
     
     uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
@@ -143,21 +160,56 @@ private:
         return retVal;
     }
     
-    void EnableTx()
+    void ChangeStateToTx()
     {
-        // Select APRS Frequency
-        const uint32_t FREQUENCY_APRS = 144390000;
-        SetFrequency(FREQUENCY_APRS);
+        // The code I saw from pecan pico 4 which led to using the code below.
         
-        // Drive from regular generated signal from mcu
-        SetModemTransmitOnDirectInput();
+        /*
+        char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
+        SendCmdReceiveAnswer(2, 1, change_state_command);        
+            
+        char change_state_command[] = {0x34, 0x07}; //  Change to TX state
+        SendCmdReceiveAnswer(2, 1, change_state_command);        
+        */
         
-        StartTx();
+        
+        
+        
+        // Aggghhh why is this necessary?  Stepping manually through these
+        // states seems necessary if you want to be in standby and come out of
+        // it again.
+        //
+        // The proper(?) START_TX leads to very erratic transmissions from the
+        // radio when used.  WTF.
+        
+        uint8_t buf[1];
+        
+        buf[0] = 0x05;  // TX TUNE
+        SendAndWaitAndReceive(0x34, buf, 1, NULL, 0);
+        
+        buf[0] = 0x07;  // TX
+        SendAndWaitAndReceive(0x34, buf, 1, NULL, 0);
+        
+        
+        
+        
+        
+        return;
+        
+        
+        // Send START_TX command with no optional arguments specified.
+        // This simplified form avoids the need to define auto-generated message
+        // structure that you don't really want to send all of.
+        //SendAndWaitAndReceive(0x31, NULL, 0, NULL, 0);
     }
     
-    void StartTx()
+    uint8_t ChangeStateToStandby()
     {
-        SendAndWaitAndReceive(0x31, NULL, 0, NULL, 0);
+        CHANGE_STATE_REQ req;
+        
+        req.NEXT_STATE.NEW_STATE = 1;
+        
+        return Command_CHANGE_STATE(req);
     }
     
     void SetModemTransmitOnDirectInput()
@@ -213,7 +265,7 @@ private:
         SetFreqControlFrac(fcFrac);
         
         // debug
-        setFrequency(freq);
+        //setFrequency(freq);
     }
     
     uint8_t SetBand(uint8_t band)
@@ -329,6 +381,7 @@ private:
         // Now scale this value to find fc_frac.
         fcFrac = (uint32_t)(remainingValue * (uint32_t)((uint32_t)2 << 18));
         
+        /*
         Serial.println("SetFrequency");
         Serial.print("freq  : "); Serial.println(freq);
         Serial.print("band  : "); Serial.println(band);
@@ -336,8 +389,10 @@ private:
         Serial.print("rem   : "); Serial.println(remainingValue);
         Serial.print("fcFrac: "); Serial.println(fcFrac);
         Serial.println();
+        */
     }
     
+    #if 0
     void setFrequency(unsigned long freq)
     { 
       
@@ -387,6 +442,7 @@ private:
         Serial.print("fcFrac: "); Serial.println(m);
         Serial.println();
     }
+    #endif
     
     uint8_t SendAndWaitAndReceive(uint8_t  cmd,
                                   uint8_t *reqBuf,

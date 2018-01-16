@@ -1,7 +1,7 @@
 #include "RFSI4463PRO.h"
 #include "RFSI4463PRODebug.h"
 
-static const uint8_t PIN_SS       = 15;
+static const uint8_t PIN_SS       = 25;
 static const uint8_t PIN_SHUTDOWN = 14;
 
 static RFSI4463PRO rf(PIN_SS, PIN_SHUTDOWN);

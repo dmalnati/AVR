@@ -9,7 +9,6 @@ static const uint8_t PIN_SS       = 25;
 static const uint8_t PIN_SHUTDOWN = 14;
 
 static RFSI4463PRO rf(PIN_SS, PIN_SHUTDOWN);
-static RFSI4463PRODebug rfd;
 
 
 
@@ -35,6 +34,7 @@ void Send(uint8_t *buf, uint8_t bufLen)
 
     uint8_t bitStuff = 0;
 
+    rf.Start();
     modem->Start();
 
     // Send preamble, which also will serve as the flag byte
@@ -54,6 +54,7 @@ void Send(uint8_t *buf, uint8_t bufLen)
     modem->Send(flagList, 3, bitStuff);
 
     modem->Stop();
+    rf.Stop();
 }
 
 void DoMessageTest()
@@ -67,24 +68,24 @@ void DoMessageTest()
     msg.SetSrcAddress("SRC", 3);
     msg.AddRepeaterAddress("WIDE1", 1);
 
-    Serial.println("Post SetAddress");
-    StreamBlob(Serial, buf, bufSize, 1);
+    //Serial.println("Post SetAddress");
+    //StreamBlob(Serial, buf, bufSize, 1);
 
     const char *info = "Just Some Data";
     uint8_t infoLen = strlen(info);   // 16
     msg.AppendInfo((uint8_t *)info, infoLen);
 
-    Serial.println("Post AppendInfo");
-    StreamBlob(Serial, buf, bufSize, 1);
+    //Serial.println("Post AppendInfo");
+    //StreamBlob(Serial, buf, bufSize, 1);
     
     uint8_t bytesUsed = msg.Finalize();
-    Serial.print("Post Finalize (");
-    Serial.print(bytesUsed);
-    Serial.print(" bytes used)");
-    Serial.println();
+    //Serial.print("Post Finalize (");
+    //Serial.print(bytesUsed);
+    //Serial.print(" bytes used)");
+    //Serial.println();
 
-    Serial.println("Container buffer");
-    StreamBlob(Serial, buf, bufSize, 1);
+    //Serial.println("Container buffer");
+    //StreamBlob(Serial, buf, bufSize, 1);
 
     Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);

@@ -440,6 +440,41 @@ uint8_t Command_POWER_UP(POWER_UP_REQ &req)
 
 ////////////////////////////////////////////////////////////////////
 //
+// COMMAND CHANGE_STATE (0x34)
+//
+////////////////////////////////////////////////////////////////////
+
+struct CHANGE_STATE_REQ
+{
+    struct
+    {
+        uint8_t XXXX      = 0;
+        uint8_t NEW_STATE = 0;
+    } NEXT_STATE;
+};
+
+uint8_t Command_CHANGE_STATE(CHANGE_STATE_REQ &req)
+{
+    const uint8_t CMD_ID       = 0x34;
+    const uint8_t BUF_SIZE_REQ = 1;
+    const uint8_t BUF_SIZE_REP = 0;
+
+    uint8_t bufReq[BUF_SIZE_REQ];
+    uint8_t bufRep[BUF_SIZE_REP];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((req.NEXT_STATE.XXXX      & 0b00001111) << 4);
+    tmpReqByte0 |= (uint8_t)((req.NEXT_STATE.NEW_STATE & 0b00001111) << 0);
+    bufReq[0] = tmpReqByte0;
+
+    uint8_t ok = SendAndWaitAndReceive(CMD_ID, bufReq, BUF_SIZE_REQ, bufRep, BUF_SIZE_REP);
+
+    return ok;
+}
+
+////////////////////////////////////////////////////////////////////
+//
 // COMMAND GPIO_PIN_CFG (0x13)
 //
 ////////////////////////////////////////////////////////////////////
