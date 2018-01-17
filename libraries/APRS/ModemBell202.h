@@ -295,7 +295,7 @@ typename ModemBell202<ModemAnalogType,preEmphMark,preEmphSpace>::CommandQueue Mo
 
 
 // Define a few easy to use options
-using ModemBell202Dac = ModemBell202<ModemAnalogDac, 33, 99>;
+using ModemBell202Dac = ModemBell202<ModemAnalogDac, 33, 100>;
 using ModemBell202Pwm = ModemBell202<ModemAnalogPwm, 25, 50>;
 
 
