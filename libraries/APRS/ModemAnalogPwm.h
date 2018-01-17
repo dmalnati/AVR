@@ -31,8 +31,10 @@ private:
     static inline void OnInterrupt()
     {
         // Adjust to 0-255 range
-        uint8_t val = 128 + (osc_.GetNextSample() >> preEmph_);
-        TimerClass::GetTimerChannelB()->SetValue(val);
+        uint8_t val = 128 + (osc_.GetNextSample() * preEmph_);
+        
+        // Optimize around the fact that we know we're using Timer2
+        OCR2B = val;
     }
 };
 

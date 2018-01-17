@@ -40,7 +40,7 @@ private:
     static inline void OnInterrupt()
     {
         // Adjust to 0-255 range
-        uint8_t val = 128 + (osc_.GetNextSample() / preEmph_);
+        uint8_t val = 128 + (osc_.GetNextSample() * preEmph_);
         
         PORTD = val;
     }

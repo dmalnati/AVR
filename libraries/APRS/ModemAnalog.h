@@ -3,6 +3,7 @@
 
 
 #include "PAL.h"
+#include "FixedPoint.h"
 #include "Timer2.h"
 #include "TimerHelper.h"
 #include "SignalSourceSineWave.h"
@@ -12,7 +13,7 @@
 struct ModemAnalogFrequencyConfig
 {
     SignalOscillatorFrequencyConfig fc;
-    uint8_t                         preEmph;
+    Q08                             preEmph;
 };
 
 
@@ -20,6 +21,8 @@ class ModemAnalog
 {
 protected:
     static const uint16_t SAMPLE_RATE = 31250;
+    
+    static constexpr const double DEFAULT_PRE_EMPH = 0.999;
     
     using TimerClass = Timer2;
     using CbFnRaw    = void (*)();
@@ -71,12 +74,12 @@ public:
     }
     
     static ModemAnalogFrequencyConfig GetFrequencyConfig(uint16_t frequency,
-                                                         uint8_t  preEmph = 1)
+                                                         uint8_t  preEmph = DEFAULT_PRE_EMPH)
     {
         ModemAnalogFrequencyConfig fc;
         
         fc.fc      = osc_.GetFrequencyConfig(frequency);
-        fc.preEmph = preEmph;
+        fc.preEmph = preEmph < 100 ? (double)preEmph / 100.0 : DEFAULT_PRE_EMPH;
         
         return fc;
     }
@@ -148,7 +151,7 @@ protected:
 
     static SignalSourceSineWave  ssSine_;
     static SignalOscillator      osc_;
-    static uint8_t               preEmph_;
+    static Q08                   preEmph_;
     
     static CbFnRaw  fnOnInterrupt_;
 
@@ -156,7 +159,7 @@ protected:
 
 SignalSourceSineWave ModemAnalog::ssSine_;
 SignalOscillator     ModemAnalog::osc_(&ModemAnalog::ssSine_.GetSample);
-uint8_t              ModemAnalog::preEmph_(1);
+Q08                  ModemAnalog::preEmph_(ModemAnalog::DEFAULT_PRE_EMPH);
 ModemAnalog::CbFnRaw ModemAnalog::fnOnInterrupt_(NULL);
 
 
