@@ -28,7 +28,8 @@ class RFSI4463PRO
     static const uint8_t  SPI_MODE            = SPI_MODE0;
     
     // SPI values relating to particulars established for this chip
-    static const uint16_t READ_ATTEMPT_LIMIT                  = 1000;
+    //static const uint16_t READ_ATTEMPT_LIMIT                  = 1000;
+    static const uint16_t READ_ATTEMPT_LIMIT                  = 60000;
     static const uint8_t  DELAY_US_BEFORE_CHIP_SELECT_RELEASE = 50;
     
     // Details relating to operating this chip    
@@ -48,8 +49,8 @@ public:
     {
         PAL.PinMode(pinShutdown_, OUTPUT);
         PAL.DigitalWrite(pinShutdown_, LOW);
+        
         PAL.PinMode(pinChipSelect_, OUTPUT);
-
         PAL.DigitalWrite(pinChipSelect_, HIGH);
         
         SPI.begin();
@@ -60,21 +61,36 @@ public:
         
         const uint32_t FREQUENCY_APRS = 144390000;
         SetFrequency(FREQUENCY_APRS);
-        
+
         SetModemTransmitOnDirectInput();
+        //const uint32_t DATA_RATE = 0x00FFFFFF;
+        //SetModemDataRate(DATA_RATE);
         
         ChangeStateToTx();
     }
     
+    /*
+    
+    What if you try to clock out the bits to the RF?
+        Tie PWM to the clock?
+    
+    */
+    
+    
     void Start()
     {
-        //ChangeStateToTx();
+        ChangeStateToTx();
+        // PAL.Delay(100);
     }
     
     void Stop()
     {
-        //ChangeStateToStandby();
+        ChangeStateToReady();
     }
+
+
+
+
     
     uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
     {
@@ -182,6 +198,7 @@ private:
         // The proper(?) START_TX leads to very erratic transmissions from the
         // radio when used.  WTF.
         
+        #if 0
         uint8_t buf[1];
         
         buf[0] = 0x05;  // TX TUNE
@@ -189,27 +206,36 @@ private:
         
         buf[0] = 0x07;  // TX
         SendAndWaitAndReceive(0x34, buf, 1, NULL, 0);
+        #endif
         
         
         
         
-        
-        return;
+        //return;
         
         
         // Send START_TX command with no optional arguments specified.
         // This simplified form avoids the need to define auto-generated message
         // structure that you don't really want to send all of.
-        //SendAndWaitAndReceive(0x31, NULL, 0, NULL, 0);
+        SendAndWaitAndReceive(0x31, NULL, 0, NULL, 0);
     }
     
-    uint8_t ChangeStateToStandby()
+    void ChangeStateToSleep()
     {
         CHANGE_STATE_REQ req;
         
         req.NEXT_STATE.NEW_STATE = 1;
         
-        return Command_CHANGE_STATE(req);
+        Command_CHANGE_STATE(req);
+    }
+    
+    void ChangeStateToReady()
+    {
+        CHANGE_STATE_REQ req;
+        
+        req.NEXT_STATE.NEW_STATE = 3;
+        
+        Command_CHANGE_STATE(req);
     }
     
     void SetModemTransmitOnDirectInput()
@@ -227,6 +253,7 @@ private:
         RFSI4463PRO::GPIO_PIN_CFG_REP rep;
 
         req.GPIO0.GPIO_MODE = 4;
+        req.GPIO1.GPIO_MODE = 16;
         
         uint8_t retVal = Command_GPIO_PIN_CFG(req, rep);
         
@@ -305,6 +332,24 @@ private:
         SetProperty(PROP_GROUP, PROP_IDX1, (0b11111111 & p[2]));
         SetProperty(PROP_GROUP, PROP_IDX2, (0b11111111 & p[3]));
     }
+    
+    void SetModemDataRate(uint32_t dataRate)
+    {
+        // FREQ_CONTROL_FRAC
+        const uint8_t PROP_GROUP = 0x20;
+        const uint8_t PROP_IDX0  = 0x03;
+        const uint8_t PROP_IDX1  = 0x04;
+        const uint8_t PROP_IDX2  = 0x05;
+        
+        uint32_t bigEndian = PAL.htonl(dataRate);
+        uint8_t *p = (uint8_t *)&bigEndian;
+        
+        SetProperty(PROP_GROUP, PROP_IDX0, p[1]);
+        SetProperty(PROP_GROUP, PROP_IDX1, p[2]);
+        SetProperty(PROP_GROUP, PROP_IDX2, p[3]);
+    }
+    
+    
     
     
     

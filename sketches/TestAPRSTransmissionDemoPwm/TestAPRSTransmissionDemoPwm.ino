@@ -26,6 +26,7 @@ static AX25UIMessage msg;
 static ModemBell202Pwm *modem;
 
 
+
 void Send(uint8_t *buf, uint8_t bufLen)
 {
     // APRSDroid sends ~256 flags to start...
@@ -35,7 +36,14 @@ void Send(uint8_t *buf, uint8_t bufLen)
     uint8_t bitStuff = 0;
 
     rf.Start();
+    {
+        RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
+        rf.Command_REQUEST_DEVICE_STATE(rep);
+        Serial.print("State: ");  Serial.println(rep.CURR_STATE.MAIN_STATE);
+        Serial.print("Channel: ");  Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
+    }
     modem->Start();
+    
 
     // Send preamble, which also will serve as the flag byte
     // Send lots, like APRSDroid
@@ -55,6 +63,12 @@ void Send(uint8_t *buf, uint8_t bufLen)
 
     modem->Stop();
     rf.Stop();
+    {
+        RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
+        rf.Command_REQUEST_DEVICE_STATE(rep);
+        Serial.print("State: ");  Serial.println(rep.CURR_STATE.MAIN_STATE);
+        Serial.print("Channel: ");  Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
+    }
 }
 
 void DoMessageTest()
@@ -87,9 +101,10 @@ void DoMessageTest()
     //Serial.println("Container buffer");
     //StreamBlob(Serial, buf, bufSize, 1);
 
-    Serial.println("Completed buffer (just the used parts)");
-    StreamBlob(Serial, buf, bytesUsed, 1);
+    //Serial.println("Completed buffer (just the used parts)");
+    //StreamBlob(Serial, buf, bytesUsed, 1);
 
+    Serial.println("Sending");
     Serial.println();
     Serial.println();
 
@@ -111,7 +126,7 @@ void setup()
     while (1)
     {
         DoMessageTest();
-        PAL.Delay(1000);
+        PAL.Delay(2000);
     }
 }
 

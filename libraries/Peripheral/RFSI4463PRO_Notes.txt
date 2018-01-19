@@ -1,7 +1,76 @@
 
 
 
+PCB layout application note
+https://www.silabs.com/documents/public/application-notes/AN629.pdf
 
+
+============
+
+
+
+
+appears that state transitions cause it to go wacky
+
+appears that it (can, sometimes) take a bit of time before a sustained 'on' creates
+good messages
+
+is this particular chip busted?
+
+is crystal operating at expected frequency?
+
+would clocking the bits help?
+
+
+would changing the data rate, when clocked, help?
+
+
+would 2GFSK help?   [seemingly not, actually]
+
+
+
+Are you changing to the correct states?
+    https://www.silabs.com/community/wireless/proprietary/forum.topic.html/si4460_-_hard_power-GFob
+    Check REQUEST_DEVICE_STATUS and CHANNEL, etc, to confirm.
+
+
+
+
+
+why does it become more stable over time???
+
+what if you configure the device using the utility from SI?
+  I wonder if they support direct drive?
+
+what if you change the deviation?
+    https://www.silabs.com/community/wireless/proprietary/forum.topic.html/4463_settings-Cox3
+
+
+
+https://github.com/Laurenceb/STM32_Launcher/blob/master/Silabs/Config_dev/SI446X_SIMPLE.C
+Why is he requesting device state so frequently?
+
+https://github.com/Laurenceb/STM32_Launcher/blob/master/Silabs/si446x.c#L355
+What about center frequency?
+
+
+
+
+What about looking on the forum?
+https://www.silabs.com/community/wireless/proprietary/forum
+
+
+
+
+
+
+
+
+
+
+
+
+==============
 
 
 /*
