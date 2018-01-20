@@ -8,6 +8,16 @@ https://www.silabs.com/documents/public/application-notes/AN629.pdf
 ============
 
 
+Does audio waveform look good in audacity when seemingly right on scope?
+    Tells you something about how much to trust the received waveform from the baofeng
+        Like what if the baofeng is just distoring the signal?
+            Seems hard to believe tbh given the high success rate of one mode vs another?
+                Then again we are introducing long dead periods?
+        The pi APRS decoder may be worthwhile if so?
+            It'd rely on the SDR not distoring the inbound signal
+                Which actually should be visible on audacity also
+
+
 
 
 appears that state transitions cause it to go wacky

@@ -10,6 +10,8 @@
 
 // Some notes regarding implementation were taken from here:
 // https://github.com/Yveaux/RadioHead/blob/master/RadioHead/RH_RF24.cpp
+// and
+// https://github.com/tkrahn/pecanpico4/blob/master/radio_si446x.cpp
 //
 // Such as:
 // - Waiting briefly to let SS pin go high after transfer
@@ -28,8 +30,7 @@ class RFSI4463PRO
     static const uint8_t  SPI_MODE            = SPI_MODE0;
     
     // SPI values relating to particulars established for this chip
-    //static const uint16_t READ_ATTEMPT_LIMIT                  = 1000;
-    static const uint16_t READ_ATTEMPT_LIMIT                  = 60000;
+    static const uint16_t READ_ATTEMPT_LIMIT                  = 1000;
     static const uint8_t  DELAY_US_BEFORE_CHIP_SELECT_RELEASE = 50;
     
     // Details relating to operating this chip    
@@ -48,49 +49,36 @@ public:
     void Init()
     {
         PAL.PinMode(pinShutdown_, OUTPUT);
-        PAL.DigitalWrite(pinShutdown_, LOW);
+        PAL.DigitalWrite(pinShutdown_, HIGH);
         
         PAL.PinMode(pinChipSelect_, OUTPUT);
         PAL.DigitalWrite(pinChipSelect_, HIGH);
         
         SPI.begin();
-        
+    }
+    
+    void SetFrequency(uint32_t frequency)
+    {
+        frequency_ = frequency;
+    }
+    
+    void Start()
+    {
         PowerOnReset();
         PowerUp();
         ClearInterrupts();
         
-        const uint32_t FREQUENCY_APRS = 144390000;
-        SetFrequency(FREQUENCY_APRS);
+        SetFrequencyInternal(frequency_);
 
         SetModemTransmitOnDirectInput();
-        //const uint32_t DATA_RATE = 0x00FFFFFF;
-        //SetModemDataRate(DATA_RATE);
         
         ChangeStateToTx();
     }
     
-    /*
-    
-    What if you try to clock out the bits to the RF?
-        Tie PWM to the clock?
-    
-    */
-    
-    
-    void Start()
-    {
-        ChangeStateToTx();
-        // PAL.Delay(100);
-    }
-    
     void Stop()
     {
-        ChangeStateToReady();
+        PAL.DigitalWrite(pinShutdown_, HIGH);
     }
-
-
-
-
     
     uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
     {
@@ -178,42 +166,6 @@ private:
     
     void ChangeStateToTx()
     {
-        // The code I saw from pecan pico 4 which led to using the code below.
-        
-        /*
-        char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
-        SendCmdReceiveAnswer(2, 1, change_state_command);        
-            
-        char change_state_command[] = {0x34, 0x07}; //  Change to TX state
-        SendCmdReceiveAnswer(2, 1, change_state_command);        
-        */
-        
-        
-        
-        
-        // Aggghhh why is this necessary?  Stepping manually through these
-        // states seems necessary if you want to be in standby and come out of
-        // it again.
-        //
-        // The proper(?) START_TX leads to very erratic transmissions from the
-        // radio when used.  WTF.
-        
-        #if 0
-        uint8_t buf[1];
-        
-        buf[0] = 0x05;  // TX TUNE
-        SendAndWaitAndReceive(0x34, buf, 1, NULL, 0);
-        
-        buf[0] = 0x07;  // TX
-        SendAndWaitAndReceive(0x34, buf, 1, NULL, 0);
-        #endif
-        
-        
-        
-        
-        //return;
-        
-        
         // Send START_TX command with no optional arguments specified.
         // This simplified form avoids the need to define auto-generated message
         // structure that you don't really want to send all of.
@@ -279,7 +231,7 @@ private:
         return SetProperty(prop);
     }
     
-    void SetFrequency(uint32_t freq)
+    void SetFrequencyInternal(uint32_t freq)
     {
         uint8_t  band;
         uint8_t  fcInt;
@@ -290,9 +242,6 @@ private:
         SetBand(band);
         SetFreqControlInt(fcInt);
         SetFreqControlFrac(fcFrac);
-        
-        // debug
-        //setFrequency(freq);
     }
     
     uint8_t SetBand(uint8_t band)
@@ -332,25 +281,6 @@ private:
         SetProperty(PROP_GROUP, PROP_IDX1, (0b11111111 & p[2]));
         SetProperty(PROP_GROUP, PROP_IDX2, (0b11111111 & p[3]));
     }
-    
-    void SetModemDataRate(uint32_t dataRate)
-    {
-        // FREQ_CONTROL_FRAC
-        const uint8_t PROP_GROUP = 0x20;
-        const uint8_t PROP_IDX0  = 0x03;
-        const uint8_t PROP_IDX1  = 0x04;
-        const uint8_t PROP_IDX2  = 0x05;
-        
-        uint32_t bigEndian = PAL.htonl(dataRate);
-        uint8_t *p = (uint8_t *)&bigEndian;
-        
-        SetProperty(PROP_GROUP, PROP_IDX0, p[1]);
-        SetProperty(PROP_GROUP, PROP_IDX1, p[2]);
-        SetProperty(PROP_GROUP, PROP_IDX2, p[3]);
-    }
-    
-    
-    
     
     
     /*
@@ -436,58 +366,6 @@ private:
         Serial.println();
         */
     }
-    
-    #if 0
-    void setFrequency(unsigned long freq)
-    { 
-      
-      // Set the output divider according to recommended ranges given in Si446x datasheet  
-      int outdiv = 4;
-      int band = 0;
-      if (freq < 705000000UL) { outdiv = 6;  band = 1;};
-      if (freq < 525000000UL) { outdiv = 8;  band = 2;};
-      if (freq < 353000000UL) { outdiv = 12; band = 3;};
-      if (freq < 239000000UL) { outdiv = 16; band = 4;};
-      if (freq < 177000000UL) { outdiv = 24; band = 5;};
-      
-     
-      //unsigned long f_pfd = 2 * VCXO_FREQ / outdiv;
-      unsigned long f_pfd = 2 * EXTERNAL_CRYSTAL_FREQ / outdiv;
-      
-      unsigned int n = ((unsigned int)(freq / f_pfd)) - 1;
-      
-      float ratio = (float)freq / (float)f_pfd;
-      float rest  = ratio - (float)n;
-      
-
-      unsigned long m = (unsigned long)(rest * 524288UL); 
-     
-
-
-    // set the band parameter
-      unsigned int sy_sel = 8; // 
-      char set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)}; //   
-      // send parameters
-      //SendCmdReceiveAnswer(5, 1, set_band_property_command);
-
-    // Set the pll parameters
-      unsigned int m2 = m / 0x10000;
-      unsigned int m1 = (m - m2 * 0x10000) / 0x100;
-      unsigned int m0 = (m - m2 * 0x10000 - m1 * 0x100); 
-      // assemble parameter string
-      char set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
-      // send parameters
-      //SendCmdReceiveAnswer(8, 1, set_frequency_property_command);
-      
-        Serial.println("setFrequency");
-        Serial.print("freq  : "); Serial.println(freq);
-        Serial.print("band  : "); Serial.println(band);
-        Serial.print("fcInt : "); Serial.println(n);
-        Serial.print("rem   : "); Serial.println(rest);
-        Serial.print("fcFrac: "); Serial.println(m);
-        Serial.println();
-    }
-    #endif
     
     uint8_t SendAndWaitAndReceive(uint8_t  cmd,
                                   uint8_t *reqBuf,
@@ -576,9 +454,9 @@ private:
 
 private:
 
-    uint8_t pinChipSelect_;
-    uint8_t pinShutdown_;
-
+    uint8_t  pinChipSelect_;
+    uint8_t  pinShutdown_;
+    uint32_t frequency_;
 };
 
 

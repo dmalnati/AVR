@@ -43,7 +43,6 @@ void Send(uint8_t *buf, uint8_t bufLen)
         Serial.print("Channel: ");  Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
     }
     modem->Start();
-    
 
     // Send preamble, which also will serve as the flag byte
     // Send lots, like APRSDroid
@@ -121,12 +120,15 @@ void setup()
     modem = &modemReal;
 
     rf.Init();
+    const uint32_t FREQUENCY_APRS = 144390000;
+    rf.SetFrequency(FREQUENCY_APRS);
+    
     modem->Init();
 
     while (1)
     {
         DoMessageTest();
-        PAL.Delay(2000);
+        PAL.Delay(5000);
     }
 }
 
