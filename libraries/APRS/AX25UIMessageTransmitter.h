@@ -3,6 +3,7 @@
 
 
 #include "PAL.h"
+#include "Function.h"
 #include "AX25UIMessage.h"
 #include "ModemBell202.h"
 
@@ -24,7 +25,9 @@
  * Total transmission time including flags therefore is ~1300ms.
  *
  */
-template <uint8_t NUM_ROUTING_PATHS = 1, uint8_t INFORMATION_FIELD_LEN = 70>
+template <typename ModemBell202Type     = ModemBell202Pwm,
+          uint8_t NUM_ROUTING_PATHS     =  1,
+          uint8_t INFORMATION_FIELD_LEN = 70>
 class AX25UIMessageTransmitter
 {
     public:
@@ -40,20 +43,20 @@ class AX25UIMessageTransmitter
     
 public:
 
-    AX25UIMessageTransmitter(uint8_t pinTxEnable)
-    : pinTxEnable_(pinTxEnable)
-    , transmitCount_(DEFAULT_TRANSMIT_COUNT)
+    AX25UIMessageTransmitter()
+    : transmitCount_(DEFAULT_TRANSMIT_COUNT)
     , delayMsBetweenTransmits_(DEFAULT_DELAY_MS_BETWEEN_TRANSMITS)
     {
-        PAL.PinMode(pinTxEnable_, OUTPUT);
-        PAL.DigitalWrite(pinTxEnable_, LOW);
-        
         SetFlagStartDurationMs(DEFAULT_DURATION_MS_FLAG_START);
         SetFlagEndDurationMs(DEFAULT_DURATION_MS_FLAG_END);
     }
 
-    void Init()
+    void Init(function<void()> fnBeforeModemStart,
+              function<void()> fnAfterModemEnd)
     {
+        fnBeforeModemStart_ = fnBeforeModemStart;
+        fnAfterModemEnd_    = fnAfterModemEnd;
+
         msg_.Init(buf_, BUF_SIZE);
         modem_.Init();
     }
@@ -103,10 +106,10 @@ public:
         uint8_t transmitCountRemaining = transmitCount_;
         while (transmitCountRemaining)
         {
-            PAL.DigitalWrite(pinTxEnable_, HIGH);
+            fnBeforeModemStart_();
             PAL.Delay(radioWarmupDurationMs_);
             TransmitPrivate(buf_, bytesUsed);
-            PAL.DigitalWrite(pinTxEnable_, LOW);
+            fnAfterModemEnd_();
             
             --transmitCountRemaining;
             
@@ -162,10 +165,11 @@ private:
 
     uint8_t buf_[BUF_SIZE];
 
-    AX25UIMessage  msg_;
-    ModemBell202   modem_;
+    AX25UIMessage      msg_;
+    ModemBell202Type   modem_;
     
-    uint8_t pinTxEnable_;
+    function<void()> fnBeforeModemStart_;
+    function<void()> fnAfterModemEnd_;
     
     uint32_t radioWarmupDurationMs_;
     

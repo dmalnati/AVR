@@ -6,7 +6,8 @@ static AX25UIMessageTransmitter<> amt;
 
 void setup()
 {
-    amt.Init();
+    amt.Init([](){},
+             [](){});
 }
 
 void loop() {}
