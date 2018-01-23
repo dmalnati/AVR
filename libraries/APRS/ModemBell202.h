@@ -100,7 +100,7 @@ public:
             timerChannelA_->RegisterForInterrupt();
             
             // Debug only -- Check period of bit transition timeout
-            //timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
+            timerChannelA_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::SPECIAL_TOP_VALUE);
             
             // Get output signal going
             ma_.Start();
@@ -262,7 +262,12 @@ private:
         //uint16_t top = ticksPerPeriod - 1;
         // Fixes timing, but why?
         //uint16_t top = ticksPerPeriod + 75;   // worked with DAC
-        uint16_t top = ticksPerPeriod - 156;    // worked with PWM
+        //uint16_t top = ticksPerPeriod - 156;    // worked with PWM
+        
+        
+        // The TQFP chip actually seems to be more precise, will need to
+        // consider how to deal with this generally
+        uint16_t top = ticksPerPeriod;
         
         return top;
     }
