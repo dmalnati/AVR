@@ -57,10 +57,17 @@ void Test()
     // Configure and Transmit
     amt.SetFlagStartDurationMs(300);
     amt.SetFlagEndDurationMs(10);
-    amt.SetTransmitCount(2);
+    amt.SetTransmitCount(1);
     amt.SetDelayMsBetweenTransmits(2000);
 
-    Serial.println("Transmitting");
+    static uint32_t timeLast = 0;
+    Serial.print("Transmitting - ");
+    uint32_t timeNow = PAL.Millis();
+    uint32_t timeDiff = timeNow - timeLast;
+    timeLast = timeNow;
+    Serial.print(timeDiff);
+    Serial.println(" ms since last");
+    
     amt.Transmit();
 }
 
