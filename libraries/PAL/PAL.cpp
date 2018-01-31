@@ -121,7 +121,14 @@ volatile uint8_t *PlatformAbstractionLayer::port__pinxPtr[3]  = { &PINB,  &PINC,
 volatile uint8_t *PlatformAbstractionLayer::port__portxPtr[3] = { &PORTB, &PORTC, &PORTD  };
 
 
+function<void()>                  PlatformAbstractionLayer::cbFnWDT_;
+PlatformAbstractionLayer::CbFnRaw PlatformAbstractionLayer::cbFnRawWDT_ = PlatformAbstractionLayer::OnFnRawWDTDefault;
 
+
+ISR(WDT_vect)
+{
+    PlatformAbstractionLayer::cbFnRawWDT_();
+}
 
 
 #endif  // __AVR_ATmega328P__

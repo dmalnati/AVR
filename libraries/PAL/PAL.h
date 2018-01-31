@@ -5,6 +5,7 @@
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
+#include "Function.h"
 #include "Pin.h"
 
 #include <Arduino.h>
@@ -25,16 +26,16 @@
 
 enum class WatchdogTimeout : uint8_t
 {
-    TIMEOUT_15_MS   = WDTO_15MS,
-    TIMEOUT_30_MS   = WDTO_30MS,
-    TIMEOUT_60_MS   = WDTO_60MS,
-    TIMEOUT_120_MS  = WDTO_120MS,
-    TIMEOUT_250_MS  = WDTO_250MS,
-    TIMEOUT_500_MS  = WDTO_500MS,
-    TIMEOUT_1000_MS = WDTO_1S,
-    TIMEOUT_2000_MS = WDTO_2S,
-    TIMEOUT_4000_MS = WDTO_4S,
-    TIMEOUT_8000_MS = WDTO_8S,
+    TIMEOUT_15_MS = 0,
+    TIMEOUT_30_MS,
+    TIMEOUT_60_MS,
+    TIMEOUT_120_MS,
+    TIMEOUT_250_MS,
+    TIMEOUT_500_MS,
+    TIMEOUT_1000_MS,
+    TIMEOUT_2000_MS,
+    TIMEOUT_4000_MS,
+    TIMEOUT_8000_MS,
 };
 
 
@@ -44,6 +45,8 @@ void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
 class PlatformAbstractionLayer
 {
 public:
+    using CbFnRaw = void (*)(); 
+
     static const uint8_t PORT_B = 0;
     static const uint8_t PORT_C = 1;
     static const uint8_t PORT_D = 2;
@@ -364,6 +367,24 @@ public:
         return (uint32_t)F_CPU / GetCpuPrescalerValue();
     }
     
+    
+    
+    static void WatchdogEnableInterrupt(WatchdogTimeout wt)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            WDTCSR = _BV(WDCE) | _BV(WDE);
+            WDTCSR = 0;
+            
+            WDTCSR = (_BV(WDIE)) |
+                ((uint8_t)wt & 0b0001000) << WDP3 |
+                ((uint8_t)wt & 0b0000100) << WDP2 |
+                ((uint8_t)wt & 0b0000010) << WDP1 |
+                ((uint8_t)wt & 0b0000001) << WDP0;
+            
+        }
+    }
+    
     static void WatchdogEnable(WatchdogTimeout wt)
     {
         wdt_enable((uint8_t)wt);
@@ -493,9 +514,6 @@ private:
         
         SMCR = ((uint8_t)(sleepMode) << 1) | 0b00000001;
         
-        // MCUCR = 0b01100000;
-        // MCUCR = 0b01000000;
-        
         __asm__ __volatile__("sleep");
         
         /*
@@ -511,8 +529,54 @@ private:
         // So basically the function returns from here as if nothing happened.
     }
     
+public:
+    static void SetInterruptHandlerWDT(function<void()> cbFn)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerRawWDT();
+            
+            cbFnWDT_ = cbFn;
+        }
+    }
+    
+    static void UnSetInterruptHandlerWDT()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            cbFnWDT_ = [](){};
+        }
+    }
+    
+    static void SetInterruptHandlerRawWDT(CbFnRaw cbFnRaw)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerWDT();
+            
+            cbFnRawWDT_ = cbFnRaw;
+        }
+    }
+    
+    static void UnSetInterruptHandlerRawWDT()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerWDT();
+            
+            cbFnRawWDT_ = OnFnRawWDTDefault;
+        }
+    }
+
+    
     
 private:
+    static function<void()> cbFnWDT_;
+public:     // would be private but need the ISR to be able to call this
+    static CbFnRaw          cbFnRawWDT_;
+private:
+    static void OnFnRawWDTDefault() { cbFnWDT_(); }
+
     static volatile uint8_t *port__ddrxPtr[3];
     static volatile uint8_t *port__pinxPtr[3];
     static volatile uint8_t *port__portxPtr[3];

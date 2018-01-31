@@ -17,15 +17,28 @@ void Blink(uint8_t count = 1, uint32_t delayMs = 500)
 
 void setup()
 {
+    Blink(2);
+}
+
+void OnWDT()
+{
     Blink();
+}
+
+void GoToDeepSleep()
+{
+    PAL.PowerDownADC();
+    PAL.PowerDownBODDuringSleep();
+    PAL.SleepModePowerDown();
 }
 
 void loop()
 {
-    PAL.PowerDownADC();
-    PAL.PowerDownBODDuringSleep();
-    //PAL.Delay(1);
-    PAL.SleepModePowerDown();
+    PAL.WatchdogEnableInterrupt(WatchdogTimeout::TIMEOUT_4000_MS);
+    PAL.SetInterruptHandlerWDT([](){
+        OnWDT();
+    });
+    GoToDeepSleep();
 }
 
 
