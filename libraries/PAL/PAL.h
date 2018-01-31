@@ -430,13 +430,88 @@ public:
                                                     uint8_t *portPin);
                                                     
 
-    static void PowerUpTimer0()   { PRR &= (uint8_t)~_BV(PRTIM0); }
     static void PowerDownTimer0() { PRR |= _BV(PRTIM0);           }
-    static void PowerUpTimer1()   { PRR &= (uint8_t)~_BV(PRTIM1); }
+    static void PowerUpTimer0()   { PRR &= (uint8_t)~_BV(PRTIM0); }
     static void PowerDownTimer1() { PRR |= _BV(PRTIM1);           }
-    static void PowerUpTimer2()   { PRR &= (uint8_t)~_BV(PRTIM2); }
+    static void PowerUpTimer1()   { PRR &= (uint8_t)~_BV(PRTIM1); }
     static void PowerDownTimer2() { PRR |= _BV(PRTIM2);           }
-
+    static void PowerUpTimer2()   { PRR &= (uint8_t)~_BV(PRTIM2); }
+    
+    static void PowerDownADC()    { ADCSRA &= (uint8_t)~_BV(ADEN); }
+    static void PowerUpADC()      { ADCSRA |= _BV(ADEN);           }
+    
+    static void PowerDownBODDuringSleep()
+    {
+        /*
+        * The BODS bit must be written to logic one in order to turn off BOD
+        * during sleep, see Table 10-1 on page 39.
+        * Writing to the BODS bit is controlled by a timed sequence and an
+        * enable bit, BODSE in MCUCR. To disable BOD in relevant sleep modes,
+        * both BODS and BODSE must first be set to one. Then, to set the BODS
+        * bit, BODS must be set to one and BODSE must be set to zero within four
+        * clock cycles. The BODS bit is active three clock cycles after it is
+        * set. A sleep instruction must be executed while BODS is active in
+        * order to turn off the BOD for the actual sleep mode. The BODS bit is
+        * automatically cleared after three clock cycles.
+        */
+       
+       // Short story -- you have to call this function immediately before
+       // sleeping for it to work.
+        
+        //MCUCR = (_BV(BODS | _BV(BODSE)));
+        //MCUCR = _BV(BODS);
+        
+        // Had to skip the above bit-twiddling to get the timing right
+        // on 8MHz
+        
+        MCUCR = 0b01100000;
+        MCUCR = 0b01000000;
+    }
+    
+    static void SleepModePowerDown()
+    {
+        Sleep(SleepMode::POWER_DOWN);
+    }
+    
+    
+private:
+    enum class SleepMode : uint8_t
+    {
+        IDLE = 0,
+        ADC_NOISE_REDUCTION,
+        POWER_DOWN,
+        POWER_SAVE,
+        STANDBY,
+        EXTENDED_STANDBY,
+    };
+    
+    static void Sleep(SleepMode sleepMode)
+    {
+        // No need to clear power save register to ensure known state, the
+        // assigned values from the enum take up the entire bit width of useful
+        // configuration bits.
+        
+        SMCR = ((uint8_t)(sleepMode) << 1) | 0b00000001;
+        
+        // MCUCR = 0b01100000;
+        // MCUCR = 0b01000000;
+        
+        __asm__ __volatile__("sleep");
+        
+        /*
+         * If an enabled interrupt occurs while the MCU is in a sleep mode, the
+         * MCU wakes up. The MCU is then halted for four cycles in addition to
+         * the start-up time, executes the interrupt routine, and resumes
+         * execution from the instruction following SLEEP.
+         * The contents of the Register File and SRAM are unaltered when the
+         * device wakes up from sleep. If a reset occurs during sleep mode, the
+         * MCU wakes up and executes from the Reset Vector.
+         */
+        
+        // So basically the function returns from here as if nothing happened.
+    }
+    
+    
 private:
     static volatile uint8_t *port__ddrxPtr[3];
     static volatile uint8_t *port__pinxPtr[3];
