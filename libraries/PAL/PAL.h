@@ -542,6 +542,15 @@ public:
                     delaySleepDurationMs_ = 0;
                 }
             }
+            
+            // Adjust the Arduino variable holding the current time in
+            // milliseconds.
+            // This keeps the clock as accurate as it can be
+            ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+            {
+                extern unsigned long timer0_millis;
+                timer0_millis += delaySleepDurationMs;
+            }
         }
     }
     
