@@ -2,6 +2,7 @@
 #define __PAL_H__
 
 
+#include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <util/atomic.h>
 
@@ -367,21 +368,58 @@ public:
         return (uint32_t)F_CPU / GetCpuPrescalerValue();
     }
     
-    
-    
     static void WatchdogEnableInterrupt(WatchdogTimeout wt)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
+            uint8_t wdtcsrNew = (_BV(WDIE)) |
+                !!((uint8_t)wt & 0b0001000) << WDP3 |
+                !!((uint8_t)wt & 0b0000100) << WDP2 |
+                !!((uint8_t)wt & 0b0000010) << WDP1 |
+                !!((uint8_t)wt & 0b0000001) << WDP0;
+
             WDTCSR = _BV(WDCE) | _BV(WDE);
-            WDTCSR = 0;
+            WDTCSR = wdtcsrNew;
+        }
+        
+        WatchdogReset();
+    }
+    
+    static void SetInterruptHandlerWDT(function<void()> cbFn)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerRawWDT();
             
-            WDTCSR = (_BV(WDIE)) |
-                ((uint8_t)wt & 0b0001000) << WDP3 |
-                ((uint8_t)wt & 0b0000100) << WDP2 |
-                ((uint8_t)wt & 0b0000010) << WDP1 |
-                ((uint8_t)wt & 0b0000001) << WDP0;
+            cbFnWDT_ = cbFn;
+        }
+    }
+    
+    static void UnSetInterruptHandlerWDT()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            cbFnWDT_ = [](){};
+        }
+    }
+    
+    static void SetInterruptHandlerRawWDT(CbFnRaw cbFnRaw)
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerWDT();
             
+            cbFnRawWDT_ = cbFnRaw;
+        }
+    }
+    
+    static void UnSetInterruptHandlerRawWDT()
+    {
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            UnSetInterruptHandlerWDT();
+            
+            cbFnRawWDT_ = OnFnRawWDTDefault;
         }
     }
     
@@ -461,6 +499,59 @@ public:
     static void PowerDownADC()    { ADCSRA &= (uint8_t)~_BV(ADEN); }
     static void PowerUpADC()      { ADCSRA |= _BV(ADEN);           }
     
+    
+    
+    static void DelaySleep(uint32_t delaySleepDurationMs)
+    {
+        if (delaySleepDurationMs)
+        {
+            // keep track of remaining duration to sleep
+            delaySleepDurationMs_ = delaySleepDurationMs;
+            
+            SetInterruptHandlerRawWDT(Wake);
+
+            while (delaySleepDurationMs_)
+            {
+                // calculate sleep step size
+                uint32_t        stepSize = 15;
+                WatchdogTimeout wt       = WatchdogTimeout::TIMEOUT_15_MS;
+                
+                if (delaySleepDurationMs_ <=   15) { stepSize =   15; wt = WatchdogTimeout::TIMEOUT_15_MS;   }
+                if (delaySleepDurationMs_ >=   30) { stepSize =   30; wt = WatchdogTimeout::TIMEOUT_30_MS;   }
+                if (delaySleepDurationMs_ >=   60) { stepSize =   60; wt = WatchdogTimeout::TIMEOUT_60_MS;   }
+                if (delaySleepDurationMs_ >=  120) { stepSize =  120; wt = WatchdogTimeout::TIMEOUT_120_MS;  }
+                if (delaySleepDurationMs_ >=  250) { stepSize =  250; wt = WatchdogTimeout::TIMEOUT_250_MS;  }
+                if (delaySleepDurationMs_ >=  500) { stepSize =  500; wt = WatchdogTimeout::TIMEOUT_500_MS;  }
+                if (delaySleepDurationMs_ >= 1000) { stepSize = 1000; wt = WatchdogTimeout::TIMEOUT_1000_MS; }
+                if (delaySleepDurationMs_ >= 2000) { stepSize = 2000; wt = WatchdogTimeout::TIMEOUT_2000_MS; }
+                if (delaySleepDurationMs_ >= 4000) { stepSize = 4000; wt = WatchdogTimeout::TIMEOUT_4000_MS; }
+                if (delaySleepDurationMs_ >= 8000) { stepSize = 8000; wt = WatchdogTimeout::TIMEOUT_8000_MS; }
+                
+                WatchdogEnableInterrupt(wt);
+    
+                DeepSleep();
+                
+                WatchdogDisable();
+                
+                if (delaySleepDurationMs_ >= stepSize)
+                {
+                    delaySleepDurationMs_ -= stepSize;
+                }
+                else
+                {
+                    delaySleepDurationMs_ = 0;
+                }
+            }
+        }
+    }
+    
+    static void DeepSleep()
+    {
+        PowerDownADC();
+        PowerDownBODDuringSleep();  // Timing sensitive, must be immediately before sleep
+        SleepModePowerDown();
+    }
+
     static void PowerDownBODDuringSleep()
     {
         /*
@@ -494,8 +585,6 @@ public:
         Sleep(SleepMode::POWER_DOWN);
     }
     
-    
-private:
     enum class SleepMode : uint8_t
     {
         IDLE = 0,
@@ -514,7 +603,7 @@ private:
         
         SMCR = ((uint8_t)(sleepMode) << 1) | 0b00000001;
         
-        __asm__ __volatile__("sleep");
+        sleep_cpu();
         
         /*
          * If an enabled interrupt occurs while the MCU is in a sleep mode, the
@@ -529,45 +618,10 @@ private:
         // So basically the function returns from here as if nothing happened.
     }
     
-public:
-    static void SetInterruptHandlerWDT(function<void()> cbFn)
+    static void Wake()
     {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            UnSetInterruptHandlerRawWDT();
-            
-            cbFnWDT_ = cbFn;
-        }
+        sleep_disable();
     }
-    
-    static void UnSetInterruptHandlerWDT()
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            cbFnWDT_ = [](){};
-        }
-    }
-    
-    static void SetInterruptHandlerRawWDT(CbFnRaw cbFnRaw)
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            UnSetInterruptHandlerWDT();
-            
-            cbFnRawWDT_ = cbFnRaw;
-        }
-    }
-    
-    static void UnSetInterruptHandlerRawWDT()
-    {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-        {
-            UnSetInterruptHandlerWDT();
-            
-            cbFnRawWDT_ = OnFnRawWDTDefault;
-        }
-    }
-
     
     
 private:
@@ -580,6 +634,8 @@ private:
     static volatile uint8_t *port__ddrxPtr[3];
     static volatile uint8_t *port__pinxPtr[3];
     static volatile uint8_t *port__portxPtr[3];
+    
+    static uint32_t delaySleepDurationMs_;
 
     uint8_t mcusrCache_;
 };

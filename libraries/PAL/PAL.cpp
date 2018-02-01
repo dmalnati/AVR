@@ -121,6 +121,8 @@ volatile uint8_t *PlatformAbstractionLayer::port__pinxPtr[3]  = { &PINB,  &PINC,
 volatile uint8_t *PlatformAbstractionLayer::port__portxPtr[3] = { &PORTB, &PORTC, &PORTD  };
 
 
+uint32_t PlatformAbstractionLayer::delaySleepDurationMs_ = 0;
+
 function<void()>                  PlatformAbstractionLayer::cbFnWDT_;
 PlatformAbstractionLayer::CbFnRaw PlatformAbstractionLayer::cbFnRawWDT_ = PlatformAbstractionLayer::OnFnRawWDTDefault;
 

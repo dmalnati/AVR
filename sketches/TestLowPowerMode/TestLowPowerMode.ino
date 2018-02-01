@@ -1,44 +1,55 @@
 #include "PAL.h"
 
-static const uint8_t PIN = 14;
+
+static const uint8_t PIN_BLINK = 13;
+static const uint8_t PIN_TOGGLE = 15;
+
 
 void Blink(uint8_t count = 1, uint32_t delayMs = 500)
 {
-    PAL.PinMode(PIN, OUTPUT);
+    PAL.PinMode(PIN_BLINK, OUTPUT);
     
     for (uint8_t i = 0; i < count; ++i)
     {
-        PAL.DigitalWrite(PIN, HIGH);
+        PAL.DigitalWrite(PIN_BLINK, HIGH);
         PAL.Delay(delayMs);
-        PAL.DigitalWrite(PIN, LOW);
+        PAL.DigitalWrite(PIN_BLINK, LOW);
         PAL.Delay(delayMs);
     }
 }
 
 void setup()
 {
-    Blink(2);
-}
+    Serial.begin(9600);
+    Serial.println("Starting");
+    
+    Blink(5, 100);
 
-void OnWDT()
-{
-    Blink();
-}
+    Pin pinToggle(PIN_TOGGLE, LOW);
+    
+    while (1)
+    {
+        uint32_t arr[] = { 5, 15, 30, 40, 60, 120, 220, 250, 500, 777, 1000, 2000, 4000, 8000, 10000 };
+        //uint32_t arr[] = { 8000, 10000 };
+        //uint32_t arr[] = { 4000, 8000, 10000 };
+        
+        for (uint32_t delaySleepDurationMs : arr)
+        {
+            Serial.print("loop: ");  Serial.println(delaySleepDurationMs);
+            
+            Blink(1);
 
-void GoToDeepSleep()
-{
-    PAL.PowerDownADC();
-    PAL.PowerDownBODDuringSleep();
-    PAL.SleepModePowerDown();
+            PAL.DigitalToggle(pinToggle);
+            PAL.DelaySleep(delaySleepDurationMs);
+            PAL.DigitalToggle(pinToggle);
+
+            Blink(2, 50);
+        }
+    }
 }
 
 void loop()
 {
-    PAL.WatchdogEnableInterrupt(WatchdogTimeout::TIMEOUT_4000_MS);
-    PAL.SetInterruptHandlerWDT([](){
-        OnWDT();
-    });
-    GoToDeepSleep();
 }
 
 
