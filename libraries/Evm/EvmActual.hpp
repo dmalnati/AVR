@@ -310,7 +310,49 @@ HoldStackDangerously(uint32_t timeout)
 }
 
 
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
+MainLoopLowPower()
+{
+    while (1)
+    {
+        // If low power is enabled and there are no timed events queued, then
+        // there never will be, therefore the DelaySleep will never fire, and
+        // the device will consume regular power.
+        // This shouldn't happen and isn't accounted for.
+        if (lowPowerEnabled_ && timedEventHandlerList_.Size())
+        {
+            TimedEventHandler *teh = NULL;
+            timedEventHandlerList_.Peek(teh);
+            
+            uint32_t timePassedSinceQueuing = PAL.Millis() - teh->timeQueued_;
+            
+            // check if event is in the future
+            if (timePassedSinceQueuing < teh->timeout_)
+            {
+                uint32_t timeRemaining = teh->timeout_ - timePassedSinceQueuing;
+                
+                PAL.DelaySleep(timeRemaining);
+            }
+        }
+        
+        ServiceTimedEventHandlers();
+    }
+}
 
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
+LowPowerEnable()
+{
+    lowPowerEnabled_ = 1;
+}
+
+template <uint8_t A, uint8_t B, uint8_t C>
+void EvmActual<A,B,C>::
+LowPowerDisable()
+{
+    lowPowerEnabled_ = 0;
+}
 
 
 

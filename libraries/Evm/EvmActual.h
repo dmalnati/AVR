@@ -24,6 +24,7 @@ public:
     : mainLoopStackLevel_(0)
     , mainLoopStackLevelTemporary_(0)
     , mainLoopKeepGoing_(1)
+    , lowPowerEnabled_(1)
     {
         // Store self
         Evm::evm_ = this;
@@ -43,6 +44,15 @@ public:
     
     virtual
     void EndMainLoop();
+    
+    virtual
+    void MainLoopLowPower();
+    
+    virtual
+    void LowPowerEnable();
+    
+    virtual
+    void LowPowerDisable();
 
 
 private:
@@ -162,6 +172,8 @@ private:
     // as well as any logic making use of its data.
     Queue<InterruptEventHandler *,
           COUNT_INTERRUPT_EVENT_HANDLER>  interruptEventHandlerList_;
+    
+    uint8_t lowPowerEnabled_;
 };
 
 

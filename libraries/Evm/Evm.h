@@ -62,6 +62,15 @@ public:
     virtual
     void EndMainLoop();
     
+    virtual
+    void MainLoopLowPower();
+    
+    virtual
+    void LowPowerEnable();
+    
+    virtual
+    void LowPowerDisable();
+    
 private:
 
     // Idle Events
