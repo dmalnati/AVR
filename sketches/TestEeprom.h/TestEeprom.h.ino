@@ -133,7 +133,7 @@ void OnLineReceived(char *line)
         for (uint8_t i = 0; i < ea.GetCapacity(); ++i)
         {
             SomeStruct ssTmp;
-            uint8_t ok = ea.ReadFromIdx(ssTmp, i);
+            uint8_t ok = ea.ReadFromIdx(ssTmp, i, 1);
 
             Serial.print(ok ? "OK : [" : "NOK: ["); Serial.print(i); Serial.print("]: ");
             PrintSomeStruct(ssTmp);

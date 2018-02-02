@@ -40,12 +40,12 @@ public:
         return CAPACITY;
     }
     
-    uint8_t Read(T &val)
+    uint8_t Read(T &val, uint8_t forceRead = 0)
     {
-        return ReadFromIdx(val, 0);
+        return ReadFromIdx(val, 0, forceRead);
     }
     
-    uint8_t ReadFromIdx(T &val, uint8_t idx)
+    uint8_t ReadFromIdx(T &val, uint8_t idx, uint8_t forceRead = 0)
     {
         uint8_t retVal = 0;
         
@@ -56,11 +56,15 @@ public:
             uint16_t addr = GetAddrAtIdx(idx);
             
             eeprom_read_block((void *)&eObj, (const void *)addr, sizeof(Wrapper));
-            val = eObj.val;
             
             uint8_t crc = CRC8((const uint8_t *)&eObj.val, sizeof(T));
             
             retVal = (crc == eObj.crc);
+            
+            if (retVal || forceRead)
+            {
+                val = eObj.val;
+            }
         }
         
         return retVal;
