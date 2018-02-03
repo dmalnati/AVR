@@ -3,6 +3,7 @@
 
 
 #include <avr/eeprom.h>
+#include <string.h>
 
 #include "crc.h"
 
