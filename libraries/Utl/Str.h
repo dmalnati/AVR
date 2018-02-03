@@ -47,6 +47,13 @@ public:
         return len_;
     }
     
+    const char *UnsafePtr()
+    {
+        RestoreOriginalString();
+        
+        return str_;
+    }
+    
     uint8_t TokenCount(char delim)
     {
         RestoreOriginalString();
@@ -73,7 +80,7 @@ public:
         return retVal;
     }
     
-    char *TokenAtIdx(uint8_t idx, char delim)
+    const char *TokenAtIdx(uint8_t idx, char delim)
     {
         char *retVal = NULL;
         
@@ -122,6 +129,15 @@ public:
                 }
             }
         }
+        
+        return retVal;
+    }
+    
+    const char *UnsafePtrAtTokenAtIdx(uint8_t idx, char delim)
+    {
+        const char *retVal = TokenAtIdx(idx, delim);
+        
+        RestoreOriginalString();
         
         return retVal;
     }
