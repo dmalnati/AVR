@@ -66,6 +66,12 @@ public:
     void ToDo()
     {
         
+        // Change SSID to 11, not 9.
+            // I think I set the icon display based on other characters in the
+            // aprs message.
+                // easy to expose to settings?  dad might like that.
+        
+        // APRS route should be WIDE2-1 not WIDE1-1, right?
         
         
         // wtf were the bugs I had before?
@@ -73,6 +79,8 @@ public:
             // turning into just spaces right?
             
         // GPS geofencing to change frequency
+        
+        // Make sure to manually enable high-altitude mode
     }
     
     
