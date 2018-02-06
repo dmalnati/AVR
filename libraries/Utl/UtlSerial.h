@@ -2,6 +2,10 @@
 #define __UTL_SERIAL_H__
 
 
+#include "Function.h"
+#include "Str.h"
+
+
 uint8_t SerialReadLine(char *buf, uint8_t bufSize)
 {
     uint8_t retVal = 0;
@@ -38,8 +42,103 @@ uint8_t SerialReadLine(char *buf, uint8_t bufSize)
     return retVal;
 }
 
+template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 100>
+class SerialShell
+{
+    static const uint8_t BUF_SIZE = NUM_BYTES_SERIAL + 1;
+    
+    struct CmdToFn
+    {
+        const char                   *cmd;
+        function<void(char *cmdStr)>  fn;
+    };
+    
+public:
+    SerialShell()
+    : cmdToFnListIdx_(0)
+    , running_(1)
+    {
+        // Nothing to do
+    }
+    
+    uint8_t RegisterCommand(const char                    *cmd,
+                            function<void(char *cmdStr)>  fn)
+    {
+        uint8_t retVal = 0;
+        
+        if (cmdToFnListIdx_ < NUM_COMMANDS)
+        {
+            retVal = 1;
+            
+            CmdToFn ctf{ cmd, fn };
+            
+            cmdToFnList_[cmdToFnListIdx_] = ctf;
+            
+            ++cmdToFnListIdx_;
+        }
+        
+        return retVal;
+    }
+    
+    void Run()
+    {
+        while (running_)
+        {
+            uint8_t strLen = SerialReadLine(buf_, BUF_SIZE);
+
+            if (strLen)
+            {
+                Str str(buf_);
+                
+                const char *cmd = str.TokenAtIdx(0, ' ');
+
+                uint8_t found = 0;
+                for (uint8_t i = 0; i < cmdToFnListIdx_ && !found; ++i)
+                {
+                    if (!strcmp(cmd, cmdToFnList_[i].cmd))
+                    {
+                        str.Release();
+                        
+                        cmdToFnList_[i].fn(buf_);
+                    }
+                }
+            }
+        }
+    };
+
+private:
+    char buf_[BUF_SIZE];
+    
+    CmdToFn cmdToFnList_[NUM_COMMANDS];
+    uint8_t cmdToFnListIdx_;
+
+    uint8_t running_;
+};
+
 
 #endif  // __UTL_SERIAL_H__
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
