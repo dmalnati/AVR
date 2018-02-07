@@ -80,6 +80,11 @@ public:
         return retVal;
     }
     
+    void RegisterErrorHandler(function<void(char *cmdStr)> fnErr)
+    {
+        fnErr_ = fnErr;
+    }
+    
     void Run()
     {
         while (running_)
@@ -97,10 +102,19 @@ public:
                 {
                     if (!strcmp(cmd, cmdToFnList_[i].cmd))
                     {
+                        found = 1;
+                        
                         str.Release();
                         
                         cmdToFnList_[i].fn(buf_);
                     }
+                }
+                
+                if (!found)
+                {
+                    str.Release();
+                        
+                    fnErr_(buf_);
                 }
             }
         }
@@ -111,6 +125,8 @@ private:
     
     CmdToFn cmdToFnList_[NUM_COMMANDS];
     uint8_t cmdToFnListIdx_;
+    
+    function<void(char *cmdStr)> fnErr_;
 
     uint8_t running_;
 };
