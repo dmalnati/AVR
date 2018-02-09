@@ -82,9 +82,19 @@ public:
         AddData((void *)&valLittleEndian, sizeof(valLittleEndian));
     }
     
+    void AddFieldX1(uint8_t val)
+    {
+        AddFieldU1(val);
+    }
+    
     void AddFieldX2(uint16_t val)
     {
         AddFieldU2(val);
+    }
+    
+    void AddFieldX4(uint32_t val)
+    {
+        AddFieldU4(val);
     }
     
     
