@@ -16,7 +16,7 @@ static SensorGPSUblox gps(PIN_GPS_RX, PIN_GPS_TX);
 
 static SoftwareSerial &ss = gps.DebugGetSS();
 
-static const uint8_t NUM_COMMANDS = 10;
+static const uint8_t NUM_COMMANDS = 20;
 static SerialShell<NUM_COMMANDS> shell;
 
 static UbxMessage<100> ubxMsg;
@@ -446,6 +446,98 @@ void setup()
     });
 
     
+    shell.RegisterCommand("save", [](char *) {
+        ubxMsg.Reset();
+
+        // CFG-CFG (0x06 0x09)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x09);
+
+        ubxMsg.AddFieldX4(0);           // clearMask  - clear nothing
+        ubxMsg.AddFieldX4(0x0000FFFF);  // saveMask   - save everything
+        ubxMsg.AddFieldX4(0);           // loadMask   - load nothing
+        ubxMsg.AddFieldX1(1);           // deviceMask - save to batter-backed ram (internal to chip)
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+
+    shell.RegisterCommand("backup", [](char *) {
+        ubxMsg.Reset();
+
+        // RXM-PMREQ (0x02 0x41)
+        ubxMsg.SetClass(0x02);
+        ubxMsg.SetId(0x41);
+
+        ubxMsg.AddFieldU4(0);   // duration, 0 = infinite
+        ubxMsg.AddFieldX4(2);   // bitfield, backup enabled
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+    
+    shell.RegisterCommand("wake", [](char *) {
+        ss.write(" ", 1);
+    });
+
+    shell.RegisterCommand("onoff", [](char *) {
+        ubxMsg.Reset();
+
+
+        
+                        // 33222222222211111111110000000000
+                        // 10987654321098765432109876543210
+        uint32_t flags = 0b00000000000000000001000000000000;    // ON/OFF mode, updateEPH enabled
+        //uint32_t flags = 0b00000000000000100001000000000000;    // Cyclic tracking mode, updateEPH enabled
+
+        
+        
+
+        // CFG-PM2 (0x06 0x3B)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x3B);
+
+        ubxMsg.AddFieldU1(1);   // version, must set to 1
+        ubxMsg.AddFieldU1(0);   // reserved1
+        ubxMsg.AddFieldU1(0);   // reserved2
+        ubxMsg.AddFieldU1(0);   // reserved3
+        ubxMsg.AddFieldX4(flags);   // flags
+        ubxMsg.AddFieldU4(0);   // updatePeriod
+        ubxMsg.AddFieldU4(0);   // searchPeriod
+        ubxMsg.AddFieldU4(0);   // gridOffset
+        ubxMsg.AddFieldU2(0);   // onTime
+        ubxMsg.AddFieldU2(0);   // minAcqTime
+        ubxMsg.AddFieldU2(0);   // reserved4
+        ubxMsg.AddFieldU2(0);   // reserved5
+        ubxMsg.AddFieldU4(0);   // reserved6
+        ubxMsg.AddFieldU4(0);   // reserved7
+        ubxMsg.AddFieldU1(0);   // reserved8
+        ubxMsg.AddFieldU1(0);   // reserved9
+        ubxMsg.AddFieldU2(0);   // reserved10
+        ubxMsg.AddFieldU4(0);   // reserved11
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+
 
 
     shell.RegisterErrorHandler([](char *cmdStr) {
