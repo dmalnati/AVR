@@ -313,10 +313,11 @@ void setup()
     gps.SetHighAltitudeMode();
     GetMessageOrErr();
 
-    // turns out this doesn't work on my model
+    // turns out this doesn't work on my NEO-6M, but does on NEO-7M
     shell.RegisterCommand("noglonass", [](char *) {
-        Serial.println("Disabling GLONASS");
+        Serial.println(F("Disabling GLONASS"));
         // Disable GLONASS mode
+        // (CFG-GNSS 0x06 0x3E)
         static uint8_t disable_glonass[20] = {0xB5, 0x62, 0x06, 0x3E, 0x0C, 0x00, 0x00, 0x00, 0x20, 0x01, 0x06, 0x08, 0x0E, 0x00, 0x00, 0x00, 0x01, 0x01, 0x8F, 0xB2};
     
         ss.write(disable_glonass, 20);
@@ -325,14 +326,28 @@ void setup()
     });
 
     shell.RegisterCommand("lowpower", [](char *) {
-        Serial.println("Enabling power save");
-        // Enable power saving
+        Serial.println(F("Enabling power save"));
+
+        // CFG-RXM (0x06 0x11)
         uint8_t enable_powersave[10] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92};
         
         ss.write(enable_powersave, 10);
 
         GetMessageOrErr();
     });
+
+    shell.RegisterCommand("gpsonly", [](char *) {
+        Serial.println(F("Enabling GPS only"));
+        // Enable power saving
+        uint8_t setGPSonly[28] = {0xB5, 0x62, 0x6, 0x3E, 0x14, 0x0, 0x0, 0x0, 0xFF, 0x2, 0x0, 0x8, 0xFF, 0x0, 0x1, 0x0, 0x1, 0x0, 0x6, 0x8, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6F, 0xCC};
+        
+        ss.write(setGPSonly, 28);
+
+        GetMessageOrErr();
+    });
+    
+    
+
 
     shell.RegisterCommand("interval", [](char *cmdStr) {
         Str str(cmdStr);
@@ -341,7 +356,7 @@ void setup()
         {
             uint32_t intervalMs = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print("Setting interval to ");  Serial.println(intervalMs);
+            Serial.print(F("Setting interval to "));  Serial.println(intervalMs);
             
             gps.SetMessageInterval(intervalMs);
             
@@ -375,9 +390,9 @@ void setup()
             else if (!strcmp(resetModeStr, "controlled_gps_up"))   { resetMode = 0x09; }
         }
 
-        Serial.print("Resetting resetType: ");
+        Serial.print(F("Resetting resetType: "));
         Serial.print(resetType);
-        Serial.print(", resetMode: ");
+        Serial.print(F(", resetMode: "));
         Serial.print(resetMode);
         Serial.println();
 
@@ -494,16 +509,11 @@ void setup()
 
     shell.RegisterCommand("onoff", [](char *) {
         ubxMsg.Reset();
-
-
         
                         // 33222222222211111111110000000000
                         // 10987654321098765432109876543210
         uint32_t flags = 0b00000000000000000001000000000000;    // ON/OFF mode, updateEPH enabled
         //uint32_t flags = 0b00000000000000100001000000000000;    // Cyclic tracking mode, updateEPH enabled
-
-        
-        
 
         // CFG-PM2 (0x06 0x3B)
         ubxMsg.SetClass(0x06);
@@ -536,6 +546,33 @@ void setup()
 
         GetMessageOrErr();
     });
+    
+    shell.RegisterCommand("nosbas", [](char *) {
+        Serial.println(F("Disabling SBAS"));
+        
+        ubxMsg.Reset();
+        
+        // CFG-SBAS (0x06 0x16)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x16);
+
+        ubxMsg.AddFieldX1(0);   // mode = disabled
+        ubxMsg.AddFieldX1(0);    // usage = unclear, probably disabled
+        ubxMsg.AddFieldU1(0);   // maxSBAS = no sbas?
+        ubxMsg.AddFieldX1(0);   // scanmode2
+        ubxMsg.AddFieldX4(0);   // scanmode1
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+
+
 
 
 
