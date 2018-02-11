@@ -61,7 +61,7 @@ uint8_t GetMessage(ParsedMessage &msg)
 
     uint8_t retVal = 0;
 
-    static const uint16_t GIVE_UP_AFTER = 500;
+    static const uint16_t GIVE_UP_AFTER = 5000;
     uint16_t tryCount = 0;
 
     uint8_t idx = 0;
@@ -313,40 +313,6 @@ void setup()
     gps.SetHighAltitudeMode();
     GetMessageOrErr();
 
-    // turns out this doesn't work on my NEO-6M, but does on NEO-7M
-    shell.RegisterCommand("noglonass", [](char *) {
-        Serial.println(F("Disabling GLONASS"));
-        // Disable GLONASS mode
-        // (CFG-GNSS 0x06 0x3E)
-        static uint8_t disable_glonass[20] = {0xB5, 0x62, 0x06, 0x3E, 0x0C, 0x00, 0x00, 0x00, 0x20, 0x01, 0x06, 0x08, 0x0E, 0x00, 0x00, 0x00, 0x01, 0x01, 0x8F, 0xB2};
-    
-        ss.write(disable_glonass, 20);
-
-        GetMessageOrErr();
-    });
-
-    shell.RegisterCommand("lowpower", [](char *) {
-        Serial.println(F("Enabling power save"));
-
-        // CFG-RXM (0x06 0x11)
-        uint8_t enable_powersave[10] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92};
-        
-        ss.write(enable_powersave, 10);
-
-        GetMessageOrErr();
-    });
-
-    shell.RegisterCommand("gpsonly", [](char *) {
-        Serial.println(F("Enabling GPS only"));
-        // Enable power saving
-        uint8_t setGPSonly[28] = {0xB5, 0x62, 0x6, 0x3E, 0x14, 0x0, 0x0, 0x0, 0xFF, 0x2, 0x0, 0x8, 0xFF, 0x0, 0x1, 0x0, 0x1, 0x0, 0x6, 0x8, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6F, 0xCC};
-        
-        ss.write(setGPSonly, 28);
-
-        GetMessageOrErr();
-    });
-    
-    
 
 
     shell.RegisterCommand("interval", [](char *cmdStr) {
@@ -411,8 +377,9 @@ void setup()
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
-
+        
         GetMessageOrErr();  // Didn't see this work ever
     });
 
@@ -427,6 +394,7 @@ void setup()
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         // Get all messages
@@ -449,6 +417,7 @@ void setup()
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         // Get all messages
@@ -477,44 +446,229 @@ void setup()
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         GetMessageOrErr();
     });
 
 
-    shell.RegisterCommand("backup", [](char *) {
+
+    
+    shell.RegisterCommand("wake", [](char *) {
+        ss.write(0xFF);
+    });
+
+    
+    //////////////////////////////////////////////////////////
+    //
+    // Log
+    //
+    //////////////////////////////////////////////////////////
+
+
+    
+    shell.RegisterCommand("log-info", [](char *) {
+        Serial.println(F("LOG-INFO (0x21 0x08)"));
+        
         ubxMsg.Reset();
 
-        // RXM-PMREQ (0x02 0x41)
-        ubxMsg.SetClass(0x02);
-        ubxMsg.SetId(0x41);
-
-        ubxMsg.AddFieldU4(0);   // duration, 0 = infinite
-        ubxMsg.AddFieldX4(2);   // bitfield, backup enabled
+        // LOG-INFO (0x21 0x08)
+        ubxMsg.SetClass(0x21);
+        ubxMsg.SetId(0x08);
 
         uint8_t *buf;
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+        GetMessageOrErr();
+    });
+
+    
+
+    //////////////////////////////////////////////////////////
+    //
+    // Power Saving
+    //
+    //////////////////////////////////////////////////////////
+
+
+
+    // turns out this doesn't work on my NEO-6M, but does on NEO-7M
+    shell.RegisterCommand("noglonass", [](char *) {
+        Serial.println(F("Disabling GLONASS"));
+        // Disable GLONASS mode
+        // (CFG-GNSS 0x06 0x3E)
+        static uint8_t disable_glonass[20] = {0xB5, 0x62, 0x06, 0x3E, 0x0C, 0x00, 0x00, 0x00, 0x20, 0x01, 0x06, 0x08, 0x0E, 0x00, 0x00, 0x00, 0x01, 0x01, 0x8F, 0xB2};
+
+        ss.write(disable_glonass, 20);
+
+        GetMessageOrErr();
+    });
+
+
+    shell.RegisterCommand("gpsonly", [](char *) {
+        Serial.println(F("Enabling GPS only"));
+        // Enable power saving
+        uint8_t setGPSonly[28] = {0xB5, 0x62, 0x6, 0x3E, 0x14, 0x0, 0x0, 0x0, 0xFF, 0x2, 0x0, 0x8, 0xFF, 0x0, 0x1, 0x0, 0x1, 0x0, 0x6, 0x8, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6F, 0xCC};
+
+        // Analysis
+        // size = 0x14 (20 bytes), so 4 header plus 2 config blocks
+
+        // 0x0, 0x0, 0xFF, 0x2,
+        // version 0
+        // num hw channels (readonly) 0
+        // num track channels to use 255
+        // num config blocks 2
+
+        
+        // 0x0, 0x8, 0xFF, 0x0, 0x1, 0x0, 0x1, 0x0,
+        // gnssId = 0 (GPS)
+        // reserve this many channels = 8
+        // max channels to use = 255
+        // reservedField = 0
+        // flags = enable this system (though bitfield has an extra 1 in there for some reason)
+
+        
+        // 0x6, 0x8, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0,
+        // gnssId = 6 (GLONASS)
+        // reserve this many channels = 8
+        // max channels to use = 255
+        // reservedField = 0
+        // flags = disable this system
+        
+        
+        ss.write(setGPSonly, 28);
+
+        GetMessageOrErr();
+    });
+
+    shell.RegisterCommand("lowpower", [](char *) {
+        Serial.println(F("Enabling power save"));
+
+        // CFG-RXM (0x06 0x11)
+        uint8_t enable_powersave[10] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92};
+
+        ss.write(enable_powersave, 10);
+
+        GetMessageOrErr();
+    });
+
+    shell.RegisterCommand("cfg-gnss", [](char *) {
+        Serial.println(F("CFG-GNSS (0x06 0x3E)"));
+
+        ubxMsg.Reset();
+        
+        // CFG-GNSS (0x06 0x3E)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x3E);
+
+        ubxMsg.AddFieldU1(0);   // msgVer          - 0 (required)
+        ubxMsg.AddFieldU1(0);   // numTrkChcHw     - (read-only, so set to 0?)
+        ubxMsg.AddFieldU1(255); // numTrkChUse     - use this many of the available channels
+        ubxMsg.AddFieldU1(4);   // numConfigBlocks - how many repeating sections follow
+
+        // Satellite Numbering
+        // gnssId  GNSS Type
+        // 0       GPS
+        // 1       SBAS
+        // 5       QZSS
+        // 6       GLONASS
+
+        // Do repeating sections of these
+        // ubxMsg.AddFieldU1(?);   // gnssId    - GNSS identifier (see Satellite Numbering)
+        // ubxMsg.AddFieldU1(?);   // resTrkCh  - Number of reserved (minimum) tracking channels for this GNSS system
+        // ubxMsg.AddFieldU1(?);   // maxTrkCh  - Maximum number of tracking channels used for this GNSS system (>=resTrkChn)
+        // ubxMsg.AddFieldU1(?);   // reserved1 - Reserved
+        // ubxMsg.AddFieldX4(?);   // flags     - bitfield of flags (see graphic below)
+
+        // GPS
+        ubxMsg.AddFieldU1(0);   // gnssId    - GNSS identifier (see Satellite Numbering)
+        ubxMsg.AddFieldU1(8);   // resTrkCh  - Number of reserved (minimum) tracking channels for this GNSS system
+        ubxMsg.AddFieldU1(255); // maxTrkCh  - Maximum number of tracking channels used for this GNSS system (>=resTrkChn)
+        ubxMsg.AddFieldU1(0);   // reserved1 - Reserved
+        ubxMsg.AddFieldX4(1);   // flags     - enable
+
+        // SBAS
+        ubxMsg.AddFieldU1(1);   // gnssId    - GNSS identifier (see Satellite Numbering)
+        ubxMsg.AddFieldU1(0);   // resTrkCh  - Number of reserved (minimum) tracking channels for this GNSS system
+        ubxMsg.AddFieldU1(0);   // maxTrkCh  - Maximum number of tracking channels used for this GNSS system (>=resTrkChn)
+        ubxMsg.AddFieldU1(0);   // reserved1 - Reserved
+        ubxMsg.AddFieldX4(0);   // flags     - enable
+        
+        // QZSS
+        ubxMsg.AddFieldU1(5);   // gnssId    - GNSS identifier (see Satellite Numbering)
+        ubxMsg.AddFieldU1(0);   // resTrkCh  - Number of reserved (minimum) tracking channels for this GNSS system
+        ubxMsg.AddFieldU1(0);   // maxTrkCh  - Maximum number of tracking channels used for this GNSS system (>=resTrkChn)
+        ubxMsg.AddFieldU1(0);   // reserved1 - Reserved
+        ubxMsg.AddFieldX4(0);   // flags     - enable
+        
+        // GLONASS
+        ubxMsg.AddFieldU1(6);   // gnssId    - GNSS identifier (see Satellite Numbering)
+        ubxMsg.AddFieldU1(0);   // resTrkCh  - Number of reserved (minimum) tracking channels for this GNSS system
+        ubxMsg.AddFieldU1(0);   // maxTrkCh  - Maximum number of tracking channels used for this GNSS system (>=resTrkChn)
+        ubxMsg.AddFieldU1(0);   // reserved1 - Reserved
+        ubxMsg.AddFieldX4(0);   // flags     - enable
+        
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         GetMessageOrErr();
     });
 
-    
-    shell.RegisterCommand("wake", [](char *) {
-        ss.write(" ", 1);
-    });
+    shell.RegisterCommand("cfg-pm2", [](char *cmdStr) {
+        Serial.println(F("CFG-PM2 (0x06 0x3B)"));
+ 
+        // updateEPH     will be enabled
+        //
+        // decide if cyclic or on/off (default to on/off)
 
-    shell.RegisterCommand("onoff", [](char *) {
-        ubxMsg.Reset();
-        
                         // 33222222222211111111110000000000
                         // 10987654321098765432109876543210
         uint32_t flags = 0b00000000000000000001000000000000;    // ON/OFF mode, updateEPH enabled
-        //uint32_t flags = 0b00000000000000100001000000000000;    // Cyclic tracking mode, updateEPH enabled
 
+        uint8_t mode = 0;
+        
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') >= 2)
+        {
+            const char *resetTypeStr = str.TokenAtIdx(1, ' ');
+            
+            if (!strcmp(resetTypeStr, "cyclic"))
+            {
+                       // 33222222222211111111110000000000
+                       // 10987654321098765432109876543210
+                flags = 0b00000000000000100001000000000000;    // Cyclic tracking mode, updateEPH enabled
+                mode = 1;
+            }
+        }
+
+        if (mode == 0)
+        {
+            Serial.println(F("    ON/OFF"));
+        }
+        else
+        {
+            Serial.println(F("    Cyclic"));
+        }
+        
+        
+        uint32_t updatePeriod = 30000;
+        uint32_t searchPeriod = 10000;
+        
+
+        ubxMsg.Reset();
+       
         // CFG-PM2 (0x06 0x3B)
         ubxMsg.SetClass(0x06);
         ubxMsg.SetId(0x3B);
@@ -524,11 +678,11 @@ void setup()
         ubxMsg.AddFieldU1(0);   // reserved2
         ubxMsg.AddFieldU1(0);   // reserved3
         ubxMsg.AddFieldX4(flags);   // flags
-        ubxMsg.AddFieldU4(0);   // updatePeriod
-        ubxMsg.AddFieldU4(0);   // searchPeriod
-        ubxMsg.AddFieldU4(0);   // gridOffset
-        ubxMsg.AddFieldU2(0);   // onTime
-        ubxMsg.AddFieldU2(0);   // minAcqTime
+        ubxMsg.AddFieldU4(updatePeriod);   // updatePeriod - Position update period. If set to 0, the receiver will never retry a fix
+        ubxMsg.AddFieldU4(searchPeriod);   // searchPeriod - Acquisition retry period. If set to 0, the receiver will never retry a startup
+        ubxMsg.AddFieldU4(0);   // gridOffset   - Grid offset relative to GPS start of week
+        ubxMsg.AddFieldU2(0);   // onTime       - on time after first successful fix
+        ubxMsg.AddFieldU2(0);   // minAcqTime   - minimal search time
         ubxMsg.AddFieldU2(0);   // reserved4
         ubxMsg.AddFieldU2(0);   // reserved5
         ubxMsg.AddFieldU4(0);   // reserved6
@@ -542,13 +696,37 @@ void setup()
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         GetMessageOrErr();
+
+
+
+        // Compare against TT7
+        /* ONOFF 30s, doNotEnterOff, updateEPH. */
+        //static uint8_t setONOFFoperation_30s[52] = {0xB5, 0x62, 0x06, 0x3B, 0x2C, 0x00, 0x01, 0x06, 0x00, 0x00, 0x00, 0x90, 0x01, 0x01, 0x30, 0x75, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, 0x01, 0x00, 0x00, 0x4F, 0xC1, 0x03, 0x00, 0x87, 0x02, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x64, 0x40, 0x01, 0x00, 0x4F, 0x5E};
+
+        // 0x2C, 0x00, - 44 bytes
+        // version - 1
+        // reserved1 - 6 (??)
+        // reserved2 - 0
+        // reserved3 - 0
+                                                  // 33222222222211111111110000000000
+                                                  // 10987654321098765432109876543210
+        // flags        - 0x00, 0x90, 0x01, 0x01 - 0b00000001000000011001000000000000
+            // so 24=?, 18=mode=on/off, 16=doNotEnterOff, 15=?, 12=updateEPH
+        // updatePeriod - 0x30, 0x75, 0x00, 0x00 = 30,000
+        // searchPeriod - 0x10, 0x27, 0x00, 0x00 = 10,000
+        // gridOffset   - 0x00, 0x00, 0x00, 0x00 = 0
+        // onTime       - 0x00, 0x00 = 0
+        // minAcqTime   - 0x00, 0x00 = 0
+        // the rest should be reserved, but his code shows differently... different module?
+            // 0x2C, 0x01, 0x00, 0x00, 0x4F, 0xC1, 0x03, 0x00, 0x87, 0x02, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x64, 0x40, 0x01, 0x00, 0x4F, 0x5E};
     });
-    
-    shell.RegisterCommand("nosbas", [](char *) {
-        Serial.println(F("Disabling SBAS"));
+
+    shell.RegisterCommand("cfg-sbas", [](char *) {
+        Serial.println(F("CFG-SBAS (0x06 0x16)"));
         
         ubxMsg.Reset();
         
@@ -557,15 +735,78 @@ void setup()
         ubxMsg.SetId(0x16);
 
         ubxMsg.AddFieldX1(0);   // mode = disabled
-        ubxMsg.AddFieldX1(0);    // usage = unclear, probably disabled
+        ubxMsg.AddFieldX1(0);   // usage = unclear, probably disabled
         ubxMsg.AddFieldU1(0);   // maxSBAS = no sbas?
-        ubxMsg.AddFieldX1(0);   // scanmode2
-        ubxMsg.AddFieldX4(0);   // scanmode1
+        ubxMsg.AddFieldX1(0xFF);   // scanmode2
+        ubxMsg.AddFieldX4(0xFFFFFFFF);   // scanmode1
 
         uint8_t *buf;
         uint8_t  bufLen;
         ubxMsg.GetBuf(&buf, &bufLen);
 
+        StreamBlob(Serial, buf, bufLen, 0, 1);
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+    shell.RegisterCommand("cfg-rxm", [](char *cmdStr) {
+        Serial.println(F("CFG-RXM (0x06 0x11)"));
+
+        ubxMsg.Reset();
+
+        // CFG-RXM (0x06 0x11)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x11);
+
+        uint8_t lowPowerMode = 1;
+
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') >= 2)
+        {
+            const char *lowPowerModeStr = str.TokenAtIdx(1, ' ');
+
+            lowPowerMode = atoi(lowPowerModeStr);
+        }
+
+        if (lowPowerMode == 1)
+        {
+            Serial.println(F("    Power Save Mode"));
+        }
+        else
+        {
+            Serial.println(F("    Other Mode"));
+        }
+
+        ubxMsg.AddFieldU1(8);              // reserved1 - always set to 8
+        ubxMsg.AddFieldU1(lowPowerMode);   // LowPowerMode, 0 = Continuous; 1 = PowerSaveMode
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        StreamBlob(Serial, buf, bufLen, 0, 1);
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+
+    shell.RegisterCommand("cfg-rxm-poll", [](char *) {
+        Serial.println(F("CFG-RXM (0x06 0x11) POLL"));
+
+        ubxMsg.Reset();
+
+        // CFG-RXM (0x06 0x11)
+        ubxMsg.SetClass(0x06);
+        ubxMsg.SetId(0x11);
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        StreamBlob(Serial, buf, bufLen, 0, 1);
         ss.write(buf, bufLen);
 
         GetMessageOrErr();
@@ -574,8 +815,30 @@ void setup()
 
 
 
+    
+    shell.RegisterCommand("rxm-pmreq", [](char *) {
+        Serial.println(F("RXM-PMREQ (0x02 0x41)"));
+        
+        ubxMsg.Reset();
 
+        // RXM-PMREQ (0x02 0x41)
+        ubxMsg.SetClass(0x02);
+        ubxMsg.SetId(0x41);
 
+        ubxMsg.AddFieldU4(0);   // duration, 0 = infinite
+        ubxMsg.AddFieldX4(2);   // bitfield, backup enabled
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMsg.GetBuf(&buf, &bufLen);
+
+        StreamBlob(Serial, buf, bufLen, 0, 1);
+        ss.write(buf, bufLen);
+
+        GetMessageOrErr();
+    });
+
+    
 
     shell.RegisterErrorHandler([](char *cmdStr) {
         Serial.print("ERR: Unrecognized \"");
