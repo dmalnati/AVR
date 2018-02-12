@@ -87,6 +87,14 @@ public:
     
     void Run()
     {
+        Serial.println(F("Serial Commands:"));
+        Serial.println(F("----------------"));
+        for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
+        {
+            Serial.println(cmdToFnList_[i].cmd);
+        }
+        Serial.println();
+
         while (running_)
         {
             uint8_t strLen = SerialReadLine(buf_, BUF_SIZE);
@@ -116,6 +124,8 @@ public:
                         
                     fnErr_(buf_);
                 }
+                
+                Serial.println();
             }
         }
     };
