@@ -42,6 +42,7 @@ public:
     RFSI4463PRO(uint8_t pinChipSelect, uint8_t pinShutdown)
     : pinChipSelect_(pinChipSelect)
     , pinShutdown_(pinShutdown)
+    , deviationFreq_(0)
     {
         // Nothing to do
     }
@@ -57,9 +58,26 @@ public:
         SPI.begin();
     }
     
-    void SetFrequency(uint32_t frequency)
+    void SetFrequency(uint32_t frequency, uint8_t updateNow = 0)
     {
         frequency_ = frequency;
+        
+        if (updateNow)
+        {
+            SetFrequencyInternal(frequency_);
+            ChangeStateToTx();
+        }
+    }
+    
+    void SetDeviation(uint32_t deviationFreq, uint8_t updateNow = 0)
+    {
+        deviationFreq_ = deviationFreq;
+        
+        if (updateNow)
+        {
+            SetDeviationInternal(deviationFreq_);
+            ChangeStateToTx();
+        }
     }
     
     void Start()
@@ -69,6 +87,11 @@ public:
         ClearInterrupts();
         
         SetFrequencyInternal(frequency_);
+        
+        if (deviationFreq_ != 0)
+        {
+            SetDeviationInternal(deviationFreq_);
+        }
 
         SetModemTransmitOnDirectInput();
         
@@ -236,8 +259,9 @@ private:
         uint8_t  band;
         uint8_t  fcInt;
         uint32_t fcFrac;
+        uint8_t  outdiv;
         
-        GetFrequencyParameters(freq, band, fcInt, fcFrac);
+        GetFrequencyParameters(freq, band, fcInt, fcFrac, outdiv);
         
         SetBand(band);
         SetFreqControlInt(fcInt);
@@ -282,6 +306,50 @@ private:
         SetProperty(PROP_GROUP, PROP_IDX2, (0b11111111 & p[3]));
     }
     
+    void SetDeviationInternal(uint32_t deviationFreq)
+    {
+        uint8_t  band;
+        uint8_t  fcInt;
+        uint32_t fcFrac;
+        uint8_t  outdiv;
+
+        // Get parameters which are needed in subsequent calculation
+        GetFrequencyParameters(frequency_, band, fcInt, fcFrac, outdiv);
+        
+        // This is after hunting around in the datasheet.
+        // Basically, when in high-performance mode, which we're in,
+        // this value is 2.
+        uint8_t nPresc = 2;
+        
+        // Do the calculation as seen in the datasheet
+        uint32_t modemFreqDev =
+            ((double)((uint32_t)2 << 18) * outdiv * deviationFreq) /
+            (nPresc * EXTERNAL_CRYSTAL_FREQ);
+        
+        // Populate the property structure.
+        // Unfortunately this is 3 bytes, encompassing 17 bits, and since
+        // the byte layout is Big Endian, that means the first byte is really
+        // just 1 bit.
+        // Bit gymnastics required.
+        
+        // Default: 0x0006D3 = 1747, which amounts to deviationFreq = 8330
+        MODEM_FREQ_DEV_PROP prop;
+        
+        prop.BYTE0.FREQDEV = (modemFreqDev & 0x00010000) >> 16;
+        prop.BYTE1.FREQDEV = (modemFreqDev & 0x0000FF00) >>  8;
+        prop.BYTE2.FREQDEV = (modemFreqDev & 0x000000FF) >>  0;
+        
+        Serial.print(F("outdiv: ")); Serial.println(outdiv);
+        Serial.print(F("EXTERNAL_CRYSTAL_FREQ: ")); Serial.println(EXTERNAL_CRYSTAL_FREQ);
+        Serial.print(F("deviationFreq: ")); Serial.println(deviationFreq);
+        Serial.print(F("modemFreqDev: ")); Serial.println(modemFreqDev);
+        Serial.print(F("prop.BYTE0.FREQDEV: ")); Serial.println(prop.BYTE0.FREQDEV);
+        Serial.print(F("prop.BYTE1.FREQDEV: ")); Serial.println(prop.BYTE1.FREQDEV);
+        Serial.print(F("prop.BYTE2.FREQDEV: ")); Serial.println(prop.BYTE2.FREQDEV);
+        
+        SetProperty(prop);
+    }
+    
     
     /*
      *
@@ -319,13 +387,14 @@ private:
     void GetFrequencyParameters(uint32_t  freq,
                                 uint8_t  &band,
                                 uint8_t  &fcInt,
-                                uint32_t &fcFrac)
+                                uint32_t &fcFrac,
+                                uint8_t  &outdiv)
     {
         // Start with default assumption that highest-frequency chosen, fall down
         // ladder from there.
         //
         // Notably this is incorporates ranges from both the 4461/2/3 and 4464.
-        uint8_t outdiv = 4;
+        outdiv = 4;
         band           = 0;
         if (freq < 705000000UL) { outdiv =  6; band = 1; };
         if (freq < 525000000UL) { outdiv =  8; band = 2; };
@@ -457,6 +526,7 @@ private:
     uint8_t  pinChipSelect_;
     uint8_t  pinShutdown_;
     uint32_t frequency_;
+    uint32_t deviationFreq_;
 };
 
 

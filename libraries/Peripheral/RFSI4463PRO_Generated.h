@@ -1263,3 +1263,51 @@ uint8_t SetProperty(MODEM_MOD_TYPE_PROP &prop)
     return retVal;
 }
 
+////////////////////////////////////////////////////////////////////
+//
+// PROPERTY MODEM_FREQ_DEV (0x20 0x0A)
+//
+////////////////////////////////////////////////////////////////////
+
+struct MODEM_FREQ_DEV_PROP
+{
+    struct
+    {
+        uint8_t X             = 0;
+        uint8_t FREQDEV       = 0;
+    } BYTE0;
+
+    struct
+    {
+        uint8_t FREQDEV       = 0;
+    } BYTE1;
+
+    struct
+    {
+        uint8_t FREQDEV       = 0;
+    } BYTE2;
+};
+
+uint8_t SetProperty(MODEM_FREQ_DEV_PROP &prop)
+{
+    const uint8_t PROP_GROUP = 0x20;
+    const uint8_t PROP_IDX   = 0x0A;
+    const uint8_t BUF_SIZE   = 3;
+
+    uint8_t buf[BUF_SIZE];
+
+    // pack request data into buffer
+    uint8_t tmpReqByte0 = 0;
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.X       & 0b01111111) << 1);
+    tmpReqByte0 |= (uint8_t)((prop.BYTE0.FREQDEV & 0b00000001) << 0);
+    buf[0] = tmpReqByte0;
+
+    buf[1] = prop.BYTE1.FREQDEV;
+
+    buf[2] = prop.BYTE2.FREQDEV;
+
+    uint8_t retVal = SetProperty(PROP_GROUP, PROP_IDX, *buf);
+
+    return retVal;
+}
+

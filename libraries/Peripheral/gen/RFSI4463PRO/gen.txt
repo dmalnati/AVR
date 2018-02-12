@@ -558,7 +558,21 @@ PROP {
 }
 
 
-
+MODEM_FREQ_DEV
+PROP_GROUP 0x20
+PROP_IDX 0x0A
+PROP {
+    BYTE0 {
+        X[7:1]
+        FREQDEV[0:0]
+    }
+    BYTE1 {
+        FREQDEV[7:0]
+    }
+    BYTE2 {
+        FREQDEV[7:0]
+    }
+}
 
 
 
