@@ -25,6 +25,7 @@ static uint8_t bufShared[BUF_SIZE] = { 0 };
 
 static AX25UIMessage msg;
 static ModemBell202Pwm modem;
+static ModemAnalogPwm &ma = modem.GetModemAnalog();
 
 
 
@@ -105,13 +106,13 @@ void setup()
     
     // Set up interactive commands
 
-    
-    auto cmd = [](char *cmdStr) {
-        Str str(cmdStr);
-    };
-    shell.RegisterCommand("cmd", cmd);
-    
 
+    /////////////////////////////////////////////////////////
+    //
+    // RFSI4463PRO control
+    //
+    /////////////////////////////////////////////////////////
+    
     auto rfstart = [](char *) {
         rf.Start();
     };
@@ -155,18 +156,62 @@ void setup()
 
 
 
-    auto mstart = [](char *) {
+    /////////////////////////////////////////////////////////
+    //
+    // ModemBell202 control
+    //
+    /////////////////////////////////////////////////////////
+
+    auto mbstart = [](char *) {
         modem.Start();
     };
-    shell.RegisterCommand("mstart", mstart);
+    shell.RegisterCommand("mbstart", mbstart);
 
 
-    auto mstop = [](char *) {
+    auto mbstop = [](char *) {
         modem.Stop();
     };
-    shell.RegisterCommand("mstop", mstop);
+    shell.RegisterCommand("mbstop", mbstop);
+
+
+
+    /////////////////////////////////////////////////////////
+    //
+    // ModemAnalog PWM control (underlying modem, any freq)
+    //
+    /////////////////////////////////////////////////////////
+
+    auto mastart = [](char *) {
+        ma.Start();
+    };
+    shell.RegisterCommand("mastart", mastart);
+
+    auto mafreq = [](char *cmdStr) {
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t freq = atol(str.TokenAtIdx(1, ' '));
+
+            Serial.print(F("Setting freq to ")); Serial.println(freq);
+
+            ma.SetFrequency(freq);
+        }
+    };
+    shell.RegisterCommand("mafreq", mafreq);
+
+    auto mastop = [](char *) {
+        ma.Stop();
+    };
+    shell.RegisterCommand("mastop", mastop);
+
+
     
-    
+    /////////////////////////////////////////////////////////
+    //
+    // Misc
+    //
+    /////////////////////////////////////////////////////////
     
     auto modpin = [](char *cmdStr) {
         Str str(cmdStr);

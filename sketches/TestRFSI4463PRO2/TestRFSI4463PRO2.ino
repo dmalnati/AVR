@@ -87,6 +87,7 @@ void setup()
     Serial.println("Starting");
 
     rf.Init();
+    rf.Start();
 
     while (1)
     {

@@ -160,6 +160,12 @@ public:
             timer_.StopTimer();
         }
     }
+    
+    // Debug
+    static ModemAnalogType &GetModemAnalog()
+    {
+        return ma_;
+    }
 
     
 private:
