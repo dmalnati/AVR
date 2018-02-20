@@ -66,6 +66,16 @@ public:
     {
         cbFn_ = cbFn;
     }
+    
+    function<void()> GetCallback()
+    {
+        return cbFn_;
+    }
+    
+    void operator()()
+    {
+        GetCallback()();
+    }
 
 private:
     virtual void OnTimedEvent()
