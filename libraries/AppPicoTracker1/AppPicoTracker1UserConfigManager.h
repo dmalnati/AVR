@@ -9,6 +9,9 @@
 
 class AppPicoTracker1UserConfigManager
 {
+private:
+    static const uint8_t PIN_SERIAL_RX = 2;
+    
 public:
     struct UserConfig
     {
@@ -16,7 +19,7 @@ public:
         static const uint8_t DEVICE_ID_LEN     = 20;
         static const uint8_t CALLSIGN_LEN      = 6;
         static const uint8_t NOTES_MESSAGE_LEN = 10;
-        
+
     public:
         UserConfig()
         {
@@ -127,7 +130,7 @@ public:
         // Wait briefly for pin state to settle.
         PAL.Delay(20);
         
-        if (PAL.DigitalRead(2))
+        if (PAL.DigitalRead(PIN_SERIAL_RX))
         {
             Serial.println(F("Interactive configuration mode enabled."));
             
