@@ -4,6 +4,169 @@
 
 #include "Function.h"
 #include "Str.h"
+#include "StreamWindow.h"
+#include "TimedEventHandler.h"
+
+
+
+
+class SerialAsyncReadLine
+{
+    static const uint32_t DEFAULT_POLL_PERIOD_MS = 50;
+    static const uint8_t  MAX_READS_PER_POLL     = 80;
+    
+public:
+    SerialAsyncReadLine()
+    : SerialAsyncReadLine(NULL, 0)
+    {
+        // Nothing to do
+    }
+    
+    SerialAsyncReadLine(char *buf, uint8_t bufSize)
+    : pollPeriodMs_(DEFAULT_POLL_PERIOD_MS)
+    , running_(0)
+    {
+        Attach(buf, bufSize);
+    }
+    
+    uint8_t Attach(char *buf, uint8_t bufSize)
+    {
+        Stop();
+        
+        uint8_t retVal = 0;
+        
+        buf_ = NULL;
+        bufSize_ = 0;
+        
+        if (buf && bufSize)
+        {
+            retVal = 1;
+            
+            buf_     = buf;
+            bufSize_ = bufSize;
+            
+            // Trick the window into thinking our buffer is one element
+            // shorter than it is, to help us maintain a c-string.
+            // Then terminate the string with a NULL which will never be
+            // overwritten.
+            sw_.Attach(buf_, bufSize_ - 1, '\0');
+            buf_[bufSize_ - 1] = '\0';
+        }
+        
+        return retVal;
+    }
+    
+    void SetCallback(function<void(char *)> cbFn)
+    {
+        cbFn_ = cbFn;
+    }
+    
+    void SetPollPeriod(uint32_t pollPeriodMs)
+    {
+        pollPeriodMs_ = pollPeriodMs;
+        
+        if (running_)
+        {
+            Start();
+        }
+    }
+    
+    uint8_t Start()
+    {
+        uint8_t retVal = 0;
+        
+        Stop();
+        
+        if (buf_)
+        {
+            ted_.SetCallback([this](){ OnPoll(); });
+            
+            retVal = ted_.RegisterForTimedEventInterval(pollPeriodMs_);
+            
+            running_ = !!retVal;
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t Stop()
+    {
+        uint8_t retVal = 0;
+        
+        if (buf_)
+        {
+            retVal = ted_.DeRegisterForTimedEvent();
+        }
+        
+        running_ = 0;
+        
+        return retVal;
+    }
+    
+
+private:
+
+    void OnPoll()
+    {
+        uint8_t readsRemaining = MAX_READS_PER_POLL;
+        
+        uint8_t cont = 1;
+        
+        while (cont)
+        {
+            if (Serial.available())
+            {
+                char c = Serial.read();
+                
+                if (c == '\n')
+                {
+                    cbFn_(buf_);
+                    
+                    sw_.Reset();
+                }
+                else
+                {
+                    // Check if there is room to fit one more
+                    if (sw_.CanFitOneMore())
+                    {
+                        sw_.Append(c);
+                    }
+                    else
+                    {
+                        // throw away the character, we only want the start of lines
+                    }
+                }
+                
+                --readsRemaining;
+                if (!readsRemaining)
+                {
+                    cont = 0;
+                }
+            }
+            else
+            {
+                cont = 0;
+            }
+        }
+    }
+
+
+    char                   *buf_;
+    uint8_t                 bufSize_;
+    function<void(char *)>  cbFn_;
+    
+    uint32_t pollPeriodMs_;
+    
+    TimedEventHandlerDelegate ted_;
+    
+    uint8_t running_;
+    
+    StreamWindow<char> sw_;
+};
+
+
+
+
 
 
 uint8_t SerialReadLine(char *buf, uint8_t bufSize)
