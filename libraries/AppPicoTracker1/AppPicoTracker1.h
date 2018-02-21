@@ -191,6 +191,12 @@ private:
             // disable when flying
         
         // set serial active checking frequency more appropriately
+        
+        // watchdog
+        
+        // RTC
+        
+        // dump flash stored locations if found later
     }
     
     
