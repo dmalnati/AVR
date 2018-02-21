@@ -165,6 +165,112 @@ private:
 };
 
 
+template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 30>
+class SerialAsyncShell
+{
+    static const uint8_t BUF_SIZE = NUM_BYTES_SERIAL + 1;
+    
+    struct CmdToFn
+    {
+        const char                   *cmd;
+        function<void(char *cmdStr)>  fn;
+    };
+    
+public:
+    SerialAsyncShell()
+    : cmdToFnListIdx_(0)
+    {
+        // Nothing to do
+    }
+    
+    uint8_t RegisterCommand(const char                   *cmd,
+                            function<void(char *cmdStr)>  fn)
+    {
+        uint8_t retVal = 0;
+        
+        if (cmdToFnListIdx_ < NUM_COMMANDS)
+        {
+            retVal = 1;
+            
+            CmdToFn ctf{ cmd, fn };
+            
+            cmdToFnList_[cmdToFnListIdx_] = ctf;
+            
+            ++cmdToFnListIdx_;
+        }
+        
+        return retVal;
+    }
+    
+    void RegisterErrorHandler(function<void(char *cmdStr)> fnErr)
+    {
+        fnErr_ = fnErr;
+    }
+    
+    void Start()
+    {
+        sarl_.Attach(buf_, BUF_SIZE);
+        sarl_.SetCallback([this](char *str){
+            uint8_t strLen = strlen(str);
+            
+            if (strLen)
+            {
+                Str str(buf_);
+                
+                const char *cmd = str.TokenAtIdx(0, ' ');
+
+                uint8_t found = 0;
+                for (uint8_t i = 0; i < cmdToFnListIdx_ && !found; ++i)
+                {
+                    if (!strcmp(cmd, cmdToFnList_[i].cmd))
+                    {
+                        found = 1;
+                        
+                        str.Release();
+                        
+                        cmdToFnList_[i].fn(buf_);
+                    }
+                }
+                
+                if (!found)
+                {
+                    str.Release();
+                        
+                    fnErr_(buf_);
+                }
+                
+                Serial.println();
+            }            
+        });
+        sarl_.Start();
+        
+        Serial.println(F("Serial Commands:"));
+        Serial.println(F("----------------"));
+        for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
+        {
+            Serial.println(cmdToFnList_[i].cmd);
+        }
+        Serial.println();
+    };
+    
+    void Stop()
+    {
+        sarl_.Stop();
+    }
+
+private:
+    char buf_[BUF_SIZE];
+    
+    CmdToFn cmdToFnList_[NUM_COMMANDS];
+    uint8_t cmdToFnListIdx_;
+    
+    function<void(char *cmdStr)> fnErr_;
+
+    SerialAsyncReadLine sarl_;
+};
+
+
+
 
 
 
