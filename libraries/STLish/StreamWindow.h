@@ -97,6 +97,16 @@ public:
         return retVal;
     }
     
+    // meaning, fit one more without shifting the old out
+    uint8_t CanFitOneMore()
+    {
+        uint8_t retVal = 0;
+        
+        retVal = (Size() == Capacity()) ? 0 : 1;
+        
+        return retVal;
+    }
+    
 
 private:
     
@@ -108,7 +118,7 @@ private:
         {
             retVal = 1;
             
-            if (arrSize_ == elementCount_)
+            if (!CanFitOneMore())
             {
                 // out of space, shift old out
                 for (uint8_t i = 0; i < elementCount_; ++i)
