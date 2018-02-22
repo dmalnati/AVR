@@ -24,7 +24,7 @@ public:
 private:
     static const uint32_t BAUD                  = 9600;
     static const uint32_t POLL_PERIOD_MS        = 25;
-    static const uint16_t GPS_WARMUP_TIME_MS    = 100;
+    static const uint16_t GPS_WARMUP_TIME_MS    = 200;
     static const uint8_t  MAX_UBX_MESSAGE_SIZE  = 44;
     
 public:
@@ -143,6 +143,26 @@ public:
             
             SetMessageRate(ubxClass, ubxId, rate);
         }
+    }
+    
+    void SaveConfiguration()
+    {
+        ubxMessage_.Reset();
+
+        // CFG-CFG (0x06 0x09)
+        ubxMessage_.SetClass(0x06);
+        ubxMessage_.SetId(0x09);
+
+        ubxMessage_.AddFieldX4(0);           // clearMask  - clear nothing
+        ubxMessage_.AddFieldX4(0x0000FFFF);  // saveMask   - save everything
+        ubxMessage_.AddFieldX4(0);           // loadMask   - load nothing
+        ubxMessage_.AddFieldX1(1);           // deviceMask - save to batter-backed ram (internal to chip)
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMessage_.GetBuf(&buf, &bufLen);
+
+        ss_.write(buf, bufLen);
     }
     
     struct Measurement
