@@ -3,7 +3,9 @@
 
 
 #include "Evm.h"
+#include "LedBlinker.h"
 #include "AppPicoTracker1UserConfigManager.h"
+
 
 
 
@@ -16,13 +18,16 @@ struct AppPicoTracker1Config
     uint8_t pinLedTransmitting;
 };
 
-
 class AppPicoTracker1
 {
 private:
     static const uint32_t DURATION_MS_CHECK_SERIAL_INPUT_ACTIVE = 5000;
-    static const uint32_t DURATION_MS_LED_RUNNING_BLINK_NORMAL  = 1000;
-    static const uint32_t DURATION_MS_LED_RUNNING_BLINK_SERIAL  = 250;
+    
+    static const uint32_t DURATION_MS_LED_RUNNING_OFF_NORMAL = 4950;
+    static const uint32_t DURATION_MS_LED_RUNNING_ON_NORMAL  =   50;
+    
+    static const uint32_t DURATION_MS_LED_RUNNING_OFF_SERIAL = 950;
+    static const uint32_t DURATION_MS_LED_RUNNING_ON_SERIAL  =  50;
     
     static const uint8_t PIN_SERIAL_RX = 2;
     
@@ -38,6 +43,8 @@ public:
     AppPicoTracker1(AppPicoTracker1Config &cfg)
     : cfg_(cfg)
     , serialInputActive_(0)
+    , ledBlinkerRunning_(cfg_.pinLedRunning)
+    , serIface_(*this)
     {
         // Nothing to do
     }
@@ -47,7 +54,10 @@ public:
         Serial.begin(9600);
         Serial.println(F("Starting"));
         
-        // Set up status LEDs
+        // Set up GPS enable pin
+        PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
+        
+        // Set up status LED pins
         PAL.PinMode(cfg_.pinLedRunning,      OUTPUT);
         PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
@@ -110,10 +120,9 @@ private:
         if (evt == Event::START)
         {
             // set up blinking
-            tedLedRunning_.SetCallback([this](){
-                OnLedRunningTimeout();
-            });
-            tedLedRunning_.RegisterForTimedEventInterval(DURATION_MS_LED_RUNNING_BLINK_NORMAL);
+            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_NORMAL,
+                                                DURATION_MS_LED_RUNNING_ON_NORMAL);
+            ledBlinkerRunning_.Start();
             
             // Watch for serial input, check immediately
             tedSerialMonitor_.SetCallback([this](){
@@ -124,23 +133,51 @@ private:
         }
         else if (evt == Event::SERIAL_INPUT_ACTIVE)
         {
-            // blink immediately and run at different interval
-            tedLedRunning_();
-            tedLedRunning_.RegisterForTimedEventInterval(DURATION_MS_LED_RUNNING_BLINK_SERIAL);
+            Serial.println(F("Serial active"));
+            
+            // as long as serial input active, we need to be able to read from
+            // it, so disable power saving
+            evm_.LowPowerDisable();
+            
+            // run at different interval
+            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_SERIAL,
+                                                DURATION_MS_LED_RUNNING_ON_SERIAL);
+                                                
+            // since uart active, can monitor for input
+            serIface_.Start();
         }
         else if (evt == Event::SERIAL_INPUT_INACTIVE)
         {
-            // blink immediately and run at different interval
-            tedLedRunning_();
-            tedLedRunning_.RegisterForTimedEventInterval(DURATION_MS_LED_RUNNING_BLINK_NORMAL);
+            Serial.println(F("Serial inactive"));
+            PAL.Delay(50);
+            
+            // serial input no longer active, enable power saving
+            evm_.LowPowerEnable();
+            
+            // run at different interval
+            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_NORMAL,
+                                                DURATION_MS_LED_RUNNING_ON_NORMAL);
+            
+            
+            // no point in this polling anymore, no serial data will be received
+            // since the uart isn't active in low power mode
+            serIface_.Stop();
         }
     }
-
-
-    void OnLedRunningTimeout()
+    
+    void GPSEnable()
     {
-        PAL.DigitalToggle(cfg_.pinLedRunning);
+        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
     }
+    
+    void GPSDisable()
+    {
+        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+    }
+    
+    
+    
+
 
     void OnCheckForSerialInputActive()
     {
@@ -212,8 +249,18 @@ private:
     TimedEventHandlerDelegate tedSerialMonitor_;
     uint8_t                   serialInputActive_;
     
-    TimedEventHandlerDelegate tedLedRunning_;
+    LedBlinker  ledBlinkerRunning_;
+    
+    #include "AppPicoTracker1SerialInterface.h"
+    AppPicoTracker1SerialInterface serIface_;
 };
+
+
+
+
+
+
+
 
 
 #endif  // __APP_PICO_TRACKER_1_H__
