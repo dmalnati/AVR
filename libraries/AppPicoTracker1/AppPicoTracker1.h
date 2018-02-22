@@ -5,14 +5,19 @@
 #include "Evm.h"
 #include "LedBlinker.h"
 #include "AppPicoTracker1UserConfigManager.h"
+#include "SensorGPSUblox.h"
 
 
-
+#include "UtlStreamBlob.h"
 
 struct AppPicoTracker1Config
 {
+    // GPS
     uint8_t pinGpsEnable;
+    uint8_t pinGpsSerialRx; // receive GPS data from this pin
+    uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
+    // Status LEDs
     uint8_t pinLedRunning;
     uint8_t pinLedGpsLocked;
     uint8_t pinLedTransmitting;
@@ -42,9 +47,10 @@ public:
 public:
     AppPicoTracker1(AppPicoTracker1Config &cfg)
     : cfg_(cfg)
+    , serIface_(*this)
     , serialInputActive_(0)
     , ledBlinkerRunning_(cfg_.pinLedRunning)
-    , serIface_(*this)
+    , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
     {
         // Nothing to do
     }
@@ -165,15 +171,453 @@ private:
         }
     }
     
-    void GPSEnable()
+    
+    void TrackerSequence()
     {
-        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+        // async
+        // blink GPS led until locked
+        
+        
+        // enable GPS power
+        // enable high altitude mode
+        
+        
+        // async
+        // wait for GPS lock
+        
+        // keep GPS led lit
+        
+        // command GPS to save state
+        // cut off power to GPS
+        
+        
+        // build message
+        
+        
+        // tx message
+        
+        
+        // turn off GPS LED
+        
+        
     }
     
-    void GPSDisable()
+    
+    
+    void OnReportIntervalTimeout()
     {
+        // blink 
+        
+        
+        
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+struct ParsedMessage
+{
+    uint8_t  msgClass;
+    uint8_t  msgId;
+    uint8_t *buf;
+    uint8_t  len;
+    uint8_t  bufLen;
+    
+    const char *failReason;
+};
+
+
+void PrintMessage(ParsedMessage msg)
+{
+    Serial.print(F("msgClass: 0x")); Serial.println(msg.msgClass, HEX);
+    Serial.print(F("msgId   : 0x")); Serial.println(msg.msgId, HEX);
+    Serial.print(F("msglen  : ")); Serial.println(msg.len);
+    Serial.print(F("bufLen  : ")); Serial.println(msg.bufLen);
+    StreamBlob(Serial, msg.buf, msg.bufLen, 1, 1);
+}
+
+uint8_t GetMessage(ParsedMessage &msg)
+{
+    SoftwareSerial &ss = gps_.DebugGetSS();
+    static const uint8_t UBX_IN_BUF_SIZE = 100;
+    static uint8_t ubxInBuf[UBX_IN_BUF_SIZE];
+    
+    enum class State : uint8_t
+    {
+        LOOKING_FOR_HEADER = 0,
+        LOOKING_FOR_CLASS,
+        LOOKING_FOR_ID,
+        LOOKING_FOR_LEN,
+        LOOKING_FOR_CHECKSUM,
+    };
+
+    State state = State::LOOKING_FOR_HEADER;
+
+    uint8_t retVal = 0;
+
+    static const uint16_t GIVE_UP_AFTER = 5000;
+    uint16_t tryCount = 0;
+
+    uint8_t idx = 0;
+
+    uint8_t msgClass = 0;
+    uint8_t msgId    = 0;
+    uint8_t bufLen   = 0;
+
+    uint16_t len = 0;
+
+    uint8_t idxStopAt = 0;
+
+    uint8_t found = 0;
+
+    uint8_t cont = 1;
+    while (cont)
+    {
+        if (ss.available())
+        {
+            //Serial.println(F("Available"));
+            
+            uint8_t b = (uint8_t)ss.read();
+
+            if (state == State::LOOKING_FOR_HEADER)
+            {
+                //Serial.println(F("LOOKING_FOR_HEADER"));
+                
+                // store this byte
+                ubxInBuf[idx] = b;
+                ++idx;
+
+                // check if we received a byte previously
+                // need 2 to match header
+                if (idx == 1)
+                {
+                    // nope, leave that byte stored and carry on
+                }
+                else
+                {
+                    // yup, check if this is a valid header now
+                    if (ubxInBuf[0] == 0xB5 && ubxInBuf[1] == 0x62)
+                    {
+                        // yup, move to next state
+                        state = State::LOOKING_FOR_CLASS;
+                    }
+                    else
+                    {
+                        //Serial.print(F("    discarding ")); Serial.println(ubxInBuf[0], HEX);
+                        
+                        // nope, maybe the last byte that came in is the start,
+                        // shift it to the start and carry on
+                        ubxInBuf[0] = ubxInBuf[1];
+                        --idx;
+                    }
+                }
+            }
+            else if (state == State::LOOKING_FOR_CLASS)
+            {
+                //Serial.println(F("LOOKING_FOR_CLASS"));
+
+                ubxInBuf[idx] = b;
+                ++idx;
+                
+                msgClass = b;
+
+                //Serial.print(F("    class: "));  Serial.println(b, HEX);
+
+                state = State::LOOKING_FOR_ID;
+            }
+            else if (state == State::LOOKING_FOR_ID)
+            {
+                //Serial.println("LOOKING_FOR_ID");
+
+                ubxInBuf[idx] = b;
+                ++idx;
+                
+                msgId = b;
+
+                //Serial.print(F("    id: "));  Serial.println(b, HEX);
+
+                state = State::LOOKING_FOR_LEN;
+            }
+            else if (state == State::LOOKING_FOR_LEN)
+            {
+                //Serial.println(F("LOOKING_FOR_LEN"));
+                
+                ubxInBuf[idx] = b;
+                ++idx;
+
+                if (idx == 6)
+                {
+                    // we have the full size
+                    // we want to go from little endian wire format to host endian
+                    // start by making a network-byte-order 16-bit int, aka big endian
+                    uint16_t lenBigEndian;
+                    char *p = (char *)&lenBigEndian;
+                    p[0] = ubxInBuf[5];
+                    p[1] = ubxInBuf[4];
+
+                    len = PAL.ntohs(lenBigEndian);
+
+                    //Serial.print(F("    lenBigEndian: "));  Serial.println(lenBigEndian);
+                    //Serial.print(F("    len         : "));  Serial.println(len);
+
+                    // length does not include the header, class, id, length, or checksum fields.
+                    if (idx + len + 2 <= UBX_IN_BUF_SIZE)
+                    {
+                        idxStopAt = idx + len + 2;
+
+                        state = State::LOOKING_FOR_CHECKSUM;
+                    }
+                    else
+                    {
+                        // Can't fit
+                        cont = 0;
+
+                        //Serial.println(F("Message too large"));
+                    }
+                }
+                else
+                {
+                    // Nothing to do, keep collecting
+                }
+            }
+            else if (state == State::LOOKING_FOR_CHECKSUM)
+            {
+                //Serial.println(F("LOOKING_FOR_CHECKSUM"));
+                
+                ubxInBuf[idx] = b;
+                ++idx;
+
+                if (idx == idxStopAt)
+                {
+                    // Time to calculate and compare the checksum
+
+                    uint8_t idxChecksumStart = idxStopAt - 2;
+
+                    uint8_t ckA = 0;
+                    uint8_t ckB = 0;
+
+                    // did store the header (2 bytes total)
+                    // did store the class and id (2 bytes total)
+                    // did store the size (2 bytes total)
+                    // supposed to checksum from class and id forward, 
+                    
+                    for (uint8_t i = 2; i < idxChecksumStart; ++i)
+                    {
+                        uint8_t b = ubxInBuf[i];
+                        
+                        ckA += b;
+                        ckB += ckA;
+                    }
+
+                    // extract the message checksum
+                    uint8_t msgCkA = ubxInBuf[idxChecksumStart + 0];
+                    uint8_t msgCkB = ubxInBuf[idxChecksumStart + 1];
+
+                    //Serial.print("ckA, ckB: ");       Serial.print(ckA);    Serial.print(" "); Serial.print(ckB);    Serial.println();
+                    //Serial.print("msgCkA, msgCkB: "); Serial.print(msgCkA); Serial.print(" "); Serial.print(msgCkB); Serial.println();
+
+                    //StreamBlob(Serial, ubxInBuf, UBX_IN_BUF_SIZE, 1, 1);
+                    bufLen = idxStopAt;
+
+                    if (ckA == msgCkA && ckB == msgCkB)
+                    {
+                        // success
+                        found = 1;
+                    }
+                    else
+                    {
+                        //Serial.println(F("Checksum failed"));
+                        msg.failReason = "Checksum failed";
+                    }
+
+                    cont = 0;
+                }
+                else
+                {
+                    // Nothing to do, just pile on bytes until reaching the checksum
+                }
+            }
+        }
+        else
+        {
+            PAL.Delay(1);
+        }
+
+        ++tryCount;
+        if (tryCount == GIVE_UP_AFTER)
+        {
+            cont = 0;
+
+            //Serial.println(F("Too many attempts, giving up"));
+            msg.failReason = "Too many attempts";
+        }
+    }
+
+    if (found)
+    {
+        retVal = 1;
+
+        msg.msgClass = msgClass;
+        msg.msgId    = msgId;
+        msg.buf      = ubxInBuf;
+        msg.len      = len;
+        msg.bufLen   = bufLen;
+        
+        msg.failReason = "";
+    }
+
+    return retVal;
+}
+
+uint8_t GetMessageOrErr(uint8_t printMessage = 1)
+{
+    uint8_t retVal = 0;
+    
+    ParsedMessage msg;
+
+    Serial.print("Waiting for msg... ");
+    if (GetMessage(msg))
+    {
+        retVal = 1;
+        
+        Serial.println("YES");
+
+        if (printMessage)
+        {
+            PrintMessage(msg);
+        }
+    }
+    else
+    {
+        Serial.print("NO - ");
+        Serial.print(msg.failReason);
+        Serial.println();
+    }
+    Serial.println();
+
+    return retVal;
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    void StartGPS()
+    {
+        // enable power supply to GPS
+        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+        
+        // re-init to begin cycle again
+        gps_.Init();
+        
+        // assert this is a high-altitude mode
+        gps_.SetHighAltitudeMode();
+        
+        GetMessageOrErr();
+    }
+    
+    
+    void StopGPS()
+    {
+        // stop interrups from firing in underlying code
+        gps_.DisableSerialInput();
+        
+        // cause the gps module to store the metadata is has learned from
+        // the satellites it can see and used to get a lock.
+        // this will be read again automatically by the module on startup.
+        gps_.SaveConfiguration();
+        
+        // disable power supply to GPS
+        // (battery backup for module-stored data supplied through other pin)
         PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -218,6 +662,7 @@ private:
         // wtf were the bugs I had before?
             // Something about the deg min sec not accounting for 00 and
             // turning into just spaces right?
+            // internal voltage wasn't working correctly
             
         // GPS geofencing to change frequency
         
@@ -234,6 +679,12 @@ private:
         // RTC
         
         // dump flash stored locations if found later
+        
+        
+        // restore fuse setting to erase EEPROM on re-program
+            // temporarily disabled for development
+            
+        // restore user config being sensitive to RX-in
     }
     
     
@@ -244,6 +695,9 @@ private:
 
     AppPicoTracker1Config &cfg_;
     
+    #include "AppPicoTracker1SerialInterface.h"
+    AppPicoTracker1SerialInterface serIface_;
+    
     AppPicoTracker1UserConfigManager::UserConfig userConfig_;
     
     TimedEventHandlerDelegate tedSerialMonitor_;
@@ -251,8 +705,17 @@ private:
     
     LedBlinker  ledBlinkerRunning_;
     
-    #include "AppPicoTracker1SerialInterface.h"
-    AppPicoTracker1SerialInterface serIface_;
+    
+    
+    
+    
+    SensorGPSUblox               gps_;
+    SensorGPSUblox::Measurement  gpsMeasurement_;
+    
+    
+    
+    
+    
 };
 
 

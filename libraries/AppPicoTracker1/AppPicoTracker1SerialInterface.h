@@ -20,15 +20,25 @@ public:
             
             if (str.TokenCount(' ') == 2)
             {
-                if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("enable")))
+                if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("start")))
                 {
-                    Serial.println(F("GPS Enable!!"));
-                    tracker_.GPSEnable();
+                    Serial.println(F("GPS Start!!"));
+                    tracker_.StartGPS();
                 }
-                else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("disable")))
+                else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("stop")))
                 {
-                    Serial.println(F("GPS Disable!!"));
-                    tracker_.GPSDisable();
+                    Serial.println(F("GPS Stop!!"));
+                    tracker_.StopGPS();
+                }
+                else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("status")))
+                {
+                    SensorGPSUblox::Measurement measurement;
+                    
+                    uint8_t retValGps = tracker_.gps_.GetMeasurement(&measurement);
+                    
+                    Serial.print(F("GPS Status: "));
+                    Serial.print(retValGps);
+                    Serial.println();
                 }
             }
         });

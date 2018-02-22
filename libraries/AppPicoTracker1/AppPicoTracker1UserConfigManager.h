@@ -130,7 +130,9 @@ public:
         // Wait briefly for pin state to settle.
         PAL.Delay(20);
         
-        if (PAL.DigitalRead(PIN_SERIAL_RX))
+        // Debug
+        //if (PAL.DigitalRead(PIN_SERIAL_RX))
+        if (0)
         {
             Serial.println(F("Interactive configuration mode enabled."));
             
