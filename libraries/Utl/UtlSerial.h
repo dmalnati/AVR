@@ -166,7 +166,7 @@ private:
 
 
 template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 30>
-class SerialAsyncShell
+class SerialAsyncConsole
 {
     static const uint8_t BUF_SIZE = NUM_BYTES_SERIAL + 1;
     
@@ -177,7 +177,7 @@ class SerialAsyncShell
     };
     
 public:
-    SerialAsyncShell()
+    SerialAsyncConsole()
     : cmdToFnListIdx_(0)
     {
         // Nothing to do
@@ -271,6 +271,72 @@ private:
 
 
 
+template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 30>
+class SerialAsyncConsoleEnhanced
+: public SerialAsyncConsole<NUM_COMMANDS + 2, NUM_BYTES_SERIAL>
+{
+public:
+
+    SerialAsyncConsoleEnhanced(uint8_t enableDefaultErrorHandler = 1)
+    {
+        Init(enableDefaultErrorHandler);
+    }
+
+    
+private:
+
+    void Init(uint8_t enableDefaultErrorHandler)
+    {
+        // two sub-commands:
+        // - pin set <pin> <val>
+        // - pin get <pin>
+        this->RegisterCommand("pin", [](char *cmdStr) {
+            Str str(cmdStr);
+            
+            if (str.TokenCount(' ') == 4 &&
+                !strcmp_P(str.TokenAtIdx(1, ' '), PSTR("set")))
+            {
+                uint8_t pin = atoi(str.TokenAtIdx(2, ' '));
+                uint8_t val = atoi(str.TokenAtIdx(3, ' '));
+
+                PAL.PinMode(pin, OUTPUT);
+                
+                Serial.print(F("Pin "));
+                Serial.print(pin);
+                Serial.print(F(" -> "));
+                Serial.print(val);
+                Serial.println();
+
+                PAL.DigitalWrite(pin, val);
+            }
+            else if (str.TokenCount(' ') == 3 &&
+                !strcmp_P(str.TokenAtIdx(1, ' '), PSTR("get")))
+            {
+                uint8_t pin = atoi(str.TokenAtIdx(2, ' '));
+                
+                PAL.PinMode(pin, INPUT);
+                
+                uint8_t val = PAL.DigitalRead(pin);
+                
+                Serial.print(F("Pin "));
+                Serial.print(pin);
+                Serial.print(F(" <- "));
+                Serial.print(val);
+                Serial.println();
+            }
+        });
+        
+        if (enableDefaultErrorHandler)
+        {
+            this->RegisterErrorHandler([](char *cmdStr) {
+                Serial.print(F("ERR: Unrecognized \""));
+                Serial.print(cmdStr);
+                Serial.print(F("\""));
+                Serial.println();
+            });
+        }
+    }
+};
 
 
 
