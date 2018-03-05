@@ -18,7 +18,7 @@ public:
         sas_.RegisterCommand("gps", [this](char *cmdStr){
             Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (str.TokenCount(' ') >= 2)
             {
                 if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("start")))
                 {
@@ -27,8 +27,18 @@ public:
                 }
                 else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("stop")))
                 {
-                    Serial.println(F("GPS Stop!!"));
-                    tracker_.StopGPS();
+                    uint8_t saveConfiguration = 1;
+                    
+                    if (str.TokenCount(' ') == 3)
+                    {
+                        saveConfiguration = atoi(str.TokenAtIdx(2, ' '));
+                    }
+                    
+                    Serial.print(F("GPS Stop - "));
+                    Serial.print(saveConfiguration);
+                    Serial.println();
+                    
+                    tracker_.StopGPS(saveConfiguration);
                 }
                 else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("status")))
                 {
@@ -40,6 +50,21 @@ public:
                     Serial.print(retValGps);
                     Serial.println();
                 }
+            }
+        });
+        
+        sas_.RegisterCommand("ri", [this](char *cmdStr){
+            Str str(cmdStr);
+            
+            if (str.TokenCount(' ') == 2)
+            {
+                uint32_t reportIntervalMs = atol(str.TokenAtIdx(1, ' '));
+                
+                Serial.print(F("ReportInterval "));
+                Serial.print(reportIntervalMs);
+                Serial.println();
+                
+                tracker_.SetReportInterval(reportIntervalMs);
             }
         });
     }
