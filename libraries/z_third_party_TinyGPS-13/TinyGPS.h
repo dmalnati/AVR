@@ -56,6 +56,13 @@ public:
   TinyGPS();
   bool encode(char c); // process one character received from GPS
   TinyGPS &operator << (char c) {encode(c); return *this;}
+  
+  // Added 2018-03-04
+  void ResetFix()
+  {
+    _last_time_fix     = GPS_INVALID_FIX_TIME;
+    _last_position_fix = GPS_INVALID_FIX_TIME;
+  }
 
   // lat/long in MILLIONTHs of a degree and age of fix in milliseconds
   // (note: versions 12 and earlier gave lat/long in 100,000ths of a degree.
