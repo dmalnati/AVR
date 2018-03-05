@@ -67,6 +67,11 @@ public:
         timer_.RegisterForTimedEventInterval(POLL_PERIOD_MS);
     }
     
+    void ResetFix()
+    {
+        tgps_.ResetFix();
+    }
+    
     void SetHighAltitudeMode()
     {
         ubxMessage_.Reset();
@@ -231,6 +236,9 @@ public:
         m->altitudeFt = tgps_.altitude() * CM_TO_FT; // convert from cm to ft
         
         // Check for valid data
+        // Notably, I confirmed that a successful 3D (not 2D) GPS lock is what
+        // it takes to get a "fix" from the GPS.
+        // This is what I want.
         if (m->msSinceLastFix != TinyGPS::GPS_INVALID_AGE)
         {
             retVal = 1;
