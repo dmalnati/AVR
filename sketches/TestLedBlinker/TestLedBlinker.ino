@@ -4,7 +4,7 @@
 
 
 static Evm::Instance<10,10,10> evm;
-static SerialAsyncShell<20> shell;
+static SerialAsyncConsole<20> shell;
 
 
 static const uint8_t PIN_ONE   = 13;
