@@ -38,14 +38,11 @@ private:
     static const uint32_t DURATION_MS_LED_GPS_ON  =  50;
     
     static const uint8_t PIN_SERIAL_RX = 2;
-    
+        
 private:
-    static const uint8_t C_IDLE  = 10;
-    static const uint8_t C_TIMED = 10;
-    static const uint8_t C_INTER = 10;
-    
-public:
-
+    static const uint8_t C_IDLE  =  0;
+    static const uint8_t C_TIMED = 20;
+    static const uint8_t C_INTER =  0;
     
 public:
     AppPicoTracker1(AppPicoTracker1Config &cfg)
@@ -141,10 +138,7 @@ private:
             tedSerialMonitor_.RegisterForTimedEventInterval(DURATION_MS_CHECK_SERIAL_INPUT_ACTIVE);
             tedSerialMonitor_();
             
-            static const uint32_t DEBUG_REPORT_INTERVAL_TIMEOUT_MS = 5000;
-            SetReportInterval(DEBUG_REPORT_INTERVAL_TIMEOUT_MS);
-            
-            StartGPS();
+            StartReportInterval();
         }
         else if (evt == Event::SERIAL_INPUT_ACTIVE)
         {
@@ -180,13 +174,18 @@ private:
         }
     }
     
-    void SetReportInterval(uint32_t reportIntervalMs)
+    void StartReportInterval()
     {
         tedReportIntervalTimeout_.SetCallback([this](){
             OnReportIntervalTimeout();
         });
 
-        tedReportIntervalTimeout_.RegisterForTimedEventInterval(reportIntervalMs);
+        tedReportIntervalTimeout_.RegisterForTimedEventInterval(reportIntervalMs_);
+    }
+    
+    void SetReportInterval(uint32_t reportIntervalMs)
+    {
+        reportIntervalMs_ = reportIntervalMs;
     }
     
     void TrackerSequence()
@@ -225,22 +224,64 @@ private:
     {
         Serial.println(F("ReportIntervalTimeout"));
         
+        // Start GPS
+        StartGPS();
+        
+        // Keep track of when GPS started so you can track duration waiting
+        counters_.gpsFixWaitStart = PAL.Millis();
+        
+        // Start async waiting for GPS to lock
+        Serial.println(F("Attempting GPS Lock"));
+        tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
+        tedWaitForGpsLock_.RegisterForTimedEventInterval(0);
+        
+        // Turn off further interval timers until this async one completes
+        tedReportIntervalTimeout_.DeRegisterForTimedEvent();
+    }
+    
+    void OnGpsLock()
+    {
+        // Keep track of GPS stats
+        counters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - counters_.gpsFixWaitStart);
+        counters_.GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL += counters_.GPS_WAIT_FOR_FIX_DURATION_MS;
+        
+        // Get measurement
+        CacheGpsMeasurement();
+        Serial.print(F("Wait: "));
+        Serial.print(counters_.GPS_WAIT_FOR_FIX_DURATION_MS);
+        Serial.println();
+        Serial.print(F("TWait: "));
+        Serial.print(counters_.GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL);
+        Serial.println();
+        Serial.print(F("Alt: "));
+        Serial.print(gpsMeasurement_.altitudeFt);
+        Serial.println();
+        
+        // Turn off GPS
+        Serial.println(F("Disabling GPS"));
+        StopGPS();
+        
+        // Cancel task to check for GPS lock
+        tedWaitForGpsLock_.DeRegisterForTimedEvent();
+        
+        // Send message
+        
+        
+        // Re-start interval timer
+        StartReportInterval();
+        
+        
+        Serial.println();
+    }
+    
+    void OnCheckForGpsLock()
+    {
         // debug -- testing LED status on lock
         if (gps_.GetMeasurement(&gpsMeasurement_))
         {
-            Serial.println(F("    GPS LOCKED"));
-            
-            // force LED on all the time
-            ledBlinkerGps_.SetDurationOffOn(0, 1000);
+            OnGpsLock();
         }
-        else
-        {
-            Serial.println(F("    GPS NOT LOCKED"));
-        }
-        
     }
-    
-    
     
     
     
@@ -297,7 +338,10 @@ private:
     
     
     
-    
+    void CacheGpsMeasurement()
+    {
+        gps_.GetMeasurement(&gpsMeasurement_);
+    }
     
     
     
@@ -376,6 +420,8 @@ private:
             // disable when flying
         
         // set serial active checking frequency more appropriately
+            // confirm working and won't eat power by waking up inappropriately
+            // during actual flight
         
         // watchdog
         
@@ -391,6 +437,14 @@ private:
         // restore user config check (has || 1)
         
         // user-configure whether LEDs blink or not for status
+        
+        
+        // things to include in message:
+        // - voltage
+        // - time to get latest fix
+        // - number unsent messages since last tx
+            // - maybe better to keep absolute counters
+        
     }
     
     
@@ -407,6 +461,7 @@ private:
     AppPicoTracker1UserConfigManager::UserConfig userConfig_;
     
     
+    uint32_t                  reportIntervalMs_ = 5000;
     TimedEventHandlerDelegate tedReportIntervalTimeout_;
     
     
@@ -417,14 +472,21 @@ private:
     LedBlinker  ledBlinkerGps_;
     
     
-    
+    TimedEventHandlerDelegate tedWaitForGpsLock_;
     
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsMeasurement_;
     
-    
-    
+    struct CountersState
+    {
+        uint32_t gpsFixWaitStart = 0;
+        
+        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS = 0;
+        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL = 0;
+    };
+
+    CountersState counters_;
     
     
 };
