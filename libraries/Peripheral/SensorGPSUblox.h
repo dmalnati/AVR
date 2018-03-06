@@ -233,7 +233,15 @@ public:
                                                      m->longitudeMinutes,
                                                      m->longitudeSeconds);
 
-        m->altitudeFt = tgps_.altitude() * CM_TO_FT; // convert from cm to ft
+        int32_t altitude = tgps_.altitude();
+        if (altitude < 0)
+        {
+            m->altitudeFt = 0;
+        }
+        else
+        {
+            m->altitudeFt = tgps_.altitude() * CM_TO_FT; // convert from cm to ft
+        }
         
         // Check for valid data
         // Notably, I confirmed that a successful 3D (not 2D) GPS lock is what
