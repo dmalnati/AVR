@@ -4,8 +4,11 @@
 
 #include "Evm.h"
 #include "LedBlinker.h"
-#include "AppPicoTracker1UserConfigManager.h"
+//#include "AppPicoTracker1UserConfigManager.h"
 #include "SensorGPSUblox.h"
+#include "RFSI4463PRO.h"
+#include "AX25UIMessageTransmitter.h"
+#include "APRSPositionReportMessagePicoTracker1.h"
 
 
 #include "UtlStreamBlob.h"
@@ -21,6 +24,10 @@ struct AppPicoTracker1Config
     uint8_t pinLedRunning;
     uint8_t pinLedGpsLocked;
     uint8_t pinLedTransmitting;
+    
+    // Radio
+    uint8_t pinRadioSlaveSelect;
+    uint8_t pinRadioShutdown;
 };
 
 class AppPicoTracker1
@@ -52,6 +59,7 @@ public:
     , ledBlinkerRunning_(cfg_.pinLedRunning)
     , ledBlinkerGps_(cfg_.pinLedGpsLocked)
     , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
+    , radio_(cfg_.pinRadioSlaveSelect, cfg_.pinRadioShutdown)
     {
         // Nothing to do
     }
@@ -69,11 +77,12 @@ public:
         PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
         
-        if (AppPicoTracker1UserConfigManager::GetUserConfig(userConfig_) || 1)
+        //if (AppPicoTracker1UserConfigManager::GetUserConfig(userConfig_) || 1)
+        if (1)
         {
             Serial.println();
             Serial.println(F("Proceeding with:"));
-            userConfig_.Print();
+            //userConfig_.Print();
             Serial.println();
             
             
@@ -126,7 +135,7 @@ private:
     {
         if (evt == Event::START)
         {
-            // set up blinking
+            // Set up blinking
             ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_NORMAL,
                                                 DURATION_MS_LED_RUNNING_ON_NORMAL);
             ledBlinkerRunning_.Start();
@@ -138,6 +147,15 @@ private:
             tedSerialMonitor_.RegisterForTimedEventInterval(DURATION_MS_CHECK_SERIAL_INPUT_ACTIVE);
             tedSerialMonitor_();
             
+            // Set up radio
+            
+            
+            // Set up APRS Message Sender
+            radio_.Init();
+            radio_.SetFrequency(144390000);
+            amt_.Init([this](){ radio_.Start(); }, [this](){ radio_.Stop(); });
+            
+            // Begin tracker reporting
             StartReportInterval();
         }
         else if (evt == Event::SERIAL_INPUT_ACTIVE)
@@ -187,38 +205,7 @@ private:
     {
         reportIntervalMs_ = reportIntervalMs;
     }
-    
-    void TrackerSequence()
-    {
-        // async
-        // blink GPS led until locked
-        
-        
-        // enable GPS power
-        // enable high altitude mode
-        
-        
-        // async
-        // wait for GPS lock
-        
-        // keep GPS led lit
-        
-        // command GPS to save state
-        // cut off power to GPS
-        
-        
-        // build message
-        
-        
-        // tx message
-        
-        
-        // turn off GPS LED
-        
-        
-    }
-    
-    
+
     
     void OnReportIntervalTimeout()
     {
@@ -237,6 +224,14 @@ private:
         
         // Turn off further interval timers until this async one completes
         tedReportIntervalTimeout_.DeRegisterForTimedEvent();
+    }
+    
+    void OnCheckForGpsLock()
+    {
+        if (gps_.GetMeasurement(&gpsMeasurement_))
+        {
+            OnGpsLock();
+        }
     }
     
     void OnGpsLock()
@@ -265,23 +260,74 @@ private:
         tedWaitForGpsLock_.DeRegisterForTimedEvent();
         
         // Send message
-        
+        SendMessage();
         
         // Re-start interval timer
         StartReportInterval();
-        
-        
-        Serial.println();
     }
     
-    void OnCheckForGpsLock()
+    void SendMessage()
     {
-        // debug -- testing LED status on lock
-        if (gps_.GetMeasurement(&gpsMeasurement_))
+        AX25UIMessage &msg = *amt_.GetAX25UIMessage();
+
+        msg.SetDstAddress("APZ001", 0);
+        msg.SetSrcAddress("KD2KDD", 9);
+        msg.AddRepeaterAddress("WIDE1", 1);
+
+        // Add APRS data
+        uint8_t *bufInfo    = NULL;
+        uint8_t  bufInfoLen = 0;
+        
+        APRSPositionReportMessagePicoTracker1 aprm;
+
+        if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
         {
-            OnGpsLock();
+            aprm.SetTargetBuf(bufInfo, bufInfoLen);
+        
+            aprm.SetTimeLocal(19, 14, 7);
+            aprm.SetLatitude(40, 44, 13.87);
+            aprm.SetSymbolTableID('/');
+            aprm.SetLongitude(-74, 2, 2.32);
+            aprm.SetSymbolCode('O');
+            
+            // extended
+            aprm.SetCommentCourseAndSpeed(273, 777);
+            aprm.SetCommentAltitude(444);
+
+            // my extensions
+            aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
+            aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
+            aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
+            aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
+            aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
+            aprm.SetCommentVoltageBinaryEncoded(4.723);
+
+            static uint16_t seqNo = 0;
+            aprm.SetCommentSeqNoBinaryEncoded(++seqNo);
+
+            msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
         }
+
+
+        // Configure and Transmit
+        amt_.SetFlagStartDurationMs(300);
+        amt_.SetFlagEndDurationMs(10);
+        amt_.SetTransmitCount(1);
+        amt_.SetDelayMsBetweenTransmits(2000);
+
+        static uint32_t timeLast = 0;
+        Serial.print("Transmitting - ");
+        uint32_t timeNow = PAL.Millis();
+        uint32_t timeDiff = timeNow - timeLast;
+        timeLast = timeNow;
+        Serial.print(timeDiff);
+        Serial.println(" ms since last");
+        
+        amt_.Transmit();
     }
+    
+    
+    
     
     
     
@@ -442,8 +488,11 @@ private:
         // things to include in message:
         // - voltage
         // - time to get latest fix
-        // - number unsent messages since last tx
-            // - maybe better to keep absolute counters
+        // stats
+            // - number unsent messages since last tx
+                // - maybe better to keep absolute counters
+            // - number of restarts
+            // - uptime
         
     }
     
@@ -458,7 +507,7 @@ private:
     #include "AppPicoTracker1SerialInterface.h"
     AppPicoTracker1SerialInterface serIface_;
     
-    AppPicoTracker1UserConfigManager::UserConfig userConfig_;
+    //AppPicoTracker1UserConfigManager::UserConfig userConfig_;
     
     
     uint32_t                  reportIntervalMs_ = 5000;
@@ -477,6 +526,11 @@ private:
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsMeasurement_;
+    
+    
+    RFSI4463PRO                 radio_;
+    AX25UIMessageTransmitter<>  amt_;
+    
     
     struct CountersState
     {

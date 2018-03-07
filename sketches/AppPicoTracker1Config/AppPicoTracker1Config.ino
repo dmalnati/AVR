@@ -12,6 +12,10 @@ static AppPicoTracker1Config cfg =
     .pinLedRunning      = 13,
     .pinLedGpsLocked    = 12,
     .pinLedTransmitting = 11,
+
+    // Radio
+    .pinRadioSlaveSelect = 25,
+    .pinRadioShutdown    = 14,
 };
 
 static AppPicoTracker1 app(cfg);

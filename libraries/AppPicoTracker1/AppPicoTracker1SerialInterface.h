@@ -5,10 +5,10 @@
 #include "UtlSerial.h"
 
 
+// 2,948 bytes progmem
 class AppPicoTracker1SerialInterface
 {
-    static const uint8_t NUM_COMMANDS = 5;
-    
+    static const uint8_t NUM_COMMANDS = 2;
     
 public:
     
@@ -86,11 +86,6 @@ private:
 
     SerialAsyncConsoleEnhanced<NUM_COMMANDS> sas_;
 };
-
-#include "AppPicoTracker1.h"
-
-#include "AppPicoTracker1SerialInterface.h"
-
 
 
 #endif  // __APP_PICO_TRACKER_1_SERIAL_INTERFACE_H__
