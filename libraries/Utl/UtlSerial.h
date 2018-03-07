@@ -244,8 +244,7 @@ public:
         });
         sarl_.Start();
         
-        Serial.println(F("Serial Commands:"));
-        Serial.println(F("----------------"));
+        Serial.println(F("Commands:"));
         for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
         {
             Serial.println(cmdToFnList_[i].cmd);
@@ -329,7 +328,7 @@ private:
         if (enableDefaultErrorHandler)
         {
             this->RegisterErrorHandler([](char *cmdStr) {
-                Serial.print(F("ERR: Unrecognized \""));
+                Serial.print(F("ERR: \""));
                 Serial.print(cmdStr);
                 Serial.print(F("\""));
                 Serial.println();
@@ -422,8 +421,7 @@ public:
     
     void Run()
     {
-        Serial.println(F("Serial Commands:"));
-        Serial.println(F("----------------"));
+        Serial.println(F("Commands:"));
         for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
         {
             Serial.println(cmdToFnList_[i].cmd);
