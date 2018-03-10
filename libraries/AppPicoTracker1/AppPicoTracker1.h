@@ -55,10 +55,6 @@ private:
 public:
     AppPicoTracker1(AppPicoTracker1Config &cfg)
     : cfg_(cfg)
-    , serIface_(*this)
-    , serialInputActive_(0)
-    , ledBlinkerRunning_(cfg_.pinLedRunning)
-    , ledBlinkerGps_(cfg_.pinLedGpsLocked)
     , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
     , radio_(cfg_.pinRadioSlaveSelect, cfg_.pinRadioShutdown)
     {
@@ -159,18 +155,6 @@ private:
     {
         if (evt == Event::START)
         {
-            // Set up blinking
-            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_NORMAL,
-                                                DURATION_MS_LED_RUNNING_ON_NORMAL);
-            ledBlinkerRunning_.Start();
-            
-            // Watch for serial input, check immediately
-            tedSerialMonitor_.SetCallback([this](){
-                OnCheckForSerialInputActive();
-            });
-            tedSerialMonitor_.RegisterForTimedEventInterval(DURATION_MS_CHECK_SERIAL_INPUT_ACTIVE);
-            tedSerialMonitor_();
-            
             // Set up radio
             
             
@@ -181,38 +165,6 @@ private:
             
             // Begin tracker reporting
             StartReportInterval();
-        }
-        else if (evt == Event::SERIAL_INPUT_ACTIVE)
-        {
-            Serial.println(F("Serial active"));
-            
-            // as long as serial input active, we need to be able to read from
-            // it, so disable power saving
-            evm_.LowPowerDisable();
-            
-            // run at different interval
-            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_SERIAL,
-                                                DURATION_MS_LED_RUNNING_ON_SERIAL);
-                                                
-            // since uart active, can monitor for input
-            serIface_.Start();
-        }
-        else if (evt == Event::SERIAL_INPUT_INACTIVE)
-        {
-            Serial.println(F("Serial inactive"));
-            PAL.Delay(50);
-            
-            // serial input no longer active, enable power saving
-            evm_.LowPowerEnable();
-            
-            // run at different interval
-            ledBlinkerRunning_.SetDurationOffOn(DURATION_MS_LED_RUNNING_OFF_NORMAL,
-                                                DURATION_MS_LED_RUNNING_ON_NORMAL);
-            
-            
-            // no point in this polling anymore, no serial data will be received
-            // since the uart isn't active in low power mode
-            serIface_.Stop();
         }
     }
     
@@ -236,14 +188,14 @@ private:
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
-        Serial.println(F("ReportIntervalTimeout"));
+        Serial.println(F("RIT"));
         
         // No need for low-power mode while we're attempting to do the primary
         // tracker behavior of lock and send.
         // Besides, we're going to async-spin waiting for a GPS lock, and in the
         // meantime we can use a watchdog
         //
-        // TODO reconsile with serial-in logic
+        // TODO reconcile with serial-in logic
         //
         evm_.LowPowerDisable();
         
@@ -257,7 +209,7 @@ private:
         tedReportIntervalTimeout_.DeRegisterForTimedEvent();
 
         // Start async waiting for GPS to lock
-        Serial.println(F("Attempting GPS Lock"));
+        Serial.println(F("Locking"));
         tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
         tedWaitForGpsLock_.RegisterForTimedEventInterval(0);
         
@@ -350,29 +302,50 @@ private:
         uint8_t *bufInfo    = NULL;
         uint8_t  bufInfoLen = 0;
         
-        APRSPositionReportMessagePicoTracker1 aprm;
-
+        // Get buffer from AX25UIMessage to fill in APRS content
         if (msg.GetUnsafePtrInfo(&bufInfo, &bufInfoLen))
         {
+            // Give buffer to helper interface
+            APRSPositionReportMessagePicoTracker1 aprm;
             aprm.SetTargetBuf(bufInfo, bufInfoLen);
-        
-            aprm.SetTimeLocal(19, 14, 7);
-            aprm.SetLatitude(40, 44, 13.87);
+            
+            
+            // Fill out standard APRS fields
+            aprm.SetTimeLocal(gpsMeasurement_.hour,
+                              gpsMeasurement_.minute,
+                              gpsMeasurement_.second);
+            aprm.SetLatitude(gpsMeasurement_.latitudeDegrees,
+                             gpsMeasurement_.latitudeMinutes,
+                             gpsMeasurement_.latitudeSeconds);
             aprm.SetSymbolTableID('/');
-            aprm.SetLongitude(-74, 2, 2.32);
+            aprm.SetLongitude(gpsMeasurement_.longitudeDegrees,
+                              gpsMeasurement_.longitudeMinutes,
+                              gpsMeasurement_.longitudeSeconds);
             aprm.SetSymbolCode('O');
             
-            // extended
-            aprm.SetCommentCourseAndSpeed(273, 777);
-            aprm.SetCommentAltitude(444);
+            
+            // Fill out extended standard APRS fields
+            aprm.SetCommentCourseAndSpeed(gpsMeasurement_.courseDegrees,
+                                          gpsMeasurement_.speedKnots);
+            aprm.SetCommentAltitude(gpsMeasurement_.altitudeFt);
 
-            // my extensions
-            
-            
+            // Fill out my custom extensions
             ++transientCounters_.SEQ_NO;
+            
+            const char MESSAGE_TYPE_NORMAL = ' ';
+            aprm.SetCommentMessageType(MESSAGE_TYPE_NORMAL);
             aprm.SetCommentSeqNoBinaryEncoded(transientCounters_.SEQ_NO);
-
+            aprm.SetCommentGpsLockWaitSecsBinaryEncoded(transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS / 1000);
+            aprm.SetCommentNumRestartsBinaryEncoded(persistentCounters_.NUM_RESTARTS);
+            aprm.SetCommentNumWdtRestartsBinaryEncoded(persistentCounters_.NUM_WDT_RESTARTS);
+            aprm.SetCommentNumMsgsNotSentBinaryEncoded(persistentCounters_.NUM_MSGS_NOT_SENT);
+            
+            // Update message structure to know how many bytes we used
             msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
+            
+            
+            // Debug
+            Serial.print("U "); Serial.print(aprm.GetBytesUsed()); Serial.println();
         }
 
 
@@ -397,6 +370,14 @@ private:
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
     void StartGPS()
     {
         // enable power supply to GPS
@@ -407,11 +388,6 @@ private:
         
         // assert this is a high-altitude mode
         gps_.SetHighAltitudeMode();
-        
-        // get blinker indicating a lock is being attempted
-        ledBlinkerGps_.SetDurationOffOn(DURATION_MS_LED_GPS_OFF,
-                                        DURATION_MS_LED_GPS_ON);
-        ledBlinkerGps_.Start();
     }
     
     
@@ -435,9 +411,6 @@ private:
         // disable power supply to GPS
         // (battery backup for module-stored data supplied through other pin)
         PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
-        
-        // clear GPS lock status indicator
-        ledBlinkerGps_.Stop();
     }
     
     
@@ -456,30 +429,6 @@ private:
     
     
     
-
-
-    void OnCheckForSerialInputActive()
-    {
-        // found 2 empirically, added 1 for margin
-        const uint32_t delayMsToWaitForPinToSettle = 2 + 1;
-        
-        PAL.Delay(delayMsToWaitForPinToSettle);
-        
-        uint8_t serialInputActive = PAL.DigitalRead(PIN_SERIAL_RX);
-        
-        if (serialInputActive == 1 && serialInputActive_ == 0)
-        {
-            // active now but wasn't before
-            OnEvent(Event::SERIAL_INPUT_ACTIVE);
-        }
-        else if (serialInputActive == 0 && serialInputActive_ == 1)
-        {
-            // not active but was before
-            OnEvent(Event::SERIAL_INPUT_INACTIVE);
-        }
-        
-        serialInputActive_ = serialInputActive;
-    }
 
 
     
@@ -550,21 +499,9 @@ private:
 
     AppPicoTracker1Config &cfg_;
     
-    #include "AppPicoTracker1SerialInterface.h"
-    AppPicoTracker1SerialInterface serIface_;
-    
-    //AppPicoTracker1UserConfigManager::UserConfig userConfig_;
-    
-    
-    uint32_t                  reportIntervalMs_ = 5000;
+
+    uint32_t                  reportIntervalMs_ = 1000;
     TimedEventHandlerDelegate tedReportIntervalTimeout_;
-    
-    
-    TimedEventHandlerDelegate tedSerialMonitor_;
-    uint8_t                   serialInputActive_;
-    
-    LedBlinker  ledBlinkerRunning_;
-    LedBlinker  ledBlinkerGps_;
     
     
     TimedEventHandlerDelegate tedWaitForGpsLock_;
@@ -581,8 +518,9 @@ private:
     
     struct PersistentCounters
     {
-        uint16_t NUM_RESTARTS     = 0;
-        uint16_t NUM_WDT_RESTARTS = 0;
+        uint16_t NUM_RESTARTS      = 0;
+        uint16_t NUM_WDT_RESTARTS  = 0;
+        uint16_t NUM_MSGS_NOT_SENT = 0;
     };
     
     PersistentCounters                 persistentCounters_;

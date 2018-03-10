@@ -124,6 +124,10 @@ public:
             }
         }
         
+        Serial.write(buf_, bytesUsed);
+        Serial.println();
+        PAL.Delay(500);
+        
         Serial.println(F("6")); PAL.Delay(20);
         msg_.Reset();
         Serial.println(F("7")); PAL.Delay(20);
@@ -140,11 +144,8 @@ private:
         // Keep reusable indicator for whether modem should bit-stuff
         uint8_t bitStuff = 0;
         
-        
         // Start up modem
-        Serial.println(F("4.1")); PAL.Delay(20);
         modem_.Start();
-        Serial.println(F("4.2")); PAL.Delay(20);
 
         // Send Flag delimiters to start
         for (uint32_t i = 0; i < flagPackStartCount_; ++i)
@@ -153,15 +154,11 @@ private:
             modem_.Send(flagList, flagListLen, bitStuff);
         }
         
-        Serial.println(F("4.3")); PAL.Delay(20);
-
         // Send actual AX25UI data, plus the checksum which lives within that
         // buffer (despite the checksum being part of HDLC technically)
         bitStuff = 1;
         modem_.Send(buf, bufLen, bitStuff);
         
-        Serial.println(F("4.4")); PAL.Delay(20);
-
         // Send Flag delimiters to end
         for (uint32_t i = 0; i < flagPackEndCount_; ++i)
         {
@@ -169,12 +166,8 @@ private:
             modem_.Send(flagList, flagListLen, bitStuff);
         }
         
-        Serial.println(F("4.5")); PAL.Delay(20);
-
         // Shut down modem
         modem_.Stop();
-        
-        Serial.println(F("4.6")); PAL.Delay(20);
     }
 
 
