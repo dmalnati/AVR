@@ -332,7 +332,7 @@ MainLoopLowPower()
             {
                 uint32_t timeRemaining = teh->timeout_ - timePassedSinceQueuing;
                 
-                PAL.DelaySleep(timeRemaining);
+                PAL.DelayLowPower(timeRemaining);
             }
         }
         

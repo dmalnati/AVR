@@ -501,7 +501,7 @@ public:
     
     
     
-    static void DelaySleep(uint32_t delaySleepDurationMs)
+    static void DelayLowPower(uint32_t delaySleepDurationMs)
     {
         if (delaySleepDurationMs)
         {
