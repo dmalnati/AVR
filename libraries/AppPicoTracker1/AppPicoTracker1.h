@@ -2,6 +2,7 @@
 #define __APP_PICO_TRACKER_1_H__
 
 
+#include "Eeprom.h"
 #include "Evm.h"
 #include "LedBlinker.h"
 //#include "AppPicoTracker1UserConfigManager.h"
@@ -66,12 +67,31 @@ public:
     
     void Run()
     {
+        // Init serial
         Serial.begin(9600);
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
             Serial.println(F("WDTR"));
         }
         Serial.println(F("Starting"));
+        
+        
+        // Maintain counters
+        persistentCountersAccessor_.Read(persistentCounters_);
+        
+        ++persistentCounters_.NUM_RESTARTS;
+        if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
+        {
+            ++persistentCounters_.NUM_WDT_RESTARTS;
+        }
+        
+        persistentCountersAccessor_.Write(persistentCounters_);
+        
+        Serial.print(persistentCounters_.NUM_RESTARTS);
+        Serial.print(" ");
+        Serial.print(persistentCounters_.NUM_WDT_RESTARTS);
+        Serial.println();
+
         
         // Set up GPS enable pin
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
@@ -231,7 +251,7 @@ private:
         StartGPS();
         
         // Keep track of when GPS started so you can track duration waiting
-        counters_.gpsFixWaitStart = PAL.Millis();
+        transientCounters_.gpsFixWaitStart = PAL.Millis();
         
         // Turn off further interval timers until this async one completes
         tedReportIntervalTimeout_.DeRegisterForTimedEvent();
@@ -251,6 +271,7 @@ private:
         // Kick the watchdog
         PAL.WatchdogReset();
         
+        // Check if GPS is locked on, saving the result in the process
         if (gps_.GetMeasurement(&gpsMeasurement_))
         {
             OnGpsLock();
@@ -265,11 +286,13 @@ private:
         // Cancel task to check for GPS lock
         tedWaitForGpsLock_.DeRegisterForTimedEvent();
         
-        // Keep track of GPS stats
-        counters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - counters_.gpsFixWaitStart);
-        counters_.GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL += counters_.GPS_WAIT_FOR_FIX_DURATION_MS;
+        // Keep track of GPS counters
+        transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - transientCounters_.gpsFixWaitStart);
+        
         
         // Measurement already cached during lock
+        
+        
         
         // Debug
         Serial.print(gpsMeasurement_.hour);
@@ -280,17 +303,13 @@ private:
         Serial.println();
         
         Serial.print(F("Wait: "));
-        Serial.print(counters_.GPS_WAIT_FOR_FIX_DURATION_MS);
-        Serial.println();
-        Serial.print(F("TWait: "));
-        Serial.print(counters_.GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL);
+        Serial.print(transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS);
         Serial.println();
         Serial.print(F("Alt: "));
         Serial.print(gpsMeasurement_.altitudeFt);
         Serial.println();
         
         // Turn off GPS
-        Serial.println(F("Disabling GPS"));
         StopGPS();
         
         // Send message
@@ -350,8 +369,8 @@ private:
             // my extensions
             
             
-            static uint16_t seqNo = 0;
-            aprm.SetCommentSeqNoBinaryEncoded(++seqNo);
+            ++transientCounters_.SEQ_NO;
+            aprm.SetCommentSeqNoBinaryEncoded(transientCounters_.SEQ_NO);
 
             msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
         }
@@ -363,19 +382,13 @@ private:
         amt_.SetTransmitCount(1);
         amt_.SetDelayMsBetweenTransmits(2000);
 
-        static uint32_t timeLast = 0;
-        Serial.print("Transmitting - ");
-        uint32_t timeNow = PAL.Millis();
-        uint32_t timeDiff = timeNow - timeLast;
-        timeLast = timeNow;
-        Serial.print(timeDiff);
-        Serial.println(" ms since last");
+        Serial.println("TX");
         
         // Kick the watchdog
         PAL.WatchdogReset();
         amt_.Transmit();
         
-        Serial.println("DONE");
+        Serial.println("-");
     }
     
     
@@ -565,16 +578,26 @@ private:
     AX25UIMessageTransmitter<>  amt_;
     
     
-    struct CountersState
-    {
-        uint32_t gpsFixWaitStart = 0;
-        
-        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS = 0;
-        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL = 0;
-    };
-
-    CountersState counters_;
     
+    struct PersistentCounters
+    {
+        uint16_t NUM_RESTARTS     = 0;
+        uint16_t NUM_WDT_RESTARTS = 0;
+    };
+    
+    PersistentCounters                 persistentCounters_;
+    EepromAccessor<PersistentCounters> persistentCountersAccessor_;
+    
+    
+    struct TransientCounters
+    {
+        uint32_t gpsFixWaitStart              = 0;
+        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS = 0;
+        
+        uint32_t SEQ_NO = 0;
+    };
+    
+    TransientCounters  transientCounters_;
     
 };
 
