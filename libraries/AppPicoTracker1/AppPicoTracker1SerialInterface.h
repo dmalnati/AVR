@@ -78,7 +78,12 @@ public:
     {
         sas_.Stop();
     }
-
+    
+    uint8_t IsRunning()
+    {
+        return sas_.IsRunning();
+    }
+    
 
 private:
     

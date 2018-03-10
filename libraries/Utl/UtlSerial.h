@@ -179,6 +179,7 @@ class SerialAsyncConsole
 public:
     SerialAsyncConsole()
     : cmdToFnListIdx_(0)
+    , isRunning_(0)
     {
         // Nothing to do
     }
@@ -209,6 +210,8 @@ public:
     
     void Start()
     {
+        isRunning_ = 1;
+        
         sarl_.Attach(buf_, BUF_SIZE);
         sarl_.SetCallback([this](char *str){
             uint8_t strLen = strlen(str);
@@ -254,7 +257,14 @@ public:
     
     void Stop()
     {
+        isRunning_ = 0;
+        
         sarl_.Stop();
+    }
+    
+    uint8_t IsRunning()
+    {
+        return isRunning_;
     }
 
 private:
@@ -266,6 +276,8 @@ private:
     function<void(char *cmdStr)> fnErr_;
 
     SerialAsyncReadLine sarl_;
+    
+    uint8_t isRunning_;
 };
 
 
