@@ -196,6 +196,9 @@ proc ProcessLatLong { latLong } {
     set mins [string trimleft $mins 0]
     set secs [format "%.01f" [expr $secs * 60]]
 
+    if { $degs == "" } { set degs "0" }
+    if { $mins == "" } { set mins "0" }
+
     if { $nsew == "W" } {
         set degs "-${degs}"
     }
