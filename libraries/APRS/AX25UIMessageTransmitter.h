@@ -99,16 +99,21 @@ public:
     
     void Transmit()
     {
+        Serial.println(F("1")); PAL.Delay(20);
         // Complete message and determine the size of the data
         uint8_t bytesUsed = msg_.Finalize();
         
+        Serial.println(F("2")); PAL.Delay(20);
         // Transmit and ReTransmit according to configuration
         uint8_t transmitCountRemaining = transmitCount_;
         while (transmitCountRemaining)
         {
+            Serial.println(F("3")); PAL.Delay(20);
             fnBeforeModemStart_();
             PAL.Delay(radioWarmupDurationMs_);
+            Serial.println(F("4")); PAL.Delay(20);
             TransmitPrivate(buf_, bytesUsed);
+            Serial.println(F("5")); PAL.Delay(20);
             fnAfterModemEnd_();
             
             --transmitCountRemaining;
@@ -119,7 +124,9 @@ public:
             }
         }
         
+        Serial.println(F("6")); PAL.Delay(20);
         msg_.Reset();
+        Serial.println(F("7")); PAL.Delay(20);
     }
     
 private:
@@ -135,7 +142,9 @@ private:
         
         
         // Start up modem
+        Serial.println(F("4.1")); PAL.Delay(20);
         modem_.Start();
+        Serial.println(F("4.2")); PAL.Delay(20);
 
         // Send Flag delimiters to start
         for (uint32_t i = 0; i < flagPackStartCount_; ++i)
@@ -143,11 +152,15 @@ private:
             bitStuff = 0;
             modem_.Send(flagList, flagListLen, bitStuff);
         }
+        
+        Serial.println(F("4.3")); PAL.Delay(20);
 
         // Send actual AX25UI data, plus the checksum which lives within that
         // buffer (despite the checksum being part of HDLC technically)
         bitStuff = 1;
         modem_.Send(buf, bufLen, bitStuff);
+        
+        Serial.println(F("4.4")); PAL.Delay(20);
 
         // Send Flag delimiters to end
         for (uint32_t i = 0; i < flagPackEndCount_; ++i)
@@ -155,9 +168,13 @@ private:
             bitStuff = 0;
             modem_.Send(flagList, flagListLen, bitStuff);
         }
+        
+        Serial.println(F("4.5")); PAL.Delay(20);
 
         // Shut down modem
         modem_.Stop();
+        
+        Serial.println(F("4.6")); PAL.Delay(20);
     }
 
 

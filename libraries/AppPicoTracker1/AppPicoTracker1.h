@@ -67,6 +67,10 @@ public:
     void Run()
     {
         Serial.begin(9600);
+        if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
+        {
+            Serial.println(F("WDTR"));
+        }
         Serial.println(F("Starting"));
         
         // Set up GPS enable pin
@@ -209,7 +213,19 @@ private:
     
     void OnReportIntervalTimeout()
     {
+        // Begin monitoring code which has been seen to hang
+        PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
+        
         Serial.println(F("ReportIntervalTimeout"));
+        
+        // No need for low-power mode while we're attempting to do the primary
+        // tracker behavior of lock and send.
+        // Besides, we're going to async-spin waiting for a GPS lock, and in the
+        // meantime we can use a watchdog
+        //
+        // TODO reconsile with serial-in logic
+        //
+        evm_.LowPowerDisable();
         
         // Start GPS
         StartGPS();
@@ -217,17 +233,24 @@ private:
         // Keep track of when GPS started so you can track duration waiting
         counters_.gpsFixWaitStart = PAL.Millis();
         
+        // Turn off further interval timers until this async one completes
+        tedReportIntervalTimeout_.DeRegisterForTimedEvent();
+
         // Start async waiting for GPS to lock
         Serial.println(F("Attempting GPS Lock"));
         tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
         tedWaitForGpsLock_.RegisterForTimedEventInterval(0);
         
-        // Turn off further interval timers until this async one completes
-        tedReportIntervalTimeout_.DeRegisterForTimedEvent();
+        // Kick the watchdog
+        PAL.WatchdogReset();
     }
+        
     
     void OnCheckForGpsLock()
     {
+        // Kick the watchdog
+        PAL.WatchdogReset();
+        
         if (gps_.GetMeasurement(&gpsMeasurement_))
         {
             OnGpsLock();
@@ -236,12 +259,26 @@ private:
     
     void OnGpsLock()
     {
+        // Kick the watchdog
+        PAL.WatchdogReset();
+
+        // Cancel task to check for GPS lock
+        tedWaitForGpsLock_.DeRegisterForTimedEvent();
+        
         // Keep track of GPS stats
         counters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - counters_.gpsFixWaitStart);
         counters_.GPS_WAIT_FOR_FIX_DURATION_MS_TOTAL += counters_.GPS_WAIT_FOR_FIX_DURATION_MS;
         
-        // Get measurement
-        CacheGpsMeasurement();
+        // Measurement already cached during lock
+        
+        // Debug
+        Serial.print(gpsMeasurement_.hour);
+        Serial.print(":");
+        Serial.print(gpsMeasurement_.minute);
+        Serial.print(":");
+        Serial.print(gpsMeasurement_.second);
+        Serial.println();
+        
         Serial.print(F("Wait: "));
         Serial.print(counters_.GPS_WAIT_FOR_FIX_DURATION_MS);
         Serial.println();
@@ -256,18 +293,34 @@ private:
         Serial.println(F("Disabling GPS"));
         StopGPS();
         
-        // Cancel task to check for GPS lock
-        tedWaitForGpsLock_.DeRegisterForTimedEvent();
-        
         // Send message
         SendMessage();
         
         // Re-start interval timer
         StartReportInterval();
+        
+        
+        
+        
+        
+        // Disable watchdog as the main set of code which can hang is complete
+        PAL.WatchdogDisable();
+
+        
+        // Re-enable low-power mode, since the main async events are few and far
+        // between at this point
+        evm_.LowPowerEnable();
+        
+        
+        // Debug
+        Serial.println();
     }
     
     void SendMessage()
     {
+        // Kick the watchdog
+        PAL.WatchdogReset();
+        
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
         msg.SetDstAddress("APZ001", 0);
@@ -295,13 +348,8 @@ private:
             aprm.SetCommentAltitude(444);
 
             // my extensions
-            aprm.SetCommentBarometricPressureBinaryEncoded(10132);   // sea level
-            aprm.SetCommentTemperatureBinaryEncoded(72); // first thermometer, inside(?)
-            aprm.SetCommentMagneticsBinaryEncoded(-0.2051, 0.0527, 0.0742);    // on my desk
-            aprm.SetCommentAccelerationBinaryEncoded(56.7017, 1042.7856, -946.2891);    // on my desk, modified y
-            aprm.SetCommentTemperatureBinaryEncoded(74); // the other thermometer, outside(?)
-            aprm.SetCommentVoltageBinaryEncoded(4.723);
-
+            
+            
             static uint16_t seqNo = 0;
             aprm.SetCommentSeqNoBinaryEncoded(++seqNo);
 
@@ -323,7 +371,11 @@ private:
         Serial.print(timeDiff);
         Serial.println(" ms since last");
         
+        // Kick the watchdog
+        PAL.WatchdogReset();
         amt_.Transmit();
+        
+        Serial.println("DONE");
     }
     
     
@@ -374,29 +426,6 @@ private:
         // clear GPS lock status indicator
         ledBlinkerGps_.Stop();
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    void CacheGpsMeasurement()
-    {
-        gps_.GetMeasurement(&gpsMeasurement_);
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     
     
@@ -494,6 +523,10 @@ private:
             // - number of restarts
             // - uptime
         
+        // saw at least one fatal hang
+            // watchdog how?
+            
+        // how to sleep longer when way out of range?
     }
     
     
