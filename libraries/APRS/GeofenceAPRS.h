@@ -2,6 +2,7 @@
 #define __APRS_GEOFENCE_H__
 
 
+#include "GeofenceAPRS_Generated.h"
 
 
 class GeofenceAPRS
@@ -13,7 +14,7 @@ public:
         uint32_t freqAprs = 144390000;
     };
     
-    LocationDetails GetLocationDetails(double latitude, double longitude)
+    LocationDetails GetLocationDetails(int16_t latitude, int16_t longitude)
     {
         LocationDetails retVal;
         
@@ -25,6 +26,65 @@ public:
     }
     
 private:
+
+
+
+    void Check(int16_t latitude, int16_t longitude)
+    {
+        if (InEurope(latitude, longitude))
+        {
+            
+        }
+    }
+    
+    uint8_t InEurope(int16_t latitude, int16_t longitude)
+    {
+        const int16_t *latLngList;
+        uint8_t        latLngListLen;
+        
+        GeofenceAPRSData::GetLatLngList_Europe(&latLngList, &latLngListLen);
+        
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        int16_t buf[latLngListLen + 2];
+        LoadToSram(buf, latLngList, latLngListLen);
+        
+        // add in the final point
+        buf[latLngListLen - 2] = buf[0];
+        buf[latLngListLen - 1] = buf[1];
+        
+        
+        // I want this whole function in the generated code.
+        
+        
+        
+        
+        // check
+        // I guess call the GeofenceAPRS function?
+        // Or implement in generated?
+        // Or factor into polygon checker...
+    }
+    
+    void LoadToSram(int16_t *buf, const int16_t *latLngList, uint8_t latLngListLen)
+    {
+        for (uint8_t i = 0; i < latLngListLen; ++i)
+        {
+            int16_t val;
+            
+            uint16_t pgmByteLocation = (uint16_t)latLngList + (i * sizeof(val));
+            
+            val = pgm_read_dword_near(pgmByteLocation);
+            
+            buf[i] = val;
+        }
+    }
+
+
+    // TODO - check if using consts for the size of all the lists yields smaller
+    // program code.  There are dups all over.  Then again, how could it?
+    
+    
+
 
 
 // Taken from TT7 and adjusted

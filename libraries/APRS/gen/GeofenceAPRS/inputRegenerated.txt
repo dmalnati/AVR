@@ -1,0 +1,191 @@
+type	latitude	longitude	name	desc	color
+W	9.02	-79.5	Panama		#0000ff
+
+type	latitude	longitude	name	desc	color
+Europe
+T	60.33	-4.22	Europe	Length: 16049 km (9973 mi)	#00cc00
+T	53.96	-13.62
+T	45.52	-4.97
+T	43.45	-13.1
+T	33.5	-7.47
+T	38.65	5.01
+T	34.31	34.1
+T	42.29	46.93
+T	57.16	22.19
+T	60.91	37.22
+T	67.63	20.72
+T	70.71	27.19
+T	71.9	20.26
+T	60.54	-3.96
+
+type	latitude	longitude	name	desc	color
+USA
+T	51.54	-129.07	USA	Length: 15533 km (9652 mi)	#0000ff
+T	47.34	-124.53
+T	39.4	-125.0
+T	32.32	-118.61
+T	27.05	-97.26
+T	29.73	-84.02
+T	24.55	-81.83
+T	25.22	-78.86
+T	30.94	-80.97
+T	35.04	-76.03
+T	39.92	-73.73
+T	45.03	-61.54
+T	47.1	-60.03
+T	45.15	-80.99
+T	48.95	-101.16
+T	46.77	-108.41
+T	51.59	-129.2
+
+type	latitude	longitude	name	desc	color
+Thailand
+T	21.13	96.37	Thailand	Length: 4856 km (3018 mi)	#8c4600
+T	5.0	98.75
+T	6.53	103.58
+T	19.27	106.7
+T	21.25	97.12
+
+type	latitude	longitude	name	desc	color
+Japan
+T	45.95	140.8	Japan	Length: 5333 km (3314 mi)	#ff8000
+T	38.58	136.85
+T	33.14	126.96
+T	29.31	130.56
+T	34.25	141.46
+T	43.83	146.95
+T	46.29	141.77
+
+type	latitude	longitude	name	desc	color
+SouthKorea
+T	37.89	124.58	SouthKorea	Length: 1963 km (1220 mi)	#0080ff
+T	33.14	125.82
+T	35.39	130.87
+T	39.44	129.42
+T	38.44	124.67
+
+type	latitude	longitude	name	desc	color
+China
+T	22.11	121.99	China	Length: 7845 km (4875 mi)	#ff0000
+T	41.54	123.62
+T	41.24	115.14
+T	28.73	99.1
+T	17.96	109.36
+T	21.9	121.68
+
+type	latitude	longitude	name	desc	color
+Malaysia
+T	4.26	97.38	Malaysia	Length: 2772 km (1722 mi)	#0080ff
+T	6.38	103.51
+T	1.58	105.6
+T	-1.98	100.11
+T	4.08	97.34
+
+type	latitude	longitude	name	desc	color
+Australia1
+T	-30.96	117.73	Australia1	Length: 1612 km (1002 mi)	#ff00ff
+T	-31.91	113.64
+T	-35.78	115.49
+T	-34.99	118.78
+T	-31.18	117.75
+
+type	latitude	longitude	name	desc	color
+Australia2
+T	-34.85	136.45	Australia2	Length: 8546 km (5310 mi)	#ff00ff
+T	-44.34	144.67
+T	-44.4	148.89
+T	-26.47	155.48
+T	-15.5	145.9
+T	-16.93	143.7
+T	-27.25	150.38
+T	-34.05	144.84
+T	-34.67	136.85
+
+type	latitude	longitude	name	desc	color
+NewZealand
+T	-33.28	173.19	NewZealand	Length: 3771 km (2343 mi)	#0000ff
+T	-37.72	179.96
+T	-47.07	170.86
+T	-44.68	167.21
+T	-33.72	172.97
+
+type	latitude	longitude	name	desc	color
+SouthAfrica
+T	-24.77	25.31	SouthAfrica	Length: 4656 km (2893 mi)	#00ff00
+T	-32.32	24.57
+T	-32.81	16.83
+T	-35.68	19.07
+T	-34.4	27.47
+T	-30.11	33.13
+T	-23.6	29.18
+T	-24.45	25.49
+
+type	latitude	longitude	name	desc	color
+Morocco
+T	33.45	-18.57	Morocco	Length: 3544 km (2202 mi)	#00ff00
+T	27.08	-18.61
+T	26.78	-7.78
+T	30.2	-7.89
+T	30.45	-15.53
+T	33.56	-15.36
+T	33.65	-18.57
+
+type	latitude	longitude	name	desc	color
+Chile
+T	-34.56	-72.86	Chile	Length: 1977 km (1229 mi)	#0000ff
+T	-29.38	-72.8
+T	-29.48	-68.36
+T	-34.6	-68.31
+T	-34.69	-72.69
+
+type	latitude	longitude	name	desc	color
+Argentina
+T	-30.09	-65.81	Argentina	Length: 3695 km (2296 mi)	#ffff00
+T	-32.6	-65.98
+T	-35.96	-60.73
+T	-39.88	-59.02
+T	-35.14	-53.48
+T	-29.23	-56.26
+T	-29.82	-65.7
+
+type	latitude	longitude	name	desc	color
+Brazil1
+T	-34.02	-52.25	Brazil1	Length: 5791 km (3598 mi)	#008c46
+T	-21.98	-55.17
+T	-14.35	-48.37
+T	-19.44	-39.42
+T	-22.8	-40.25
+T	-24.85	-46.32
+T	-34.0	-51.99
+
+type	latitude	longitude	name	desc	color
+Brazil2
+T	-14.07	-38.03	Brazil2	Length: 3636 km (2259 mi)	#008c00
+T	-12.96	-40.47
+T	-7.19	-36.58
+T	-3.56	-40.32
+T	-2.35	-38.3
+T	-7.25	-32.87
+T	-13.94	-37.81
+
+type	latitude	longitude	name	desc	color
+Mexico
+T	22.88	-85.76	Mexico	Length: 6835 km (4247 mi)	#0000ff
+T	12.96	-89.11
+T	13.46	-91.82
+T	18.56	-92.96
+T	17.85	-105.49
+T	24.73	-108.22
+T	24.87	-103.33
+T	19.06	-96.33
+T	23.12	-85.74
+
+type	latitude	longitude	name	desc	color
+TropicalIslands
+T	20.76	-80.82	TropicalIslands	Length: 5798 km (3603 mi)	#0000ff
+T	12.21	-59.46
+T	16.38	-57.7
+T	23.77	-79.58
+T	20.43	-81.08
+
+
