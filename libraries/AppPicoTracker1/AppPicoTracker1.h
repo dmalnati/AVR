@@ -5,15 +5,12 @@
 #include "Eeprom.h"
 #include "Evm.h"
 #include "LedBlinker.h"
-//#include "AppPicoTracker1UserConfigManager.h"
 #include "SensorGPSUblox.h"
 #include "RFSI4463PRO.h"
 #include "AX25UIMessageTransmitter.h"
 #include "APRSPositionReportMessagePicoTracker1.h"
 #include "GeofenceAPRS.h"
 
-
-#include "UtlStreamBlob.h"
 
 struct AppPicoTracker1Config
 {
@@ -35,20 +32,6 @@ struct AppPicoTracker1Config
 class AppPicoTracker1
 {
 private:
-    static const uint32_t DURATION_MS_CHECK_SERIAL_INPUT_ACTIVE = 5000;
-    
-    static const uint32_t DURATION_MS_LED_RUNNING_OFF_NORMAL = 4950;
-    static const uint32_t DURATION_MS_LED_RUNNING_ON_NORMAL  =   50;
-    
-    static const uint32_t DURATION_MS_LED_RUNNING_OFF_SERIAL = 950;
-    static const uint32_t DURATION_MS_LED_RUNNING_ON_SERIAL  =  50;
-    
-    static const uint32_t DURATION_MS_LED_GPS_OFF = 950;
-    static const uint32_t DURATION_MS_LED_GPS_ON  =  50;
-    
-    static const uint8_t PIN_SERIAL_RX = 2;
-        
-private:
     static const uint8_t C_IDLE  =  0;
     static const uint8_t C_TIMED = 20;
     static const uint8_t C_INTER =  0;
@@ -62,6 +45,11 @@ public:
         // Nothing to do
     }
     
+    
+    
+    
+    
+    
     void Run()
     {
         // Init serial
@@ -72,24 +60,18 @@ public:
         }
         Serial.println(F("Starting"));
         
-        
-        // Maintain counters
-        persistentCountersAccessor_.Read(persistentCounters_);
-        
-        ++persistentCounters_.NUM_RESTARTS;
+        // Maintain counters about restarts
+        StatsIncrNumRestarts();
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
-            ++persistentCounters_.NUM_WDT_RESTARTS;
+            StatsIncrNumWdtRestarts();
         }
-        
-        persistentCountersAccessor_.Write(persistentCounters_);
         
         Serial.print(persistentCounters_.NUM_RESTARTS);
         Serial.print(" ");
         Serial.print(persistentCounters_.NUM_WDT_RESTARTS);
         Serial.println();
 
-        
         // Set up GPS enable pin
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
         
@@ -98,93 +80,33 @@ public:
         PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
         PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
         
-        //if (AppPicoTracker1UserConfigManager::GetUserConfig(userConfig_) || 1)
-        if (1)
-        {
-            Serial.println();
-            Serial.println(F("Proceeding with:"));
-            //userConfig_.Print();
-            Serial.println();
-            
-            
-            // Drive state machine
-            OnEvent(Event::START);
-
-
-            
-            Serial.println(F("Running."));
-            Serial.println();
-            PAL.Delay(1000);
-            
-            // Handle async events
-            evm_.MainLoopLowPower();
-        }
-        else
-        {
-            Serial.println();
-            Serial.println(F("ERR: Invalid configuration, please restart and try again."));
-            Serial.println();
-            
-            // blink error -- cannot continue without config
-            while (1)
-            {
-                const uint32_t delayMs = 500;
-                
-                PAL.DigitalWrite(cfg_.pinLedRunning, HIGH);
-                PAL.Delay(delayMs);
-                PAL.DigitalWrite(cfg_.pinLedRunning, LOW);
-                PAL.DigitalWrite(cfg_.pinLedGpsLocked, HIGH);
-                PAL.Delay(delayMs);
-                PAL.DigitalWrite(cfg_.pinLedGpsLocked, LOW);
-                PAL.DigitalWrite(cfg_.pinLedTransmitting, HIGH);
-                PAL.Delay(delayMs);
-                PAL.DigitalWrite(cfg_.pinLedTransmitting, LOW);
-            }
-        }
+        // Set up radio
+        radio_.Init();
+        radio_.SetFrequency(144390000);
+        
+        // Set up APRS Message Sender
+        amt_.Init([this](){ radio_.Start(); }, [this](){ radio_.Stop(); });
+        
+        // Begin tracker reporting, fire first event immediately.
+        // No point using interval, the decision about how long to sleep for is
+        // evaluated each time.
+        tedWakeAndEvaluateTimeout_.SetCallback([this](){
+            OnWakeAndEvaluateTimeout();
+        });
+        tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(0);
+        
+        // Handle async events
+        Serial.println(F("Running."));
+        Serial.println();
+        PAL.Delay(1000);
+        
+        evm_.MainLoopLowPower();
     }
 
 private:
 
-    enum class Event : uint8_t
-    {
-        START,
-        SERIAL_INPUT_ACTIVE,
-        SERIAL_INPUT_INACTIVE,
-    };
-
-    void OnEvent(Event evt)
-    {
-        if (evt == Event::START)
-        {
-            // Set up radio
-            
-            
-            // Set up APRS Message Sender
-            radio_.Init();
-            radio_.SetFrequency(144390000);
-            amt_.Init([this](){ radio_.Start(); }, [this](){ radio_.Stop(); });
-            
-            // Begin tracker reporting
-            StartReportInterval();
-        }
-    }
     
-    void StartReportInterval()
-    {
-        tedReportIntervalTimeout_.SetCallback([this](){
-            OnReportIntervalTimeout();
-        });
-
-        tedReportIntervalTimeout_.RegisterForTimedEventInterval(reportIntervalMs_);
-    }
-    
-    void SetReportInterval(uint32_t reportIntervalMs)
-    {
-        reportIntervalMs_ = reportIntervalMs;
-    }
-
-    
-    void OnReportIntervalTimeout()
+    void OnWakeAndEvaluateTimeout()
     {
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
@@ -195,9 +117,6 @@ private:
         // tracker behavior of lock and send.
         // Besides, we're going to async-spin waiting for a GPS lock, and in the
         // meantime we can use a watchdog
-        //
-        // TODO reconcile with serial-in logic
-        //
         evm_.LowPowerDisable();
         
         // Start GPS
@@ -206,9 +125,6 @@ private:
         // Keep track of when GPS started so you can track duration waiting
         transientCounters_.gpsFixWaitStart = PAL.Millis();
         
-        // Turn off further interval timers until this async one completes
-        tedReportIntervalTimeout_.DeRegisterForTimedEvent();
-
         // Start async waiting for GPS to lock
         Serial.println(F("Locking"));
         tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
@@ -227,6 +143,10 @@ private:
         // Check if GPS is locked on, saving the result in the process
         if (gps_.GetMeasurement(&gpsMeasurement_))
         {
+            // Cancel task to check for GPS lock
+            tedWaitForGpsLock_.DeRegisterForTimedEvent();
+            
+            // Notify that lock acquired
             OnGpsLock();
         }
     }
@@ -236,16 +156,8 @@ private:
         // Kick the watchdog
         PAL.WatchdogReset();
 
-        // Cancel task to check for GPS lock
-        tedWaitForGpsLock_.DeRegisterForTimedEvent();
-        
         // Keep track of GPS counters
         transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - transientCounters_.gpsFixWaitStart);
-        
-        
-        // Measurement already cached during lock
-        
-        
         
         // Debug
         Serial.print(gpsMeasurement_.hour);
@@ -265,24 +177,62 @@ private:
         // Turn off GPS
         StopGPS();
         
-        // Send message
-        SendMessage();
+        // Consult with Geofence to determine details about where we are
+        GeofenceAPRS::LocationDetails locationDetails = 
+            geofence_.GetLocationDetails(gpsMeasurement_.latitudeDegreesMillionths,
+                                         gpsMeasurement_.longitudeDegreesMillionths);
         
-        // Re-start interval timer
-        StartReportInterval();
-        
-        
-        
-        
+        // Decide whether to send a message and how long to sleep for based on
+        // geofence data.
+        if (locationDetails.deadZone)
+        {
+            Serial.println(F("DeadZone"));
+            
+            // Don't send a message, no one will hear you.
+            
+            // Increment counters to indicate this has happened.
+            StatsIncrNumMsgsNotSent();
+            
+            // No further action, just go back to sleep
+            tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.deadZone.wakeAndEvaluateMs);
+        }
+        else
+        {
+            Serial.println(F("ActiveZone"));
+            
+            // We're going to send a message, so tune radio to the frequency to
+            // be used in this region.
+            radio_.SetFrequency(locationDetails.freqAprs);
+            
+            // Send message
+            SendMessage();
+            
+            // Decide how long to sleep for based on high or low altitude
+            if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
+            {
+                Serial.println(F("LowAltitude"));
+                
+                // low altitude mode
+                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.lowAltitude.wakeAndEvaluateMs);
+            }
+            else
+            {
+                Serial.println(F("HighAltitude"));
+                
+                // high altitude mode
+                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.highAltitude.wakeAndEvaluateMs);
+            }
+            
+            // Debug for serial write to complete
+            PAL.Delay(50);
+        }
         
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
-
         
         // Re-enable low-power mode, since the main async events are few and far
         // between at this point
         evm_.LowPowerEnable();
-        
         
         // Debug
         Serial.println();
@@ -296,7 +246,7 @@ private:
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
         msg.SetDstAddress("APZ001", 0);
-        msg.SetSrcAddress("KD2KDD", 9);
+        msg.SetSrcAddress(userConfig_.aprs.callsign, 11);
         msg.AddRepeaterAddress("WIDE1", 1);
 
         // Add APRS data
@@ -335,6 +285,7 @@ private:
             
             const char MESSAGE_TYPE_NORMAL = ' ';
             aprm.SetCommentMessageType(MESSAGE_TYPE_NORMAL);
+            aprm.SetCommentDeviceId(userConfig_.device.id);
             aprm.SetCommentSeqNoBinaryEncoded(transientCounters_.SEQ_NO);
             aprm.SetCommentGpsLockWaitSecsBinaryEncoded(transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS / 1000);
             aprm.SetCommentNumRestartsBinaryEncoded(persistentCounters_.NUM_RESTARTS);
@@ -353,18 +304,10 @@ private:
         // Configure and Transmit
         amt_.SetFlagStartDurationMs(300);
         amt_.SetFlagEndDurationMs(10);
-        amt_.SetTransmitCount(1);
-        amt_.SetDelayMsBetweenTransmits(2000);
+        amt_.SetTransmitCount(userConfig_.radio.transmitCount);
+        amt_.SetDelayMsBetweenTransmits(userConfig_.radio.delayMsBetweenTransmits);
 
         Serial.println("TX");
-        
-        
-        GeofenceAPRS::LocationDetails locDet = 
-            geofence_.GetLocationDetails(gpsMeasurement_.latitudeDegreesMillionths,
-                                         gpsMeasurement_.longitudeDegreesMillionths);
-        
-        
-        radio_.SetFrequency(locDet.freqAprs);
         
         
         // Kick the watchdog
@@ -401,7 +344,7 @@ private:
     }
     
     
-    void StopGPS(uint8_t saveConfiguration = 1)
+    void StopGPS()
     {
         // Don't allow prior fix to be used, we want a brand new fix to be
         // acquired next time the GPS starts up
@@ -410,13 +353,10 @@ private:
         // stop interrups from firing in underlying code
         gps_.DisableSerialInput();
         
-        if (saveConfiguration)
-        {
-            // cause the gps module to store the metadata is has learned from
-            // the satellites it can see and used to get a lock.
-            // this will be read again automatically by the module on startup.
-            gps_.SaveConfiguration();
-        }
+        // cause the gps module to store the metadata is has learned from
+        // the satellites it can see and used to get a lock.
+        // this will be read again automatically by the module on startup.
+        gps_.SaveConfiguration();
         
         // disable power supply to GPS
         // (battery backup for module-stored data supplied through other pin)
@@ -502,16 +442,89 @@ private:
     }
     
     
+private:
+
+    void StatsIncr(uint16_t &counter)
+    {
+        persistentCountersAccessor_.Read(persistentCounters_);
+        
+        ++counter;
+        
+        persistentCountersAccessor_.Write(persistentCounters_);
+    }
     
+    void StatsIncrNumRestarts()
+    {
+        StatsIncr(persistentCounters_.NUM_RESTARTS);
+    }
+    
+    void StatsIncrNumWdtRestarts()
+    {
+        StatsIncr(persistentCounters_.NUM_WDT_RESTARTS);
+    }
+    
+    void StatsIncrNumMsgsNotSent()
+    {
+        StatsIncr(persistentCounters_.NUM_MSGS_NOT_SENT);
+    }
+    
+
+
 private:
 
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
     AppPicoTracker1Config &cfg_;
     
+    
+    struct UserConfig
+    {
+        static const uint8_t DEVICE_ID_LEN = 4;
+        static const uint8_t CALLSIGN_LEN  = 6;
+        
+        struct
+        {
+            char id[DEVICE_ID_LEN + 1] = "DMA";
+        } device;
+        
+        struct
+        {
+            char callsign[CALLSIGN_LEN + 1] = "KD2KDD";
+        } aprs;
+        
+        struct
+        {
+            uint8_t  transmitCount           = 2;
+            uint32_t delayMsBetweenTransmits = 3000;
+        } radio;
+        
+        struct
+        {
+            uint32_t lowHighAltitudeFtThreshold = 10000;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs = 1000;
+            } highAltitude;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs = 1000;
+            } lowAltitude;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs = 1000;
+            } deadZone;
+        } geo;
+    };
+        
+    
+    UserConfig userConfig_;
+    
 
-    uint32_t                  reportIntervalMs_ = 1000;
-    TimedEventHandlerDelegate tedReportIntervalTimeout_;
+    
+    TimedEventHandlerDelegate tedWakeAndEvaluateTimeout_;
     
     
     TimedEventHandlerDelegate tedWaitForGpsLock_;

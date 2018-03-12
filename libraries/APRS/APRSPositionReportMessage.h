@@ -229,6 +229,34 @@ public:
         }
     }
     
+    // left justified, space padded
+    void AppendCommentStringFixedWidth(const char *str, uint8_t width)
+    {
+        if (buf_)
+        {
+            uint8_t strLen      = strlen(str);
+            uint8_t bytesToCopy = strLen < width ? strLen : width;
+            
+            // copy in the bytes from the string which fits
+            if (!CanFitCommentBytes(bytesToCopy))
+            {
+                bytesToCopy = GetCommentBytesRemaining();
+            }
+            memcpy(commentNextByte_, str, bytesToCopy);
+            commentNextByte_ += bytesToCopy;
+            
+            // copy in whatever padding fits
+            uint8_t padBytes = width - bytesToCopy;
+            if (!CanFitCommentBytes(padBytes))
+            {
+                padBytes = GetCommentBytesRemaining();
+            }
+            
+            memset(commentNextByte_, ' ', padBytes);
+            commentNextByte_ += padBytes;
+        }
+    }
+    
     void AppendCommentU32PadLeft(uint32_t val,
                                  uint8_t  width,
                                  uint32_t limLower,

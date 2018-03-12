@@ -99,21 +99,16 @@ public:
     
     void Transmit()
     {
-        Serial.println(F("1")); PAL.Delay(20);
         // Complete message and determine the size of the data
         uint8_t bytesUsed = msg_.Finalize();
         
-        Serial.println(F("2")); PAL.Delay(20);
         // Transmit and ReTransmit according to configuration
         uint8_t transmitCountRemaining = transmitCount_;
         while (transmitCountRemaining)
         {
-            Serial.println(F("3")); PAL.Delay(20);
             fnBeforeModemStart_();
             PAL.Delay(radioWarmupDurationMs_);
-            Serial.println(F("4")); PAL.Delay(20);
             TransmitPrivate(buf_, bytesUsed);
-            Serial.println(F("5")); PAL.Delay(20);
             fnAfterModemEnd_();
             
             --transmitCountRemaining;
@@ -124,13 +119,7 @@ public:
             }
         }
         
-        Serial.write(buf_, bytesUsed);
-        Serial.println();
-        PAL.Delay(500);
-        
-        Serial.println(F("6")); PAL.Delay(20);
         msg_.Reset();
-        Serial.println(F("7")); PAL.Delay(20);
     }
     
 private:

@@ -15,6 +15,13 @@ public:
         AppendCommentU8((uint8_t)msgType);
     }
     
+    void SetCommentDeviceId(char *deviceId)
+    {
+        const uint8_t DEVICE_ID_LEN = 4;
+        
+        AppendCommentStringFixedWidth(deviceId, DEVICE_ID_LEN);
+    }
+    
     void SetCommentSeqNoBinaryEncoded(uint16_t seqNo)
     {
         AppendCommentU16Encoded(seqNo);
@@ -40,7 +47,7 @@ public:
         AppendCommentU16Encoded(numMsgsNotSent);
     }
     
-
+    
 private:
 };
 
