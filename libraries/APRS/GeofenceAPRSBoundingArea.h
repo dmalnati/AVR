@@ -28,17 +28,28 @@ uint8_t PointInPolygon(int16_t        latitude,
 {
 	uint8_t j = polyCorners * 2 - 2;
 	int32_t oddNodes = 0;
-
+    
 	for (uint8_t i = 0; i < polyCorners * 2; i += 2)
 	{
-        uint8_t cond1 = (polygon[i + 1] < latitude && polygon[j + 1] >= latitude);
-        uint8_t cond2 = (polygon[j + 1] < latitude && polygon[i + 1] >= latitude);
-        uint8_t cond3 = (polygon[i] <= longitude || polygon[j] <= longitude);
+        int16_t n1Lng = polygon[i + 0];
+        int16_t n1Lat = polygon[i + 1];
+        
+        int16_t n2Lng = polygon[j + 0];
+        int16_t n2Lat = polygon[j + 1];
+        
+        uint8_t cond1 = (n1Lat < latitude && n2Lat >= latitude);
+        uint8_t cond2 = (n2Lat < latitude && n1Lat >= latitude);
+        uint8_t cond3 = (n1Lng <= longitude || n2Lng <= longitude);
         
         if ((cond1 || cond2) && cond3)
 		{
-			oddNodes ^= (polygon[i] + (latitude - polygon[i + 1])
-			/ (polygon[j + 1] - polygon[i + 1]) * (polygon[j] - polygon[i]) < longitude);
+            // this line is the integer version which basically doesn't work in
+            // a lot of scenarios
+			//oddNodes ^= (n1Lng + (latitude - n1Lat) / (n2Lat - n1Lat) * (n2Lng - n1Lng) < longitude);
+
+            // this line is the floating point version which does work, but
+            // costs an extra 1000 bytes progmem
+			oddNodes ^= (n1Lng + (double)(latitude - n1Lat) / (double)(n2Lat - n1Lat) * (double)(n2Lng - n1Lng) < longitude);
 		}
 
 		j = i;
@@ -46,6 +57,7 @@ uint8_t PointInPolygon(int16_t        latitude,
 
 	return !!oddNodes;
 }
+
 
 
 // This page covers the approx distance between each degree of

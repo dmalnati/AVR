@@ -312,7 +312,6 @@ proc Generate { fdOut } {
     P ""
     P "class GeofenceAPRSData"
     P "\{"
-    P ""
     P "    static const uint16_t POINT_RADIUS_MILES = 100;"
     P ""
     P "public:"
@@ -411,8 +410,6 @@ proc Generate { fdOut } {
 
     P "\};"
 
-    P ""
-
 
     set formatStrDef \
         "const int16_t GeofenceAPRSData::%-s\[%s\] PROGMEM ="
@@ -421,10 +418,9 @@ proc Generate { fdOut } {
 
     set sep ""
     foreach { type name latLngList firstLine } $DATA {
-        puts -nonewline $fdOut $sep
+        if { $type == "path" } {
+            puts -nonewline $fdOut $sep
 
-        if { $type == "point" } {
-        } elseif { $type == "path" } {
             set latLngListTrunc [lrange $latLngList 0 end-2]
             set numPoints       [llength $latLngListTrunc]
 

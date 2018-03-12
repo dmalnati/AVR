@@ -151,12 +151,6 @@ public:
         {
             Serial.println(F("InAlaska1"));
         }
-        else if (GeofenceAPRSData::InEurope2(latitude, longitude))
-        {
-            Serial.println(F("InEurope2"));
-        }
-
-
 
         else
         {

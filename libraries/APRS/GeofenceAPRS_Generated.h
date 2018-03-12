@@ -7,7 +7,6 @@
 
 class GeofenceAPRSData
 {
-
     static const uint16_t POINT_RADIUS_MILES = 100;
 
 public:
@@ -169,10 +168,10 @@ public:
     {
         // load into sram, making room for final connecting point which isn't
         // included in the data
-        const uint8_t BUF_SIZE = 20 + 2;
+        const uint8_t BUF_SIZE = 24 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Europe1, 20);
+        LoadToSram(buf, Europe1, 24);
         
         // use points to determine if point in polygon
         uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
@@ -465,21 +464,6 @@ public:
         return retVal;
     }
 
-    static uint8_t InEurope2(int16_t latitude, int16_t longitude)
-    {
-        // load into sram, making room for final connecting point which isn't
-        // included in the data
-        const uint8_t BUF_SIZE = 8 + 2;
-        int16_t buf[BUF_SIZE];
-        
-        LoadToSram(buf, Europe2, 8);
-        
-        // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
-        
-        return retVal;
-    }
-
 
 private:
 
@@ -509,7 +493,7 @@ private:
     }
 
     // GEOFENCE ARRAYS (longitude, latitude)
-    static const int16_t Europe1        [20] PROGMEM;
+    static const int16_t Europe1        [24] PROGMEM;
     static const int16_t USA            [32] PROGMEM;
     static const int16_t Thailand       [ 8] PROGMEM;
     static const int16_t Japan          [12] PROGMEM;
@@ -529,24 +513,13 @@ private:
     static const int16_t TropicalIslands[ 8] PROGMEM;
     static const int16_t Hawaii         [ 8] PROGMEM;
     static const int16_t Alaska1        [ 8] PROGMEM;
-    static const int16_t Europe2        [ 8] PROGMEM;
 };
 
-
-
-
-
-
-
-
-
-
-
-
-const int16_t GeofenceAPRSData::Europe1[20] PROGMEM =
+const int16_t GeofenceAPRSData::Europe1[24] PROGMEM =
 {
-        10,   4975,
-         4,   3834,
+     -1216,   3632,
+      -410,   3569,
+       431,   3831,
       3410,   3431,
       4693,   4229,
       2219,   5716,
@@ -554,7 +527,8 @@ const int16_t GeofenceAPRSData::Europe1[20] PROGMEM =
       2072,   6763,
       2719,   7071,
       2026,   7190,
-         2,   6112,
+     -1552,   5288,
+      -638,   4944,
 };
 
 const int16_t GeofenceAPRSData::USA[32] PROGMEM =
@@ -741,14 +715,6 @@ const int16_t GeofenceAPRSData::Alaska1[8] PROGMEM =
     -15394,   5941,
     -15348,   6507,
     -14157,   6582,
-};
-
-const int16_t GeofenceAPRSData::Europe2[8] PROGMEM =
-{
-        -1,   6110,
-         1,   3730,
-      -976,   3321,
-     -1169,   5723,
 };
 
 
