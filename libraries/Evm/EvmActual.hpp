@@ -56,6 +56,11 @@ template <uint8_t A, uint8_t B, uint8_t C>
 uint8_t EvmActual<A,B,C>::
 RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
 {
+    // Keeping track of these states here, and not in the
+    // TimedEventHandler code, is necessary because for interval timers, the
+    // Evm code will register this event again, but that won't call the
+    // TimedEventHandler code to do so.
+    
     // Note what time it is when timer requested
     uint32_t timeNow = PAL.Millis();
     
@@ -106,7 +111,7 @@ ServiceTimedEventHandlers()
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
                 {
-                    RegisterTimedEventHandler(teh, teh->timeout_);
+                    RegisterTimedEventHandler(teh, teh->intervalTimeout_);
                 }
                 
                 // only keep going if remaining quota of events remains

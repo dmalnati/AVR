@@ -29,6 +29,7 @@ public:
 
     uint8_t RegisterForTimedEvent(uint32_t timeout);
     uint8_t RegisterForTimedEventInterval(uint32_t timeout);
+    uint8_t RegisterForTimedEventInterval(uint32_t timeout, uint32_t firstTimeout);
     uint8_t DeRegisterForTimedEvent();
     
     virtual void OnTimedEvent() = 0;
@@ -38,6 +39,7 @@ private:
     uint32_t timeQueued_;
     uint32_t timeout_;
     uint8_t  isInterval_;
+    uint32_t intervalTimeout_;
 };
 
 
