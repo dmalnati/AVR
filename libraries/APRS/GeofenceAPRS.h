@@ -31,9 +31,36 @@ public:
         uint8_t  deadZone = 0;
     };
     
+    //
+    // takes latitude and longitude in degrees, with 6 decimal places of
+    // precision, in integer format.
+    //
+    // - so lat - 30.0881078 is represented as -30088107
+    // - so lng  172.9687500 is represented as 172968750
+    //
+    // this is the native TinyGPS format, and so convenient to expose to calling
+    // code.
+    //
+    static LocationDetails GetLocationDetails(int32_t latitudeDegreesMillionths,
+                                              int32_t longitudeDegreesMillionths)
+    {
+        int16_t latitude  = latitudeDegreesMillionths  / 10000;
+        int16_t longitude = longitudeDegreesMillionths / 10000;
+        
+        return GetLocationDetailsInternal(latitude, longitude);
+    }
     
-    static LocationDetails GetLocationDetails(int16_t latitude,
-                                              int16_t longitude)
+private:
+
+    //
+    // takes latitude and longitude in degrees, with 2 decimal places of
+    // precision, in integer format.
+    //
+    // - so lat - 30.0881078 is represented as -3008
+    // - so lng  172.9687500 is represented as 17296
+    //
+    static LocationDetails GetLocationDetailsInternal(int16_t latitude,
+                                                      int16_t longitude)
     {
         LocationDetails retVal;
         

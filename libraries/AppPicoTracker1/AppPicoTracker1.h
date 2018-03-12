@@ -10,6 +10,7 @@
 #include "RFSI4463PRO.h"
 #include "AX25UIMessageTransmitter.h"
 #include "APRSPositionReportMessagePicoTracker1.h"
+#include "GeofenceAPRS.h"
 
 
 #include "UtlStreamBlob.h"
@@ -357,6 +358,15 @@ private:
 
         Serial.println("TX");
         
+        
+        GeofenceAPRS::LocationDetails locDet = 
+            geofence_.GetLocationDetails(gpsMeasurement_.latitudeDegreesMillionths,
+                                         gpsMeasurement_.longitudeDegreesMillionths);
+        
+        
+        radio_.SetFrequency(locDet.freqAprs);
+        
+        
         // Kick the watchdog
         PAL.WatchdogReset();
         amt_.Transmit();
@@ -513,6 +523,8 @@ private:
     
     RFSI4463PRO                 radio_;
     AX25UIMessageTransmitter<>  amt_;
+    
+    GeofenceAPRS  geofence_;
     
     
     
