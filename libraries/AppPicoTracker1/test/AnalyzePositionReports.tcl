@@ -167,7 +167,13 @@ proc ProcessPosReportCatchMe { strAltReport } {
 }
 
 proc ProcessAltitudeFt { alt } {
-    return [string trimleft $alt "0"]
+    set altFt [string trimleft $alt "0"]
+
+    if { $altFt == "" } {
+        set altFt 0
+    }
+
+    return $altFt
 }
 
 proc ProcessSpeed { speedKnots } {
