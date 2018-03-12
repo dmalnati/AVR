@@ -7,11 +7,27 @@
 
 class GeofenceAPRS
 {
+    static const uint32_t APRS_FREQ_US          = 144390000;
+    static const uint32_t APRS_FREQ_INDONESIA   = 144390000;
+    static const uint32_t APRS_FREQ_CHILE       = 144390000;
+    static const uint32_t APRS_FREQ_MALAYSIA    = 144390000;
+    static const uint32_t APRS_FREQ_NEW_ZEALAND = 144575000;
+    static const uint32_t APRS_FREQ_SOUTH_KOREA = 144620000;
+    static const uint32_t APRS_FREQ_CHINA       = 144640000;
+    static const uint32_t APRS_FREQ_JAPAN       = 144660000;
+    static const uint32_t APRS_FREQ_EU_RU_AF    = 144800000;
+    static const uint32_t APRS_FREQ_ARGENTINA   = 144930000;
+    static const uint32_t APRS_FREQ_PANAMA      = 145010000;
+    static const uint32_t APRS_FREQ_COSTA_RICA  = 145010000;
+    static const uint32_t APRS_FREQ_AUSTRALIA   = 145175000;
+    static const uint32_t APRS_FREQ_THAILAND    = 145525000;
+    static const uint32_t APRS_FREQ_BRAZIL      = 145570000;
+
 public:
 
     struct LocationDetails
     {
-        uint32_t freqAprs = 144390000;
+        uint32_t freqAprs = APRS_FREQ_US;
         uint8_t  deadZone = 0;
     };
     
@@ -19,139 +35,132 @@ public:
     static LocationDetails GetLocationDetails(int16_t latitude,
                                               int16_t longitude)
     {
-        //const uint32_t APRS_FREQ_US     = 144390000;
-        //const uint32_t APRS_FREQ_EUROPE = 144800000;
-        //const uint32_t APRS_FREQ_JAPAN  = 144660000;
-        
-        
-        
         LocationDetails retVal;
         
         if (GeofenceAPRSData::InPanama(latitude, longitude))
         {
-            Serial.println(F("InPanama"));
+            retVal.freqAprs = APRS_FREQ_PANAMA;
         }
         else if (GeofenceAPRSData::InSanJose(latitude, longitude))
         {
-            Serial.println(F("InSanJose"));
+            retVal.freqAprs = APRS_FREQ_COSTA_RICA;
         }
         else if (GeofenceAPRSData::InArgentina1(latitude, longitude))
         {
-            Serial.println(F("InArgentina1"));
+            retVal.freqAprs = APRS_FREQ_ARGENTINA;
         }
         else if (GeofenceAPRSData::InArgentina2(latitude, longitude))
         {
-            Serial.println(F("InArgentina2"));
+            retVal.freqAprs = APRS_FREQ_ARGENTINA;
         }
         else if (GeofenceAPRSData::InWhitehorseYukon(latitude, longitude))
         {
-            Serial.println(F("InWhitehorseYukon"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InAlaska2(latitude, longitude))
         {
-            Serial.println(F("InAlaska2"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InDubai(latitude, longitude))
         {
-            Serial.println(F("InDubai"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InMoscow(latitude, longitude))
         {
-            Serial.println(F("InMoscow"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InIceland(latitude, longitude))
         {
-            Serial.println(F("InIceland"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InJakarta(latitude, longitude))
         {
-            Serial.println(F("InJakarta"));
+            retVal.freqAprs = APRS_FREQ_INDONESIA;
         }
         else if (GeofenceAPRSData::InTelukAmbon(latitude, longitude))
         {
-            Serial.println(F("InTelukAmbon"));
+            retVal.freqAprs = APRS_FREQ_INDONESIA;
         }
         else if (GeofenceAPRSData::InEurope1(latitude, longitude))
         {
-            Serial.println(F("InEurope1"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InUSA(latitude, longitude))
         {
-            Serial.println(F("InUSA"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InThailand(latitude, longitude))
         {
-            Serial.println(F("InThailand"));
+            retVal.freqAprs = APRS_FREQ_THAILAND;
         }
         else if (GeofenceAPRSData::InJapan(latitude, longitude))
         {
-            Serial.println(F("InJapan"));
+            retVal.freqAprs = APRS_FREQ_JAPAN;
         }
         else if (GeofenceAPRSData::InSouthKorea(latitude, longitude))
         {
-            Serial.println(F("InSouthKorea"));
+            retVal.freqAprs = APRS_FREQ_SOUTH_KOREA;
         }
         else if (GeofenceAPRSData::InChina(latitude, longitude))
         {
-            Serial.println(F("InChina"));
+            retVal.freqAprs = APRS_FREQ_CHINA;
         }
         else if (GeofenceAPRSData::InMalaysia(latitude, longitude))
         {
-            Serial.println(F("InMalaysia"));
+            retVal.freqAprs = APRS_FREQ_MALAYSIA;
         }
         else if (GeofenceAPRSData::InAustralia1(latitude, longitude))
         {
-            Serial.println(F("InAustralia1"));
+            retVal.freqAprs = APRS_FREQ_AUSTRALIA;
         }
         else if (GeofenceAPRSData::InAustralia2(latitude, longitude))
         {
-            Serial.println(F("InAustralia2"));
+            retVal.freqAprs = APRS_FREQ_AUSTRALIA;
         }
         else if (GeofenceAPRSData::InNewZealand(latitude, longitude))
         {
-            Serial.println(F("InNewZealand"));
+            retVal.freqAprs = APRS_FREQ_NEW_ZEALAND;
         }
         else if (GeofenceAPRSData::InSouthAfrica(latitude, longitude))
         {
-            Serial.println(F("InSouthAfrica"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InMorocco(latitude, longitude))
         {
-            Serial.println(F("InMorocco"));
+            retVal.freqAprs = APRS_FREQ_EU_RU_AF;
         }
         else if (GeofenceAPRSData::InChile(latitude, longitude))
         {
-            Serial.println(F("InChile"));
+            retVal.freqAprs = APRS_FREQ_CHILE;
         }
         else if (GeofenceAPRSData::InArgentina(latitude, longitude))
         {
-            Serial.println(F("InArgentina"));
+            retVal.freqAprs = APRS_FREQ_ARGENTINA;
         }
         else if (GeofenceAPRSData::InBrazil1(latitude, longitude))
         {
-            Serial.println(F("InBrazil1"));
+            retVal.freqAprs = APRS_FREQ_BRAZIL;
         }
         else if (GeofenceAPRSData::InBrazil2(latitude, longitude))
         {
-            Serial.println(F("InBrazil2"));
+            retVal.freqAprs = APRS_FREQ_BRAZIL;
         }
         else if (GeofenceAPRSData::InMexico(latitude, longitude))
         {
-            Serial.println(F("InMexico"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InTropicalIslands(latitude, longitude))
         {
-            Serial.println(F("InTropicalIslands"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InHawaii(latitude, longitude))
         {
-            Serial.println(F("InHawaii"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
         else if (GeofenceAPRSData::InAlaska1(latitude, longitude))
         {
-            Serial.println(F("InAlaska1"));
+            retVal.freqAprs = APRS_FREQ_US;
         }
-
         else
         {
             retVal.deadZone = 1;
