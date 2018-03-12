@@ -1,3 +1,5 @@
+#include "Evm.h"
+#include "UtlSerial.h"
 #include "RFSI4463PRO.h"
 #include "AX25UIMessageTransmitter.h"
 #include "APRSPositionReportMessageHABTracker1.h"
@@ -6,6 +8,9 @@
 static const uint8_t PIN_SS       = 25;
 static const uint8_t PIN_SHUTDOWN = 14;
 
+static Evm::Instance<10,10,10>         evm;
+static SerialAsyncConsoleEnhanced<10>  console;
+static TimedEventHandlerDelegate       ted;
 static RFSI4463PRO radio(PIN_SS, PIN_SHUTDOWN);
 static AX25UIMessageTransmitter<> amt;
 
@@ -81,12 +86,27 @@ void setup()
     amt.Init([](){ radio.Start(); }, [](){ radio.Stop(); });
 
 
-    while (1)
-    {
-        Test();
+    ted.SetCallback([](){ Test(); });
+    ted.RegisterForTimedEventInterval(5000);
 
-        PAL.Delay(5000);
-    }
+    console.RegisterCommand("freq", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t freq = atol(str.TokenAtIdx(1, ' '));
+
+            Serial.print(F("Changing freq to : "));
+            Serial.print(freq);
+            Serial.println();
+
+            radio.SetFrequency(freq);
+        }
+    });
+
+    console.Start();
+
+    evm.MainLoop();
 }
 
 void loop() {}
