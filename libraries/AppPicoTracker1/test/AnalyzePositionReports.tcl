@@ -18,6 +18,7 @@ set FIELD_IDX_START_IDX_END_LIST {
     speedMph          31  33
     altitudeFt        37  42
     msgType           43  43
+    deviceId          44  47
 }
 
 
@@ -77,8 +78,6 @@ proc ProcessPosReportCatchMe { strAltReport } {
         [string range $strAltReport \
             [expr [lindex $FIELD_IDX_START_IDX_END_LIST end] + 1] \
             end]
-
-    puts "dataBinaryEncoded($dataBinaryEncoded)"
 
     set dataBinaryEncodedWorking $dataBinaryEncoded
     foreach { field type } $FIELD_TYPE_LIST {
@@ -142,6 +141,9 @@ proc ProcessPosReportCatchMe { strAltReport } {
 
     # msgType
     lappend valListO $msgType
+
+    # deviceId
+    lappend valListO $deviceId
 
     # seqNo (no change necessary)
     #Puts $seqNo
