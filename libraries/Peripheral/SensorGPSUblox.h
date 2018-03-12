@@ -189,6 +189,9 @@ public:
         uint32_t courseDegrees;
         uint32_t speedKnots;
         
+        int32_t latitudeDegreesMillionths;
+        int32_t longitudeDegreesMillionths;
+        
         int16_t  latitudeDegrees;
         uint8_t  latitudeMinutes;
         double   latitudeSeconds;
@@ -207,9 +210,9 @@ public:
         uint8_t retVal = 0;
         
         // Ask TinyGPS for decoded data
-        int32_t latitude;
-        int32_t longitude;
-        tgps_.get_position(&latitude, &longitude, &m->msSinceLastFix);
+        tgps_.get_position(&m->latitudeDegreesMillionths,
+                           &m->longitudeDegreesMillionths,
+                           &m->msSinceLastFix);
         tgps_.get_datetime(&m->date, &m->time, &m->msSinceLastFix);
         tgps_.crack_datetime(&m->year,
                              &m->month,
@@ -223,12 +226,12 @@ public:
         m->courseDegrees = tgps_.course() / 100;    // convert from 100ths of a degree
         m->speedKnots    = tgps_.speed() / 100;     // convert from 100ths of a knot
  
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(latitude,
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->latitudeDegreesMillionths,
                                                      m->latitudeDegrees,
                                                      m->latitudeMinutes,
                                                      m->latitudeSeconds);
         
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(longitude,
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->longitudeDegreesMillionths,
                                                      m->longitudeDegrees,
                                                      m->longitudeMinutes,
                                                      m->longitudeSeconds);
