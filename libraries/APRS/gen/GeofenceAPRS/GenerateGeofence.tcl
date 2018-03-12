@@ -307,8 +307,14 @@ proc Generate { fdOut } {
     P "#define __GEOFENCE_APRS_DATA_H__"
     P ""
     P ""
+    P "#include \"GeofenceAPRSBoundingArea.h\""
+    P ""
+    P ""
     P "class GeofenceAPRSData"
     P "\{"
+    P ""
+    P "    static const uint16_t POINT_RADIUS_MILES = 100;"
+    P ""
     P "public:"
 
     set sep ""
@@ -316,14 +322,42 @@ proc Generate { fdOut } {
         puts -nonewline $fdOut $sep
 
         if { $type == "point" } {
-        } elseif { $type == "path" } {
-            set numPoints [expr [llength $latLngList] - 2]
 
-            P "    static void GetLatLngList_${name}(const int16_t **latLngList,\
-                                                     uint8_t *latLngListLen)"
+            set lat [EncodeLatLng [lindex $latLngList 0]]
+            set lng [EncodeLatLng [lindex $latLngList 1]]
+
+            P "    static uint8_t In${name}(int16_t latitude,\
+                                            int16_t longitude)"
             P "    \{"
-            P "        *latLngList    = ${name};"
-            P "        *latLngListLen = ${numPoints};"
+            P "        const int16_t POINT_LATITUDE  = $lat;"
+            P "        const int16_t POINT_LONGITUDE = $lng;"
+            P ""
+            P "        uint8_t retVal = PointInCircle(latitude,"
+            P "                                       longitude,"
+            P "                                       POINT_LATITUDE,"
+            P "                                       POINT_LONGITUDE,"
+            P "                                       POINT_RADIUS_MILES);"
+            P ""
+            P "        return retVal;"
+            P "    \}"
+        } elseif { $type == "path" } {
+            set latLngListTrunc [lrange $latLngList 0 end-2]
+            set numPoints       [llength $latLngListTrunc]
+
+            P "    static uint8_t In${name}(int16_t latitude,\
+                                            int16_t longitude)"
+            P "    \{"
+            P "        // load into sram, making room for final connecting point which isn't"
+            P "        // included in the data"
+            P "        const uint8_t BUF_SIZE = $numPoints + 2;"
+            P "        int16_t buf\[BUF_SIZE\];"
+            P "        "
+            P "        LoadToSram(buf, $name, $numPoints);"
+            P "        "
+            P "        // use points to determine if point in polygon"
+            P "        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);"
+            P "        "
+            P "        return retVal;"
             P "    \}"
         }
 
@@ -333,7 +367,34 @@ proc Generate { fdOut } {
     P ""
     P ""
     P "private:"
-    P ""
+
+    P {
+    // Takes care of pulling out values from eeprom, as well as populating
+    // the final point by duplicating the first.
+    // Callers must be sure to allocate enough space in the buffer.
+    static void LoadToSram(int16_t       *buf, 
+                           const int16_t *latLngList,
+                           uint8_t        latLngListLen)
+    {
+        uint8_t i = 0;
+
+        for (i = 0; i < latLngListLen; ++i)
+        {
+            int16_t val;
+            
+            uint16_t pgmByteLocation = (uint16_t)latLngList + (i * sizeof(val));
+            
+            val = pgm_read_dword_near(pgmByteLocation);
+            
+            buf[i] = val;
+        }
+
+        // add in the final point by duplicating the first
+        buf[i + 0] = buf[0];
+        buf[i + 1] = buf[1];
+    }
+}
+
     P "    // GEOFENCE ARRAYS (longitude, latitude)"
 
 
@@ -413,27 +474,55 @@ proc AnalyzeAndGenerate { gpsVisTxtFile outGenCodeFile } {
     }
 }
 
+proc GenerateIfElseChain { { debugOutput 0 } } {
+    global DATA
+
+    set prefix "if"
+    foreach { type name latLngList firstLine } $DATA {
+        puts "${prefix} (GeofenceAPRSData::In${name}(latitude, longitude))"
+        puts "\{"
+        if { $debugOutput } {
+            puts "    Serial.println(F(\"In${name}\"));"
+        }
+        puts "\}"
+
+        set prefix "else if"
+    }
+
+}
+
 
 proc Main { } {
     global argc
     global argv
     global argv0
 
-    if { $argc != 2 && $argc != 3 } {
+    if { $argc != 2 && $argc != 3 && $argc != 4 } {
         puts "Usage: $argv0 <gpsVisTxtFile>  \
                             <outGenCodeFile> \
-                            \[<outModInputFile>\]"
+                            \[<outModInputFile>\]
+                            \[-v\]"
         exit -1
     }
 
     set gpsVisTxtFile   [lindex $argv 0]
     set outGenCodeFile  [lindex $argv 1]
     set outModInputFile [lindex $argv 2]
+    set verbose         [lindex $argv 3]
 
     AnalyzeAndGenerate $gpsVisTxtFile $outGenCodeFile
 
     if { $outModInputFile != "" } {
         CreateModifiedInputFile $outModInputFile
+    }
+
+    if { $verbose != "" } {
+        if { $verbose == "-v" } {
+            GenerateIfElseChain
+        } elseif { $verbose == "-vv" } {
+            set debugOutput 1
+            GenerateIfElseChain $debugOutput
+        }
     }
 }
 

@@ -9,12 +9,14 @@ static SerialAsyncConsoleEnhanced<10>  console;
 static GeofenceAPRS                    geofence;
 
 
-void Test(int32_t latitude, int32_t longitude)
+void Test(int16_t latitude, int16_t longitude)
 {
     GeofenceAPRS::LocationDetails ld = geofence.GetLocationDetails(latitude, longitude);
 
     Serial.print("freq: ");
-    Serial.println(ld.freqAprs);
+    Serial.print(ld.freqAprs);
+    Serial.print(", deadZone: ");
+    Serial.println(ld.deadZone);
 }
 
 
@@ -28,8 +30,8 @@ void setup()
         
         if (str.TokenCount(' ') == 3)
         {
-            int32_t latitude  = atol(str.TokenAtIdx(1, ' '));
-            int32_t longitude = atol(str.TokenAtIdx(2, ' '));
+            int16_t latitude  = atol(str.TokenAtIdx(1, ' '));
+            int16_t longitude = atol(str.TokenAtIdx(2, ' '));
 
             Serial.print(F("Testing: "));
             Serial.print(latitude);

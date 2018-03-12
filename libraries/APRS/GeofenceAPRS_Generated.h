@@ -2,123 +2,514 @@
 #define __GEOFENCE_APRS_DATA_H__
 
 
+#include "GeofenceAPRSBoundingArea.h"
+
+
 class GeofenceAPRSData
 {
+
+    static const uint16_t POINT_RADIUS_MILES = 100;
+
 public:
-
-    static void GetLatLngList_Europe(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InPanama(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Europe;
-        *latLngListLen = 26;
+        const int16_t POINT_LATITUDE  = 902;
+        const int16_t POINT_LONGITUDE = -7950;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_USA(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InSanJose(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = USA;
-        *latLngListLen = 32;
+        const int16_t POINT_LATITUDE  = 992;
+        const int16_t POINT_LONGITUDE = -8408;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Thailand(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InArgentina1(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Thailand;
-        *latLngListLen = 8;
+        const int16_t POINT_LATITUDE  = -4585;
+        const int16_t POINT_LONGITUDE = -6751;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Japan(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InArgentina2(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Japan;
-        *latLngListLen = 12;
+        const int16_t POINT_LATITUDE  = -5483;
+        const int16_t POINT_LONGITUDE = -6833;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_SouthKorea(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InWhitehorseYukon(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = SouthKorea;
-        *latLngListLen = 8;
+        const int16_t POINT_LATITUDE  = 6072;
+        const int16_t POINT_LONGITUDE = -13505;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_China(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InAlaska2(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = China;
-        *latLngListLen = 10;
+        const int16_t POINT_LATITUDE  = 5830;
+        const int16_t POINT_LONGITUDE = -13442;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Malaysia(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InDubai(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Malaysia;
-        *latLngListLen = 8;
+        const int16_t POINT_LATITUDE  = 2550;
+        const int16_t POINT_LONGITUDE = 5556;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Australia1(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InMoscow(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Australia1;
-        *latLngListLen = 8;
+        const int16_t POINT_LATITUDE  = 5575;
+        const int16_t POINT_LONGITUDE = 3762;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Australia2(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InIceland(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Australia2;
-        *latLngListLen = 16;
+        const int16_t POINT_LATITUDE  = 6396;
+        const int16_t POINT_LONGITUDE = -2083;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_NewZealand(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InJakarta(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = NewZealand;
-        *latLngListLen = 8;
+        const int16_t POINT_LATITUDE  = -638;
+        const int16_t POINT_LONGITUDE = 10719;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_SouthAfrica(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InTelukAmbon(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = SouthAfrica;
-        *latLngListLen = 14;
+        const int16_t POINT_LATITUDE  = -366;
+        const int16_t POINT_LONGITUDE = 12819;
+
+        uint8_t retVal = PointInCircle(latitude,
+                                       longitude,
+                                       POINT_LATITUDE,
+                                       POINT_LONGITUDE,
+                                       POINT_RADIUS_MILES);
+
+        return retVal;
     }
 
-    static void GetLatLngList_Morocco(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InEurope1(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Morocco;
-        *latLngListLen = 12;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 20 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Europe1, 20);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_Chile(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InUSA(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Chile;
-        *latLngListLen = 8;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 32 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, USA, 32);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_Argentina(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InThailand(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Argentina;
-        *latLngListLen = 12;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Thailand, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_Brazil1(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InJapan(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Brazil1;
-        *latLngListLen = 12;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 12 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Japan, 12);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_Brazil2(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InSouthKorea(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Brazil2;
-        *latLngListLen = 12;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, SouthKorea, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_Mexico(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InChina(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = Mexico;
-        *latLngListLen = 16;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 10 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, China, 10);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
-    static void GetLatLngList_TropicalIslands(const int16_t **latLngList, uint8_t *latLngListLen)
+    static uint8_t InMalaysia(int16_t latitude, int16_t longitude)
     {
-        *latLngList    = TropicalIslands;
-        *latLngListLen = 8;
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Malaysia, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InAustralia1(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Australia1, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InAustralia2(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 16 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Australia2, 16);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InNewZealand(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, NewZealand, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InSouthAfrica(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 14 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, SouthAfrica, 14);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InMorocco(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 12 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Morocco, 12);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InChile(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Chile, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InArgentina(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 12 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Argentina, 12);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InBrazil1(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 12 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Brazil1, 12);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InBrazil2(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 12 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Brazil2, 12);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InMexico(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 16 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Mexico, 16);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InTropicalIslands(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, TropicalIslands, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InHawaii(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Hawaii, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InAlaska1(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Alaska1, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InEurope2(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, Europe2, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
     }
 
 
 private:
 
+    // Takes care of pulling out values from eeprom, as well as populating
+    // the final point by duplicating the first.
+    // Callers must be sure to allocate enough space in the buffer.
+    static void LoadToSram(int16_t       *buf, 
+                           const int16_t *latLngList,
+                           uint8_t        latLngListLen)
+    {
+        uint8_t i = 0;
+
+        for (i = 0; i < latLngListLen; ++i)
+        {
+            int16_t val;
+            
+            uint16_t pgmByteLocation = (uint16_t)latLngList + (i * sizeof(val));
+            
+            val = pgm_read_dword_near(pgmByteLocation);
+            
+            buf[i] = val;
+        }
+
+        // add in the final point by duplicating the first
+        buf[i + 0] = buf[0];
+        buf[i + 1] = buf[1];
+    }
+
     // GEOFENCE ARRAYS (longitude, latitude)
-    static const int16_t Europe         [26] PROGMEM;
+    static const int16_t Europe1        [20] PROGMEM;
     static const int16_t USA            [32] PROGMEM;
     static const int16_t Thailand       [ 8] PROGMEM;
     static const int16_t Japan          [12] PROGMEM;
@@ -136,17 +527,26 @@ private:
     static const int16_t Brazil2        [12] PROGMEM;
     static const int16_t Mexico         [16] PROGMEM;
     static const int16_t TropicalIslands[ 8] PROGMEM;
+    static const int16_t Hawaii         [ 8] PROGMEM;
+    static const int16_t Alaska1        [ 8] PROGMEM;
+    static const int16_t Europe2        [ 8] PROGMEM;
 };
 
 
-const int16_t GeofenceAPRSData::Europe[26] PROGMEM =
+
+
+
+
+
+
+
+
+
+
+const int16_t GeofenceAPRSData::Europe1[20] PROGMEM =
 {
-      -422,   6033,
-     -1362,   5396,
-      -497,   4552,
-     -1310,   4345,
-      -747,   3350,
-       501,   3865,
+        10,   4975,
+         4,   3834,
       3410,   3431,
       4693,   4229,
       2219,   5716,
@@ -154,6 +554,7 @@ const int16_t GeofenceAPRSData::Europe[26] PROGMEM =
       2072,   6763,
       2719,   7071,
       2026,   7190,
+         2,   6112,
 };
 
 const int16_t GeofenceAPRSData::USA[32] PROGMEM =
@@ -324,6 +725,30 @@ const int16_t GeofenceAPRSData::TropicalIslands[8] PROGMEM =
      -5946,   1221,
      -5770,   1638,
      -7958,   2377,
+};
+
+const int16_t GeofenceAPRSData::Hawaii[8] PROGMEM =
+{
+    -15901,   2132,
+    -15580,   1829,
+    -15407,   1962,
+    -15759,   2249,
+};
+
+const int16_t GeofenceAPRSData::Alaska1[8] PROGMEM =
+{
+    -14238,   5970,
+    -15394,   5941,
+    -15348,   6507,
+    -14157,   6582,
+};
+
+const int16_t GeofenceAPRSData::Europe2[8] PROGMEM =
+{
+        -1,   6110,
+         1,   3730,
+      -976,   3321,
+     -1169,   5723,
 };
 
 
