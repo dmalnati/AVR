@@ -312,7 +312,7 @@ proc Generate { fdOut } {
     P ""
     P "class GeofenceAPRSData"
     P "\{"
-    P "    static const uint16_t POINT_RADIUS_MILES = 100;"
+    P "    static const uint16_t POINT_RADIUS_MILES = 150;"
     P ""
     P "public:"
 
@@ -351,10 +351,8 @@ proc Generate { fdOut } {
             P "        const uint8_t BUF_SIZE = $numPoints + 2;"
             P "        int16_t buf\[BUF_SIZE\];"
             P "        "
-            P "        LoadToSram(buf, $name, $numPoints);"
-            P "        "
             P "        // use points to determine if point in polygon"
-            P "        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);"
+            P "        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, $name, $numPoints, latitude, longitude);"
             P "        "
             P "        return retVal;"
             P "    \}"
@@ -366,9 +364,24 @@ proc Generate { fdOut } {
     P ""
     P ""
     P "private:"
+    P ""
 
-    P {
-    // Takes care of pulling out values from eeprom, as well as populating
+    P {    // single function to load values to sram as well as do the next step
+    // of checking if the point is in the polygon.
+    // saves program size to combine these two steps into a single function.
+    static uint8_t LoadToSramAndCheckPointInPolygon(int16_t       *buf, 
+                                                    const int16_t *latLngList,
+                                                    uint8_t        latLngListLen,
+                                                    int16_t        latitude,
+                                                    int16_t        longitude)
+    {
+        LoadToSram(buf, latLngList, latLngListLen);
+
+        return PointInPolygon(latitude, longitude, buf, ((latLngListLen + 2) / 2));
+    }
+}
+
+    P {    // Takes care of pulling out values from eeprom, as well as populating
     // the final point by duplicating the first.
     // Callers must be sure to allocate enough space in the buffer.
     static void LoadToSram(int16_t       *buf, 

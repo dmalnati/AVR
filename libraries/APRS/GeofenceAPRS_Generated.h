@@ -7,7 +7,7 @@
 
 class GeofenceAPRSData
 {
-    static const uint16_t POINT_RADIUS_MILES = 100;
+    static const uint16_t POINT_RADIUS_MILES = 150;
 
 public:
     static uint8_t InPanama(int16_t latitude, int16_t longitude)
@@ -171,10 +171,8 @@ public:
         const uint8_t BUF_SIZE = 24 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Europe1, 24);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Europe1, 24, latitude, longitude);
         
         return retVal;
     }
@@ -186,10 +184,8 @@ public:
         const uint8_t BUF_SIZE = 32 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, USA, 32);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, USA, 32, latitude, longitude);
         
         return retVal;
     }
@@ -201,10 +197,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Thailand, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Thailand, 8, latitude, longitude);
         
         return retVal;
     }
@@ -216,10 +210,8 @@ public:
         const uint8_t BUF_SIZE = 12 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Japan, 12);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Japan, 12, latitude, longitude);
         
         return retVal;
     }
@@ -231,10 +223,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, SouthKorea, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, SouthKorea, 8, latitude, longitude);
         
         return retVal;
     }
@@ -246,10 +236,8 @@ public:
         const uint8_t BUF_SIZE = 10 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, China, 10);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, China, 10, latitude, longitude);
         
         return retVal;
     }
@@ -261,10 +249,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Malaysia, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Malaysia, 8, latitude, longitude);
         
         return retVal;
     }
@@ -276,10 +262,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Australia1, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Australia1, 8, latitude, longitude);
         
         return retVal;
     }
@@ -291,10 +275,8 @@ public:
         const uint8_t BUF_SIZE = 16 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Australia2, 16);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Australia2, 16, latitude, longitude);
         
         return retVal;
     }
@@ -306,10 +288,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, NewZealand, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, NewZealand, 8, latitude, longitude);
         
         return retVal;
     }
@@ -321,10 +301,8 @@ public:
         const uint8_t BUF_SIZE = 14 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, SouthAfrica, 14);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, SouthAfrica, 14, latitude, longitude);
         
         return retVal;
     }
@@ -336,10 +314,8 @@ public:
         const uint8_t BUF_SIZE = 12 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Morocco, 12);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Morocco, 12, latitude, longitude);
         
         return retVal;
     }
@@ -351,10 +327,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Chile, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Chile, 8, latitude, longitude);
         
         return retVal;
     }
@@ -366,10 +340,8 @@ public:
         const uint8_t BUF_SIZE = 12 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Argentina, 12);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Argentina, 12, latitude, longitude);
         
         return retVal;
     }
@@ -381,10 +353,8 @@ public:
         const uint8_t BUF_SIZE = 12 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Brazil1, 12);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Brazil1, 12, latitude, longitude);
         
         return retVal;
     }
@@ -396,10 +366,8 @@ public:
         const uint8_t BUF_SIZE = 12 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Brazil2, 12);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Brazil2, 12, latitude, longitude);
         
         return retVal;
     }
@@ -411,10 +379,8 @@ public:
         const uint8_t BUF_SIZE = 16 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Mexico, 16);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Mexico, 16, latitude, longitude);
         
         return retVal;
     }
@@ -426,10 +392,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, TropicalIslands, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, TropicalIslands, 8, latitude, longitude);
         
         return retVal;
     }
@@ -441,10 +405,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Hawaii, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Hawaii, 8, latitude, longitude);
         
         return retVal;
     }
@@ -456,10 +418,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, Alaska1, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, Alaska1, 8, latitude, longitude);
         
         return retVal;
     }
@@ -471,10 +431,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_USA, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_USA, 8, latitude, longitude);
         
         return retVal;
     }
@@ -486,10 +444,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_BRAZIL, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_BRAZIL, 8, latitude, longitude);
         
         return retVal;
     }
@@ -501,10 +457,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_ARGENTINA, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_ARGENTINA, 8, latitude, longitude);
         
         return retVal;
     }
@@ -516,10 +470,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_CHILE, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_CHILE, 8, latitude, longitude);
         
         return retVal;
     }
@@ -531,10 +483,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_COLOMBIA, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_COLOMBIA, 8, latitude, longitude);
         
         return retVal;
     }
@@ -546,10 +496,8 @@ public:
         const uint8_t BUF_SIZE = 6 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_VENEZUELA, 6);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_VENEZUELA, 6, latitude, longitude);
         
         return retVal;
     }
@@ -561,10 +509,8 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_AUSTRALIA, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_AUSTRALIA, 8, latitude, longitude);
         
         return retVal;
     }
@@ -576,10 +522,8 @@ public:
         const uint8_t BUF_SIZE = 10 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_CHINA, 10);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_CHINA, 10, latitude, longitude);
         
         return retVal;
     }
@@ -591,10 +535,8 @@ public:
         const uint8_t BUF_SIZE = 18 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_EU_AF_OTHER, 18);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_EU_AF_OTHER, 18, latitude, longitude);
         
         return retVal;
     }
@@ -606,16 +548,28 @@ public:
         const uint8_t BUF_SIZE = 8 + 2;
         int16_t buf[BUF_SIZE];
         
-        LoadToSram(buf, REG_APAC, 8);
-        
         // use points to determine if point in polygon
-        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, REG_APAC, 8, latitude, longitude);
         
         return retVal;
     }
 
 
 private:
+
+    // single function to load values to sram as well as do the next step
+    // of checking if the point is in the polygon.
+    // saves program size to combine these two steps into a single function.
+    static uint8_t LoadToSramAndCheckPointInPolygon(int16_t       *buf, 
+                                                    const int16_t *latLngList,
+                                                    uint8_t        latLngListLen,
+                                                    int16_t        latitude,
+                                                    int16_t        longitude)
+    {
+        LoadToSram(buf, latLngList, latLngListLen);
+
+        return PointInPolygon(latitude, longitude, buf, ((latLngListLen + 2) / 2));
+    }
 
     // Takes care of pulling out values from eeprom, as well as populating
     // the final point by duplicating the first.
