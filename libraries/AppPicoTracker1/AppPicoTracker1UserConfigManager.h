@@ -2,6 +2,7 @@
 #define __APP_PICO_TRACKER_1_USER_CONFIG_MANAGER_H__
 
 
+#include "PAL.h"
 #include "Eeprom.h"
 #include "Str.h"
 #include "UtlSerial.h"
@@ -13,248 +14,174 @@ private:
     static const uint8_t PIN_SERIAL_RX = 2;
     
 public:
+
     struct UserConfig
     {
-    public:
-        static const uint8_t DEVICE_ID_LEN     = 20;
-        static const uint8_t CALLSIGN_LEN      = 6;
-        static const uint8_t NOTES_MESSAGE_LEN = 10;
-
-    public:
+        static const uint8_t DEVICE_ID_LEN = 4;
+        static const uint8_t CALLSIGN_LEN  = 6;
+        
         UserConfig()
         {
-            memset((void *)deviceId,     '\0', DEVICE_ID_LEN     + 1);
-            memset((void *)callsign,     '\0', CALLSIGN_LEN      + 1);
-            memset((void *)notesMessage, '\0', NOTES_MESSAGE_LEN + 1);
+            memset((void *)device.id,     '\0', DEVICE_ID_LEN + 1);
+            memset((void *)aprs.callsign, '\0', CALLSIGN_LEN  + 1);
         }
         
-        char *GetDeviceId() { return deviceId; }
-        void SetDeviceId(const char *val) { strncpy(deviceId, val, DEVICE_ID_LEN + 1); deviceId[DEVICE_ID_LEN] = '\0'; }
-        
-        char *GetCallsign() { return callsign; }
-        void SetCallsign(const char *val) { strncpy(callsign, val, CALLSIGN_LEN + 1); callsign[CALLSIGN_LEN] = '\0'; }
-        
-        uint32_t GetReportIntervalSecs() { return reportIntervalSecs; }
-        void SetReportIntervalSecs(uint32_t val) { reportIntervalSecs = val; }
-        
-        uint8_t GetTransmitCount() { return transmitCount; }
-        void SetTransmitCount(uint8_t val) { transmitCount = val; }
-        
-        uint32_t GetDelaySecsBetweenTransmits() { return delaySecsBetweenTransmits; }
-        void SetDelaySecsBetweenTransmits(uint32_t val) { delaySecsBetweenTransmits = val; }
-
-        char *GetNotesMessage() { return notesMessage; }
-        void SetNotesMessage(const char *val) { strncpy(notesMessage, val, NOTES_MESSAGE_LEN + 1); notesMessage[NOTES_MESSAGE_LEN] = '\0'; }
-        
-        void Print()
+        struct
         {
-            Serial.println(F("Current Configuration"));
-            Serial.println(F("---------------------"));
-            
-            Serial.println(F("Device Unique Identification"));
-            
-            Serial.print(F("    deviceId["));
-            Serial.print(DEVICE_ID_LEN);
-            Serial.print(F("]: "));
-            Serial.print(GetDeviceId());
-            Serial.println();
-            Serial.println();
-            
-            
-            Serial.println(F("Your Identity"));
-            
-            Serial.print(F("    callsign["));
-            Serial.print(CALLSIGN_LEN);
-            Serial.print(F("]: "));
-            Serial.print(GetCallsign());
-            Serial.println();
-            Serial.println();
-            
-            
-            Serial.println(F("Reporting Interval"));
-            
-            Serial.print(F("    reportIntervalSecs: "));
-            Serial.print(GetReportIntervalSecs());
-            Serial.println();
-            Serial.println();
-            
-            
-            Serial.println(F("Reliability of Transmission"));
-            
-            Serial.print(F("    transmitCount: "));
-            Serial.print(GetTransmitCount());
-            Serial.println();
-            
-            Serial.print(F("    delaySecsBetweenTransmits: "));
-            Serial.print(GetDelaySecsBetweenTransmits());
-            Serial.println();
-            Serial.println();
-            
-            
-            Serial.println(F("Message Content"));
-            Serial.print(F("    notesMessage["));
-            Serial.print(NOTES_MESSAGE_LEN);
-            Serial.print(F("]: "));
-            Serial.print(GetNotesMessage());
-            Serial.println();
-            
-            Serial.println(F("---------------------"));
-        }
+            char id[DEVICE_ID_LEN + 1];
+        } device;
         
-    private:
-        char deviceId[DEVICE_ID_LEN + 1];
+        struct
+        {
+            char callsign[CALLSIGN_LEN + 1];
+        } aprs;
         
-        char callsign[CALLSIGN_LEN + 1];
+        struct
+        {
+            uint8_t  transmitCount           = 2;
+            uint32_t delayMsBetweenTransmits = 3000;
+        } radio;
         
-        uint32_t reportIntervalSecs = 60;
-        
-        uint8_t  transmitCount             = 2;
-        uint32_t delaySecsBetweenTransmits = 3;
-        
-        char notesMessage[NOTES_MESSAGE_LEN + 1];
+        struct
+        {
+            uint32_t lowHighAltitudeFtThreshold = 10000;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs = 15L * 60L * 1000L;    // 15 min
+            } highAltitude;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs =      60L * 1000L;     // 60 sec, 1 min
+            } lowAltitude;
+            
+            struct
+            {
+                uint32_t wakeAndEvaluateMs = 120L * 60L * 1000L;   // 120 min, 2 hr
+            } deadZone;
+        } geo;
     };
-
     
-public:
-
+    
+    
     static uint8_t GetUserConfig(UserConfig &userConfig)
     {
         uint8_t retVal = 0;
         
-        uint8_t configurationAvailableToValidate = 0;
-        
-        // Check serial in, if it's high, we assume a serial-speaker is on the
-        // other end.
-
-        // Was getting inconsistent readings here on startup.
-        // Wait briefly for pin state to settle.
-        PAL.Delay(20);
-        
-        // Debug
-        //if (PAL.DigitalRead(PIN_SERIAL_RX))
-        if (0)
+        // Check there is a signal on the serial-in line.
+        // if yes, enter configuration mode.
+        if (DetectSerialInput())
         {
-            Serial.println(F("Interactive configuration mode enabled."));
-            
-            configurationAvailableToValidate = GetUserConfigBySerial(userConfig);
+            retVal = GetUserConfigBySerial(userConfig);
         }
         else
         {
-            Serial.println(F("No Serial-In detected, attempting to use previously-stored configuration."));
+            Serial.print(F("No serial input -- "));
             
-            EepromAccessor<UserConfig> ea;
-            if (ea.Read(userConfig))
+            retVal = ea_.Read(userConfig);
+            
+            if (retVal)
             {
-                Serial.println(F("OK: Previously-stored configuration found and loaded."));
-
-                configurationAvailableToValidate = 1;
+                Serial.println(F("OK: prior config found"));
             }
             else
             {
-                Serial.println(F("ERR: No stored configuration found."));
+                Serial.println(F("ERR: no prior config found"));
             }
+        }
+
+        return retVal;
+    }
+
+
+    
+public:
+
+    static uint8_t DetectSerialInput()
+    {
+        uint8_t retVal = 0;
+        
+        // Force pin, which could be floating, and is seen to float and cause,
+        // false positives, into a known high state.
+        // The only way this pin could be low would be if something was pulling
+        // it low.
+        // That is our signal.
+        PAL.PinMode(PIN_SERIAL_RX, INPUT_PULLUP);
+        
+        if (PAL.DigitalRead(PIN_SERIAL_RX) == 0)
+        {
+            retVal = 1;
+            
+            Serial.println(F("Interactive serial config -- unground input to continue"));
+            Serial.println();
+            
+            while (PAL.DigitalRead(PIN_SERIAL_RX) == 0) {}
         }
         
-        if (configurationAvailableToValidate)
+        // Restore pin back to normal mode
+        PAL.PinMode(PIN_SERIAL_RX, INPUT);
+        
+        // Clear out any junk in the serial input stream from having to mess
+        // around with signal transitions.
+        // This was seen in testing.
+        PAL.Delay(50);
+        while (Serial.available())
         {
-            // Check configuration
-            uint8_t errCount = 0;
-            
-            Serial.println(F("Validating configuration."));
-            
-            if (!strlen(userConfig.GetDeviceId()))
-            {
-                Serial.println(F("ERR: deviceId blank."));
-                
-                ++errCount;
-            }
-            
-            if (!strlen(userConfig.GetCallsign()))
-            {
-                Serial.println(F("ERR: callsign blank."));
-                
-                ++errCount;
-            }
-            
-            if (userConfig.GetReportIntervalSecs() == 0)
-            {
-                Serial.println(F("ERR: reportIntervalSecs can't be zero."));
-                
-                ++errCount;
-            }
-            
-            if (userConfig.GetTransmitCount() == 0)
-            {
-                Serial.println(F("ERR: transmitCount can't be zero."));
-                
-                ++errCount;
-            }
-            
-            if (!errCount)
-            {
-                retVal = 1;
-                
-                Serial.println(F("OK: Configuration valid."));
-            }
-            else
-            {
-                Serial.print(F("ERR: "));
-                Serial.print(errCount);
-                Serial.println(F(" configuration errors detected."));
-            }
-        }
-        else
-        {
-            Serial.println(F("ERR: No stored configuration found, no new configuration set."));
+            Serial.read();
         }
         
         return retVal;
     }
-    
-private:
+
     static uint8_t GetUserConfigBySerial(UserConfig &userConfig)
     {
         uint8_t userConfigAcquired = 0;
         
-        EepromAccessor<UserConfig> ea;
-        userConfigAcquired = ea.Read(userConfig);
+        userConfigAcquired = ea_.Read(userConfig);
         
         if (userConfigAcquired)
         {
-            Serial.println(F("Previously-stored configuration found and loaded."));
+            Serial.println(F("Prior config loaded"));
         }
         else
         {
-            Serial.println(F("No Previously-stored configuration found, loading default values."));
+            Serial.println(F("No prior config, loading defaults"));
         }
         
-        PrintHelp(userConfig);
+        uint8_t firstTime = 1;
         
         uint8_t cont = 1;
         while (cont)
         {
             const uint8_t BUF_SIZE = 100;
             char buf[BUF_SIZE];
-        
-            uint8_t strLen = SerialReadLine(buf, BUF_SIZE);
             
-            if (strLen)
+            auto strDeviceId                         = PSTR("device.id");
+            auto strAprsCallsign                     = PSTR("aprs.callsign");
+            auto strRadioTransmitCount               = PSTR("radio.transmitCount");
+            auto strRadioDelayMsBetweenTransmits     = PSTR("radio.delayMsBetweenTransmits");
+            auto strGeoLowHighAltitudeFtThreshold    = PSTR("geo.lowHighAltitudeFtThreshold");
+            auto strGeoHighAltitudeWakeAndEvaluateMs = PSTR("geo.highAltitude.wakeAndEvaluateMs");
+            auto strGeoLowAltitudeWakeAndEvaluateMs  = PSTR("geo.lowAltitude.wakeAndEvaluateMs");
+            auto strGeoDeadZoneWakeAndEvaluateMs     = PSTR("geo.deadZone.wakeAndEvaluateMs");
+            
+            uint8_t strLen = 0;
+            if (!firstTime)
+            {
+                strLen = SerialReadLine(buf, BUF_SIZE);
+            }
+            
+            if (strLen || firstTime)
             {
                 Str str(buf);
                 
                 uint8_t tokenCount = str.TokenCount(' ');
                 
-                uint8_t understood  = 0;
+                uint8_t understood  = firstTime;
                 uint8_t updated     = 0;
                 
-                if (!strcmp_P(str.UnsafePtr(), PSTR("help")) ||
-                    !strcmp_P(str.UnsafePtr(), PSTR("?")))
-                {
-                    PrintHelp(userConfig);
-                    
-                    understood = 1;
-                }
-                else if (tokenCount == 1)
+                if (tokenCount == 1)
                 {
                     const char *name = str.TokenAtIdx(0, ' ');
                     
@@ -262,8 +189,8 @@ private:
                     {
                         UserConfig userConfigTmp;
                         
-                        ea.Write(userConfigTmp);
-                        ea.Read(userConfig);
+                        ea_.Write(userConfigTmp);
+                        ea_.Read(userConfig);
                         
                         understood = 1;
                         updated    = 1;
@@ -271,7 +198,7 @@ private:
                     if (!strcmp_P(name, PSTR("delete")))
                     {
                         // Debug only
-                        ea.Delete();
+                        ea_.Delete();
                         
                         Serial.println(F("Deleted EEPROM, restarting..."));
                         Serial.println();
@@ -290,44 +217,66 @@ private:
                 {
                     const char *name = str.TokenAtIdx(0, ' ');
                     
-                    if (!strcmp_P(name, PSTR("deviceId")))
+                    if (!strcmp_P(name, strDeviceId))
                     {
-                        userConfig.SetDeviceId(str.UnsafePtrAtTokenAtIdx(1, ' '));
+                        const char *val = str.TokenAtIdx(1, ' ');
+                        
+                        memset((void *)userConfig.device.id, '\0', UserConfig::DEVICE_ID_LEN + 1);
+                        strncpy(userConfig.device.id, val, UserConfig::DEVICE_ID_LEN + 1);
+                        userConfig.device.id[UserConfig::DEVICE_ID_LEN] = '\0';
                         
                         understood = 1;
                         updated    = 1;
                     }
-                    else if (!strcmp_P(name, PSTR("callsign")))
+                    else if (!strcmp_P(name, strAprsCallsign))
                     {
-                        userConfig.SetCallsign(str.TokenAtIdx(1, ' '));
+                        const char *val = str.TokenAtIdx(1, ' ');
+                        
+                        memset((void *)userConfig.aprs.callsign, '\0', UserConfig::CALLSIGN_LEN + 1);
+                        strncpy(userConfig.aprs.callsign, val, UserConfig::CALLSIGN_LEN + 1);
+                        userConfig.aprs.callsign[UserConfig::CALLSIGN_LEN] = '\0';
+
+                        understood = 1;
+                        updated    = 1;
+                    }
+                    else if (!strcmp_P(name, strRadioTransmitCount))
+                    {
+                        userConfig.radio.transmitCount = atoi(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
                     }
-                    else if (!strcmp_P(name, PSTR("reportIntervalSecs")))
+                    else if (!strcmp_P(name, strRadioDelayMsBetweenTransmits))
                     {
-                        userConfig.SetReportIntervalSecs(atol(str.TokenAtIdx(1, ' ')));
+                        userConfig.radio.delayMsBetweenTransmits = atol(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
                     }
-                    else if (!strcmp_P(name, PSTR("transmitCount")))
+                    else if (!strcmp_P(name, strGeoLowHighAltitudeFtThreshold))
                     {
-                        userConfig.SetTransmitCount(atoi(str.TokenAtIdx(1, ' ')));
+                        userConfig.geo.lowHighAltitudeFtThreshold = atol(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
                     }
-                    else if (!strcmp_P(name, PSTR("delaySecsBetweenTransmits")))
+                    else if (!strcmp_P(name, strGeoHighAltitudeWakeAndEvaluateMs))
                     {
-                        userConfig.SetDelaySecsBetweenTransmits(atol(str.TokenAtIdx(1, ' ')));
+                        userConfig.geo.highAltitude.wakeAndEvaluateMs = atol(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
                     }
-                    else if (!strcmp_P(name, PSTR("notesMessage")))
+                    else if (!strcmp_P(name, strGeoLowAltitudeWakeAndEvaluateMs))
                     {
-                        userConfig.SetNotesMessage(str.UnsafePtrAtTokenAtIdx(1, ' '));
+                        userConfig.geo.lowAltitude.wakeAndEvaluateMs = atol(str.TokenAtIdx(1, ' '));
+                        
+                        understood = 1;
+                        updated    = 1;
+                    }
+                    else if (!strcmp_P(name, strGeoDeadZoneWakeAndEvaluateMs))
+                    {
+                        userConfig.geo.deadZone.wakeAndEvaluateMs = atol(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
@@ -346,13 +295,31 @@ private:
                 if (updated)
                 {
                     Serial.println(F("Auto-saving changes."));
-                    ea.Write(userConfig);
+                    ea_.Write(userConfig);
                     
                     userConfigAcquired = 1;
                     
                     Serial.println();
-                    userConfig.Print();
+                }
+                
+                if (updated || firstTime)
+                {
+                    #define TOF(x) ((const __FlashStringHelper *)(x))
+                    Serial.print(TOF(strDeviceId));                         Serial.print('['); Serial.print(UserConfig::DEVICE_ID_LEN); Serial.print("] = "); Serial.println(userConfig.device.id);
+                    Serial.print(TOF(strAprsCallsign));                     Serial.print('['); Serial.print(UserConfig::CALLSIGN_LEN); Serial.print("] = "); Serial.println(userConfig.aprs.callsign);
+                    Serial.print(TOF(strRadioTransmitCount));               Serial.print(" = "); Serial.println(userConfig.radio.transmitCount);
+                    Serial.print(TOF(strRadioDelayMsBetweenTransmits));     Serial.print(" = "); Serial.println(userConfig.radio.delayMsBetweenTransmits);
+                    Serial.print(TOF(strGeoLowHighAltitudeFtThreshold));    Serial.print(" = "); Serial.println(userConfig.geo.lowHighAltitudeFtThreshold);
+                    Serial.print(TOF(strGeoHighAltitudeWakeAndEvaluateMs)); Serial.print(" = "); Serial.println(userConfig.geo.highAltitude.wakeAndEvaluateMs);
+                    Serial.print(TOF(strGeoLowAltitudeWakeAndEvaluateMs));  Serial.print(" = "); Serial.println(userConfig.geo.lowAltitude.wakeAndEvaluateMs);
+                    Serial.print(TOF(strGeoDeadZoneWakeAndEvaluateMs));     Serial.print(" = "); Serial.println(userConfig.geo.deadZone.wakeAndEvaluateMs);
+
                     Serial.println();
+                }
+                
+                if (firstTime)
+                {
+                    firstTime = 0;
                 }
             }
         }
@@ -360,32 +327,12 @@ private:
         return userConfigAcquired;
     }
     
-    static void PrintHelp(UserConfig &userConfig)
-    {
-        Serial.println();
-        
-        userConfig.Print();
-        
-        Serial.println();
-        Serial.println(F("To set any parameter, type its name, space, and a new value"));
-        Serial.println(F("Then hit enter."));
-        Serial.println(F("Any changes are saved automatically."));
-        Serial.println();
-        
-        Serial.println(F("To start over, type reset and hit enter."));
-        Serial.println();
-        
-        Serial.println(F("When finished, you can either:"));
-        Serial.println(F("- disconnect the Serial-In line and restart the device -or-"));
-        Serial.println(F("- type run and hit enter"));
-        Serial.println();
-        
-        Serial.print(F("Type help or ? any time."));
-        Serial.println();
-        
-        Serial.println();
-    }
+    
+    static EepromAccessor<UserConfig> ea_;
 };
+
+
+EepromAccessor<AppPicoTracker1UserConfigManager::UserConfig> AppPicoTracker1UserConfigManager::ea_;
 
 
 #endif  // __APP_PICO_TRACKER_1_USER_CONFIG_MANAGER_H__
