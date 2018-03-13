@@ -46,10 +46,12 @@ public:
     }
     
     
-    
-    
-    
-    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Entry point
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
     void Run()
     {
         // Init serial
@@ -105,7 +107,12 @@ public:
 
 private:
 
-    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Main Wake/Lock/Send logic
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
     void OnWakeAndEvaluateTimeout()
     {
         // Begin monitoring code which has been seen to hang
@@ -133,7 +140,6 @@ private:
         // Kick the watchdog
         PAL.WatchdogReset();
     }
-        
     
     void OnCheckForGpsLock()
     {
@@ -184,47 +190,55 @@ private:
         
         // Decide whether to send a message and how long to sleep for based on
         // geofence data.
-        if (locationDetails.deadZone)
+        uint8_t sendMessage = 1;
+        
+        if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
         {
-            Serial.println(F("DeadZone"));
+            Serial.println(F("LowAltitude"));
             
-            // Don't send a message, no one will hear you.
+            // At low altitude, we send messages regardless of being in a dead zone or not
+            sendMessage = 1;
             
-            // Increment counters to indicate this has happened.
-            StatsIncrNumMsgsNotSent();
-            
-            // No further action, just go back to sleep
-            tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.deadZone.wakeAndEvaluateMs);
+            // Wake again at the interval configured for low altitude
+            tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.lowAltitude.wakeAndEvaluateMs);
         }
         else
         {
-            Serial.println(F("ActiveZone"));
+            Serial.println(F("HighAltitude"));
             
+            if (locationDetails.deadZone)
+            {
+                Serial.println(F("DeadZone"));
+                
+                // At high altitude, we don't send messages in dead zones
+                sendMessage = 0;
+                
+                // Increment counters to indicate this has happened.
+                StatsIncrNumMsgsNotSent();
+                
+                // Wake again at the interval configured for high altitude dead zones
+                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.deadZone.wakeAndEvaluateMs);
+            }
+            else
+            {
+                Serial.println(F("ActiveZone"));
+
+                // At high altitude, we do send messages in active zones
+                sendMessage = 1;
+                
+                // Wake again at the interval configured for high altitude active zones
+                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.highAltitude.wakeAndEvaluateMs);
+            }
+        }
+        
+        if (sendMessage)
+        {
             // We're going to send a message, so tune radio to the frequency to
             // be used in this region.
             radio_.SetFrequency(locationDetails.freqAprs);
             
             // Send message
             SendMessage();
-            
-            // Decide how long to sleep for based on high or low altitude
-            if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
-            {
-                Serial.println(F("LowAltitude"));
-                
-                // low altitude mode
-                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.lowAltitude.wakeAndEvaluateMs);
-            }
-            else
-            {
-                Serial.println(F("HighAltitude"));
-                
-                // high altitude mode
-                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.highAltitude.wakeAndEvaluateMs);
-            }
-            
-            // Debug for serial write to complete
-            PAL.Delay(50);
         }
         
         // Disable watchdog as the main set of code which can hang is complete
@@ -237,6 +251,13 @@ private:
         // Debug
         Serial.println();
     }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Message Sending
+    //
+    ///////////////////////////////////////////////////////////////////////////
     
     void SendMessage()
     {
@@ -318,18 +339,11 @@ private:
     }
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // GPS Controls
+    //
+    ///////////////////////////////////////////////////////////////////////////
     
     void StartGPS()
     {
@@ -342,7 +356,6 @@ private:
         // assert this is a high-altitude mode
         gps_.SetHighAltitudeMode();
     }
-    
     
     void StopGPS()
     {
@@ -364,86 +377,11 @@ private:
     }
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-    
-    void ToDo()
-    {
-        
-        // Change SSID to 11, not 9.
-            // I think I set the icon display based on other characters in the
-            // aprs message.
-                // easy to expose to settings?  dad might like that.
-        
-        // APRS route should be WIDE2-1 not WIDE1-1, right?
-        
-        
-        // wtf were the bugs I had before?
-            // Something about the deg min sec not accounting for 00 and
-            // turning into just spaces right?
-            // internal voltage wasn't working correctly
-            
-        // GPS geofencing to change frequency
-        
-        // Make sure to manually enable high-altitude mode
-        
-        // use LEDs as status
-            // different schemes for config vs low-altitude status
-            // disable when flying
-        
-        // set serial active checking frequency more appropriately
-            // confirm working and won't eat power by waking up inappropriately
-            // during actual flight
-        
-        // watchdog
-        
-        // RTC
-        
-        // dump flash stored locations if found later
-        
-        
-        // restore fuse setting to erase EEPROM on re-program
-            // temporarily disabled for development
-            
-        // restore user config being sensitive to RX-in
-        // restore user config check (has || 1)
-        
-        // user-configure whether LEDs blink or not for status
-        
-        
-        // things to include in message:
-        // - voltage
-        // - time to get latest fix
-        // stats
-            // - number unsent messages since last tx
-                // - maybe better to keep absolute counters
-            // - number of restarts
-            // - uptime
-        
-        // saw at least one fatal hang
-            // watchdog how?
-            
-        // how to sleep longer when way out of range?
-    }
-    
-    
-private:
-
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Stats Keeping
+    //
+    ///////////////////////////////////////////////////////////////////////////
     void StatsIncr(uint16_t &counter)
     {
         persistentCountersAccessor_.Read(persistentCounters_);
@@ -468,6 +406,31 @@ private:
         StatsIncr(persistentCounters_.NUM_MSGS_NOT_SENT);
     }
     
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // TODO
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    void ToDo()
+    {
+        // use LEDs as status
+            // different schemes for config vs low-altitude status
+            // disable when flying
+        
+        // set serial active checking frequency more appropriately
+            // confirm working and won't eat power by waking up inappropriately
+            // during actual flight
+        
+        // dump flash stored locations if found later
+        
+        // restore fuse setting to erase EEPROM on re-program
+            // temporarily disabled for development
+            
+        // user-configure whether LEDs blink or not for status
+
+    }
 
 
 private:
@@ -518,7 +481,6 @@ private:
             } deadZone;
         } geo;
     };
-        
     
     UserConfig userConfig_;
     
@@ -563,13 +525,6 @@ private:
     TransientCounters  transientCounters_;
     
 };
-
-
-
-
-
-
-
 
 
 #endif  // __APP_PICO_TRACKER_1_H__
