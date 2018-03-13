@@ -191,6 +191,47 @@ private:
         else
         {
             retVal.deadZone = 1;
+
+            if (GeofenceAPRSData::InREG_USA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_US;
+            }
+            else if (GeofenceAPRSData::InREG_BRAZIL(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_BRAZIL;
+            }
+            else if (GeofenceAPRSData::InREG_ARGENTINA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_ARGENTINA;
+            }
+            else if (GeofenceAPRSData::InREG_CHILE(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_CHILE;
+            }
+            else if (GeofenceAPRSData::InREG_COLOMBIA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_US;
+            }
+            else if (GeofenceAPRSData::InREG_VENEZUELA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_PANAMA;
+            }
+            else if (GeofenceAPRSData::InREG_AUSTRALIA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_AUSTRALIA;
+            }
+            else if (GeofenceAPRSData::InREG_CHINA(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_CHINA;
+            }
+            else if (GeofenceAPRSData::InREG_EU_AF_OTHER(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_EU_RU_AF;
+            }
+            else if (GeofenceAPRSData::InREG_APAC(latitude, longitude))
+            {
+                retVal.freqAprs = APRS_FREQ_MALAYSIA;
+            }
         }
         
         return retVal;

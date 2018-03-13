@@ -464,6 +464,156 @@ public:
         return retVal;
     }
 
+    static uint8_t InREG_USA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_USA, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_BRAZIL(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_BRAZIL, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_ARGENTINA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_ARGENTINA, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_CHILE(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_CHILE, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_COLOMBIA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_COLOMBIA, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_VENEZUELA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 6 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_VENEZUELA, 6);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_AUSTRALIA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_AUSTRALIA, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_CHINA(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 10 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_CHINA, 10);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_EU_AF_OTHER(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 18 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_EU_AF_OTHER, 18);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
+    static uint8_t InREG_APAC(int16_t latitude, int16_t longitude)
+    {
+        // load into sram, making room for final connecting point which isn't
+        // included in the data
+        const uint8_t BUF_SIZE = 8 + 2;
+        int16_t buf[BUF_SIZE];
+        
+        LoadToSram(buf, REG_APAC, 8);
+        
+        // use points to determine if point in polygon
+        uint8_t retVal = PointInPolygon(latitude, longitude, buf, BUF_SIZE / 2);
+        
+        return retVal;
+    }
+
 
 private:
 
@@ -513,6 +663,16 @@ private:
     static const int16_t TropicalIslands[ 8] PROGMEM;
     static const int16_t Hawaii         [ 8] PROGMEM;
     static const int16_t Alaska1        [ 8] PROGMEM;
+    static const int16_t REG_USA        [ 8] PROGMEM;
+    static const int16_t REG_BRAZIL     [ 8] PROGMEM;
+    static const int16_t REG_ARGENTINA  [ 8] PROGMEM;
+    static const int16_t REG_CHILE      [ 8] PROGMEM;
+    static const int16_t REG_COLOMBIA   [ 8] PROGMEM;
+    static const int16_t REG_VENEZUELA  [ 6] PROGMEM;
+    static const int16_t REG_AUSTRALIA  [ 8] PROGMEM;
+    static const int16_t REG_CHINA      [10] PROGMEM;
+    static const int16_t REG_EU_AF_OTHER[18] PROGMEM;
+    static const int16_t REG_APAC       [ 8] PROGMEM;
 };
 
 const int16_t GeofenceAPRSData::Europe1[24] PROGMEM =
@@ -715,6 +875,91 @@ const int16_t GeofenceAPRSData::Alaska1[8] PROGMEM =
     -15394,   5941,
     -15348,   6507,
     -14157,   6582,
+};
+
+const int16_t GeofenceAPRSData::REG_USA[8] PROGMEM =
+{
+     -2971,   1255,
+    -17332,   1358,
+    -17121,   7440,
+     -2531,   7050,
+};
+
+const int16_t GeofenceAPRSData::REG_BRAZIL[8] PROGMEM =
+{
+     -4641,  -3045,
+     -7471,   -597,
+     -5572,    945,
+     -2900,   -701,
+};
+
+const int16_t GeofenceAPRSData::REG_ARGENTINA[8] PROGMEM =
+{
+     -6601,  -2072,
+     -7304,  -5112,
+     -6794,  -5238,
+     -5212,  -3438,
+};
+
+const int16_t GeofenceAPRSData::REG_CHILE[8] PROGMEM =
+{
+     -7348,  -1731,
+     -7919,  -5018,
+     -7315,  -5115,
+     -6616,  -2059,
+};
+
+const int16_t GeofenceAPRSData::REG_COLOMBIA[8] PROGMEM =
+{
+     -7225,   1255,
+     -6658,     97,
+     -8042,   -919,
+     -8618,    351,
+};
+
+const int16_t GeofenceAPRSData::REG_VENEZUELA[6] PROGMEM =
+{
+     -5607,    971,
+     -6636,    110,
+     -7172,   1238,
+};
+
+const int16_t GeofenceAPRSData::REG_AUSTRALIA[8] PROGMEM =
+{
+     10582,  -1358,
+     16471,   -875,
+     16172,  -4704,
+     10863,  -4333,
+};
+
+const int16_t GeofenceAPRSData::REG_CHINA[10] PROGMEM =
+{
+     11162,   1680,
+      6908,   3617,
+      8561,   4938,
+     10415,   4339,
+     13957,   5385,
+};
+
+const int16_t GeofenceAPRSData::REG_EU_AF_OTHER[18] PROGMEM =
+{
+     16172,   8098,
+     -1758,   6990,
+     -2760,  -4164,
+     10582,  -4229,
+      9571,   2405,
+      6847,   3617,
+      8552,   4957,
+     10424,   4358,
+    -17895,   6355,
+};
+
+const int16_t GeofenceAPRSData::REG_APAC[8] PROGMEM =
+{
+     16594,   -719,
+      9809,  -1290,
+      9404,   2243,
+     16102,   2227,
 };
 
 
