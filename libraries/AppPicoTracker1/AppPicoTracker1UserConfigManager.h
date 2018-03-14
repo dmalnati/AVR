@@ -94,13 +94,15 @@ public:
         return retVal;
     }
 
-
     
 public:
 
     static uint8_t DetectSerialInput()
     {
         uint8_t retVal = 0;
+        
+        Serial.println(F("Ground to configure"));
+        PAL.Delay(5000);
         
         // Force pin, which could be floating, and is seen to float and cause,
         // false positives, into a known high state.
@@ -113,8 +115,7 @@ public:
         {
             retVal = 1;
             
-            Serial.println(F("Interactive serial config -- unground input to continue"));
-            Serial.println();
+            Serial.println(F("OK: un-ground to continue\n"));
             
             while (PAL.DigitalRead(PIN_SERIAL_RX) == 0) {}
         }
@@ -146,7 +147,7 @@ public:
         }
         else
         {
-            Serial.println(F("No prior config, loading defaults"));
+            Serial.println(F("No prior config, defaulting"));
         }
         
         uint8_t firstTime = 1;
@@ -157,14 +158,14 @@ public:
             const uint8_t BUF_SIZE = 100;
             char buf[BUF_SIZE];
             
-            auto strDeviceId                         = PSTR("device.id");
-            auto strAprsCallsign                     = PSTR("aprs.callsign");
-            auto strRadioTransmitCount               = PSTR("radio.transmitCount");
-            auto strRadioDelayMsBetweenTransmits     = PSTR("radio.delayMsBetweenTransmits");
-            auto strGeoLowHighAltitudeFtThreshold    = PSTR("geo.lowHighAltitudeFtThreshold");
-            auto strGeoHighAltitudeWakeAndEvaluateMs = PSTR("geo.highAltitude.wakeAndEvaluateMs");
-            auto strGeoLowAltitudeWakeAndEvaluateMs  = PSTR("geo.lowAltitude.wakeAndEvaluateMs");
-            auto strGeoDeadZoneWakeAndEvaluateMs     = PSTR("geo.deadZone.wakeAndEvaluateMs");
+            auto strDeviceId                         = PSTR("id");
+            auto strAprsCallsign                     = PSTR("callsign");
+            auto strRadioTransmitCount               = PSTR("transmitCount");
+            auto strRadioDelayMsBetweenTransmits     = PSTR("msBetweenTransmits");
+            auto strGeoLowHighAltitudeFtThreshold    = PSTR("lhAltFtThreshold");
+            auto strGeoHighAltitudeWakeAndEvaluateMs = PSTR("hAlt.wakeAndEvaluateMs");
+            auto strGeoLowAltitudeWakeAndEvaluateMs  = PSTR("lAlt.wakeAndEvaluateMs");
+            auto strGeoDeadZoneWakeAndEvaluateMs     = PSTR("dz.wakeAndEvaluateMs");
             
             uint8_t strLen = 0;
             if (!firstTime)
@@ -200,7 +201,7 @@ public:
                         // Debug only
                         ea_.Delete();
                         
-                        Serial.println(F("Deleted EEPROM, restarting..."));
+                        Serial.println(F("Deleted"));
                         Serial.println();
                         PAL.Delay(100);
                         
@@ -211,6 +212,7 @@ public:
                         cont = 0;
                         
                         understood = 1;
+                        updated = 1;
                     }
                 }
                 else if (tokenCount >= 2)
@@ -285,16 +287,15 @@ public:
                 
                 if (!understood)
                 {
-                    Serial.print(F("Not understood: "));
+                    Serial.print(F("ERR: "));
                     Serial.print('"');
                     Serial.print(str.UnsafePtr());
-                    Serial.print('"');
-                    Serial.println();
+                    Serial.println('"');
                 }
                 
                 if (updated)
                 {
-                    Serial.println(F("Auto-saving changes."));
+                    Serial.println(F("\nSaved"));
                     ea_.Write(userConfig);
                     
                     userConfigAcquired = 1;
@@ -308,12 +309,12 @@ public:
                     Serial.print(TOF(strDeviceId));                         Serial.print('['); Serial.print(UserConfig::DEVICE_ID_LEN); Serial.print("] = "); Serial.println(userConfig.device.id);
                     Serial.print(TOF(strAprsCallsign));                     Serial.print('['); Serial.print(UserConfig::CALLSIGN_LEN); Serial.print("] = "); Serial.println(userConfig.aprs.callsign);
                     Serial.print(TOF(strRadioTransmitCount));               Serial.print(" = "); Serial.println(userConfig.radio.transmitCount);
-                    Serial.print(TOF(strRadioDelayMsBetweenTransmits));     Serial.print(" = "); Serial.println(userConfig.radio.delayMsBetweenTransmits);
+                    PrintNameAndMs(strRadioDelayMsBetweenTransmits, userConfig.radio.delayMsBetweenTransmits);
                     Serial.print(TOF(strGeoLowHighAltitudeFtThreshold));    Serial.print(" = "); Serial.println(userConfig.geo.lowHighAltitudeFtThreshold);
-                    Serial.print(TOF(strGeoHighAltitudeWakeAndEvaluateMs)); Serial.print(" = "); Serial.println(userConfig.geo.highAltitude.wakeAndEvaluateMs);
-                    Serial.print(TOF(strGeoLowAltitudeWakeAndEvaluateMs));  Serial.print(" = "); Serial.println(userConfig.geo.lowAltitude.wakeAndEvaluateMs);
-                    Serial.print(TOF(strGeoDeadZoneWakeAndEvaluateMs));     Serial.print(" = "); Serial.println(userConfig.geo.deadZone.wakeAndEvaluateMs);
-
+                    PrintNameAndMs(strGeoHighAltitudeWakeAndEvaluateMs, userConfig.geo.highAltitude.wakeAndEvaluateMs);
+                    PrintNameAndMs(strGeoLowAltitudeWakeAndEvaluateMs, userConfig.geo.lowAltitude.wakeAndEvaluateMs);
+                    PrintNameAndMs(strGeoDeadZoneWakeAndEvaluateMs, userConfig.geo.deadZone.wakeAndEvaluateMs);
+                    
                     Serial.println();
                 }
                 
@@ -325,6 +326,28 @@ public:
         }
         
         return userConfigAcquired;
+    }
+    
+    static void PrintNameAndMs(const char *name, uint32_t valueMs)
+    {
+        uint32_t tmp = valueMs;
+        
+        Serial.print(TOF(name));
+        Serial.print(F(" = "));
+        Serial.print(valueMs);
+        
+        tmp = tmp / 1000;
+        Serial.print(F(" ("));
+        Serial.print(tmp);
+        Serial.print(F("s, "));
+        
+        tmp = tmp / 60;
+        Serial.print(tmp);
+        Serial.print(F("m, "));
+        
+        tmp = tmp / 60;
+        Serial.print(tmp);
+        Serial.println(F("h)"));
     }
     
     

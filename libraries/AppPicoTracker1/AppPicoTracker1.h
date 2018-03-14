@@ -8,8 +8,10 @@
 #include "SensorGPSUblox.h"
 #include "RFSI4463PRO.h"
 #include "AX25UIMessageTransmitter.h"
-#include "APRSPositionReportMessagePicoTracker1.h"
 #include "GeofenceAPRS.h"
+#include "AppPicoTracker1UserConfigManager.h"
+#include "APRSPositionReportMessagePicoTracker1.h"
+
 
 
 struct AppPicoTracker1Config
@@ -54,14 +56,57 @@ public:
 
     void Run()
     {
-        // Init serial
+        // Init serial and announce startup
         Serial.begin(9600);
+        Serial.println(F("Starting"));
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
             Serial.println(F("WDTR"));
         }
-        Serial.println(F("Starting"));
         
+        // Set up LED pins as output
+        PAL.PinMode(cfg_.pinLedRunning,      OUTPUT);
+        PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
+        PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
+        
+        // Blink to indicate power on
+        Blink(cfg_.pinLedRunning,      100);
+        Blink(cfg_.pinLedGpsLocked,    100);
+        Blink(cfg_.pinLedTransmitting, 100);
+
+        // Get user config
+        if (AppPicoTracker1UserConfigManager::GetUserConfig(userConfig_))
+        {
+            // Blink to indicate good configuration
+            for (uint8_t i = 0; i < 3; ++i)
+            {
+                Blink(cfg_.pinLedGpsLocked, 300);
+            }
+            
+            RunInternal();
+        }
+        else
+        {
+            // Blink to indicate bad configuration
+            while (1)
+            {
+                Blink(cfg_.pinLedRunning, 300);
+            }
+        }
+    }
+    
+private:
+
+    void Blink(uint8_t pin, uint32_t durationMs)
+    {
+        PAL.DigitalWrite(pin, HIGH);
+        PAL.Delay(durationMs);
+        PAL.DigitalWrite(pin, LOW);
+        PAL.Delay(durationMs);
+    }
+
+    void RunInternal()
+    {
         // Maintain counters about restarts
         StatsIncrNumRestarts();
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
@@ -69,22 +114,11 @@ public:
             StatsIncrNumWdtRestarts();
         }
         
-        Serial.print(persistentCounters_.NUM_RESTARTS);
-        Serial.print(" ");
-        Serial.print(persistentCounters_.NUM_WDT_RESTARTS);
-        Serial.println();
-
         // Set up GPS enable pin
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
         
-        // Set up status LED pins
-        PAL.PinMode(cfg_.pinLedRunning,      OUTPUT);
-        PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
-        PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
-        
         // Set up radio
         radio_.Init();
-        radio_.SetFrequency(144390000);
         
         // Set up APRS Message Sender
         amt_.Init([this](){ radio_.Start(); }, [this](){ radio_.Stop(); });
@@ -98,14 +132,11 @@ public:
         tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(0);
         
         // Handle async events
-        Serial.println(F("Running."));
-        Serial.println();
+        Serial.println(F("Running"));
         PAL.Delay(1000);
         
         evm_.MainLoopLowPower();
     }
-
-private:
 
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -115,10 +146,11 @@ private:
 
     void OnWakeAndEvaluateTimeout()
     {
+        // Log
+        Serial.println(" \nWake");
+
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
-        
-        Serial.println(F("RIT"));
         
         // No need for low-power mode while we're attempting to do the primary
         // tracker behavior of lock and send.
@@ -127,13 +159,13 @@ private:
         evm_.LowPowerDisable();
         
         // Start GPS
+        Serial.println("GPS ON");
         StartGPS();
         
         // Keep track of when GPS started so you can track duration waiting
         transientCounters_.gpsFixWaitStart = PAL.Millis();
         
         // Start async waiting for GPS to lock
-        Serial.println(F("Locking"));
         tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
         tedWaitForGpsLock_.RegisterForTimedEventInterval(0);
         
@@ -165,22 +197,8 @@ private:
         // Keep track of GPS counters
         transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - transientCounters_.gpsFixWaitStart);
         
-        // Debug
-        Serial.print(gpsMeasurement_.hour);
-        Serial.print(":");
-        Serial.print(gpsMeasurement_.minute);
-        Serial.print(":");
-        Serial.print(gpsMeasurement_.second);
-        Serial.println();
-        
-        Serial.print(F("Wait: "));
-        Serial.print(transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS);
-        Serial.println();
-        Serial.print(F("Alt: "));
-        Serial.print(gpsMeasurement_.altitudeFt);
-        Serial.println();
-        
         // Turn off GPS
+        Serial.println("GPS OFF");
         StopGPS();
         
         // Consult with Geofence to determine details about where we are
@@ -194,7 +212,8 @@ private:
         
         if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
         {
-            Serial.println(F("LowAltitude"));
+            // Debug
+            // Serial.println(F("LowAltitude"));
             
             // At low altitude, we send messages regardless of being in a dead zone or not
             sendMessage = 1;
@@ -204,11 +223,13 @@ private:
         }
         else
         {
-            Serial.println(F("HighAltitude"));
+            // Debug
+            // Serial.println(F("HighAltitude"));
             
             if (locationDetails.deadZone)
             {
-                Serial.println(F("DeadZone"));
+                // Debug
+                // Serial.println(F("DeadZone"));
                 
                 // At high altitude, we don't send messages in dead zones
                 sendMessage = 0;
@@ -221,8 +242,9 @@ private:
             }
             else
             {
-                Serial.println(F("ActiveZone"));
-
+                // Debug
+                // Serial.println(F("ActiveZone"));
+                
                 // At high altitude, we do send messages in active zones
                 sendMessage = 1;
                 
@@ -237,8 +259,14 @@ private:
             // be used in this region.
             radio_.SetFrequency(locationDetails.freqAprs);
             
+            // Log
+            Serial.println("TX");
+            
             // Send message
             SendMessage();
+            
+            // Log
+            Serial.println("TXEND");
         }
         
         // Disable watchdog as the main set of code which can hang is complete
@@ -248,8 +276,9 @@ private:
         // between at this point
         evm_.LowPowerEnable();
         
-        // Debug
-        Serial.println();
+        // Log
+        Serial.println("Sleep\n");
+        PAL.Delay(20);
     }
     
     
@@ -316,11 +345,9 @@ private:
             // Update message structure to know how many bytes we used
             msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
             
-            
             // Debug
             Serial.print("U "); Serial.print(aprm.GetBytesUsed()); Serial.println();
         }
-
 
         // Configure and Transmit
         amt_.SetFlagStartDurationMs(300);
@@ -328,14 +355,9 @@ private:
         amt_.SetTransmitCount(userConfig_.radio.transmitCount);
         amt_.SetDelayMsBetweenTransmits(userConfig_.radio.delayMsBetweenTransmits);
 
-        Serial.println("TX");
-        
-        
-        // Kick the watchdog
+        // Kick the watchdog before actual transmission
         PAL.WatchdogReset();
         amt_.Transmit();
-        
-        Serial.println("-");
     }
     
     
@@ -382,6 +404,7 @@ private:
     // Stats Keeping
     //
     ///////////////////////////////////////////////////////////////////////////
+    
     void StatsIncr(uint16_t &counter)
     {
         persistentCountersAccessor_.Read(persistentCounters_);
@@ -439,69 +462,18 @@ private:
 
     AppPicoTracker1Config &cfg_;
     
-    
-    struct UserConfig
-    {
-        static const uint8_t DEVICE_ID_LEN = 4;
-        static const uint8_t CALLSIGN_LEN  = 6;
-        
-        struct
-        {
-            char id[DEVICE_ID_LEN + 1] = "DMA";
-        } device;
-        
-        struct
-        {
-            char callsign[CALLSIGN_LEN + 1] = "KD2KDD";
-        } aprs;
-        
-        struct
-        {
-            uint8_t  transmitCount           = 2;
-            uint32_t delayMsBetweenTransmits = 3000;
-        } radio;
-        
-        struct
-        {
-            uint32_t lowHighAltitudeFtThreshold = 10000;
-            
-            struct
-            {
-                uint32_t wakeAndEvaluateMs = 1000;
-            } highAltitude;
-            
-            struct
-            {
-                uint32_t wakeAndEvaluateMs = 1000;
-            } lowAltitude;
-            
-            struct
-            {
-                uint32_t wakeAndEvaluateMs = 1000;
-            } deadZone;
-        } geo;
-    };
-    
-    UserConfig userConfig_;
-    
-
+    AppPicoTracker1UserConfigManager::UserConfig userConfig_;
     
     TimedEventHandlerDelegate tedWakeAndEvaluateTimeout_;
-    
-    
     TimedEventHandlerDelegate tedWaitForGpsLock_;
-    
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsMeasurement_;
-    
     
     RFSI4463PRO                 radio_;
     AX25UIMessageTransmitter<>  amt_;
     
     GeofenceAPRS  geofence_;
-    
-    
     
     struct PersistentCounters
     {
@@ -513,7 +485,6 @@ private:
     PersistentCounters                 persistentCounters_;
     EepromAccessor<PersistentCounters> persistentCountersAccessor_;
     
-    
     struct TransientCounters
     {
         uint32_t gpsFixWaitStart              = 0;
@@ -523,7 +494,6 @@ private:
     };
     
     TransientCounters  transientCounters_;
-    
 };
 
 
