@@ -7,7 +7,7 @@
 
 class GeofenceAPRSData
 {
-    static const uint16_t POINT_RADIUS_MILES = 150;
+    static const uint16_t POINT_RADIUS_MILES = 200;
 
 public:
     static uint8_t InPanama(int16_t latitude, int16_t longitude)
@@ -181,11 +181,11 @@ public:
     {
         // load into sram, making room for final connecting point which isn't
         // included in the data
-        const uint8_t BUF_SIZE = 32 + 2;
+        const uint8_t BUF_SIZE = 26 + 2;
         int16_t buf[BUF_SIZE];
         
         // use points to determine if point in polygon
-        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, USA, 32, latitude, longitude);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, USA, 26, latitude, longitude);
         
         return retVal;
     }
@@ -598,7 +598,7 @@ private:
 
     // GEOFENCE ARRAYS (longitude, latitude)
     static const int16_t Europe1        [24] PROGMEM;
-    static const int16_t USA            [32] PROGMEM;
+    static const int16_t USA            [26] PROGMEM;
     static const int16_t Thailand       [ 8] PROGMEM;
     static const int16_t Japan          [12] PROGMEM;
     static const int16_t SouthKorea     [ 8] PROGMEM;
@@ -631,33 +631,30 @@ private:
 
 const int16_t GeofenceAPRSData::Europe1[24] PROGMEM =
 {
-     -1216,   3632,
-      -410,   3569,
-       431,   3831,
-      3410,   3431,
-      4693,   4229,
-      2219,   5716,
+     -1322,   3667,
+      -424,   3469,
+       598,   3800,
+      3410,   3314,
+      4843,   4197,
+      2421,   5663,
       3722,   6091,
       2072,   6763,
       2719,   7071,
       2026,   7190,
      -1552,   5288,
-      -638,   4944,
+      -743,   4904,
 };
 
-const int16_t GeofenceAPRSData::USA[32] PROGMEM =
+const int16_t GeofenceAPRSData::USA[26] PROGMEM =
 {
     -12907,   5154,
-    -12453,   4734,
-    -12500,   3940,
-    -11861,   3232,
-     -9726,   2705,
-     -8402,   2973,
-     -8183,   2455,
-     -7886,   2522,
-     -8097,   3094,
-     -7603,   3504,
-     -7373,   3992,
+    -12834,   4241,
+    -12048,   3128,
+     -9766,   2543,
+     -8506,   2899,
+     -8255,   2270,
+     -7584,   2522,
+     -7887,   3027,
      -6154,   4503,
      -6003,   4710,
      -8099,   4515,
@@ -675,20 +672,20 @@ const int16_t GeofenceAPRSData::Thailand[8] PROGMEM =
 
 const int16_t GeofenceAPRSData::Japan[12] PROGMEM =
 {
-     14080,   4595,
-     13685,   3858,
-     12696,   3314,
-     13056,   2931,
-     14146,   3425,
-     14695,   4383,
+     14115,   4613,
+     13623,   3899,
+     12634,   3247,
+     13030,   2842,
+     14225,   3374,
+     14911,   4409,
 };
 
 const int16_t GeofenceAPRSData::SouthKorea[8] PROGMEM =
 {
-     12458,   3789,
-     12582,   3314,
-     13087,   3539,
-     12942,   3944,
+     12366,   3974,
+     12621,   3269,
+     13162,   3617,
+     13008,   4307,
 };
 
 const int16_t GeofenceAPRSData::China[10] PROGMEM =
@@ -702,59 +699,59 @@ const int16_t GeofenceAPRSData::China[10] PROGMEM =
 
 const int16_t GeofenceAPRSData::Malaysia[8] PROGMEM =
 {
-      9738,    426,
-     10351,    638,
-     10560,    158,
-     10011,   -198,
+      9681,    406,
+     10411,    673,
+     10637,    112,
+      9993,   -281,
 };
 
 const int16_t GeofenceAPRSData::Australia1[8] PROGMEM =
 {
-     11773,  -3096,
-     11364,  -3191,
-     11549,  -3578,
-     11878,  -3499,
+     11774,  -3051,
+     11197,  -3188,
+     11394,  -3706,
+     12007,  -3571,
 };
 
 const int16_t GeofenceAPRSData::Australia2[16] PROGMEM =
 {
-     13645,  -3485,
-     14467,  -4434,
-     14889,  -4440,
-     15548,  -2647,
-     14590,  -1550,
-     14370,  -1693,
-     15038,  -2725,
-     14484,  -3405,
+     13583,  -3503,
+     14436,  -4484,
+     14959,  -4468,
+     15684,  -2616,
+     14708,  -1469,
+     14300,  -1743,
+     14911,  -2718,
+     14405,  -3339,
 };
 
 const int16_t GeofenceAPRSData::NewZealand[8] PROGMEM =
 {
-     17319,  -3328,
-     17996,  -3772,
-     17086,  -4707,
-     16721,  -4468,
+     17295,  -3236,
+    -17917,  -3754,
+     17005,  -4918,
+     16398,  -4569,
 };
 
 const int16_t GeofenceAPRSData::SouthAfrica[14] PROGMEM =
 {
       2531,  -2477,
       2457,  -3232,
-      1683,  -3281,
-      1907,  -3568,
-      2747,  -3440,
+      1629,  -3237,
+      1867,  -3585,
+      2769,  -3456,
       3313,  -3011,
       2918,  -2360,
 };
 
 const int16_t GeofenceAPRSData::Morocco[12] PROGMEM =
 {
-     -1857,   3345,
-     -1861,   2708,
-      -778,   2678,
-      -789,   3020,
-     -1553,   3045,
-     -1536,   3356,
+     -1962,   3360,
+     -1982,   2526,
+      -784,   2550,
+      -793,   3069,
+     -1507,   3086,
+     -1521,   3418,
 };
 
 const int16_t GeofenceAPRSData::Chile[8] PROGMEM =
@@ -809,18 +806,18 @@ const int16_t GeofenceAPRSData::Mexico[16] PROGMEM =
 
 const int16_t GeofenceAPRSData::TropicalIslands[8] PROGMEM =
 {
-     -8082,   2076,
-     -5946,   1221,
-     -5770,   1638,
+     -8367,   2237,
+     -5966,   1163,
+     -5733,   1722,
      -7958,   2377,
 };
 
 const int16_t GeofenceAPRSData::Hawaii[8] PROGMEM =
 {
-    -15901,   2132,
-    -15580,   1829,
-    -15407,   1962,
-    -15759,   2249,
+    -15915,   2124,
+    -15584,   1769,
+    -15325,   1970,
+    -15698,   2310,
 };
 
 const int16_t GeofenceAPRSData::Alaska1[8] PROGMEM =

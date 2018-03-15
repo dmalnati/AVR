@@ -312,7 +312,7 @@ proc Generate { fdOut } {
     P ""
     P "class GeofenceAPRSData"
     P "\{"
-    P "    static const uint16_t POINT_RADIUS_MILES = 150;"
+    P "    static const uint16_t POINT_RADIUS_MILES = 200;"
     P ""
     P "public:"
 
