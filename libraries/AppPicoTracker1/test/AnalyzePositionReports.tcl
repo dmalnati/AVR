@@ -24,7 +24,7 @@ set FIELD_IDX_START_IDX_END_LIST {
 
 set FIELD_TYPE_LIST {
     seqNo                   u16
-    gpsLockWaitSecs         u8
+    gpsLockWaitSecs         u16
     numRestarts             u16
     numWdtRestarts          u16
     numMsgsNotSent          u16
