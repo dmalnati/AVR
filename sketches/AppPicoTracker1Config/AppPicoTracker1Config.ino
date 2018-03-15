@@ -9,9 +9,9 @@ static AppPicoTracker1Config cfg =
     .pinGpsSerialTx = 24,
 
     // Status LEDs
-    .pinLedRunning      = 13,
-    .pinLedGpsLocked    = 12,
-    .pinLedTransmitting = 11,
+    .pinLedRed   = 13,
+    .pinLedGreen = 12,
+    .pinLedBlue  = 11,
 
     // Radio
     .pinRadioSlaveSelect = 25,

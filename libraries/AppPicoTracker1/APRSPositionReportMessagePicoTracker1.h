@@ -27,9 +27,9 @@ public:
         AppendCommentU16Encoded(seqNo);
     }
     
-    void SetCommentGpsLockWaitSecsBinaryEncoded(uint8_t gpsLockWaitSecs)
+    void SetCommentGpsLockWaitSecsBinaryEncoded(uint16_t gpsLockWaitSecs)
     {
-        AppendCommentU8Encoded(gpsLockWaitSecs);
+        AppendCommentU16Encoded(gpsLockWaitSecs);
     }
     
     void SetCommentNumRestartsBinaryEncoded(uint16_t numRestarts)

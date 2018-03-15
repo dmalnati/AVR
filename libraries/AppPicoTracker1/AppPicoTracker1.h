@@ -22,9 +22,9 @@ struct AppPicoTracker1Config
     uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
     // Status LEDs
-    uint8_t pinLedRunning;
-    uint8_t pinLedGpsLocked;
-    uint8_t pinLedTransmitting;
+    uint8_t pinLedRed;
+    uint8_t pinLedGreen;
+    uint8_t pinLedBlue;
     
     // Radio
     uint8_t pinRadioSlaveSelect;
@@ -65,14 +65,14 @@ public:
         }
         
         // Set up LED pins as output
-        PAL.PinMode(cfg_.pinLedRunning,      OUTPUT);
-        PAL.PinMode(cfg_.pinLedGpsLocked,    OUTPUT);
-        PAL.PinMode(cfg_.pinLedTransmitting, OUTPUT);
+        PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
+        PAL.PinMode(cfg_.pinLedGreen, OUTPUT);
+        PAL.PinMode(cfg_.pinLedBlue,  OUTPUT);
         
         // Blink to indicate power on
-        Blink(cfg_.pinLedRunning,      100);
-        Blink(cfg_.pinLedGpsLocked,    100);
-        Blink(cfg_.pinLedTransmitting, 100);
+        Blink(cfg_.pinLedRed,   100);
+        Blink(cfg_.pinLedGreen, 100);
+        Blink(cfg_.pinLedBlue,  100);
 
         // Get user config
         if (AppPicoTracker1UserConfigManager::GetUserConfig(userConfig_))
@@ -80,7 +80,7 @@ public:
             // Blink to indicate good configuration
             for (uint8_t i = 0; i < 3; ++i)
             {
-                Blink(cfg_.pinLedGpsLocked, 300);
+                Blink(cfg_.pinLedGreen, 300);
             }
             
             RunInternal();
@@ -90,7 +90,7 @@ public:
             // Blink to indicate bad configuration
             while (1)
             {
-                Blink(cfg_.pinLedRunning, 300);
+                Blink(cfg_.pinLedRed, 300);
             }
         }
     }
@@ -107,7 +107,8 @@ private:
 
     void RunInternal()
     {
-        // Maintain counters about restarts
+        // Maintain counters about restarts.
+        // Also causes stats to be pulled from EEPROM into SRAM unconditionally.
         StatsIncrNumRestarts();
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
@@ -121,7 +122,13 @@ private:
         radio_.Init();
         
         // Set up APRS Message Sender
-        amt_.Init([this](){ radio_.Start(); }, [this](){ radio_.Stop(); });
+        amt_.Init([this](){ 
+            PAL.WatchdogReset();
+            radio_.Start();
+        }, [this](){
+            radio_.Stop();
+            PAL.WatchdogReset();
+        });
         
         // Begin tracker reporting, fire first event immediately.
         // No point using interval, the decision about how long to sleep for is
@@ -147,7 +154,7 @@ private:
     void OnWakeAndEvaluateTimeout()
     {
         // Log
-        Serial.println(" \nWake");
+        Serial.println("\nWake");
 
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
@@ -163,7 +170,7 @@ private:
         StartGPS();
         
         // Keep track of when GPS started so you can track duration waiting
-        transientCounters_.gpsFixWaitStart = PAL.Millis();
+        gpsLockWaitStart_ = PAL.Millis();
         
         // Start async waiting for GPS to lock
         tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
@@ -195,7 +202,7 @@ private:
         PAL.WatchdogReset();
 
         // Keep track of GPS counters
-        transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS = (PAL.Millis() - transientCounters_.gpsFixWaitStart);
+        StatsIncrGpsLockWaitSecs((PAL.Millis() - gpsLockWaitStart_) / 1000);
         
         // Turn off GPS
         Serial.println("GPS OFF");
@@ -208,51 +215,39 @@ private:
         
         // Decide whether to send a message and how long to sleep for based on
         // geofence data.
-        uint8_t sendMessage = 1;
+        uint8_t  sendMessage       = 1;
+        uint32_t wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
         
         if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
         {
-            // Debug
-            // Serial.println(F("LowAltitude"));
-            
-            // At low altitude, we send messages regardless of being in a dead zone or not
+            // At low altitude, we send messages and wake up at low altitude
+            // intervals regardless of being in a dead zone or not
             sendMessage = 1;
             
             // Wake again at the interval configured for low altitude
-            tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.lowAltitude.wakeAndEvaluateMs);
+            wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
         }
         else
         {
-            // Debug
-            // Serial.println(F("HighAltitude"));
-            
             if (locationDetails.deadZone)
             {
-                // Debug
-                // Serial.println(F("DeadZone"));
-                
                 // At high altitude, we don't send messages in dead zones
                 sendMessage = 0;
                 
-                // Increment counters to indicate this has happened.
-                StatsIncrNumMsgsNotSent();
-                
                 // Wake again at the interval configured for high altitude dead zones
-                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.deadZone.wakeAndEvaluateMs);
+                wakeAndEvaluateMs = userConfig_.geo.deadZone.wakeAndEvaluateMs;
             }
             else
             {
-                // Debug
-                // Serial.println(F("ActiveZone"));
-                
                 // At high altitude, we do send messages in active zones
                 sendMessage = 1;
                 
                 // Wake again at the interval configured for high altitude active zones
-                tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(userConfig_.geo.highAltitude.wakeAndEvaluateMs);
+                wakeAndEvaluateMs = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
             }
         }
         
+        // Send message if appropriate
         if (sendMessage)
         {
             // We're going to send a message, so tune radio to the frequency to
@@ -268,6 +263,14 @@ private:
             // Log
             Serial.println("TXEND");
         }
+        else
+        {
+            // Increment counters to indicate that we didn't send a message
+            StatsIncrNumMsgsNotSent();
+        }
+        
+        // Schedule next wakeup
+        tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(wakeAndEvaluateMs);
         
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
@@ -277,8 +280,9 @@ private:
         evm_.LowPowerEnable();
         
         // Log
-        Serial.println("Sleep\n");
-        PAL.Delay(20);
+        Serial.print("Sleep ");
+        Serial.println(wakeAndEvaluateMs);
+        PAL.Delay(50);
     }
     
     
@@ -331,22 +335,19 @@ private:
             aprm.SetCommentAltitude(gpsMeasurement_.altitudeFt);
 
             // Fill out my custom extensions
-            ++transientCounters_.SEQ_NO;
+            StatsIncrSeqNo();
             
             const char MESSAGE_TYPE_NORMAL = ' ';
             aprm.SetCommentMessageType(MESSAGE_TYPE_NORMAL);
             aprm.SetCommentDeviceId(userConfig_.device.id);
-            aprm.SetCommentSeqNoBinaryEncoded(transientCounters_.SEQ_NO);
-            aprm.SetCommentGpsLockWaitSecsBinaryEncoded(transientCounters_.GPS_WAIT_FOR_FIX_DURATION_MS / 1000);
+            aprm.SetCommentSeqNoBinaryEncoded(persistentCounters_.SEQ_NO);
+            aprm.SetCommentGpsLockWaitSecsBinaryEncoded(persistentCounters_.GPS_LOCK_WAIT_SECS);
             aprm.SetCommentNumRestartsBinaryEncoded(persistentCounters_.NUM_RESTARTS);
             aprm.SetCommentNumWdtRestartsBinaryEncoded(persistentCounters_.NUM_WDT_RESTARTS);
             aprm.SetCommentNumMsgsNotSentBinaryEncoded(persistentCounters_.NUM_MSGS_NOT_SENT);
             
             // Update message structure to know how many bytes we used
             msg.AssertInfoBytesUsed(aprm.GetBytesUsed());
-            
-            // Debug
-            Serial.print("U "); Serial.print(aprm.GetBytesUsed()); Serial.println();
         }
 
         // Configure and Transmit
@@ -405,13 +406,23 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void StatsIncr(uint16_t &counter)
+    void StatsIncr(uint16_t &counter, uint16_t incrBy = 1)
     {
         persistentCountersAccessor_.Read(persistentCounters_);
         
-        ++counter;
+        counter += incrBy;
         
         persistentCountersAccessor_.Write(persistentCounters_);
+    }
+    
+    void StatsIncrSeqNo()
+    {
+        StatsIncr(persistentCounters_.SEQ_NO);
+    }
+    
+    void StatsIncrGpsLockWaitSecs(uint16_t incrBy)
+    {
+        StatsIncr(persistentCounters_.GPS_LOCK_WAIT_SECS, incrBy);
     }
     
     void StatsIncrNumRestarts()
@@ -429,32 +440,6 @@ private:
         StatsIncr(persistentCounters_.NUM_MSGS_NOT_SENT);
     }
     
-
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // TODO
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    void ToDo()
-    {
-        // use LEDs as status
-            // different schemes for config vs low-altitude status
-            // disable when flying
-        
-        // set serial active checking frequency more appropriately
-            // confirm working and won't eat power by waking up inappropriately
-            // during actual flight
-        
-        // dump flash stored locations if found later
-        
-        // restore fuse setting to erase EEPROM on re-program
-            // temporarily disabled for development
-            
-        // user-configure whether LEDs blink or not for status
-
-    }
-
 
 private:
 
@@ -477,23 +462,16 @@ private:
     
     struct PersistentCounters
     {
-        uint16_t NUM_RESTARTS      = 0;
-        uint16_t NUM_WDT_RESTARTS  = 0;
-        uint16_t NUM_MSGS_NOT_SENT = 0;
+        uint16_t SEQ_NO             = 0;
+        uint16_t GPS_LOCK_WAIT_SECS = 0;
+        uint16_t NUM_RESTARTS       = 0;
+        uint16_t NUM_WDT_RESTARTS   = 0;
+        uint16_t NUM_MSGS_NOT_SENT  = 0;
     };
+    uint32_t gpsLockWaitStart_ = 0;
     
     PersistentCounters                 persistentCounters_;
     EepromAccessor<PersistentCounters> persistentCountersAccessor_;
-    
-    struct TransientCounters
-    {
-        uint32_t gpsFixWaitStart              = 0;
-        uint32_t GPS_WAIT_FOR_FIX_DURATION_MS = 0;
-        
-        uint32_t SEQ_NO = 0;
-    };
-    
-    TransientCounters  transientCounters_;
 };
 
 

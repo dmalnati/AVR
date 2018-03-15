@@ -48,7 +48,7 @@ public:
             
             struct
             {
-                uint32_t wakeAndEvaluateMs = 15L * 60L * 1000L;    // 15 min
+                uint32_t wakeAndEvaluateMs = 30L * 60L * 1000L;    // 30 min
             } highAltitude;
             
             struct
