@@ -142,14 +142,14 @@ private:
             {
                 uint32_t sampleRateMs = atol(str.TokenAtIdx(1, ' '));
                 
-                Serial.print("OK");
+                PrintHeader();
                 
                 SetSampleRate(sampleRateMs);
                 tedSample_.RegisterForTimedEventInterval(GetSampleRate(), 0);
             }
         });
         
-        console_.ShowStartupMessage(0);
+        console_.SetVerbose(0);
         
         console_.Start();
     }
