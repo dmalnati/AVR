@@ -179,6 +179,7 @@ class SerialAsyncConsole
 public:
     SerialAsyncConsole()
     : cmdToFnListIdx_(0)
+    , showStartupMessage_(1)
     , isRunning_(0)
     {
         // Nothing to do
@@ -206,6 +207,11 @@ public:
     void RegisterErrorHandler(function<void(char *cmdStr)> fnErr)
     {
         fnErr_ = fnErr;
+    }
+    
+    void ShowStartupMessage(uint8_t showStartupMessage)
+    {
+        showStartupMessage_ = showStartupMessage;
     }
     
     void Start()
@@ -247,12 +253,15 @@ public:
         });
         sarl_.Start();
         
-        Serial.println(F("Commands:"));
-        for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
+        if (showStartupMessage_)
         {
-            Serial.println(cmdToFnList_[i].cmd);
+            Serial.println(F("Commands:"));
+            for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
+            {
+                Serial.println(cmdToFnList_[i].cmd);
+            }
+            Serial.println();
         }
-        Serial.println();
     };
     
     void Stop()
@@ -276,6 +285,8 @@ private:
     function<void(char *cmdStr)> fnErr_;
 
     SerialAsyncReadLine sarl_;
+    
+    uint8_t showStartupMessage_;
     
     uint8_t isRunning_;
 };
