@@ -179,7 +179,7 @@ class SerialAsyncConsole
 public:
     SerialAsyncConsole()
     : cmdToFnListIdx_(0)
-    , showStartupMessage_(1)
+    , verbose_(1)
     , isRunning_(0)
     {
         // Nothing to do
@@ -209,9 +209,9 @@ public:
         fnErr_ = fnErr;
     }
     
-    void ShowStartupMessage(uint8_t showStartupMessage)
+    void SetVerbose(uint8_t verbose)
     {
-        showStartupMessage_ = showStartupMessage;
+        verbose_ = verbose;
     }
     
     void Start()
@@ -248,12 +248,15 @@ public:
                     fnErr_(buf_);
                 }
                 
-                Serial.println();
+                if (verbose_)
+                {
+                    Serial.println();
+                }
             }            
         });
         sarl_.Start();
         
-        if (showStartupMessage_)
+        if (verbose_)
         {
             Serial.println(F("Commands:"));
             for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
@@ -286,7 +289,7 @@ private:
 
     SerialAsyncReadLine sarl_;
     
-    uint8_t showStartupMessage_;
+    uint8_t verbose_;
     
     uint8_t isRunning_;
 };
