@@ -43,9 +43,13 @@ public:
         return retVal;
     }
     
-    uint8_t GetPinMux()
+    uint16_t AnalogReadChannel(uint8_t channel)
     {
-        return pinMux_;
+        ConnectToChannel(channel);
+        
+        uint16_t retVal = PAL.AnalogRead(pinMux_);
+        
+        return retVal;
     }
 
 private:
