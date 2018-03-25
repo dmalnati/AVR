@@ -313,8 +313,12 @@ proc Test { } {
 # Note that some terminals render <space> as no characters at all when
 # highlighted.  Other renditions may also.
 # In code in this program, spaces are assumed if at the end of data.
-proc WatchStdin { } {
-    set fd stdin
+proc ReadInput { inputFile } {
+    if { $inputFile == "-" } {
+        set fd stdin
+    } else {
+        set fd [open $inputFile "r"]
+    }
 
     set line [gets $fd]
 
@@ -338,13 +342,15 @@ proc Main { } {
     global argv
     global argv0
 
-    if { $argc != 1 || [lindex $argv 0] != "-" } {
-        Puts "Usage: $argv0 -"
+    if { $argc != 1 } {
+        Puts "Usage: $argv0 <inputFile>"
         exit -1
     }
 
+    set inputFile [lindex $argv 0]
+
     Init
-    WatchStdin
+    ReadInput $inputFile
     #Test
 }
 
