@@ -500,7 +500,8 @@ public:
     static void PowerUpADC()      { ADCSRA |= _BV(ADEN);           }
     
     
-    
+    // This function is updated with measured tuned values for watchdog
+    // timeouts.
     static void DelayLowPower(uint32_t delaySleepDurationMs)
     {
         if (delaySleepDurationMs)
@@ -513,19 +514,19 @@ public:
             while (delaySleepDurationMs_)
             {
                 // calculate sleep step size
-                uint32_t        stepSize = 15;
+                uint32_t        stepSize = 17;
                 WatchdogTimeout wt       = WatchdogTimeout::TIMEOUT_15_MS;
                 
-                if (delaySleepDurationMs_ <=   15) { stepSize =   15; wt = WatchdogTimeout::TIMEOUT_15_MS;   }
-                if (delaySleepDurationMs_ >=   30) { stepSize =   30; wt = WatchdogTimeout::TIMEOUT_30_MS;   }
-                if (delaySleepDurationMs_ >=   60) { stepSize =   60; wt = WatchdogTimeout::TIMEOUT_60_MS;   }
-                if (delaySleepDurationMs_ >=  120) { stepSize =  120; wt = WatchdogTimeout::TIMEOUT_120_MS;  }
-                if (delaySleepDurationMs_ >=  250) { stepSize =  250; wt = WatchdogTimeout::TIMEOUT_250_MS;  }
-                if (delaySleepDurationMs_ >=  500) { stepSize =  500; wt = WatchdogTimeout::TIMEOUT_500_MS;  }
-                if (delaySleepDurationMs_ >= 1000) { stepSize = 1000; wt = WatchdogTimeout::TIMEOUT_1000_MS; }
-                if (delaySleepDurationMs_ >= 2000) { stepSize = 2000; wt = WatchdogTimeout::TIMEOUT_2000_MS; }
-                if (delaySleepDurationMs_ >= 4000) { stepSize = 4000; wt = WatchdogTimeout::TIMEOUT_4000_MS; }
-                if (delaySleepDurationMs_ >= 8000) { stepSize = 8000; wt = WatchdogTimeout::TIMEOUT_8000_MS; }
+                if (delaySleepDurationMs_ <=   17) { stepSize =   17; wt = WatchdogTimeout::TIMEOUT_15_MS;   }
+                if (delaySleepDurationMs_ >=   34) { stepSize =   34; wt = WatchdogTimeout::TIMEOUT_30_MS;   }
+                if (delaySleepDurationMs_ >=   68) { stepSize =   68; wt = WatchdogTimeout::TIMEOUT_60_MS;   }
+                if (delaySleepDurationMs_ >=  136) { stepSize =  136; wt = WatchdogTimeout::TIMEOUT_120_MS;  }
+                if (delaySleepDurationMs_ >=  273) { stepSize =  273; wt = WatchdogTimeout::TIMEOUT_250_MS;  }
+                if (delaySleepDurationMs_ >=  545) { stepSize =  545; wt = WatchdogTimeout::TIMEOUT_500_MS;  }
+                if (delaySleepDurationMs_ >= 1089) { stepSize = 1089; wt = WatchdogTimeout::TIMEOUT_1000_MS; }
+                if (delaySleepDurationMs_ >= 2179) { stepSize = 2179; wt = WatchdogTimeout::TIMEOUT_2000_MS; }
+                if (delaySleepDurationMs_ >= 4358) { stepSize = 4358; wt = WatchdogTimeout::TIMEOUT_4000_MS; }
+                if (delaySleepDurationMs_ >= 8715) { stepSize = 8715; wt = WatchdogTimeout::TIMEOUT_8000_MS; }
                 
                 WatchdogEnableInterrupt(wt);
     
