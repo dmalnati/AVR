@@ -29,9 +29,7 @@ void setup()
     
     while (1)
     {
-        uint32_t arr[] = { 5, 15, 30, 40, 60, 120, 220, 250, 500, 777, 1000, 2000, 4000, 8000, 10000 };
-        //uint32_t arr[] = { 8000, 10000 };
-        //uint32_t arr[] = { 4000, 8000, 10000 };
+        uint32_t arr[] = { 5, 15, 30, 40, 60, 120, 220, 250, 500, 777, 1000, 2000, 4000, 8000, 10000, 15000, 30000 };
         
         for (uint32_t delaySleepDurationMs : arr)
         {
@@ -40,7 +38,7 @@ void setup()
             Blink(1);
 
             PAL.DigitalToggle(pinToggle);
-            PAL.DelaySleep(delaySleepDurationMs);
+            PAL.DelayLowPower(delaySleepDurationMs);
             PAL.DigitalToggle(pinToggle);
 
             Blink(2, 50);
