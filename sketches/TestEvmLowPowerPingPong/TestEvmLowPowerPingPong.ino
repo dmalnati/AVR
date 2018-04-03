@@ -24,6 +24,8 @@ void setup()
             Serial.println(delayMs);
             PAL.Delay(50);
 
+            console.Stop();
+
             ted.SetCallback([delayMs](){
                 Serial.print("pong ");
                 Serial.println(delayMs);
@@ -34,7 +36,6 @@ void setup()
             });
             ted.RegisterForTimedEvent(delayMs);
 
-            console.Stop();
             evm.LowPowerEnable();
         }
     });
