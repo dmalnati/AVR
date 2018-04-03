@@ -500,47 +500,115 @@ public:
     static void PowerUpADC()      { ADCSRA |= _BV(ADEN);           }
     
     
-    // This function is updated with measured tuned values for watchdog
-    // timeouts.
+    
+    
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Low Power Sleep functionality
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    
+    struct WdtData
+    {
+        WatchdogTimeout wt;
+        uint32_t        ms;
+        uint8_t         calibrated;
+    };
+
+private:
+
+    static WdtData wdtDataArr_[10];
+    static volatile uint8_t watchdogTimeoutCalibrationTimeoutFlag_;
+    
+    static void WatchdogTimeoutCalibrationTimeout()
+    {
+        watchdogTimeoutCalibrationTimeoutFlag_ = 1;
+    }
+    
+    static void CalibrateWdtTimeout(WdtData *wdtDataPtr)
+    {
+        // Catch interrupt from watchdog with custom function
+        SetInterruptHandlerRawWDT(WatchdogTimeoutCalibrationTimeout);
+        
+        // See what time we're starting
+        uint32_t timeStart = Millis();
+        
+        // Reset flag to indicate whether watchdog has gone off
+        watchdogTimeoutCalibrationTimeoutFlag_ = 0;
+        
+        // Start watchdog and let it expire
+        WatchdogEnableInterrupt(wdtDataPtr->wt);
+        while (!watchdogTimeoutCalibrationTimeoutFlag_) { }
+        
+        // Calculate duration
+        uint32_t timeEnd = Millis();
+        uint32_t timeDiff = timeEnd - timeStart;
+        
+        // Cache result and indicate that the calibration took place
+        wdtDataPtr->ms         = timeDiff;
+        wdtDataPtr->calibrated = 1;
+    }
+    
+
+public:
+    
     static void DelayLowPower(uint32_t delaySleepDurationMs)
     {
         if (delaySleepDurationMs)
         {
             // keep track of remaining duration to sleep
-            delaySleepDurationMs_ = delaySleepDurationMs;
+            uint32_t remainingMs = delaySleepDurationMs;
             
             SetInterruptHandlerRawWDT(Wake);
 
-            while (delaySleepDurationMs_)
+            while (remainingMs)
             {
-                // calculate sleep step size
-                uint32_t        stepSize = 17;
-                WatchdogTimeout wt       = WatchdogTimeout::TIMEOUT_15_MS;
+                // Calculate sleep step size
                 
-                if (delaySleepDurationMs_ <=   17) { stepSize =   17; wt = WatchdogTimeout::TIMEOUT_15_MS;   }
-                if (delaySleepDurationMs_ >=   34) { stepSize =   34; wt = WatchdogTimeout::TIMEOUT_30_MS;   }
-                if (delaySleepDurationMs_ >=   68) { stepSize =   68; wt = WatchdogTimeout::TIMEOUT_60_MS;   }
-                if (delaySleepDurationMs_ >=  136) { stepSize =  136; wt = WatchdogTimeout::TIMEOUT_120_MS;  }
-                if (delaySleepDurationMs_ >=  273) { stepSize =  273; wt = WatchdogTimeout::TIMEOUT_250_MS;  }
-                if (delaySleepDurationMs_ >=  545) { stepSize =  545; wt = WatchdogTimeout::TIMEOUT_500_MS;  }
-                if (delaySleepDurationMs_ >= 1089) { stepSize = 1089; wt = WatchdogTimeout::TIMEOUT_1000_MS; }
-                if (delaySleepDurationMs_ >= 2179) { stepSize = 2179; wt = WatchdogTimeout::TIMEOUT_2000_MS; }
-                if (delaySleepDurationMs_ >= 4358) { stepSize = 4358; wt = WatchdogTimeout::TIMEOUT_4000_MS; }
-                if (delaySleepDurationMs_ >= 8715) { stepSize = 8715; wt = WatchdogTimeout::TIMEOUT_8000_MS; }
+                // default to first element
+                WdtData *wdtDataPtr = &(wdtDataArr_[0]);
                 
-                WatchdogEnableInterrupt(wt);
-    
-                DeepSleep();
-                
-                WatchdogDisable();
-                
-                if (delaySleepDurationMs_ >= stepSize)
+                // but check if time is greater than each subsequent longer
+                // duration, such that we can pick the largest timeout possible
+                for (auto &wdtData : wdtDataArr_)
                 {
-                    delaySleepDurationMs_ -= stepSize;
+                    if (remainingMs >= wdtData.ms)
+                    {
+                        wdtDataPtr = &wdtData;
+                    }
+                }
+                
+                // Actually delay
+                if (!wdtDataPtr->calibrated)
+                {
+                    // We haven't slept for this duration before.
+                    // We know these times are very variable between devices, so
+                    // don't actually go to low-power sleep, and instead take
+                    // the opportunity to measure duration associated with the
+                    // watchdog timer, and cache the result.
+                    // We'll do low-power sleep next time.
+                    CalibrateWdtTimeout(wdtDataPtr);
                 }
                 else
                 {
-                    delaySleepDurationMs_ = 0;
+                    // Here we know the prior-measured duration is as good as
+                    // we're going to get.  Use it.
+                    WatchdogEnableInterrupt(wdtDataPtr->wt);
+        
+                    DeepSleep();
+                    
+                    WatchdogDisable();
+                }
+                
+                // Calculate how much more sleep necessary
+                if (remainingMs >= wdtDataPtr->ms)
+                {
+                    remainingMs -= wdtDataPtr->ms;
+                }
+                else
+                {
+                    remainingMs = 0;
                 }
             }
             
@@ -645,7 +713,7 @@ private:
     static volatile uint8_t *port__pinxPtr[3];
     static volatile uint8_t *port__portxPtr[3];
     
-    static uint32_t delaySleepDurationMs_;
+    //static uint32_t delaySleepDurationMs_;
 
     uint8_t mcusrCache_;
 };

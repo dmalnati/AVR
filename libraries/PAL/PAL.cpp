@@ -121,7 +121,20 @@ volatile uint8_t *PlatformAbstractionLayer::port__pinxPtr[3]  = { &PINB,  &PINC,
 volatile uint8_t *PlatformAbstractionLayer::port__portxPtr[3] = { &PORTB, &PORTC, &PORTD  };
 
 
-uint32_t PlatformAbstractionLayer::delaySleepDurationMs_ = 0;
+PlatformAbstractionLayer::WdtData PlatformAbstractionLayer::wdtDataArr_[10] = {
+    { WatchdogTimeout::TIMEOUT_15_MS,     15, 0 },
+    { WatchdogTimeout::TIMEOUT_30_MS,     30, 0 },
+    { WatchdogTimeout::TIMEOUT_60_MS,     60, 0 },
+    { WatchdogTimeout::TIMEOUT_120_MS,   120, 0 },
+    { WatchdogTimeout::TIMEOUT_250_MS,   250, 0 },
+    { WatchdogTimeout::TIMEOUT_500_MS,   500, 0 },
+    { WatchdogTimeout::TIMEOUT_1000_MS, 1000, 0 },
+    { WatchdogTimeout::TIMEOUT_2000_MS, 2000, 0 },
+    { WatchdogTimeout::TIMEOUT_4000_MS, 4000, 0 },
+    { WatchdogTimeout::TIMEOUT_8000_MS, 8000, 0 },
+};
+
+volatile uint8_t PlatformAbstractionLayer::watchdogTimeoutCalibrationTimeoutFlag_ = 0;
 
 function<void()>                  PlatformAbstractionLayer::cbFnWDT_;
 PlatformAbstractionLayer::CbFnRaw PlatformAbstractionLayer::cbFnRawWDT_ = PlatformAbstractionLayer::OnFnRawWDTDefault;
