@@ -55,6 +55,8 @@ public:
     void DisableSerialInput()
     {
         ss_.stopListening();
+        
+        timer_.DeRegisterForTimedEvent();
     }
     
     void EnableSerialInput()
