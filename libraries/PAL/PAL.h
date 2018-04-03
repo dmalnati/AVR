@@ -713,8 +713,6 @@ private:
     static volatile uint8_t *port__pinxPtr[3];
     static volatile uint8_t *port__portxPtr[3];
     
-    //static uint32_t delaySleepDurationMs_;
-
     uint8_t mcusrCache_;
 };
 
