@@ -512,7 +512,7 @@ public:
     struct WdtData
     {
         WatchdogTimeout wt;
-        uint32_t        ms;
+        uint16_t        ms;
         uint8_t         calibrated;
     };
 
@@ -543,7 +543,7 @@ private:
         
         // Calculate duration
         uint32_t timeEnd = Millis();
-        uint32_t timeDiff = timeEnd - timeStart;
+        uint16_t timeDiff = (uint16_t)(timeEnd - timeStart);
         
         // Cache result and indicate that the calibration took place
         wdtDataPtr->ms         = timeDiff;
