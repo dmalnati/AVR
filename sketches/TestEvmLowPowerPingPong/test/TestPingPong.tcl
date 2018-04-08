@@ -50,7 +50,7 @@ proc Main { } {
     global argv0
 
     if { $argc < 4 } {
-        Puts "Usage: $argv0 <startSecs> <stepSecs> <stopSecs> <cmdToRunToGetFdToReadAndWriteFrom>"
+        puts "Usage: $argv0 <startSecs> <stepSecs> <stopSecs> <cmdToRunToGetFdToReadAndWriteFrom>"
         exit -1
     }
 
