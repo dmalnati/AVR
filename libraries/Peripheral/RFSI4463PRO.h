@@ -339,6 +339,7 @@ private:
         prop.BYTE1.FREQDEV = (modemFreqDev & 0x0000FF00) >>  8;
         prop.BYTE2.FREQDEV = (modemFreqDev & 0x000000FF) >>  0;
         
+        /*
         Serial.print(F("outdiv: ")); Serial.println(outdiv);
         Serial.print(F("EXTERNAL_CRYSTAL_FREQ: ")); Serial.println(EXTERNAL_CRYSTAL_FREQ);
         Serial.print(F("deviationFreq: ")); Serial.println(deviationFreq);
@@ -346,6 +347,7 @@ private:
         Serial.print(F("prop.BYTE0.FREQDEV: ")); Serial.println(prop.BYTE0.FREQDEV);
         Serial.print(F("prop.BYTE1.FREQDEV: ")); Serial.println(prop.BYTE1.FREQDEV);
         Serial.print(F("prop.BYTE2.FREQDEV: ")); Serial.println(prop.BYTE2.FREQDEV);
+        */
         
         SetProperty(prop);
     }
