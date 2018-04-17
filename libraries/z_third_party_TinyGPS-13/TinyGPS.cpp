@@ -187,6 +187,9 @@ bool TinyGPS::term_complete()
           _longitude = _new_longitude;
           _speed     = _new_speed;
           _course    = _new_course;
+          
+          _last_rmc_time = millis();
+          
           break;
         case _GPS_SENTENCE_GPGGA:
           _altitude  = _new_altitude;
@@ -195,6 +198,9 @@ bool TinyGPS::term_complete()
           _longitude = _new_longitude;
           _numsats   = _new_numsats;
           _hdop      = _new_hdop;
+          
+          _last_gga_time = millis();
+          
           break;
         }
 

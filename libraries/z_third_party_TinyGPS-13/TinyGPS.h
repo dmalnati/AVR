@@ -62,7 +62,15 @@ public:
   {
     _last_time_fix     = GPS_INVALID_FIX_TIME;
     _last_position_fix = GPS_INVALID_FIX_TIME;
+    
+    // added 2018-04-16
+    _last_rmc_time = 0;
+    _last_gga_time = 0;
   }
+  
+  // added 2018-04-16
+  uint32_t GetLastTimeRMC() { return _last_rmc_time; }
+  uint32_t GetLastTimeGGA() { return _last_gga_time; }
 
   // lat/long in MILLIONTHs of a degree and age of fix in milliseconds
   // (note: versions 12 and earlier gave lat/long in 100,000ths of a degree.
@@ -122,6 +130,12 @@ private:
 
   unsigned long _last_time_fix, _new_time_fix;
   unsigned long _last_position_fix, _new_position_fix;
+  
+  // added 2018-04-16 to support specifically knowing what messages were
+  // received and so what data is available
+  uint32_t _last_rmc_time = 0;
+  uint32_t _last_gga_time = 0;
+
 
   // parsing state variables
   byte _parity;

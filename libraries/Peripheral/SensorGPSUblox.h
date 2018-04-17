@@ -41,6 +41,12 @@ public:
         return ss_;
     }
     
+    TinyGPS &DebugGetTinyGPS()
+    {
+        return tgps_;
+    }
+
+    
     // All configuration has to take place post-Init, as messages are relayed
     // to the GPS, and that isn't possible until after Init.
     void Init()
@@ -207,15 +213,31 @@ public:
     
     uint8_t GetMeasurement(Measurement *m)
     {
-        constexpr static const double CM_TO_FT = 0.0328084;
-        
         uint8_t retVal = 0;
+        
+        // Check if both necessary sentences have been received
+        if (tgps_.GetLastTimeRMC() != 0 && tgps_.GetLastTimeGGA() != 0)
+        {
+            retVal = 1;
+            
+            GetMeasurementInternal(m);
+        }
+        
+        return retVal;
+    }
+
+
+private:
+    
+    void GetMeasurementInternal(Measurement *m)
+    {
+        constexpr static const double CM_TO_FT = 0.0328084;
         
         // Ask TinyGPS for decoded data
         tgps_.get_position(&m->latitudeDegreesMillionths,
                            &m->longitudeDegreesMillionths,
                            &m->msSinceLastFix);
-        tgps_.get_datetime(&m->date, &m->time, &m->msSinceLastFix);
+        tgps_.get_datetime(&m->date, &m->time, NULL);
         tgps_.crack_datetime(&m->year,
                              &m->month,
                              &m->day,
@@ -245,23 +267,9 @@ public:
         }
         else
         {
-            m->altitudeFt = tgps_.altitude() * CM_TO_FT; // convert from cm to ft
+            m->altitudeFt = altitude * CM_TO_FT; // convert from cm to ft
         }
-        
-        // Check for valid data
-        // Notably, I confirmed that a successful 3D (not 2D) GPS lock is what
-        // it takes to get a "fix" from the GPS.
-        // This is what I want.
-        if (m->msSinceLastFix != TinyGPS::GPS_INVALID_AGE)
-        {
-            retVal = 1;
-        }
-        
-        return retVal;
     }
-
-
-private:
 
     void OnTimeout()
     {
