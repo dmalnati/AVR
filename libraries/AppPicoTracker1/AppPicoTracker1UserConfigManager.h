@@ -53,7 +53,8 @@ public:
             
             struct
             {
-                uint32_t wakeAndEvaluateMs =      60L * 1000L;     // 60 sec, 1 min
+                uint32_t wakeAndEvaluateMs =        60L * 1000L;   // 60 sec, 1 min
+                uint32_t stickyMs          = 180L * 60L * 1000L;   // 3 hours
             } lowAltitude;
             
             struct
@@ -165,6 +166,7 @@ public:
             auto strGeoLowHighAltitudeFtThreshold    = PSTR("lhAltFtThreshold");
             auto strGeoHighAltitudeWakeAndEvaluateMs = PSTR("hAlt.wakeAndEvaluateMs");
             auto strGeoLowAltitudeWakeAndEvaluateMs  = PSTR("lAlt.wakeAndEvaluateMs");
+            auto strGeoLowAltitudeStickyMs           = PSTR("lAlt.stickyMs");
             auto strGeoDeadZoneWakeAndEvaluateMs     = PSTR("dz.wakeAndEvaluateMs");
             
             uint8_t strLen = 0;
@@ -276,6 +278,13 @@ public:
                         understood = 1;
                         updated    = 1;
                     }
+                    else if (!strcmp_P(name, strGeoLowAltitudeStickyMs))
+                    {
+                        userConfig.geo.lowAltitude.stickyMs = atol(str.TokenAtIdx(1, ' '));
+                        
+                        understood = 1;
+                        updated    = 1;
+                    }
                     else if (!strcmp_P(name, strGeoDeadZoneWakeAndEvaluateMs))
                     {
                         userConfig.geo.deadZone.wakeAndEvaluateMs = atol(str.TokenAtIdx(1, ' '));
@@ -313,6 +322,7 @@ public:
                     Serial.print(TOF(strGeoLowHighAltitudeFtThreshold));    Serial.print(" = "); Serial.println(userConfig.geo.lowHighAltitudeFtThreshold);
                     PrintNameAndMs(strGeoHighAltitudeWakeAndEvaluateMs, userConfig.geo.highAltitude.wakeAndEvaluateMs);
                     PrintNameAndMs(strGeoLowAltitudeWakeAndEvaluateMs, userConfig.geo.lowAltitude.wakeAndEvaluateMs);
+                    PrintNameAndMs(strGeoLowAltitudeStickyMs, userConfig.geo.lowAltitude.stickyMs);
                     PrintNameAndMs(strGeoDeadZoneWakeAndEvaluateMs, userConfig.geo.deadZone.wakeAndEvaluateMs);
                     
                     Serial.println();

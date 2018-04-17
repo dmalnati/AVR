@@ -64,6 +64,11 @@ public:
             Serial.println(F("WDTR"));
         }
         
+        // Drive GPS power supply pin low, has been seen to float high enough
+        // to activate
+        PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
+        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        
         // Set up LED pins as output
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
         PAL.PinMode(cfg_.pinLedGreen, OUTPUT);
@@ -114,9 +119,6 @@ private:
         {
             StatsIncrNumWdtRestarts();
         }
-        
-        // Set up GPS enable pin
-        PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
         
         // Set up radio
         radio_.Init();
@@ -218,9 +220,28 @@ private:
         uint8_t  sendMessage       = 1;
         uint32_t wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
         
-        if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold)
+        // Also consider whether still in the initial launch period where the
+        // rate is sticky to low altitude configuration
+        if (inLowAltitudeStickyPeriod_)
         {
-            // At low altitude, we send messages and wake up at low altitude
+            if (PAL.Millis() < userConfig_.geo.lowAltitude.stickyMs)
+            {
+                // nothing to do, this remains true
+            }
+            else
+            {
+                // been too long, shut off and never re-activate
+                // (prevents re-activation at time wraparound)
+                inLowAltitudeStickyPeriod_ = 0;
+            }
+        }
+        
+        // Apply geofence and sticky parameters
+        if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
+            inLowAltitudeStickyPeriod_)
+        {
+            // At low altitude, or for a duration after takeoff, 
+            // we send messages and wake up at low altitude
             // intervals regardless of being in a dead zone or not
             sendMessage = 1;
             
@@ -459,6 +480,7 @@ private:
     AX25UIMessageTransmitter<>  amt_;
     
     GeofenceAPRS  geofence_;
+    uint8_t       inLowAltitudeStickyPeriod_ = 1;
     
     struct PersistentCounters
     {
