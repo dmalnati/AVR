@@ -138,13 +138,39 @@ void setup()
         si5351.set_freq((uint64_t)freq * (uint64_t)100ULL, SI5351_CLK0);
 
         si5351.output_enable(SI5351_CLK0, 1);
-    });    
+    });
 
     console.RegisterCommand("off", [](char *){
         Serial.println("Off");
 
         si5351.output_enable(SI5351_CLK0, 0);
-    });    
+    });
+
+
+    console.RegisterCommand("drive", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint8_t mA = atoi(str.TokenAtIdx(1, ' '));
+
+            uint8_t ok = 1;
+            if      (mA == 2) { si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_2MA); }
+            else if (mA == 4) { si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_4MA); }
+            else if (mA == 6) { si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA); }
+            else if (mA == 8) { si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA); }
+            else { ok = 0; }
+
+            if (ok)
+            {
+                Serial.print("Drive now "); Serial.println(mA);
+            }
+            else
+            {
+                Serial.println("Must specify 2, 4, 6, or 8");
+            }
+        }
+    });
 
     console.Start();
     
@@ -153,7 +179,7 @@ void setup()
 
     // Set up library
     si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
-    si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_6MA);
+    si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
 
     // Handle events
     evm.MainLoop();
