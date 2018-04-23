@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-
+#include "UtlStreamBlob.h"
 
 class WSPREncoder
 {
@@ -34,6 +34,8 @@ chval1(int ch)
     if (isdigit(ch)) return ch - '0' ;
     if (isalpha(ch)) return 10 + toupper(ch) - 'A' ;
     if (ch == ' ') return 36 ;
+
+    Serial.println("chval1");
 }
 
 static int 
@@ -41,14 +43,18 @@ chval2(int ch)
 {
     if (isalpha(ch)) return toupper(ch) - 'A' ;
     if (ch == ' ') return 26 ;
+    
+    Serial.println("chval2");
 }
 
 
-static int
+//static int
+static uint32_t
 encodecallsign(const char *callsign)
 {
     /* find the first digit... */
-    int i, rc ;
+    //int i, rc ;
+    uint32_t i, rc ;
     char call[6] ;
 
     for (i=0; i<6; i++) call[i] = ' ' ;
@@ -71,6 +77,9 @@ encodecallsign(const char *callsign)
     rc += chval2(call[3]) ; rc *= 27 ;
     rc += chval2(call[4]) ; rc *= 27 ;
     rc += chval2(call[5]) ;
+    
+    Serial.print("Callsign: "); Serial.println(rc);
+    StreamBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
 
     return rc ;
 }
@@ -92,11 +101,15 @@ encodepower(int p)
     return p + 64 ;
 }
 
-static int 
-parity(unsigned int x)
+//static int 
+//parity(unsigned int x)
+static int32_t
+parity(uint32_t x)
 {
-    unsigned int sx = x ;
-    int even = 0 ;
+    //unsigned int sx = x ;
+    //int even = 0 ;
+    uint32_t sx = x ;
+    int32_t even = 0 ;
     while (x) {
 	even = 1-even ;
 	x = x & (x - 1) ;
@@ -104,35 +117,49 @@ parity(unsigned int x)
     return even ;
 }
 
+
+
 static void
 genmsg(const char *call, const char *grid, const int power)
 {
-    int c = encodecallsign(call) ;
-    int g = encodegrid(grid) ;
-    int p = encodepower(power) ;
-    int i, mp = 0 ;
-    unsigned int acc = 0;
+    //int c = encodecallsign(call) ;
+    //int g = encodegrid(grid) ;
+    //int p = encodepower(power) ;
+    //int i, mp = 0 ;
+    //unsigned int acc = 0;
+    uint32_t c = encodecallsign(call) ;
+    uint32_t g = encodegrid(grid) ;
+    uint32_t p = encodepower(power) ;
+    int32_t i, mp = 0 ;
+    uint32_t acc = 0;
+    
+    uint32_t M = (g * 128) + p;
+    Serial.print("M: "); Serial.println(M);
+    StreamBlob(Serial, (uint8_t *)&M, 4, 1, 1);
 
     for (i=0; i<162; i++)
 	msg[i] = sync[i] ;
 
     for (i=27; i>=0; i--) {		/* encode the callsign, 28 bits */
 	acc <<= 1 ;
-	if (c & (1<<i)) acc |= 1 ;
+	if (c & (1L<<i)) acc |= 1 ;
+    
+    StreamBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
+    
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
     }
 
     for (i=14; i>=0; i--) {		/* encode the grid, 15 bits */
 	acc <<= 1 ;
-	if (g & (1<<i)) acc |= 1 ;
+	if (g & (1L<<i)) acc |= 1 ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
     }
 
     for (i=6; i>=0; i--) {		/* encode the power, 7 bits */
 	acc <<= 1 ;
-	if (p & (1<<i)) acc |= 1 ;
+	if (p & (1L<<i)) acc |= 1 ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
     }

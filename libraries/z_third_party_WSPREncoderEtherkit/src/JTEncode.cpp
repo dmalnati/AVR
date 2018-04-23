@@ -779,6 +779,9 @@ void JTEncode::wspr_interleave(uint8_t * s)
 		if(rev < WSPR_BIT_COUNT)
 		{
 			d[rev] = s[i];
+            
+            Serial.println(rev);
+            
 			i++;
 		}
 

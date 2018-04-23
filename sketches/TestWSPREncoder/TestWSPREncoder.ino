@@ -33,7 +33,10 @@ void Transmit()
   {
       //si5351.set_freq((freq * 100) + (tx_buffer[i] * tone_spacing), SI5351_CLK0);
       si5351.set_freq((freq * 100) + (wsprEncoder.msg[i] * tone_spacing), SI5351_CLK0);
-      delay(tone_delay);
+      //delay(tone_delay);
+
+      static const int16_t offset = -8;
+      delay(tone_delay + offset);
   }
 
   si5351.output_enable(SI5351_CLK0, 0);
@@ -59,12 +62,13 @@ void setup()
   // Encode the message in the transmit buffer
 
     //char message[] = "N0CALL AA00";
-    char call[] = "N0CALL";
+    char call[] = "KD2KDD";
     char loc[] = "AA00";
     uint8_t dbm = 27;
 
   wsprEncoder.genmsg(call, loc, dbm);
 
+  Serial.println("Buffer:");
   StreamBlob(Serial, wsprEncoder.msg, 162, 1, 1);
   Serial.println();
 }
@@ -80,6 +84,7 @@ void loop()
         Serial.println("Encoding");
         
       Transmit();
+      
       delay(50); //delay to avoid extra triggers
     }
   }

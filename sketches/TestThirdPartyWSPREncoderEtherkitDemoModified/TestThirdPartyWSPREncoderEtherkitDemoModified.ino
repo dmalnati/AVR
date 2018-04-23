@@ -40,6 +40,8 @@
 #include <int.h>
 #include <string.h>
 
+#include "UtlStreamBlob.h"
+
 #include "Wire.h"
 
 // Mode defines
@@ -80,8 +82,8 @@ JTEncode jtencode;
 
 // Global variables
 unsigned long freq;
-char message[] = "N0CALL AA00";
-char call[] = "N0CALL";
+char message[] = "KD2KDD AA00";
+char call[] = "KD2KDD";
 char loc[] = "AA00";
 uint8_t dbm = 27;
 uint8_t tx_buffer[255];
@@ -111,7 +113,10 @@ void encode()
   for(i = 0; i < symbol_count; i++)
   {
       si5351.set_freq((freq * 100) + (tx_buffer[i] * tone_spacing), SI5351_CLK0);
-      delay(tone_delay);
+      //delay(tone_delay);
+
+      static const int16_t offset = -8;
+      delay(tone_delay + offset);
   }
 
   // Turn off the output
@@ -146,6 +151,10 @@ void set_tx_buffer()
     jtencode.fsq_dir_encode(call, "n0call", ' ', "hello world", tx_buffer);
     break;
   }
+
+  Serial.println("Buffer:");
+  StreamBlob(Serial, tx_buffer, 255, 1, 1);
+  Serial.println();
 }
 
 void setup()
