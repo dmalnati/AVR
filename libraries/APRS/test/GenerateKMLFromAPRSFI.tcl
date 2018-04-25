@@ -99,21 +99,23 @@ proc CreateKml { msgList } {
 
         foreach { rawLat rawLng alt } $rawLatLngAltList { }
 
-        set lat [GetLatOrLngFromDM $rawLat]
-        set lng [GetLatOrLngFromDM $rawLng]
+        set errLat [catch { set lat [GetLatOrLngFromDM $rawLat] }]
+        set errLng [catch { set lng [GetLatOrLngFromDM $rawLng] }]
 
-        lappend latLngAltList $lat $lng $alt
+        if { !$errLat && !$errLng } {
+            lappend latLngAltList $lat $lng $alt
 
 
-        # Create line between this point in flight and first ground station
-        set pathList [MsgGetPathList $msg]
-        set firstPath [lindex $pathList 0]
+            # Create line between this point in flight and first ground station
+            set pathList [MsgGetPathList $msg]
+            set firstPath [lindex $pathList 0]
 
-        set latLngList [GetPathLatLngList $firstPath]
+            set latLngList [GetPathLatLngList $firstPath]
 
-        set latLngAltSkyToGroundList [list $lat $lng $alt [lindex $latLngList 0] [lindex $latLngList 1] 0]
+            set latLngAltSkyToGroundList [list $lat $lng $alt [lindex $latLngList 0] [lindex $latLngList 1] 0]
 
-        KmlAddPlacemarkLineString "Sky to $firstPath" "Sky to $firstPath" $latLngAltSkyToGroundList
+            KmlAddPlacemarkLineString "Sky to $firstPath" "Sky to $firstPath" $latLngAltSkyToGroundList
+        }
     }
 
     KmlAddPlacemarkLineString "Flight Path" "Flight Path" $latLngAltList "flightPath" 1
@@ -411,7 +413,9 @@ proc GetMsgList { inputFile } {
     while { ![eof $fd] } {
         set msg [GetMsgFromLine $line]
 
-        lappend msgList $msg
+        if { $msg != "" } {
+            lappend msgList $msg
+        }
 
         set line [gets $fd]
     }
@@ -546,13 +550,15 @@ proc FetchPathLatLng { path } {
 #            puts "rawLat($rawLat)"
 
 
-            set lat [GetLatOrLngFromDM $rawLat]
-            set lng [GetLatOrLngFromDM $rawLng]
+            set errLat [catch { set lat [GetLatOrLngFromDM $rawLat] }]
+            set errLng [catch { set lng [GetLatOrLngFromDM $rawLng] }]
 
-#            puts "lat($lat)"
-#            puts "lng($lng)"
+            if { !$errLat && !$errLng } {
+#                puts "lat($lat)"
+#                puts "lng($lng)"
 
-            set latLngList [list $lat $lng]
+                set latLngList [list $lat $lng]
+            }
         }
     }
 
