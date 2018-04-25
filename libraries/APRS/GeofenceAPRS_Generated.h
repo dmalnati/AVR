@@ -181,11 +181,11 @@ public:
     {
         // load into sram, making room for final connecting point which isn't
         // included in the data
-        const uint8_t BUF_SIZE = 26 + 2;
+        const uint8_t BUF_SIZE = 28 + 2;
         int16_t buf[BUF_SIZE];
         
         // use points to determine if point in polygon
-        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, USA, 26, latitude, longitude);
+        uint8_t retVal = LoadToSramAndCheckPointInPolygon(buf, USA, 28, latitude, longitude);
         
         return retVal;
     }
@@ -598,7 +598,7 @@ private:
 
     // GEOFENCE ARRAYS (longitude, latitude)
     static const int16_t Europe1        [24] PROGMEM;
-    static const int16_t USA            [26] PROGMEM;
+    static const int16_t USA            [28] PROGMEM;
     static const int16_t Thailand       [ 8] PROGMEM;
     static const int16_t Japan          [12] PROGMEM;
     static const int16_t SouthKorea     [ 8] PROGMEM;
@@ -645,7 +645,7 @@ const int16_t GeofenceAPRSData::Europe1[24] PROGMEM =
       -743,   4904,
 };
 
-const int16_t GeofenceAPRSData::USA[26] PROGMEM =
+const int16_t GeofenceAPRSData::USA[28] PROGMEM =
 {
     -12907,   5154,
     -12834,   4241,
@@ -655,8 +655,9 @@ const int16_t GeofenceAPRSData::USA[26] PROGMEM =
      -8255,   2270,
      -7584,   2522,
      -7887,   3027,
-     -6154,   4503,
-     -6003,   4710,
+     -6740,   4213,
+     -4978,   4634,
+     -5590,   5333,
      -8099,   4515,
     -10116,   4895,
     -10841,   4677,
