@@ -4,7 +4,7 @@
 
 void PrintInit(void)
 {
-    Serial.begin();
+    Serial1.begin(9600);
 }
 
 void print(const char *fmt, ...)
@@ -17,6 +17,6 @@ void print(const char *fmt, ...)
     va_end (args);
 
     // send it to serial
-    Serial.write(buf);
+    Serial1.write(buf);
 }
 

@@ -288,9 +288,9 @@ void loop()
     LedUpdate(time, charge, energy);
     LoggingUpdate(time, curset, current, voltage, power, charge, energy);
 
-    if (Serial.available()) {
-        haveLine = EditLine(Serial.read(), &c);
-        Serial.print(c);
+    if (Serial1.available()) {
+        haveLine = EditLine(Serial1.read(), &c);
+        Serial1.print(c);
     }
     if (haveLine) {
         int result = cmd_process(commands, line);
