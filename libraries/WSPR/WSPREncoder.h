@@ -4,6 +4,9 @@
 
 // Based on K6HX (Mark VandeWettering) implementation
 // https://github.com/brainwagon/genwspr
+//
+// As well as the JTEncode library
+// https://github.com/etherkit/JTEncode
 
 
 #include <stdio.h>
@@ -13,6 +16,33 @@
 
 #include "BitField.h"
 
+
+/*
+ * This library is mixing the simplicity of the genwspr code with my own
+ * memory elimination techniques, as well as applying a generation approach to
+ * the distribution from JTEncode.
+ *
+ * Original memory usage of raw genwspr lib
+ * - prog 15688
+ * - sram 1105
+ * 
+ * (after getting rid of sync bits)
+ * - prog 15624
+ * - sram 966
+ * 
+ * (after getting rid of msg)
+ * - prog 16076
+ * - sram 848
+ * 
+ * (after getting rid of rdx)
+ * - prog 16180
+ * - sram 686
+ * 
+ * total change
+ * - prog +492
+ * - sram -419
+ *
+ */
 
 class WSPREncoder
 {
@@ -141,30 +171,71 @@ genmsg(const char *call, const char *grid, const int power)
     
     // StreamBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
     
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=14; i>=0; i--) {		/* encode the grid, 15 bits */
 	acc <<= 1 ;
 	if (g & (1L<<i)) acc |= 1 ;
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=6; i>=0; i--) {		/* encode the power, 7 bits */
 	acc <<= 1 ;
 	if (p & (1L<<i)) acc |= 1 ;
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=30; i>=0; i--) {		/* pad with 31 zero bits */
 	acc <<= 1 ;
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
+    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
     }
 }
+
+// this (modified) function taken from JTEncode
+static uint8_t GetRdx(uint8_t idx)
+{
+    static const uint8_t WSPR_BIT_COUNT = 162;
+    
+	uint8_t rev, index_temp, i, j, k;
+
+	i = 0;
+
+	for(j = 0; j < 255; j++)
+	{
+		// Bit reverse the index
+		index_temp = j;
+		rev = 0;
+
+		for(k = 0; k < 8; k++)
+		{
+			if(index_temp & 0x01)
+			{
+				rev = rev | (1 << (7 - k));
+			}
+			index_temp = index_temp >> 1;
+		}
+
+		if(rev < WSPR_BIT_COUNT)
+		{
+            if (i == idx)
+            {
+                return rev;
+            }
+            else
+            {
+                i++;
+            }
+		}
+	}
+    
+    return 0;
+}
+
 
 
 static void SetToneVal(uint8_t idx, uint8_t val)
@@ -188,8 +259,6 @@ static void IncrToneVal(uint8_t idx, uint8_t val)
 
 static const uint8_t syncBitList_[21];
 static const BitField bfSync_;
-
-static const unsigned char rdx[162];
 
 static uint8_t toneNumListBuf_[41];
 static BitField bfToneNumList_;
@@ -225,20 +294,6 @@ const uint8_t WSPREncoder::syncBitList_[21] = {
 
 const BitField WSPREncoder::bfSync_((uint8_t *)WSPREncoder::syncBitList_, 21);
 
-
-
-const unsigned char WSPREncoder::rdx[162] = {
-    0, 128, 64, 32, 160, 96, 16, 144, 80, 48, 112, 8, 136, 72, 40, 104, 24,
-    152, 88, 56, 120, 4, 132, 68, 36, 100, 20, 148, 84, 52, 116, 12, 140,
-    76, 44, 108, 28, 156, 92, 60, 124, 2, 130, 66, 34, 98, 18, 146, 82, 50,
-    114, 10, 138, 74, 42, 106, 26, 154, 90, 58, 122, 6, 134, 70, 38, 102,
-    22, 150, 86, 54, 118, 14, 142, 78, 46, 110, 30, 158, 94, 62, 126, 1,
-    129, 65, 33, 161, 97, 17, 145, 81, 49, 113, 9, 137, 73, 41, 105, 25,
-    153, 89, 57, 121, 5, 133, 69, 37, 101, 21, 149, 85, 53, 117, 13, 141,
-    77, 45, 109, 29, 157, 93, 61, 125, 3, 131, 67, 35, 99, 19, 147, 83, 51,
-    115, 11, 139, 75, 43, 107, 27, 155, 91, 59, 123, 7, 135, 71, 39, 103,
-    23, 151, 87, 55, 119, 15, 143, 79, 47, 111, 31, 159, 95, 63, 127 
-} ;
 
 // each of the 162 data bits is represented in 4FSK
 // meaning 4 possible values, so 2 bits to store the result.
