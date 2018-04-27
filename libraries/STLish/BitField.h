@@ -10,6 +10,11 @@ public:
         Attach(NULL, 0);
     }
     
+    BitField(uint8_t *buf, uint8_t bufSize)
+    {
+        Attach(buf, bufSize);
+    }
+    
     void Attach(uint8_t *buf, uint8_t bufSize)
     {
         buf_     = buf;
