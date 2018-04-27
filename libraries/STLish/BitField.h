@@ -21,7 +21,7 @@ public:
         bufSize_ = bufSize;
     }
     
-    uint8_t SetBitAt(uint8_t bitIdx, uint8_t bitVal)
+    uint8_t SetBitAt(uint16_t bitIdx, uint8_t bitVal)
     {
         uint8_t retVal = 0;
         
@@ -39,7 +39,7 @@ public:
     }
     
     template <typename T>
-    uint8_t SetBitRangeAt(uint8_t bitIdx, T bitList, uint8_t bitCount)
+    uint8_t SetBitRangeAt(uint16_t bitIdx, T bitList, uint8_t bitCount)
     {
         uint8_t retVal = 0;
         
@@ -56,7 +56,7 @@ public:
         return retVal;
     }
 
-    uint8_t GetBitAt(uint8_t bitIdx, uint8_t &bitVal) const
+    uint8_t GetBitAt(uint16_t bitIdx, uint8_t &bitVal) const
     {
         uint8_t retVal = 0;
         
@@ -74,7 +74,7 @@ public:
     }
     
     template <typename T>
-    uint8_t GetBitRangeAt(uint8_t bitIdx, T &bitList, uint8_t bitCount) const
+    uint8_t GetBitRangeAt(uint16_t bitIdx, T &bitList, uint8_t bitCount) const
     {
         uint8_t retVal = 0;
         
@@ -103,7 +103,7 @@ public:
 
 private:
 
-    uint8_t GetIndexesIfInRange(uint8_t bitIdx, uint8_t &byteIdx, uint8_t &bitInByte) const
+    uint8_t GetIndexesIfInRange(uint16_t bitIdx, uint8_t &byteIdx, uint8_t &bitInByte) const
     {
         uint8_t retVal = 0;
         
