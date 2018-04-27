@@ -32,8 +32,7 @@ void Transmit()
   for(uint8_t i = 0; i < symbol_count; i++)
   {
       //si5351.set_freq((freq * 100) + (tx_buffer[i] * tone_spacing), SI5351_CLK0);
-      si5351.set_freq((freq * 100) + (wsprEncoder.msg[i] * tone_spacing), SI5351_CLK0);
-      //si5351.set_freq((freq * 100) + (wsprEncoder.GetToneValForSymbol(i) * tone_spacing), SI5351_CLK0);
+      si5351.set_freq((freq * 100) + (wsprEncoder.GetToneValForSymbol(i) * tone_spacing), SI5351_CLK0);
       //delay(tone_delay);
 
       static const int16_t offset = -8;
@@ -76,8 +75,7 @@ void setup()
   }
 
   Serial.println("Buffer:");
-  StreamBlob(Serial, (uint8_t *)wsprEncoder.msg, 162, 1, 1);
-  //StreamBlob(Serial, buf, 162, 1, 1);
+  StreamBlob(Serial, buf, 162, 1, 1);
   Serial.println();
 }
 
