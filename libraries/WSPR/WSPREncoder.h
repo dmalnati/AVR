@@ -11,6 +11,8 @@
 #include <string.h>
 //#include "UtlStreamBlob.h"
 
+#include "BitField.h"
+
 
 class WSPREncoder
 {
@@ -114,8 +116,14 @@ genmsg(const char *call, const char *grid, const int power)
     // Serial.print("M: "); Serial.println(M);
     // StreamBlob(Serial, (uint8_t *)&M, 4, 1, 1);
 
-    for (i=0; i<162; i++)
-	msg[i] = sync[i] ;
+    for (uint8_t i=0; i<162; i++)
+    {
+        uint8_t val;
+        bfSync_.GetBitAt(i, val);
+        
+        msg[i] = val;
+        // SetToneVal(i, val);
+    }
 
     for (i=27; i>=0; i--) {		/* encode the callsign, 28 bits */
 	acc <<= 1 ;
@@ -125,6 +133,8 @@ genmsg(const char *call, const char *grid, const int power)
     
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=14; i>=0; i--) {		/* encode the grid, 15 bits */
@@ -132,6 +142,8 @@ genmsg(const char *call, const char *grid, const int power)
 	if (g & (1L<<i)) acc |= 1 ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=6; i>=0; i--) {		/* encode the power, 7 bits */
@@ -139,33 +151,90 @@ genmsg(const char *call, const char *grid, const int power)
 	if (p & (1L<<i)) acc |= 1 ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
     }
 
     for (i=30; i>=0; i--) {		/* pad with 31 zero bits */
 	acc <<= 1 ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xf2d05351L));
+    // IncrToneVal(rdx[mp++], 2*parity(acc & 0xe4613c47L));
     }
 }
 
-static const unsigned char sync[162];
+
+static uint8_t GetToneValForSymbol(uint8_t idx)
+{
+    uint8_t bitIdx = idx * 2;
+    
+    uint8_t val;
+    bfToneNumList_.GetBitRangeAt(bitIdx, val, 2);
+    
+    return val;
+}
+
+static void SetToneVal(uint8_t idx, uint8_t val)
+{
+    uint8_t bitIdx = idx * 2;
+    
+    bfToneNumList_.SetBitRangeAt(bitIdx, val, 2);
+}
+
+static void IncrToneVal(uint8_t idx, uint8_t val)
+{
+    uint8_t bitIdx = idx * 2;
+    
+    uint8_t valCurr;
+    bfToneNumList_.GetBitRangeAt(bitIdx, valCurr, 2);
+    
+    valCurr += val;
+    
+    bfToneNumList_.SetBitRangeAt(bitIdx, valCurr, 2);
+}
+
+static const uint8_t syncBitList_[21];
+static const BitField bfSync_;
 
 static const unsigned char rdx[162];
-
 static char msg[162];
+
+static uint8_t toneNumListBuf_[41];
+static BitField bfToneNumList_;
 };
 
-const unsigned char WSPREncoder::sync[162] = {
-    1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0,
-    1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-    0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1,
-    0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0,
-    1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1,
-    1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-    0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1,
-    1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0,
-    0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0
-} ;
+// need 162 bits, so pack into bytes
+//
+// 21 bytes * 8 bits = 168 (6 too many)
+// so just add 6 bits of zero at the end
+const uint8_t WSPREncoder::syncBitList_[21] = {
+    0b11000000,
+    0b10001110,
+    0b00100101,
+    0b11100000,
+    0b00100101,
+    0b00000010,
+    0b11001101,
+    0b00011010,
+    0b00011010,
+    0b10101001,
+    0b00101100,
+    0b01101010,
+    0b00100000,
+    0b10010011,
+    0b10110011,
+    0b01000111,
+    0b00000101,
+    0b00110000,
+    0b00011010,
+    0b11000110,
+    0b00000000,
+};
+
+const BitField WSPREncoder::bfSync_((uint8_t *)WSPREncoder::syncBitList_, 21);
+
+
 
 const unsigned char WSPREncoder::rdx[162] = {
     0, 128, 64, 32, 160, 96, 16, 144, 80, 48, 112, 8, 136, 72, 40, 104, 24,
@@ -182,6 +251,13 @@ const unsigned char WSPREncoder::rdx[162] = {
 
 char WSPREncoder::msg[162];
 
+// each of the 162 data bits is represented in 4FSK
+// meaning 4 possible values, so 2 bits to store the result.
+//
+// so need to store 162 * 2 = 324 bits
+// 324 bits / 8 bits-per-byte = 40.5 bytes, so call it 41 bytes
+uint8_t WSPREncoder::toneNumListBuf_[41];
+BitField WSPREncoder::bfToneNumList_(WSPREncoder::toneNumListBuf_, 41);
 
 
 #endif  // __WSPR_ENCODER_H__
