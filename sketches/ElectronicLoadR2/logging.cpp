@@ -30,7 +30,11 @@ void LoggingUpdate(unsigned long micros, float cur_set, float current, float vol
     unsigned long tick, millis;
     
     if (show_header) {
-        print("\nT(sec);Iset(A);I(A);V(V);P(W);Q(mAh);E(mWh)\n");
+        print("\n");
+        //print("T(sec), Is(A), I(A), V(V), P(W), Q(mAh), E(mWh)\n");
+
+        print("%8s, %6s, %6s, %6s, %6s, %6s, %7s\n",
+              "T(sec)", "Is(A)", "I(A)", "V(V)", "P(W)", "Q(mAh)", "E(mWh)");
         show_header = false;
     }
 
@@ -38,8 +42,12 @@ void LoggingUpdate(unsigned long micros, float cur_set, float current, float vol
     if (interval > 0) {
         tick = millis / interval;
         if (tick != lasttick) {
-            print("%.1f;%2.3f;%2.3f;%2.3f;%2.3f;%.3f;%.3f\n",
-                millis / 1000.0, cur_set, current, voltage, power, charge / 3.6, energy / 3.6);
+
+            char buf[15];
+            sprint(buf, 15, "%.1f", millis / 1000.0);
+            
+            print("%-8s, %6.3f, %6.3f, %6.3f, %6.3f, %6.3f, %7.3f\n",
+                buf, cur_set, current, voltage, power, charge / 3.6, energy / 3.6);
             lasttick = tick;
         }
     }

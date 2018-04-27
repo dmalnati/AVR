@@ -20,3 +20,11 @@ void print(const char *fmt, ...)
     Serial1.write(buf);
 }
 
+void sprint(char *buf, int bufSize, const char *fmt, ...)
+{
+    va_list args;
+    va_start (args, fmt);
+    vsnprintf(buf, bufSize, fmt, args);
+    va_end (args);
+}
+

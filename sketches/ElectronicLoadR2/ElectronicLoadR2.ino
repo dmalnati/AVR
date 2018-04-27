@@ -19,6 +19,9 @@ static float current, voltage, power;
 static double charge, energy;
 static char line[128];
 
+static const uint32_t DEFAULT_LOG_INTERVAL_MS = 1000;
+static uint32_t logIntervalMs = DEFAULT_LOG_INTERVAL_MS;
+
 void setup()
 {
     TMeasureCal cal;
@@ -42,7 +45,14 @@ void setup()
 static void show_help(const cmd_t *cmds)
 {
     for (const cmd_t *cmd = cmds; cmd->cmd != NULL; cmd++) {
-        print("%10s: %s\n", cmd->name, cmd->help);
+        print("%10s: ", cmd->name);
+
+        if (!strcmp(cmd->name, "interval"))
+        {
+            print("(%i ms) ", logIntervalMs);
+        }
+
+        print("%s\n", cmd->help);
     }
 }
 
@@ -57,7 +67,7 @@ static int do_cc(int argc, char *argv[])
     int ma = atoi(argv[1]);
     print("Set constant current mode %d mA\n", ma);
     ControlSetMode(CC, ma / 1000.0);
-    LoggingOn(500);
+    LoggingOn(logIntervalMs);
     return 0;
 }
 
@@ -70,7 +80,7 @@ static int do_cp(int argc, char *argv[])
     int mw = atoi(argv[1]);
     print("Set constant power mode %d mW\n", mw);
     ControlSetMode(CP, mw / 1000.0);
-    LoggingOn(500);
+    LoggingOn(logIntervalMs);
     return 0;
 }
 
@@ -83,7 +93,7 @@ static int do_cr(int argc, char *argv[])
     int ohm = atoi(argv[1]);
     print("Set constant resistance mode %d ohm\n", ohm);
     ControlSetMode(CR, ohm);
-    LoggingOn(500);
+    LoggingOn(logIntervalMs);
     return 0;
 }
 
@@ -145,18 +155,24 @@ static int do_led(int argc, char *argv[])
     return -1;
 }
 
-static int do_log(int argc, char *argv[])
+static int do_interval(int argc, char *argv[])
 {
     if (argc != 2) {
-        print("Please specify a logging interval (0 to stop)\n");
+        print("Please specify a logging interval\n");
         return -1;
     }
-    int interval = atoi(argv[1]);
-    if (interval > 0) {
-        LoggingOn(interval);
-    } else {
-        LoggingOff();
-    }
+    
+    int interval = atol(argv[1]);
+
+    logIntervalMs = interval;
+    
+    return 0;
+}
+
+static int do_log(int argc, char *argv[])
+{
+    LoggingOn(logIntervalMs);
+    
     return 0;
 }
 
@@ -252,7 +268,8 @@ const cmd_t commands[] = {
     {"s",       do_status,  "Show status"},
     {"led",     do_led,     "<mode> Set LED mode"},
     {"reset",   do_reset,   "Reset charge/energy counters"},
-    {"log",     do_log,     "<interval> Starts logging with <interval> ms"},
+    {"interval",do_interval,"Change interval ms of logging for cc, cp, cr, and log"},
+    {"log",     do_log,     "Print regular measurements without cc, cp, cr mode enabled"},
     {"limit",   do_limit,   "<i,v,p> <value> Set the current/voltage/power limit in mA/mW/mV"},
     {"cal",     do_cal,     "<i,v> <actual> calibrate current/voltage towards actual value (mA/mV)"},
     {NULL, NULL, NULL}
@@ -308,7 +325,7 @@ void loop()
             print("%d\n", result);
             break;
         }
-        print("%s>", ControlGetModeString());
+        print("%s> ", ControlGetModeString());
     }
 }
 
