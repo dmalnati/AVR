@@ -2,26 +2,15 @@
 #define __WSPR_ENCODER_H__
 
 
-/*
- * Here is some C code to generate "Type 1" WSPR messages, that
- * include a single common callsign (no prefixes) and 4 character
- * Maidenhead gridsquare location, as well as transmitted power.
- * Some attempt has been made to minimize the storage used, so that
- * this can compactly be used on small microcontrollers.
- * 
- * Very little error checking is done on this, so you better make sure
- * that the callsign and gridsquare are of the appropriate form.
- *
- * Callsigns must be 2x3, 1x3, 2x1, or 1x2 for the purposes of this 
- * code.
- *
- * Written by Mark VandeWettering K6HX
- */
+// Based on K6HX (Mark VandeWettering) implementation
+// https://github.com/brainwagon/genwspr
+
 
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include "UtlStreamBlob.h"
+//#include "UtlStreamBlob.h"
+
 
 class WSPREncoder
 {
@@ -34,8 +23,8 @@ chval1(int ch)
     if (isdigit(ch)) return ch - '0' ;
     if (isalpha(ch)) return 10 + toupper(ch) - 'A' ;
     if (ch == ' ') return 36 ;
-
-    Serial.println("chval1");
+    
+    return 0;
 }
 
 static int 
@@ -44,16 +33,14 @@ chval2(int ch)
     if (isalpha(ch)) return toupper(ch) - 'A' ;
     if (ch == ' ') return 26 ;
     
-    Serial.println("chval2");
+    return 0;
 }
 
 
-//static int
 static uint32_t
 encodecallsign(const char *callsign)
 {
     /* find the first digit... */
-    //int i, rc ;
     uint32_t i, rc ;
     char call[6] ;
 
@@ -78,8 +65,8 @@ encodecallsign(const char *callsign)
     rc += chval2(call[4]) ; rc *= 27 ;
     rc += chval2(call[5]) ;
     
-    Serial.print("Callsign: "); Serial.println(rc);
-    StreamBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
+    // Serial.print("Callsign: "); Serial.println(rc);
+    // StreamBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
 
     return rc ;
 }
@@ -101,14 +88,9 @@ encodepower(int p)
     return p + 64 ;
 }
 
-//static int 
-//parity(unsigned int x)
 static int32_t
 parity(uint32_t x)
 {
-    //unsigned int sx = x ;
-    //int even = 0 ;
-    uint32_t sx = x ;
     int32_t even = 0 ;
     while (x) {
 	even = 1-even ;
@@ -122,20 +104,15 @@ parity(uint32_t x)
 static void
 genmsg(const char *call, const char *grid, const int power)
 {
-    //int c = encodecallsign(call) ;
-    //int g = encodegrid(grid) ;
-    //int p = encodepower(power) ;
-    //int i, mp = 0 ;
-    //unsigned int acc = 0;
     uint32_t c = encodecallsign(call) ;
     uint32_t g = encodegrid(grid) ;
     uint32_t p = encodepower(power) ;
     int32_t i, mp = 0 ;
     uint32_t acc = 0;
     
-    uint32_t M = (g * 128) + p;
-    Serial.print("M: "); Serial.println(M);
-    StreamBlob(Serial, (uint8_t *)&M, 4, 1, 1);
+    // uint32_t M = (g * 128) + p;
+    // Serial.print("M: "); Serial.println(M);
+    // StreamBlob(Serial, (uint8_t *)&M, 4, 1, 1);
 
     for (i=0; i<162; i++)
 	msg[i] = sync[i] ;
@@ -144,7 +121,7 @@ genmsg(const char *call, const char *grid, const int power)
 	acc <<= 1 ;
 	if (c & (1L<<i)) acc |= 1 ;
     
-    StreamBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
+    // StreamBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
     
 	msg[rdx[mp++]] += 2*parity(acc & 0xf2d05351L) ;
 	msg[rdx[mp++]] += 2*parity(acc & 0xe4613c47L) ;

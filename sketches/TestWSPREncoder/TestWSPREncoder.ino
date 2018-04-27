@@ -69,7 +69,7 @@ void setup()
   wsprEncoder.genmsg(call, loc, dbm);
 
   Serial.println("Buffer:");
-  StreamBlob(Serial, wsprEncoder.msg, 162, 1, 1);
+  StreamBlob(Serial, (uint8_t *)wsprEncoder.msg, 162, 1, 1);
   Serial.println();
 }
 
