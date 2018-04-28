@@ -362,10 +362,15 @@ public:
     {
         return (uint8_t)(1 << (uint8_t)(CLKPR & 0x0F));
     }
+    
+    static uint32_t GetOscillatorFreq()
+    {
+        return F_CPU;
+    }
 
     static uint32_t GetCpuFreq()
     {
-        return (uint32_t)F_CPU / GetCpuPrescalerValue();
+        return GetOscillatorFreq() / GetCpuPrescalerValue();
     }
     
     static void WatchdogEnableInterrupt(WatchdogTimeout wt)
@@ -488,7 +493,9 @@ public:
                                                     uint8_t *port,
                                                     uint8_t *portPin);
                                                     
-
+    static void PowerDownSerial0() { PRR |= _BV(PRUSART0);           }
+    static void PowerUpSerial0()   { PRR &= (uint8_t)~_BV(PRUSART0); }
+    
     static void PowerDownTimer0() { PRR |= _BV(PRTIM0);           }
     static void PowerUpTimer0()   { PRR &= (uint8_t)~_BV(PRTIM0); }
     static void PowerDownTimer1() { PRR |= _BV(PRTIM1);           }
