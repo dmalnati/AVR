@@ -363,8 +363,8 @@ protected:
     
 private:
     
-    uint8_t idxFront_;
-    uint8_t idxBack_;
+    volatile uint8_t idxFront_;
+    volatile uint8_t idxBack_;
     volatile uint8_t size_;
     const uint8_t capacity_;
  
