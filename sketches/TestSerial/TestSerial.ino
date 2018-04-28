@@ -1,24 +1,42 @@
+#include "Evm.h"
 #include "PAL.h"
 #include "Serial.h"
 
 
+static Evm::Instance<10,10,10> evm;
 static Serial0 s;
-static Pin dbg(15, LOW);
+static TimedEventHandlerDelegate ted;
+
 
 void setup()
 {
     s.Start(9600);
 
-    while (1)
-    {
-        s.Start(9600);
-        s.Write("hey there\n");
-        s.Stop();
+    ted.SetCallback([](){
+        //s.Start(9600);
+        //s.Write("hey there\n");
 
-        PAL.DigitalToggle(dbg);
+        char buf[50];
+        uint8_t avail = s.Available();
+        itoa(avail, buf, 10);
+
+        s.Write((uint8_t *)buf, strlen(buf));
+        s.Write('\n');
+
+        for (uint8_t i = 0; i < avail; ++i)
+        {
+            uint8_t b = s.Read();
+            
+            s.Write(b);
+        }
+        s.Write('\n');
         
-        PAL.Delay(2000);
-    }
+        //s.Stop();
+    });
+
+    ted.RegisterForTimedEventInterval(2000);
+
+    evm.MainLoop();
 }
 
 void loop()

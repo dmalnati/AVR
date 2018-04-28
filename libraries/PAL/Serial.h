@@ -2,6 +2,13 @@
 #define __SERIAL_H__
 
 
+#include <util/atomic.h>
+
+#include "PAL.h"
+#include "Container.h"
+#include "StreamWindow.h"
+
+
 class Serial0
 {
 public:
@@ -30,19 +37,19 @@ public:
             PAL.PowerUpSerial0();
             
             // Calculate register values for given baud according to spec
-            uint16_t UBRR = (uint16_t)((PAL.GetOscillatorFreq() / 16 / baud) + 1);
-        
+            uint16_t UBRR = (uint16_t)((PAL.GetOscillatorFreq() / 16 / baud) - 1);
+            
             // Modified example init from pdf p. 176
             
             /* Set baud rate */
             UBRR0H = (uint8_t)(UBRR >> 8);
             UBRR0L = (uint8_t)UBRR;
             
-            /* Enable receiver and transmitter */
-            UCSR0B = (1 << RXEN0) | (1 << TXEN0);
+            /* Enable receiver ISR, receiver, and transmitter */
+            UCSR0B = (1 << RXCIE0) | (1 << RXEN0) | (1 << TXEN0);
             
-            /* Set frame format: 8data, 1stop bit */
-            UCSR0C = (3 << UCSZ00);
+            /* Set frame format: 8N1 - 8data, no parity, 1stop bit */
+            UCSR0C = (0 << UCSZ02) | (1 << UCSZ01) | (1 << UCSZ00);
         }
     }
     
@@ -66,11 +73,19 @@ public:
              * completed, i.e., when the Transmit Shift Register and
              * Transmit Buffer Register do not contain data to be transmitted. 
              */
-            
+
             // So just disable right away
+             
+            /* 
+             * If the Receiver is disabled (RXENn = 0), the receive buffer will
+             * be flushed and consequently the RXCn bit will become zero
+             */
+            
+            // So no need to check for and discard unread data, it's automatic
             
             // Disable RX / TX
             // Notably all other bits are appropriate to set to 0 here as well.
+            // This includes disabling the interrupt-enable bit for RX.
             UCSR0B = 0;
             
             
@@ -86,16 +101,6 @@ public:
                 while (!(UCSR0A & (1 << TXC0)));
             }
             
-            
-            
-            
-            
-            // check if any unread data and discard
-
-            // Clear interrupts for RX
-            
-            
-            
             // Cut power to USART
             PAL.PowerDownSerial0();
         }
@@ -104,41 +109,44 @@ public:
     
     void Write(uint8_t b)
     {
-        // Synchronous.
-        // Don't allow function to return until byte fully transmitted.
-        //
-        // No need to check if data is already in the buffer, this is the only
-        // function which can put data there, and we're ensuring it's gone by
-        // the time we return.
-        //
-        // The buffer, UDR0, is not the buffer the USART uses to transmit from.
-        // The USART uses a shift register, which loads from the UDR0 when it is
-        // ready to send a new byte.
-        // 
-        // So waiting until the UDR0 is empty means that the shift register has
-        // taken a copy of its value and is sending it (or has sent it).
-        //
-        // So in terms of streamlining transmissions, this should be just fine
-        // waiting for synchronous write, as the next byte can be loaded into
-        // UDR0 while the shift register is working the prior.
-        
-        
-        // Clear the TXCn flag by writing 1 to it.
-        // The last two bits are the only other writeable bits, and are
-        // appropriate to set to 0.
-        //
-        // This supports the ability to wait for final data to be shifted out of
-        // register if Stop is called before complete.
-        UCSR0A = 0b01000000;
-        
-        // Put data into buffer leading to shift register
-        UDR0 = b;
-        
-        // Wait for this data to be put into the shift register and now be empty
-        while (!(UCSR0A & (1 << UDRE0)));
-        
-        // Keep track of state for disambiguation later
-        hasWrittenAtLeastOneByte_ = 1;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            // Synchronous.
+            // Don't allow function to return until byte fully transmitted.
+            //
+            // No need to check if data is already in the buffer, this is the only
+            // function which can put data there, and we're ensuring it's gone by
+            // the time we return.
+            //
+            // The buffer, UDR0, is not the buffer the USART uses to transmit from.
+            // The USART uses a shift register, which loads from the UDR0 when it is
+            // ready to send a new byte.
+            // 
+            // So waiting until the UDR0 is empty means that the shift register has
+            // taken a copy of its value and is sending it (or has sent it).
+            //
+            // So in terms of streamlining transmissions, this should be just fine
+            // waiting for synchronous write, as the next byte can be loaded into
+            // UDR0 while the shift register is working the prior.
+            
+            
+            // Clear the TXCn flag by writing 1 to it.
+            // The last two bits are the only other writeable bits, and are
+            // appropriate to set to 0.
+            //
+            // This supports the ability to wait for final data to be shifted out of
+            // register if Stop is called before complete.
+            UCSR0A = 0b01000000;
+            
+            // Put data into buffer leading to shift register
+            UDR0 = b;
+            
+            // Wait for this data to be put into the shift register and now be empty
+            while (!(UCSR0A & (1 << UDRE0)));
+            
+            // Keep track of state for disambiguation later
+            hasWrittenAtLeastOneByte_ = 1;
+        }
     }
     
     void Write(uint8_t *buf, uint16_t bufSize)
@@ -155,32 +163,39 @@ public:
         
         Write((uint8_t *)str, bufSize);
     }
+    
+    uint8_t Available() const
+    {
+        return rxQ_.Size();
+    }
+    
+    uint8_t Read()
+    {
+        uint8_t retVal = 0;
+        
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            rxQ_.Pop(retVal);
+        }
+        
+        return retVal;
+    }
 
 private:
 
     static uint8_t hasWrittenAtLeastOneByte_;
+    
+public:
+
+    // RX Q needs to be public so ISR can get to it
+    
+    static const uint8_t BUF_RX_SIZE = 32;
+    static Queue<uint8_t, BUF_RX_SIZE> rxQ_;
 };
 
-// Necessary to keep some state.
-// Impossible to tell initial state from one where tx isn't complete yet
-// when you want to stop TX.
-// https://www.avrfreaks.net/forum/uart-udrie-txcie
-//
-// Action    Flags         Comment
-// Startup   UDRE=1 TXC=0                                      [this state]
-// Load UDR  UDRE=0 TXC=0  Software loads UDR
-// UDR->SR   UDRE=1 TXC=0  Hardware loads Shift Register
-// LOAD UDR  UDRE=0 TXC=0  Software loads UDR
-// 
-// after first byte finishes shifting
-// UDR->SR   UDRE=1 TXC=0  Hardware Loads Shift Register       [this state]
-// 
-// after second byte finishes shifting
-// nothing   UDRE=1 TXC=1
-//
-//
-// We can disambiguate by knowing if we've ever written before.
-uint8_t Serial0::hasWrittenAtLeastOneByte_ = 0;
+
+extern Serial0 S0;
+
 
 
 #endif  // __SERIAL_H__
