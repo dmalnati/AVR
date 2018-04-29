@@ -8,7 +8,6 @@
 
 #include "Function.h"
 #include "Pin.h"
-#include "Log.h"
 
 #include <Arduino.h>
 
@@ -729,7 +728,6 @@ private:
 
 // Make the global instance known
 extern PlatformAbstractionLayer PAL;
-
 
 
 

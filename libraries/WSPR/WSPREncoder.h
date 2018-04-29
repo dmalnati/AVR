@@ -12,8 +12,9 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-//#include "UtlStreamBlob.h"
+//#include "UtlLogBlob.h"
 
+#include "PAL.h"
 #include "BitField.h"
 
 
@@ -108,8 +109,8 @@ encodecallsign(const char *callsign)
     rc += chval2(call[4]) ; rc *= 27 ;
     rc += chval2(call[5]) ;
     
-    // Serial.print("Callsign: "); Serial.println(rc);
-    // StreamBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
+    // LogNNL("Callsign: "); Log(rc);
+    // LogBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
 
     return rc ;
 }
@@ -154,8 +155,8 @@ genmsg(const char *call, const char *grid, const int power)
     uint32_t acc = 0;
     
     // uint32_t M = (g * 128) + p;
-    // Serial.print("M: "); Serial.println(M);
-    // StreamBlob(Serial, (uint8_t *)&M, 4, 1, 1);
+    // LogNNL("M: "); Log(M);
+    // LogBlob(Serial, (uint8_t *)&M, 4, 1, 1);
 
     for (uint8_t i=0; i<162; i++)
     {
@@ -169,7 +170,7 @@ genmsg(const char *call, const char *grid, const int power)
 	acc <<= 1 ;
 	if (c & (1L<<i)) acc |= 1 ;
     
-    // StreamBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
+    // LogBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
     
     IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
     IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));

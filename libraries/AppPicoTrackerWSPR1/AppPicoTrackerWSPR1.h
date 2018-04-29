@@ -2,6 +2,8 @@
 #define __APP_PICO_TRACKER_WSPR_1_H__
 
 
+#include "PAL.h"
+#include "Log.h"
 #include "Eeprom.h"
 #include "Evm.h"
 #include "SensorGPSUblox.h"
@@ -49,11 +51,11 @@ public:
     void Run()
     {
         // Init serial and announce startup
-        Serial.begin(9600);
-        Serial.println(F("Starting"));
+        LogStart(9600);
+        Log(P("Starting"));
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
-            Serial.println(F("WDTR"));
+            Log(P("WDTR"));
         }
         
         // Shut down subsystems
@@ -127,7 +129,7 @@ private:
         tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(0);
         
         // Handle async events
-        Serial.println(F("Running"));
+        Log(P("Running"));
         PAL.Delay(1000);
         
         evm_.MainLoopLowPower();
@@ -142,7 +144,7 @@ private:
     void OnWakeAndEvaluateTimeout()
     {
         // Log
-        Serial.println("\nWake");
+        Log("\nWake");
 
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
@@ -154,7 +156,7 @@ private:
         evm_.LowPowerDisable();
         
         // Start GPS
-        Serial.println("GPS ON");
+        Log("GPS ON");
         StartGPS();
         
         // Keep track of when GPS started so you can track duration waiting
@@ -193,7 +195,7 @@ private:
         StatsIncrGpsLockWaitSecs((PAL.Millis() - gpsLockWaitStart_) / 1000);
         
         // Turn off GPS
-        Serial.println("GPS OFF");
+        Log("GPS OFF");
         StopGPS();
         
         // Decide whether to send a message and how long to sleep for.
@@ -204,13 +206,13 @@ private:
         if (sendMessage)
         {
             // Log
-            Serial.println("TX");
+            Log("TX");
             
             // Send message
             SendMessage();
             
             // Log
-            Serial.println("TXEND");
+            Log("TXEND");
         }
         else
         {
@@ -229,8 +231,8 @@ private:
         evm_.LowPowerEnable();
         
         // Log
-        Serial.print("Sleep ");
-        Serial.println(wakeAndEvaluateMs);
+        LogNNL("Sleep ");
+        Log(wakeAndEvaluateMs);
         PAL.Delay(50);
     }
     
