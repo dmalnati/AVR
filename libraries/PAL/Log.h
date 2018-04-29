@@ -3,6 +3,7 @@
 
 #include <float.h>
 
+#include "PStr.h"
 #include "Serial.h"
 
 
@@ -51,6 +52,42 @@ void Log(const char *str)
     LogNNL(str);
     LogNL();
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// PStr
+//
+////////////////////////////////////////////////////////////////////////////////
+
+void LogNNL(PStr val)
+{
+    const char *p = (const char *)val;
+    
+    uint8_t cont = 1;
+    while (cont)
+    {
+        char c = pgm_read_byte(p);
+        
+        if (c != '\0')
+        {
+            S0.Write(c);
+            
+            ++p;
+        }
+        else
+        {
+            cont = 0;
+        }
+    }
+}
+
+void Log(PStr val)
+{
+    LogNNL(val);
+    LogNL();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -165,10 +202,22 @@ void LogNNL(double val)
     // 12345678901234567890123456789012345678901234
     // -340282350000000000000000000000000000000.000
     
-    char buf[45];
-    dtostrf(val, -1, 3, buf);
-    LogNNL(buf);
+    if (isnan(val))
+    {
+        LogNNL(P("NaN"));
+    }
+    else if (isinf(val))
+    {
+        LogNNL(P("INF"));
+    }
+    else
+    {
+        char buf[45];
+        dtostrf(val, -1, 3, buf);
+        LogNNL(buf);
+    }
 }
+    
 
 void Log(double val)
 {

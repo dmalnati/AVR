@@ -1,4 +1,5 @@
 #include "PAL.h"
+#include "PStr.h"
 #include "Log.h"
 
 
@@ -10,6 +11,34 @@ void TestStrings()
     
     Log("heynow");
     LogNNL("hey"); LogNNL("NOW"); LogNL();
+
+    LogNL();
+}
+
+void TestPString()
+{
+    Log("PString");
+    LogX('-', 25);
+    
+    Log(P("1234"));
+    Log(P("hello world"));
+    LogNNL(P("hello")); LogNNL(P(" world")); LogNL();
+
+    auto pStr1 = P("sup1");
+    Log(pStr1);
+
+    auto pStr2 = P("sup2");
+    if (!strcmp_P("sup2", pStr2))
+    {
+        Log("strcmp_P works");
+    }
+    else
+    {
+        Log("strcmp_P FAIL");
+    }
+
+    PStr p = P("hi guys");
+    Log(p);
 
     LogNL();
 }
@@ -77,6 +106,11 @@ void TestFloatingPoint()
     Log((float)-DBL_MAX);
     Log((float)DBL_MAX);
 
+    Log((float)-NAN);
+    Log((float)NAN);
+    Log((float)-INFINITY);
+    Log((float)INFINITY);
+
     
     Log((double)-1.0);
     Log((double)-0.0);
@@ -88,6 +122,11 @@ void TestFloatingPoint()
     
     Log((double)-DBL_MAX);
     Log((double)DBL_MAX);
+
+    Log((double)-NAN);
+    Log((double)NAN);
+    Log((double)-INFINITY);
+    Log((double)INFINITY);
 
 
     LogNL();
@@ -106,6 +145,8 @@ void TestTemplates()
 
     Log("one = ", 1, " two = ", '2');
 
+    Log("tomato", " ", P("tomato"));
+
     LogNL();
 }
 
@@ -116,6 +157,7 @@ void setup()
     while (1)
     {
         TestStrings();
+        TestPString();
         TestChars();
         TestUnsignedInts();
         TestSignedInts();
