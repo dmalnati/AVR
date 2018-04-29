@@ -72,17 +72,17 @@ char SFE_BMP180::begin()
 		// VB1 = 5498; VB2 = 46; MB = -32768; MC = -11075; MD = 2432;
 
 		/*
-		Serial.print("AC1: "); Serial.println(AC1);
-		Serial.print("AC2: "); Serial.println(AC2);
-		Serial.print("AC3: "); Serial.println(AC3);
-		Serial.print("AC4: "); Serial.println(AC4);
-		Serial.print("AC5: "); Serial.println(AC5);
-		Serial.print("AC6: "); Serial.println(AC6);
-		Serial.print("VB1: "); Serial.println(VB1);
-		Serial.print("VB2: "); Serial.println(VB2);
-		Serial.print("MB: "); Serial.println(MB);
-		Serial.print("MC: "); Serial.println(MC);
-		Serial.print("MD: "); Serial.println(MD);
+		@fix@Serial.print("AC1: "); @fix@Serial.println(AC1);
+		@fix@Serial.print("AC2: "); @fix@Serial.println(AC2);
+		@fix@Serial.print("AC3: "); @fix@Serial.println(AC3);
+		@fix@Serial.print("AC4: "); @fix@Serial.println(AC4);
+		@fix@Serial.print("AC5: "); @fix@Serial.println(AC5);
+		@fix@Serial.print("AC6: "); @fix@Serial.println(AC6);
+		@fix@Serial.print("VB1: "); @fix@Serial.println(VB1);
+		@fix@Serial.print("VB2: "); @fix@Serial.println(VB2);
+		@fix@Serial.print("MB: "); @fix@Serial.println(MB);
+		@fix@Serial.print("MC: "); @fix@Serial.println(MC);
+		@fix@Serial.print("MD: "); @fix@Serial.println(MD);
 		*/
 		
 		// Compute floating-point polynominals:
@@ -105,23 +105,23 @@ char SFE_BMP180::begin()
 		p2 = 3038.0 * 100.0 * pow(2,-36);
 
 		/*
-		Serial.println();
-		Serial.print("c3: "); Serial.println(c3);
-		Serial.print("c4: "); Serial.println(c4);
-		Serial.print("c5: "); Serial.println(c5);
-		Serial.print("c6: "); Serial.println(c6);
-		Serial.print("b1: "); Serial.println(b1);
-		Serial.print("mc: "); Serial.println(mc);
-		Serial.print("md: "); Serial.println(md);
-		Serial.print("x0: "); Serial.println(x0);
-		Serial.print("x1: "); Serial.println(x1);
-		Serial.print("x2: "); Serial.println(x2);
-		Serial.print("y0: "); Serial.println(y0);
-		Serial.print("y1: "); Serial.println(y1);
-		Serial.print("y2: "); Serial.println(y2);
-		Serial.print("p0: "); Serial.println(p0);
-		Serial.print("p1: "); Serial.println(p1);
-		Serial.print("p2: "); Serial.println(p2);
+		@fix@Serial.println();
+		@fix@Serial.print("c3: "); @fix@Serial.println(c3);
+		@fix@Serial.print("c4: "); @fix@Serial.println(c4);
+		@fix@Serial.print("c5: "); @fix@Serial.println(c5);
+		@fix@Serial.print("c6: "); @fix@Serial.println(c6);
+		@fix@Serial.print("b1: "); @fix@Serial.println(b1);
+		@fix@Serial.print("mc: "); @fix@Serial.println(mc);
+		@fix@Serial.print("md: "); @fix@Serial.println(md);
+		@fix@Serial.print("x0: "); @fix@Serial.println(x0);
+		@fix@Serial.print("x1: "); @fix@Serial.println(x1);
+		@fix@Serial.print("x2: "); @fix@Serial.println(x2);
+		@fix@Serial.print("y0: "); @fix@Serial.println(y0);
+		@fix@Serial.print("y1: "); @fix@Serial.println(y1);
+		@fix@Serial.print("y2: "); @fix@Serial.println(y2);
+		@fix@Serial.print("p0: "); @fix@Serial.println(p0);
+		@fix@Serial.print("p1: "); @fix@Serial.println(p1);
+		@fix@Serial.print("p2: "); @fix@Serial.println(p2);
 		*/
 		
 		// Success!
@@ -257,10 +257,10 @@ char SFE_BMP180::getTemperature(double &T)
 		T = a + (mc / (a + md));
 
 		/*		
-		Serial.println();
-		Serial.print("tu: "); Serial.println(tu);
-		Serial.print("a: "); Serial.println(a);
-		Serial.print("T: "); Serial.println(*T);
+		@fix@Serial.println();
+		@fix@Serial.print("tu: "); @fix@Serial.println(tu);
+		@fix@Serial.print("a: "); @fix@Serial.println(a);
+		@fix@Serial.print("T: "); @fix@Serial.println(*T);
 		*/
 	}
 	return(result);
@@ -343,14 +343,14 @@ char SFE_BMP180::getPressure(double &P, double &T)
 		P = (p2 * pow(z,2)) + (p1 * z) + p0;
 
 		/*
-		Serial.println();
-		Serial.print("pu: "); Serial.println(pu);
-		Serial.print("T: "); Serial.println(*T);
-		Serial.print("s: "); Serial.println(s);
-		Serial.print("x: "); Serial.println(x);
-		Serial.print("y: "); Serial.println(y);
-		Serial.print("z: "); Serial.println(z);
-		Serial.print("P: "); Serial.println(*P);
+		@fix@Serial.println();
+		@fix@Serial.print("pu: "); @fix@Serial.println(pu);
+		@fix@Serial.print("T: "); @fix@Serial.println(*T);
+		@fix@Serial.print("s: "); @fix@Serial.println(s);
+		@fix@Serial.print("x: "); @fix@Serial.println(x);
+		@fix@Serial.print("y: "); @fix@Serial.println(y);
+		@fix@Serial.print("z: "); @fix@Serial.println(z);
+		@fix@Serial.print("P: "); @fix@Serial.println(*P);
 		*/
 	}
 	return(result);

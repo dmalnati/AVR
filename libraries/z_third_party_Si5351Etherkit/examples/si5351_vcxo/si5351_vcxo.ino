@@ -28,7 +28,7 @@ Si5351 si5351;
 void setup()
 {
   // Start serial and initialize the Si5351
-  Serial.begin(57600);
+  @fix@Serial.begin(57600);
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
 
   // Set VCXO osc to 876 MHz (146 MHz x 6), 40 ppm pull
@@ -48,18 +48,18 @@ void loop()
 {
   // Read the Status Register and print it every 10 seconds
   si5351.update_status();
-  Serial.print("corr: ");
-  Serial.print(si5351.get_correction());
-  Serial.print("  SYS_INIT: ");
-  Serial.print(si5351.dev_status.SYS_INIT);
-  Serial.print("  LOL_A: ");
-  Serial.print(si5351.dev_status.LOL_A);
-  Serial.print("  LOL_B: ");
-  Serial.print(si5351.dev_status.LOL_B);
-  Serial.print("  LOS: ");
-  Serial.print(si5351.dev_status.LOS);
-  Serial.print("  REVID: ");
-  Serial.println(si5351.dev_status.REVID);
+  @fix@Serial.print("corr: ");
+  @fix@Serial.print(si5351.get_correction());
+  @fix@Serial.print("  SYS_INIT: ");
+  @fix@Serial.print(si5351.dev_status.SYS_INIT);
+  @fix@Serial.print("  LOL_A: ");
+  @fix@Serial.print(si5351.dev_status.LOL_A);
+  @fix@Serial.print("  LOL_B: ");
+  @fix@Serial.print(si5351.dev_status.LOL_B);
+  @fix@Serial.print("  LOS: ");
+  @fix@Serial.print(si5351.dev_status.LOS);
+  @fix@Serial.print("  REVID: ");
+  @fix@Serial.println(si5351.dev_status.REVID);
 
   delay(10000);
 }

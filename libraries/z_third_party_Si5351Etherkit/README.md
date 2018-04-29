@@ -64,16 +64,16 @@ Frequencies are indicated in units of 0.01 Hz. Therefore, if you prefer to work 
 In the main _Loop()_, we use the Serial port to monitor the status of the Si5351, using a method to update a public struct which holds the status bits:
 
     si5351.update_status();
-    Serial.print("SYS_INIT: ");
-    Serial.print(si5351.dev_status.SYS_INIT);
-    Serial.print("  LOL_A: ");
-    Serial.print(si5351.dev_status.LOL_A);
-    Serial.print("  LOL_B: ");
-    Serial.print(si5351.dev_status.LOL_B);
-    Serial.print("  LOS: ");
-    Serial.print(si5351.dev_status.LOS);
-    Serial.print("  REVID: ");
-    Serial.println(si5351.dev_status.REVID);
+    @fix@Serial.print("SYS_INIT: ");
+    @fix@Serial.print(si5351.dev_status.SYS_INIT);
+    @fix@Serial.print("  LOL_A: ");
+    @fix@Serial.print(si5351.dev_status.LOL_A);
+    @fix@Serial.print("  LOL_B: ");
+    @fix@Serial.print(si5351.dev_status.LOL_B);
+    @fix@Serial.print("  LOS: ");
+    @fix@Serial.print(si5351.dev_status.LOS);
+    @fix@Serial.print("  REVID: ");
+    @fix@Serial.println(si5351.dev_status.REVID);
 
 When the synthesizers are locked and the Si5351 is working correctly, you'll see an output similar to this one (the REVID may be different):
 

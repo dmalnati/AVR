@@ -25,8 +25,8 @@ public:
     
     void Run()
     {
-        Serial.begin(9600);
-        Serial.println("Starting");
+        @fix@Serial.begin(9600);
+        @fix@Serial.println("Starting");
         
         // Set up timers for fast wrapping, we just want high-res pwm
         Timer1::SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);

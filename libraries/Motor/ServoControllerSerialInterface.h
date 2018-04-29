@@ -66,14 +66,14 @@ private:
     {
         sc_.SetModeInverted();
         
-        Serial.println("Mode: Inverted");
+        @fix@Serial.println("Mode: Inverted");
     }
     
     void HandleNonInverseCommand()
     {
         sc_.SetModeNonInverted();
         
-        Serial.println("Mode: NonInverted");
+        @fix@Serial.println("Mode: NonInverted");
     }
     
     void HandleRangeCommand(char *inputStr)
@@ -86,10 +86,10 @@ private:
         
         sc_.SetRange(rangeLow, rangeHigh);
         
-        Serial.print("Range: ");
-        Serial.print(rangeLow);
-        Serial.print(" - ");
-        Serial.println(rangeHigh);
+        @fix@Serial.print("Range: ");
+        @fix@Serial.print(rangeLow);
+        @fix@Serial.print(" - ");
+        @fix@Serial.println(rangeHigh);
     }
     
     void HandleMaxDurationCommand(char *inputStr)
@@ -100,15 +100,15 @@ private:
         
         sc_.SetMaxDurationMotorEnabled(durationMs);
         
-        Serial.print("MaxDuration: ");
-        Serial.println(durationMs);
+        @fix@Serial.print("MaxDuration: ");
+        @fix@Serial.println(durationMs);
     }
     
     void HandleIgnoreMoveToCurrentPositionCommand()
     {
         sc_.SetModeIgnoreMoveToCurrentPosition();
         
-        Serial.println("IgnoreMoveToCurrentPosition");
+        @fix@Serial.println("IgnoreMoveToCurrentPosition");
     }
     
     void HandleMoveCommand(char *inputStr)

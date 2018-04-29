@@ -2,7 +2,7 @@
 #define __SERIAL_LINK_H__
 
 
-#include "Serial.h"
+#include "@fix@Serial.h"
 #include "Function.h"
 #include "TimedEventHandler.h"
 #include "crc.h"

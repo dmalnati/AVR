@@ -48,7 +48,7 @@ Si5351 si5351;
 
 void setup()
 {
-  Serial.begin(57600);
+  @fix@Serial.begin(57600);
   /*
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
@@ -61,23 +61,23 @@ void setup()
 
 void info()
 {
-  Serial.println("Si5351 Sweeper");
-  Serial.println("A = Start frequency");
-  Serial.println("B = Stop frequency");
-  Serial.println("S = Stepsize");
-  Serial.println("M = Single sweep");
-  Serial.println("C = Continious sweep until Q");
-  Serial.print("T = Timestep in ms, currently ");
-  Serial.println(delaytime);
+  @fix@Serial.println("Si5351 Sweeper");
+  @fix@Serial.println("A = Start frequency");
+  @fix@Serial.println("B = Stop frequency");
+  @fix@Serial.println("S = Stepsize");
+  @fix@Serial.println("M = Single sweep");
+  @fix@Serial.println("C = Continious sweep until Q");
+  @fix@Serial.print("T = Timestep in ms, currently ");
+  @fix@Serial.println(delaytime);
 }
 
 
 void loop()
 {
   inData = 0;
-  if(Serial.available() > 0)   // see if incoming serial data:
+  if(@fix@Serial.available() > 0)   // see if incoming serial data:
   {
-    inData = Serial.read();  // read oldest byte in serial buffer:
+    inData = @fix@Serial.read();  // read oldest byte in serial buffer:
   }
 
   if(inData == 'M' || inData == 'm')
@@ -107,9 +107,9 @@ void loop()
         si5351.set_freq(freq * SI5351_FREQ_MULT, SI5351_CLK0);
         analogWrite(analogpin, map(i, 0, steps, 0, 255));
         delay(delaytime);
-        if(Serial.available() > 0)   // see if incoming serial data:
+        if(@fix@Serial.available() > 0)   // see if incoming serial data:
         {
-          inData = Serial.read();  // read oldest byte in serial buffer:
+          inData = @fix@Serial.read();  // read oldest byte in serial buffer:
           if(inData == 'Q' || inData == 'q')
           {
             running = false;
@@ -124,9 +124,9 @@ void loop()
 
   if(inData == 'S' || inData == 's')
   {
-    steps = Serial.parseInt();
-    Serial.print("Steps: ");
-    Serial.println(steps);
+    steps = @fix@Serial.parseInt();
+    @fix@Serial.print("Steps: ");
+    @fix@Serial.println(steps);
     inData = 0;
   }
 
@@ -137,9 +137,9 @@ void loop()
 
   if(inData == 'T' || inData == 't')
   {
-    delaytime = Serial.parseInt();
-    Serial.print("time pr step: ");
-    Serial.println(delaytime);
+    delaytime = @fix@Serial.parseInt();
+    @fix@Serial.print("time pr step: ");
+    @fix@Serial.println(delaytime);
     inData = 0;
   }
 
@@ -148,11 +148,11 @@ void loop()
     for (int i = 0; i < (steps+1); i++ )
     {
       // print out the value you read:
-      Serial.print(i * 10);
-      Serial.print(';');
-      Serial.print(steps);
-      Serial.print(';');
-      Serial.println(-i);
+      @fix@Serial.print(i * 10);
+      @fix@Serial.print(';');
+      @fix@Serial.print(steps);
+      @fix@Serial.print(';');
+      @fix@Serial.println(-i);
       delay(10);        // delay in between reads for stability
     }
     inData = 0;
@@ -160,17 +160,17 @@ void loop()
 
   if(inData == 'A' || inData == 'a')
   {
-    startFreq = Serial.parseInt();
-    Serial.print("Start: ");
-    Serial.println(startFreq);
+    startFreq = @fix@Serial.parseInt();
+    @fix@Serial.print("Start: ");
+    @fix@Serial.println(startFreq);
     inData = 0;
   }
 
   if(inData == 'B' || inData == 'b')
   {
-    stopFreq = Serial.parseInt();
-    Serial.print("Stop: ");
-    Serial.println(stopFreq);
+    stopFreq = @fix@Serial.parseInt();
+    @fix@Serial.print("Stop: ");
+    @fix@Serial.println(stopFreq);
     inData = 0;
   }
 }

@@ -5,7 +5,7 @@
 #include "Eeprom.h"
 #include "Evm.h"
 #include "MuxAnalogDigitalCD74HC4067.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 struct AppMultimeterConfig
@@ -56,12 +56,12 @@ public:
     void Run()
     {
         // Init serial and announce startup
-        Serial.begin(9600);
-        Serial.println(F("Starting"));
+        @fix@Serial.begin(9600);
+        @fix@Serial.println(F("Starting"));
         
         // Set up sample rate based either on default or prior stored value
         LoadSampleRate();
-        Serial.print("Sample rate: "); Serial.println(pc_.SAMPLE_RATE_MS);
+        @fix@Serial.print("Sample rate: "); @fix@Serial.println(pc_.SAMPLE_RATE_MS);
         
         // Set up user input handling
         SetUpUserInputHandlers();
@@ -109,12 +109,12 @@ private:
         const char *sep = "";
         for (uint8_t i = 0; i < 16; ++i)
         {
-            Serial.print(sep);
-            Serial.print("CH"); Serial.print(i);
+            @fix@Serial.print(sep);
+            @fix@Serial.print("CH"); @fix@Serial.print(i);
             
             sep = ",";
         }
-        Serial.println();
+        @fix@Serial.println();
     }
 
     void OnSample()
@@ -125,12 +125,12 @@ private:
         {
             uint16_t adcVal = adcMux_.AnalogReadChannel(i);
             
-            Serial.print(sep);
-            Serial.print(adcVal);
+            @fix@Serial.print(sep);
+            @fix@Serial.print(adcVal);
             
             sep = ",";
         }
-        Serial.println();
+        @fix@Serial.println();
     }
 
     void SetUpUserInputHandlers()

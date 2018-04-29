@@ -26,7 +26,7 @@
  void setup()
  {
    // Start serial and initialize the Si5351
-   Serial.begin(57600);
+   @fix@Serial.begin(57600);
    si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
 
    // Set CLK0 to output 14 MHz
@@ -49,20 +49,20 @@
  {
    // Read the Status Register and print it every 10 seconds
    si5351.update_status();
-   Serial.print("PLLA: ");
-   Serial.print((uint32_t)(si5351.plla_freq/100));
-   Serial.print("   PLLB: ");
-   Serial.print((uint32_t)(si5351.pllb_freq/100));
-   Serial.print("  SYS_INIT: ");
-   Serial.print(si5351.dev_status.SYS_INIT);
-   Serial.print("  LOL_A: ");
-   Serial.print(si5351.dev_status.LOL_A);
-   Serial.print("  LOL_B: ");
-   Serial.print(si5351.dev_status.LOL_B);
-   Serial.print("  LOS: ");
-   Serial.print(si5351.dev_status.LOS);
-   Serial.print("  REVID: ");
-   Serial.println(si5351.dev_status.REVID);
+   @fix@Serial.print("PLLA: ");
+   @fix@Serial.print((uint32_t)(si5351.plla_freq/100));
+   @fix@Serial.print("   PLLB: ");
+   @fix@Serial.print((uint32_t)(si5351.pllb_freq/100));
+   @fix@Serial.print("  SYS_INIT: ");
+   @fix@Serial.print(si5351.dev_status.SYS_INIT);
+   @fix@Serial.print("  LOL_A: ");
+   @fix@Serial.print(si5351.dev_status.LOL_A);
+   @fix@Serial.print("  LOL_B: ");
+   @fix@Serial.print(si5351.dev_status.LOL_B);
+   @fix@Serial.print("  LOS: ");
+   @fix@Serial.print(si5351.dev_status.LOS);
+   @fix@Serial.print("  REVID: ");
+   @fix@Serial.println(si5351.dev_status.REVID);
 
    delay(10000);
  }

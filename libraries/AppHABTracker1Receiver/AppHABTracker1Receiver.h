@@ -83,8 +83,8 @@ public:
     
     void Run()
     {
-        Serial.begin(cfg_.baud);
-        Serial.println("Starting");
+        @fix@Serial.begin(cfg_.baud);
+        @fix@Serial.println("Starting");
         
         // Set up LCD
         lcd_.Init();
@@ -142,10 +142,10 @@ private:
     
     void OnSerialPoll()
     {
-        while (Serial.available())
+        while (@fix@Serial.available())
         {
-            uint8_t b = Serial.read();
-            Serial.write(b);
+            uint8_t b = @fix@Serial.read();
+            @fix@Serial.write(b);
             AddByteToQueue(b);
             
             if (b == '\n')

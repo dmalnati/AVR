@@ -74,19 +74,19 @@ SFE_BMP180 pressure;
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.println("REBOOT");
+  @fix@Serial.begin(9600);
+  @fix@Serial.println("REBOOT");
 
   // Initialize the sensor (it is important to get calibration values stored on the device).
 
   if (pressure.begin())
-    Serial.println("BMP180 init success");
+    @fix@Serial.println("BMP180 init success");
   else
   {
     // Oops, something went wrong, this is usually a connection problem,
     // see the comments at the top of this sketch for the proper connections.
 
-    Serial.println("BMP180 init fail\n\n");
+    @fix@Serial.println("BMP180 init fail\n\n");
     while(1); // Pause forever.
   }
 }
@@ -102,12 +102,12 @@ void loop()
   // you will need to know the altitude at which your measurements are taken.
   // We're using a constant called ALTITUDE in this sketch:
   
-  Serial.println();
-  Serial.print("provided altitude: ");
-  Serial.print(ALTITUDE,0);
-  Serial.print(" meters, ");
-  Serial.print(ALTITUDE*3.28084,0);
-  Serial.println(" feet");
+  @fix@Serial.println();
+  @fix@Serial.print("provided altitude: ");
+  @fix@Serial.print(ALTITUDE,0);
+  @fix@Serial.print(" meters, ");
+  @fix@Serial.print(ALTITUDE*3.28084,0);
+  @fix@Serial.println(" feet");
   
   // If you want to measure altitude, and not pressure, you will instead need
   // to provide a known baseline pressure. This is shown at the end of the sketch.
@@ -132,11 +132,11 @@ void loop()
     if (status != 0)
     {
       // Print out the measurement:
-      Serial.print("temperature: ");
-      Serial.print(T,2);
-      Serial.print(" deg C, ");
-      Serial.print((9.0/5.0)*T+32.0,2);
-      Serial.println(" deg F");
+      @fix@Serial.print("temperature: ");
+      @fix@Serial.print(T,2);
+      @fix@Serial.print(" deg C, ");
+      @fix@Serial.print((9.0/5.0)*T+32.0,2);
+      @fix@Serial.println(" deg F");
       
       // Start a pressure measurement:
       // The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
@@ -159,11 +159,11 @@ void loop()
         if (status != 0)
         {
           // Print out the measurement:
-          Serial.print("absolute pressure: ");
-          Serial.print(P,2);
-          Serial.print(" mb, ");
-          Serial.print(P*0.0295333727,2);
-          Serial.println(" inHg");
+          @fix@Serial.print("absolute pressure: ");
+          @fix@Serial.print(P,2);
+          @fix@Serial.print(" mb, ");
+          @fix@Serial.print(P*0.0295333727,2);
+          @fix@Serial.println(" inHg");
 
           // The pressure sensor returns abolute pressure, which varies with altitude.
           // To remove the effects of altitude, use the sealevel function and your current altitude.
@@ -172,11 +172,11 @@ void loop()
           // Result: p0 = sea-level compensated pressure in mb
 
           p0 = pressure.sealevel(P,ALTITUDE); // we're at 1655 meters (Boulder, CO)
-          Serial.print("relative (sea-level) pressure: ");
-          Serial.print(p0,2);
-          Serial.print(" mb, ");
-          Serial.print(p0*0.0295333727,2);
-          Serial.println(" inHg");
+          @fix@Serial.print("relative (sea-level) pressure: ");
+          @fix@Serial.print(p0,2);
+          @fix@Serial.print(" mb, ");
+          @fix@Serial.print(p0*0.0295333727,2);
+          @fix@Serial.println(" inHg");
 
           // On the other hand, if you want to determine your altitude from the pressure reading,
           // use the altitude function along with a baseline pressure (sea-level or other).
@@ -184,19 +184,19 @@ void loop()
           // Result: a = altitude in m.
 
           a = pressure.altitude(P,p0);
-          Serial.print("computed altitude: ");
-          Serial.print(a,0);
-          Serial.print(" meters, ");
-          Serial.print(a*3.28084,0);
-          Serial.println(" feet");
+          @fix@Serial.print("computed altitude: ");
+          @fix@Serial.print(a,0);
+          @fix@Serial.print(" meters, ");
+          @fix@Serial.print(a*3.28084,0);
+          @fix@Serial.println(" feet");
         }
-        else Serial.println("error retrieving pressure measurement\n");
+        else @fix@Serial.println("error retrieving pressure measurement\n");
       }
-      else Serial.println("error starting pressure measurement\n");
+      else @fix@Serial.println("error starting pressure measurement\n");
     }
-    else Serial.println("error retrieving temperature measurement\n");
+    else @fix@Serial.println("error retrieving temperature measurement\n");
   }
-  else Serial.println("error starting temperature measurement\n");
+  else @fix@Serial.println("error starting temperature measurement\n");
 
   delay(5000);  // Pause for 5 seconds.
 }

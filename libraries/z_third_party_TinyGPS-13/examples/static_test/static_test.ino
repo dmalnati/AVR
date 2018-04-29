@@ -21,17 +21,17 @@ static void print_str(const char *str, int len);
 void setup()
 {
   TinyGPS test_gps;
-  Serial.begin(115200);
+  @fix@Serial.begin(115200);
   
-  Serial.print("Testing TinyGPS library v. "); Serial.println(TinyGPS::library_version());
-  Serial.println("by Mikal Hart");
-  Serial.println();
-  Serial.print("Sizeof(gpsobject) = "); Serial.println(sizeof(TinyGPS));
-  Serial.println();
+  @fix@Serial.print("Testing TinyGPS library v. "); @fix@Serial.println(TinyGPS::library_version());
+  @fix@Serial.println("by Mikal Hart");
+  @fix@Serial.println();
+  @fix@Serial.print("Sizeof(gpsobject) = "); @fix@Serial.println(sizeof(TinyGPS));
+  @fix@Serial.println();
 
-  Serial.println("Sats HDOP Latitude Longitude Fix  Date       Time       Date Alt     Course Speed Card  Distance Course Card  Chars Sentences Checksum");
-  Serial.println("          (deg)    (deg)     Age                        Age  (m)     --- from GPS ----  ---- to London  ----  RX    RX        Fail");
-  Serial.println("--------------------------------------------------------------------------------------------------------------------------------------");
+  @fix@Serial.println("Sats HDOP Latitude Longitude Fix  Date       Time       Date Alt     Course Speed Card  Distance Course Card  Chars Sentences Checksum");
+  @fix@Serial.println("          (deg)    (deg)     Age                        Age  (m)     --- from GPS ----  ---- to London  ----  RX    RX        Fail");
+  @fix@Serial.println("--------------------------------------------------------------------------------------------------------------------------------------");
   gpsdump(test_gps);
   for (int i=0; i<4; ++i)
   {
@@ -84,7 +84,7 @@ static void gpsdump(TinyGPS &gps)
   print_int(chars, 0xFFFFFFFF, 6);
   print_int(sentences, 0xFFFFFFFF, 10);
   print_int(failed, 0xFFFFFFFF, 9);
-  Serial.println();
+  @fix@Serial.println();
 }
 
 static void print_int(unsigned long val, unsigned long invalid, int len)
@@ -99,7 +99,7 @@ static void print_int(unsigned long val, unsigned long invalid, int len)
     sz[i] = ' ';
   if (len > 0) 
     sz[len-1] = ' ';
-  Serial.print(sz);
+  @fix@Serial.print(sz);
 }
 
 static void print_float(float val, float invalid, int len, int prec)
@@ -113,16 +113,16 @@ static void print_float(float val, float invalid, int len, int prec)
           sz[len-1] = ' ';
     for (int i=7; i<len; ++i)
         sz[i] = ' ';
-    Serial.print(sz);
+    @fix@Serial.print(sz);
   }
   else
   {
-    Serial.print(val, prec);
+    @fix@Serial.print(val, prec);
     int vi = abs((int)val);
     int flen = prec + (val < 0.0 ? 2 : 1);
     flen += vi >= 1000 ? 4 : vi >= 100 ? 3 : vi >= 10 ? 2 : 1;
     for (int i=flen; i<len; ++i)
-      Serial.print(" ");
+      @fix@Serial.print(" ");
   }
 }
 
@@ -133,13 +133,13 @@ static void print_date(TinyGPS &gps)
   unsigned long age;
   gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &age);
   if (age == TinyGPS::GPS_INVALID_AGE)
-    Serial.print("*******    *******    ");
+    @fix@Serial.print("*******    *******    ");
   else
   {
     char sz[32];
     sprintf(sz, "%02d/%02d/%02d %02d:%02d:%02d   ",
         month, day, year, hour, minute, second);
-    Serial.print(sz);
+    @fix@Serial.print(sz);
   }
   print_int(age, TinyGPS::GPS_INVALID_AGE, 5);
 }
@@ -148,5 +148,5 @@ static void print_str(const char *str, int len)
 {
   int slen = strlen(str);
   for (int i=0; i<len; ++i)
-    Serial.print(i<slen ? str[i] : ' ');
+    @fix@Serial.print(i<slen ? str[i] : ' ');
 }

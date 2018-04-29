@@ -2,7 +2,7 @@
 #define __APP_PICO_TRACKER_1_SERIAL_INTERFACE_H__
 
 
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 // 2,948 bytes progmem
@@ -22,7 +22,7 @@ public:
             {
                 if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("start")))
                 {
-                    Serial.println(F("GPS Start!!"));
+                    @fix@Serial.println(F("GPS Start!!"));
                     tracker_.StartGPS();
                 }
                 else if (!strcmp_P(str.TokenAtIdx(1, ' '), PSTR("stop")))
@@ -34,9 +34,9 @@ public:
                         saveConfiguration = atoi(str.TokenAtIdx(2, ' '));
                     }
                     
-                    Serial.print(F("GPS Stop - "));
-                    Serial.print(saveConfiguration);
-                    Serial.println();
+                    @fix@Serial.print(F("GPS Stop - "));
+                    @fix@Serial.print(saveConfiguration);
+                    @fix@Serial.println();
                     
                     tracker_.StopGPS(saveConfiguration);
                 }
@@ -46,9 +46,9 @@ public:
                     
                     uint8_t retValGps = tracker_.gps_.GetMeasurement(&measurement);
                     
-                    Serial.print(F("GPS Status: "));
-                    Serial.print(retValGps);
-                    Serial.println();
+                    @fix@Serial.print(F("GPS Status: "));
+                    @fix@Serial.print(retValGps);
+                    @fix@Serial.println();
                 }
             }
         });
@@ -60,9 +60,9 @@ public:
             {
                 uint32_t reportIntervalMs = atol(str.TokenAtIdx(1, ' '));
                 
-                Serial.print(F("ReportInterval "));
-                Serial.print(reportIntervalMs);
-                Serial.println();
+                @fix@Serial.print(F("ReportInterval "));
+                @fix@Serial.print(reportIntervalMs);
+                @fix@Serial.println();
                 
                 tracker_.SetReportInterval(reportIntervalMs);
             }

@@ -4,7 +4,7 @@
 
 #include "PianoKeyboardPimoroniHAT.h"
 #include "MIDICommandMaker.h"
-#include "MIDICommandToSerial.h"
+#include "MIDICommandTo@fix@Serial.h"
 
 
 class MIDICommandFromPianoKeyboardPimoroniHAT

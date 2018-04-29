@@ -13,7 +13,7 @@ port at 115.2kb.
 #include <FHT.h> // include the library
 
 void setup() {
-  Serial.begin(115200); // use the serial port
+  @fix@Serial.begin(115200); // use the serial port
   TIMSK0 = 0; // turn off timer0 for lower jitter
   ADCSRA = 0xe5; // set the adc to free running mode
   ADMUX = 0x40; // use adc0
@@ -38,9 +38,9 @@ void loop() {
     fht_run(); // process the data in the fht
     fht_mag_log(); // take the output of the fht
     sei();
-    Serial.println("start");
+    @fix@Serial.println("start");
     for (byte i = 0 ; i < FHT_N/2 ; i++) {
-      Serial.println(fht_log_out[i]); // send out the data
+      @fix@Serial.println(fht_log_out[i]); // send out the data
     }
   }
 }

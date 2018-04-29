@@ -34,7 +34,7 @@ uint64_t target_freq = 1000000000ULL; // 10 MHz, in hundredths of hertz
 void setup()
 {
   // Start serial and initialize the Si5351
-  Serial.begin(57600);
+  @fix@Serial.begin(57600);
 
   // The crystal load value needs to match in order to have an accurate calibration
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
@@ -50,47 +50,47 @@ void loop()
   si5351.update_status();
   if (si5351.dev_status.SYS_INIT == 1)
   {
-     Serial.println(F("Initialising Si5351, you shouldn't see many of these!"));
+     @fix@Serial.println(F("Initialising Si5351, you shouldn't see many of these!"));
      delay(500);
   }
   else
   {
-    Serial.println();
-    Serial.println(F("Adjust until your frequency counter reads as close to 10 MHz as possible."));
-    Serial.println(F("Press 'q' when complete."));
+    @fix@Serial.println();
+    @fix@Serial.println(F("Adjust until your frequency counter reads as close to 10 MHz as possible."));
+    @fix@Serial.println(F("Press 'q' when complete."));
     vfo_interface();
   }
 }
 
 static void flush_input(void)
 {
-  while (Serial.available() > 0)
-  Serial.read();
+  while (@fix@Serial.available() > 0)
+  @fix@Serial.read();
 }
 
 static void vfo_interface(void)
 {
   rx_freq = target_freq;
   cal_factor = old_cal;
-  Serial.println(F("   Up:   r   t  y  u  i   o  p"));
-  Serial.println(F(" Down:   f   g  h  j  k   l  ;"));
-  Serial.println(F("   Hz: 0.01 0.1 1 10 100 1K 10k"));
+  @fix@Serial.println(F("   Up:   r   t  y  u  i   o  p"));
+  @fix@Serial.println(F(" Down:   f   g  h  j  k   l  ;"));
+  @fix@Serial.println(F("   Hz: 0.01 0.1 1 10 100 1K 10k"));
   while (1)
   {
-  if (Serial.available() > 0)
+  if (@fix@Serial.available() > 0)
   {
-    char c = Serial.read();
+    char c = @fix@Serial.read();
     switch (c)
     {
       case 'q':
         flush_input();
-        Serial.println();
-        Serial.print(F("Calibration factor is "));
-        Serial.println(cal_factor);
-        Serial.println(F("Setting calibration factor"));
+        @fix@Serial.println();
+        @fix@Serial.print(F("Calibration factor is "));
+        @fix@Serial.println(cal_factor);
+        @fix@Serial.println(F("Setting calibration factor"));
         si5351.set_correction(cal_factor, SI5351_PLL_INPUT_XO);
         si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
-        Serial.println(F("Resetting target frequency"));
+        @fix@Serial.println(F("Resetting target frequency"));
         si5351.set_freq(target_freq, SI5351_CLK0);
         old_cal = cal_factor;
         return;
@@ -118,8 +118,8 @@ static void vfo_interface(void)
     si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
     si5351.pll_reset(SI5351_PLLA);
     si5351.set_freq(target_freq, SI5351_CLK0);
-    Serial.print(F("Current difference:"));
-    Serial.println(cal_factor);
+    @fix@Serial.print(F("Current difference:"));
+    @fix@Serial.println(cal_factor);
     }
   }
 }

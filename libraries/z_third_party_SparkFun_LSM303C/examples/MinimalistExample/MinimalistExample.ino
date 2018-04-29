@@ -12,10 +12,10 @@ LSM303C myIMU;
 
 void setup()
 {
-  Serial.begin(115200);
+  @fix@Serial.begin(115200);
   if (myIMU.begin() != IMU_SUCCESS)
   {
-    Serial.println("Failed setup.");
+    @fix@Serial.println("Failed setup.");
     while(1);
   }
 }
@@ -23,36 +23,36 @@ void setup()
 void loop()
 {
   //Get all parameters
-  Serial.print("\nAccelerometer:\n");
-  Serial.print(" X = ");
-  Serial.println(myIMU.readAccelX(), 4);
-  Serial.print(" Y = ");
-  Serial.println(myIMU.readAccelY(), 4);
-  Serial.print(" Z = ");
-  Serial.println(myIMU.readAccelZ(), 4);
+  @fix@Serial.print("\nAccelerometer:\n");
+  @fix@Serial.print(" X = ");
+  @fix@Serial.println(myIMU.readAccelX(), 4);
+  @fix@Serial.print(" Y = ");
+  @fix@Serial.println(myIMU.readAccelY(), 4);
+  @fix@Serial.print(" Z = ");
+  @fix@Serial.println(myIMU.readAccelZ(), 4);
 
   // Not supported by hardware, so will return NAN
-  Serial.print("\nGyroscope:\n");
-  Serial.print(" X = ");
-  Serial.println(myIMU.readGyroX(), 4);
-  Serial.print(" Y = ");
-  Serial.println(myIMU.readGyroY(), 4);
-  Serial.print(" Z = ");
-  Serial.println(myIMU.readGyroZ(), 4);
+  @fix@Serial.print("\nGyroscope:\n");
+  @fix@Serial.print(" X = ");
+  @fix@Serial.println(myIMU.readGyroX(), 4);
+  @fix@Serial.print(" Y = ");
+  @fix@Serial.println(myIMU.readGyroY(), 4);
+  @fix@Serial.print(" Z = ");
+  @fix@Serial.println(myIMU.readGyroZ(), 4);
 
-  Serial.print("\nMagnetometer:\n");
-  Serial.print(" X = ");
-  Serial.println(myIMU.readMagX(), 4);
-  Serial.print(" Y = ");
-  Serial.println(myIMU.readMagY(), 4);
-  Serial.print(" Z = ");
-  Serial.println(myIMU.readMagZ(), 4);
+  @fix@Serial.print("\nMagnetometer:\n");
+  @fix@Serial.print(" X = ");
+  @fix@Serial.println(myIMU.readMagX(), 4);
+  @fix@Serial.print(" Y = ");
+  @fix@Serial.println(myIMU.readMagY(), 4);
+  @fix@Serial.print(" Z = ");
+  @fix@Serial.println(myIMU.readMagZ(), 4);
 
-  Serial.print("\nThermometer:\n");
-  Serial.print(" Degrees C = ");
-  Serial.println(myIMU.readTempC(), 4);
-  Serial.print(" Degrees F = ");
-  Serial.println(myIMU.readTempF(), 4);
+  @fix@Serial.print("\nThermometer:\n");
+  @fix@Serial.print(" Degrees C = ");
+  @fix@Serial.println(myIMU.readTempC(), 4);
+  @fix@Serial.print(" Degrees F = ");
+  @fix@Serial.println(myIMU.readTempF(), 4);
   
   delay(1000);
 }

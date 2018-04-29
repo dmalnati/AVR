@@ -641,7 +641,7 @@ void DoPecanSteps()
 void setModem()
 {
   // Set to CW mode
-//  Serial.println("Setting modem into CW mode");  
+//  @fix@Serial.println("Setting modem into CW mode");  
   char set_modem_mod_type_command[] = {0x11, 0x20, 0x01, 0x00, 0x00};
   SendCmdReceiveAnswer(5, 1, set_modem_mod_type_command);
   

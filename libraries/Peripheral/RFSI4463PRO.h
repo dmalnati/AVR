@@ -340,13 +340,13 @@ private:
         prop.BYTE2.FREQDEV = (modemFreqDev & 0x000000FF) >>  0;
         
         /*
-        Serial.print(F("outdiv: ")); Serial.println(outdiv);
-        Serial.print(F("EXTERNAL_CRYSTAL_FREQ: ")); Serial.println(EXTERNAL_CRYSTAL_FREQ);
-        Serial.print(F("deviationFreq: ")); Serial.println(deviationFreq);
-        Serial.print(F("modemFreqDev: ")); Serial.println(modemFreqDev);
-        Serial.print(F("prop.BYTE0.FREQDEV: ")); Serial.println(prop.BYTE0.FREQDEV);
-        Serial.print(F("prop.BYTE1.FREQDEV: ")); Serial.println(prop.BYTE1.FREQDEV);
-        Serial.print(F("prop.BYTE2.FREQDEV: ")); Serial.println(prop.BYTE2.FREQDEV);
+        @fix@Serial.print(F("outdiv: ")); @fix@Serial.println(outdiv);
+        @fix@Serial.print(F("EXTERNAL_CRYSTAL_FREQ: ")); @fix@Serial.println(EXTERNAL_CRYSTAL_FREQ);
+        @fix@Serial.print(F("deviationFreq: ")); @fix@Serial.println(deviationFreq);
+        @fix@Serial.print(F("modemFreqDev: ")); @fix@Serial.println(modemFreqDev);
+        @fix@Serial.print(F("prop.BYTE0.FREQDEV: ")); @fix@Serial.println(prop.BYTE0.FREQDEV);
+        @fix@Serial.print(F("prop.BYTE1.FREQDEV: ")); @fix@Serial.println(prop.BYTE1.FREQDEV);
+        @fix@Serial.print(F("prop.BYTE2.FREQDEV: ")); @fix@Serial.println(prop.BYTE2.FREQDEV);
         */
         
         SetProperty(prop);
@@ -428,13 +428,13 @@ private:
         fcFrac = (uint32_t)(remainingValue * (uint32_t)((uint32_t)2 << 18));
         
         /*
-        Serial.println("SetFrequency");
-        Serial.print("freq  : "); Serial.println(freq);
-        Serial.print("band  : "); Serial.println(band);
-        Serial.print("fcInt : "); Serial.println(fcInt);
-        Serial.print("rem   : "); Serial.println(remainingValue);
-        Serial.print("fcFrac: "); Serial.println(fcFrac);
-        Serial.println();
+        @fix@Serial.println("SetFrequency");
+        @fix@Serial.print("freq  : "); @fix@Serial.println(freq);
+        @fix@Serial.print("band  : "); @fix@Serial.println(band);
+        @fix@Serial.print("fcInt : "); @fix@Serial.println(fcInt);
+        @fix@Serial.print("rem   : "); @fix@Serial.println(remainingValue);
+        @fix@Serial.print("fcFrac: "); @fix@Serial.println(fcFrac);
+        @fix@Serial.println();
         */
     }
     

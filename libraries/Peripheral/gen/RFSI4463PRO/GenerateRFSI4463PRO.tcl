@@ -387,7 +387,7 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
         # Generate code
         gend "void Print(RFSI4463PRO::${name}_REP &val)"
         gend "\{"
-        gend "    Log(F(\"${name}_REP\"));"
+        gend "    Log(P(\"${name}_REP\"));"
         gend ""
 
         set varNameLast ""
@@ -401,11 +401,11 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
                 set varStr [format $formatStr $varName]
 
                 if { $varName != $varNameLast } {
-                    gend "    LogNNL(F(\"${varStr} : \"));"
+                    gend "    LogNNL(P(\"${varStr} : \"));"
                     gend "    LogNNL(val.${varName});"
-                    gend "    LogNNL(F(\" (0x\"));"
+                    gend "    LogNNL(P(\" (0x\"));"
                     gend "    LogNNL(val.${varName}, HEX);"
-                    gend "    LogNNL(F(\")\"));"
+                    gend "    LogNNL(P(\")\"));"
                     gend "    Log();"
                 }
 

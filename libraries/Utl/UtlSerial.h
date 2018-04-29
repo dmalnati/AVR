@@ -114,9 +114,9 @@ private:
         
         while (cont)
         {
-            if (Serial.available())
+            if (@fix@Serial.available())
             {
-                char c = Serial.read();
+                char c = @fix@Serial.read();
                 
                 if (c == '\n')
                 {
@@ -250,7 +250,7 @@ public:
                 
                 if (verbose_)
                 {
-                    Serial.println();
+                    @fix@Serial.println();
                 }
             }            
         });
@@ -258,12 +258,12 @@ public:
         
         if (verbose_)
         {
-            Serial.println(F("Commands:"));
+            @fix@Serial.println(F("Commands:"));
             for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
             {
-                Serial.println(cmdToFnList_[i].cmd);
+                @fix@Serial.println(cmdToFnList_[i].cmd);
             }
-            Serial.println();
+            @fix@Serial.println();
         }
     };
     
@@ -326,11 +326,11 @@ private:
 
                 PAL.PinMode(pin, OUTPUT);
                 
-                Serial.print(F("Pin "));
-                Serial.print(pin);
-                Serial.print(F(" -> "));
-                Serial.print(val);
-                Serial.println();
+                @fix@Serial.print(F("Pin "));
+                @fix@Serial.print(pin);
+                @fix@Serial.print(F(" -> "));
+                @fix@Serial.print(val);
+                @fix@Serial.println();
 
                 PAL.DigitalWrite(pin, val);
             }
@@ -343,21 +343,21 @@ private:
                 
                 uint8_t val = PAL.DigitalRead(pin);
                 
-                Serial.print(F("Pin "));
-                Serial.print(pin);
-                Serial.print(F(" <- "));
-                Serial.print(val);
-                Serial.println();
+                @fix@Serial.print(F("Pin "));
+                @fix@Serial.print(pin);
+                @fix@Serial.print(F(" <- "));
+                @fix@Serial.print(val);
+                @fix@Serial.println();
             }
         });
         
         if (enableDefaultErrorHandler)
         {
             this->RegisterErrorHandler([](char *cmdStr) {
-                Serial.print(F("ERR: \""));
-                Serial.print(cmdStr);
-                Serial.print(F("\""));
-                Serial.println();
+                @fix@Serial.print(F("ERR: \""));
+                @fix@Serial.print(cmdStr);
+                @fix@Serial.print(F("\""));
+                @fix@Serial.println();
             });
         }
     }
@@ -372,7 +372,7 @@ uint8_t SerialReadLine(char *buf, uint8_t bufSize)
  
     while (!retVal)
     {
-        retVal = Serial.readBytesUntil('\n', buf, bufSize);
+        retVal = @fix@Serial.readBytesUntil('\n', buf, bufSize);
 
         if (retVal < bufSize)
         {
@@ -386,9 +386,9 @@ uint8_t SerialReadLine(char *buf, uint8_t bufSize)
             uint8_t cont = 1;
             while (cont)
             {
-                if (Serial.available())
+                if (@fix@Serial.available())
                 {
-                    char c = Serial.read();
+                    char c = @fix@Serial.read();
                     
                     if (c == '\n')
                     {
@@ -447,12 +447,12 @@ public:
     
     void Run()
     {
-        Serial.println(F("Commands:"));
+        @fix@Serial.println(F("Commands:"));
         for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
         {
-            Serial.println(cmdToFnList_[i].cmd);
+            @fix@Serial.println(cmdToFnList_[i].cmd);
         }
-        Serial.println();
+        @fix@Serial.println();
 
         while (running_)
         {
@@ -484,7 +484,7 @@ public:
                     fnErr_(buf_);
                 }
                 
-                Serial.println();
+                @fix@Serial.println();
             }
         }
     };

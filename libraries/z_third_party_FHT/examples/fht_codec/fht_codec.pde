@@ -31,7 +31,7 @@ unsigned int count = 0;
 volatile byte flag = 1;
 
 void setup() {
-  Serial.begin(115200); // use serial port
+  @fix@Serial.begin(115200); // use serial port
   AudioCodec_init();
 }
 
@@ -42,8 +42,8 @@ void loop() {
     fht_reorder(); // reorder for fht input
     fht_run(); // process fht
     fht_mag_log(); // take output of fht
-    Serial.write(255); // send out a start byte
-    Serial.write(fht_log_out, FHT_N/2); // send out data bytes
+    @fix@Serial.write(255); // send out a start byte
+    @fix@Serial.write(fht_log_out, FHT_N/2); // send out data bytes
     flag = 1; // tell the codec that processing is done
   }
 }

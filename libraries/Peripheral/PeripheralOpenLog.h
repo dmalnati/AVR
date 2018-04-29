@@ -2,7 +2,7 @@
 #define __PERIPHERAL_OPEN_LOG_H__
 
 
-#include "SoftwareSerial.h"
+#include "Software@fix@Serial.h"
 
 #include "PAL.h"
 #include "Container.h"

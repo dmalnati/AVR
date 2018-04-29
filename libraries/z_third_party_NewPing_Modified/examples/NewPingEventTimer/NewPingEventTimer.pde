@@ -21,7 +21,7 @@ unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (
 unsigned long pingTimer;     // Holds the next ping time.
 
 void setup() {
-  Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
+  @fix@Serial.begin(115200); // Open serial monitor at 115200 baud to see ping results.
   pingTimer = millis(); // Start now.
 }
 
@@ -38,9 +38,9 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
   // Don't do anything here!
   if (sonar.check_timer()) { // This is how you check to see if the ping was received.
     // Here's where you can add code.
-    Serial.print("Ping: ");
-    Serial.print(sonar.ping_result / US_ROUNDTRIP_CM); // Ping returned, uS result in ping_result, convert to cm with US_ROUNDTRIP_CM.
-    Serial.println("cm");
+    @fix@Serial.print("Ping: ");
+    @fix@Serial.print(sonar.ping_result / US_ROUNDTRIP_CM); // Ping returned, uS result in ping_result, convert to cm with US_ROUNDTRIP_CM.
+    @fix@Serial.println("cm");
   }
   // Don't do anything here!
 }

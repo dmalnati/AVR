@@ -15,8 +15,8 @@
 
 void setup()
 {
-    Serial.begin(9600);	// Debugging only
-    Serial.println("setup");
+    @fix@Serial.begin(9600);	// Debugging only
+    @fix@Serial.println("setup");
 
     // Initialise the IO and ISR
     vw_set_ptt_inverted(true); // Required for DR3100
@@ -39,14 +39,14 @@ void loop()
 
         digitalWrite(13, true); // Flash a light to show received good message
 	// Message with a good checksum received, dump it.
-	Serial.print("Got: ");
+	@fix@Serial.print("Got: ");
 	
 	for (i = 0; i < buflen; i++)
 	{
-	    Serial.print(buf[i], HEX);
-	    Serial.print(" ");
+	    @fix@Serial.print(buf[i], HEX);
+	    @fix@Serial.print(" ");
 	}
-	Serial.println("");
+	@fix@Serial.println("");
 
 	// Send a reply
 	vw_send((uint8_t *)msg, strlen(msg));

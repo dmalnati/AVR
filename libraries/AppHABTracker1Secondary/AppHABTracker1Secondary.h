@@ -58,8 +58,8 @@ public:
 
     void Run()
     {
-        Serial.begin(9600);
-        Serial.println("Starting");
+        @fix@Serial.begin(9600);
+        @fix@Serial.println("Starting");
         
         rfLink_.SetRealm(RF_REALM);
         rfLink_.SetSrcAddr(RF_SRC_ADDR);
@@ -79,10 +79,10 @@ private:
 
     void OnSerialPoll()
     {
-        while (Serial.available())
+        while (@fix@Serial.available())
         {
-            uint8_t b = Serial.read();
-            Serial.write(b);
+            uint8_t b = @fix@Serial.read();
+            @fix@Serial.write(b);
             AddByteToQueue(b);
             
             if (b == '\n')
@@ -124,15 +124,15 @@ private:
     
     void PrintPayload()
     {
-        Serial.print("Time: "); Serial.write(payloadBuffer_.timeStr, 6); Serial.println();
-        Serial.print("Lat : "); Serial.write(payloadBuffer_.latStr, 8); Serial.println();
-        Serial.print("Lng : "); Serial.write(payloadBuffer_.lngStr, 9); Serial.println();
-        Serial.print("Alt : "); Serial.write(payloadBuffer_.altStr, 6); Serial.println();
+        @fix@Serial.print("Time: "); @fix@Serial.write(payloadBuffer_.timeStr, 6); @fix@Serial.println();
+        @fix@Serial.print("Lat : "); @fix@Serial.write(payloadBuffer_.latStr, 8); @fix@Serial.println();
+        @fix@Serial.print("Lng : "); @fix@Serial.write(payloadBuffer_.lngStr, 9); @fix@Serial.println();
+        @fix@Serial.print("Alt : "); @fix@Serial.write(payloadBuffer_.altStr, 6); @fix@Serial.println();
     }
 
     void OnTransmit()
     {
-        Serial.println("Transmitting");
+        @fix@Serial.println("Transmitting");
         PrintPayload();
         
         rfLink_.Send(PROTOCOL_ID,

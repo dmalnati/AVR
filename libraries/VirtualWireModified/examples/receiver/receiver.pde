@@ -18,8 +18,8 @@ const int transmit_en_pin = 3;
 void setup()
 {
     delay(1000);
-    Serial.begin(9600);	// Debugging only
-    Serial.println("setup");
+    @fix@Serial.begin(9600);	// Debugging only
+    @fix@Serial.println("setup");
 
     // Initialise the IO and ISR
     vw_set_tx_pin(transmit_pin);
@@ -44,14 +44,14 @@ void loop()
 
         digitalWrite(led_pin, HIGH); // Flash a light to show received good message
 	// Message with a good checksum received, dump it.
-	Serial.print("Got: ");
+	@fix@Serial.print("Got: ");
 	
 	for (i = 0; i < buflen; i++)
 	{
-	    Serial.print(buf[i], HEX);
-	    Serial.print(' ');
+	    @fix@Serial.print(buf[i], HEX);
+	    @fix@Serial.print(' ');
 	}
-	Serial.println();
+	@fix@Serial.println();
         digitalWrite(led_pin, LOW);
     }
 }

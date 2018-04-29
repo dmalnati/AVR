@@ -52,9 +52,9 @@ public:
     {
         // This app is more about learning than being an actual functional
         // standalone device.  Serial output will be used unconditionally.
-        Serial.begin(9600);
+        @fix@Serial.begin(9600);
         
-        Serial.println("Starting AppRgbLedAnalogControl");
+        @fix@Serial.println("Starting AppRgbLedAnalogControl");
         
         // Set up operations
         SetUpAnalogInputs();
@@ -117,9 +117,9 @@ private:
 
     void OnPotRedChange(uint16_t val)
     {
-        Serial.print("OnPotRedChange: ");
-        Serial.print(val);
-        Serial.println();
+        @fix@Serial.print("OnPotRedChange: ");
+        @fix@Serial.print(val);
+        @fix@Serial.println();
         
         uint8_t timerVal = (uint8_t)(val / 4);
         tcLedRed_->SetValue(timerVal);
@@ -127,9 +127,9 @@ private:
     
     void OnPotGreenChange(uint16_t val)
     {
-        Serial.print("OnPotGreenChange: ");
-        Serial.print(val);
-        Serial.println();
+        @fix@Serial.print("OnPotGreenChange: ");
+        @fix@Serial.print(val);
+        @fix@Serial.println();
         
         uint8_t timerVal = (uint8_t)(val / 4);
         tcLedGreen_->SetValue(timerVal);
@@ -137,9 +137,9 @@ private:
     
     void OnPotBlueChange(uint16_t val)
     {
-        Serial.print("OnPotBlueChange: ");
-        Serial.print(val);
-        Serial.println();
+        @fix@Serial.print("OnPotBlueChange: ");
+        @fix@Serial.print(val);
+        @fix@Serial.println();
         
         uint8_t timerVal = (uint8_t)(val / 4);
         tcLedBlue_->SetValue(timerVal);

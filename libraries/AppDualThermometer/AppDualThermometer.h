@@ -55,9 +55,9 @@ public:
 
     void Run()
     {
-        Serial.begin(9600);
+        @fix@Serial.begin(9600);
         
-        Serial.println("Run");
+        @fix@Serial.println("Run");
         
         // Initialize sensors
         sensorTemp1_.Init();
@@ -85,7 +85,7 @@ public:
                            cfg_.servo2PhysicalCalibrationOffset);
             
             // Debug
-            Serial.println();
+            @fix@Serial.println();
         };
         tedPollTemperature_.SetCallback(cbFn);
         tedPollTemperature_.RegisterForTimedEventInterval(POLL_MS_TEMPERATURE);
@@ -121,17 +121,17 @@ private:
                 // turn servo
                 servo.MoveTo(deg);
                 
-                Serial.print(debugStr);
-                Serial.print(" - ");
-                Serial.print("TempF: ");
-                Serial.print(ma.m.tempF);
-                Serial.print(", deg: ");
-                Serial.print(deg);
-                Serial.println();
+                @fix@Serial.print(debugStr);
+                @fix@Serial.print(" - ");
+                @fix@Serial.print("TempF: ");
+                @fix@Serial.print(ma.m.tempF);
+                @fix@Serial.print(", deg: ");
+                @fix@Serial.print(deg);
+                @fix@Serial.println();
             }
             else
             {
-                Serial.println("Could not read temp");
+                @fix@Serial.println("Could not read temp");
             }
         });
     }

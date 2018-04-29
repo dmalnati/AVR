@@ -21,7 +21,7 @@
 LSM303C myIMU;
 
 void setup() {
-  Serial.begin(115200);
+  @fix@Serial.begin(115200);
 
   if (myIMU.begin(
                 ///// Interface mode options
@@ -95,7 +95,7 @@ void setup() {
                   //ACC_ODR_800_Hz
                 ) != IMU_SUCCESS)
   {
-    Serial.println("Failed setup.");
+    @fix@Serial.println("Failed setup.");
     while(1);
   }
 }
@@ -109,45 +109,45 @@ void loop()
   // Assume that if X is not activated then none are (poor assumption, but demo)
   if ( !isnan(value) )
   {
-    Serial.print("\nAccelerometer:\n X = ");
-    Serial.println(value, 4);
-    Serial.print(" Y = ");
-    Serial.println(myIMU.readAccelY(), 4);
-    Serial.print(" Z = ");
-    Serial.println(myIMU.readAccelZ(), 4);
+    @fix@Serial.print("\nAccelerometer:\n X = ");
+    @fix@Serial.println(value, 4);
+    @fix@Serial.print(" Y = ");
+    @fix@Serial.println(myIMU.readAccelY(), 4);
+    @fix@Serial.print(" Z = ");
+    @fix@Serial.println(myIMU.readAccelZ(), 4);
   }
 
   value = myIMU.readGyroX();
   // Not supported by hardware, so will return NAN
   if ( !isnan(value) )
   {
-    Serial.print("\nGyroscope:\n X = ");
-    Serial.println(value, 4);
-    Serial.print(" Y = ");
-    Serial.println(myIMU.readGyroY(), 4);
-    Serial.print(" Z = ");
-    Serial.println(myIMU.readGyroZ(), 4);
+    @fix@Serial.print("\nGyroscope:\n X = ");
+    @fix@Serial.println(value, 4);
+    @fix@Serial.print(" Y = ");
+    @fix@Serial.println(myIMU.readGyroY(), 4);
+    @fix@Serial.print(" Z = ");
+    @fix@Serial.println(myIMU.readGyroZ(), 4);
   }
 
   value = myIMU.readMagX();
   if ( !isnan(value) )
   {
-    Serial.print("\nMagnetometer:\n X = ");
-    Serial.println(value, 4);
-    Serial.print(" Y = ");
-    Serial.println(myIMU.readMagY(), 4);
-    Serial.print(" Z = ");
-    Serial.println(myIMU.readMagZ(), 4);
+    @fix@Serial.print("\nMagnetometer:\n X = ");
+    @fix@Serial.println(value, 4);
+    @fix@Serial.print(" Y = ");
+    @fix@Serial.println(myIMU.readMagY(), 4);
+    @fix@Serial.print(" Z = ");
+    @fix@Serial.println(myIMU.readMagZ(), 4);
   }
 
   value = myIMU.readTempC();
   if ( !isnan(value) )
   {
-    Serial.print("\nThermometer:\n");
-    Serial.print(" Degrees C = ");
-    Serial.println(value, 4);
-    Serial.print(" Degrees F = ");
-    Serial.println(myIMU.readTempF(), 4);
+    @fix@Serial.print("\nThermometer:\n");
+    @fix@Serial.print(" Degrees C = ");
+    @fix@Serial.println(value, 4);
+    @fix@Serial.print(" Degrees F = ");
+    @fix@Serial.println(myIMU.readTempF(), 4);
   }
 
   delay(1000);

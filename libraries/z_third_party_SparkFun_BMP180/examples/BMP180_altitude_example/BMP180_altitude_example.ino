@@ -58,19 +58,19 @@ double baseline; // baseline pressure
 
 void setup()
 {
-  Serial.begin(9600);
-  Serial.println("REBOOT");
+  @fix@Serial.begin(9600);
+  @fix@Serial.println("REBOOT");
 
   // Initialize the sensor (it is important to get calibration values stored on the device).
 
   if (pressure.begin())
-    Serial.println("BMP180 init success");
+    @fix@Serial.println("BMP180 init success");
   else
   {
     // Oops, something went wrong, this is usually a connection problem,
     // see the comments at the top of this sketch for the proper connections.
 
-    Serial.println("BMP180 init fail (disconnected?)\n\n");
+    @fix@Serial.println("BMP180 init fail (disconnected?)\n\n");
     while(1); // Pause forever.
   }
 
@@ -78,9 +78,9 @@ void setup()
   
   baseline = getPressure();
   
-  Serial.print("baseline pressure: ");
-  Serial.print(baseline);
-  Serial.println(" mb");  
+  @fix@Serial.print("baseline pressure: ");
+  @fix@Serial.print(baseline);
+  @fix@Serial.println(" mb");  
 }
 
 void loop()
@@ -96,13 +96,13 @@ void loop()
 
   a = pressure.altitude(P,baseline);
   
-  Serial.print("relative altitude: ");
-  if (a >= 0.0) Serial.print(" "); // add a space for positive numbers
-  Serial.print(a,1);
-  Serial.print(" meters, ");
-  if (a >= 0.0) Serial.print(" "); // add a space for positive numbers
-  Serial.print(a*3.28084,0);
-  Serial.println(" feet");
+  @fix@Serial.print("relative altitude: ");
+  if (a >= 0.0) @fix@Serial.print(" "); // add a space for positive numbers
+  @fix@Serial.print(a,1);
+  @fix@Serial.print(" meters, ");
+  if (a >= 0.0) @fix@Serial.print(" "); // add a space for positive numbers
+  @fix@Serial.print(a*3.28084,0);
+  @fix@Serial.println(" feet");
   
   delay(500);
 }
@@ -157,13 +157,13 @@ double getPressure()
         {
           return(P);
         }
-        else Serial.println("error retrieving pressure measurement\n");
+        else @fix@Serial.println("error retrieving pressure measurement\n");
       }
-      else Serial.println("error starting pressure measurement\n");
+      else @fix@Serial.println("error starting pressure measurement\n");
     }
-    else Serial.println("error retrieving temperature measurement\n");
+    else @fix@Serial.println("error retrieving temperature measurement\n");
   }
-  else Serial.println("error starting temperature measurement\n");
+  else @fix@Serial.println("error starting temperature measurement\n");
 }
 
 

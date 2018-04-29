@@ -17,7 +17,7 @@
 #include "PianoKeyboardPimoroniHAT.h"
 #include "MIDICommandFromPianoKeyboardPimoroniHAT.h"
 
-#include "MIDICommandFromSerial.h"
+#include "MIDICommandFrom@fix@Serial.h"
 #include "MIDISynthesizer.h"
 
 #include "LCDFrentaly20x4.h"
@@ -163,7 +163,7 @@ public:
     void Run()
     {
         // Operate the serial port
-        Serial.begin(BAUD);
+        @fix@Serial.begin(BAUD);
         
         // Set up Synthesizer
         midiSynth_.Init();

@@ -4,7 +4,7 @@
 
 #include "Evm.h"
 #include "RTC.h"
-#include "SoftwareSerial.h"
+#include "Software@fix@Serial.h"
 #include "TimedEventHandler.h"
 #include "PeripheralOpenLog.h"
 #include "SensorGPSUblox.h"
