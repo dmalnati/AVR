@@ -10,7 +10,7 @@ static const uint8_t PIN_MEASUREMENT = 25;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     SensorSoilMoisture s(PIN_POWER, PIN_MEASUREMENT);
     SensorSoilMoisture::Measurement m;
@@ -19,17 +19,17 @@ void setup()
     {
         if (s.GetMeasurement(&m))
         {
-            Serial.println("Measurement successful");
+            @fix@Serial.println("Measurement successful");
             
-            Serial.print("pctConductive: ");
-            Serial.println(m.pctConductive);
+            @fix@Serial.print("pctConductive: ");
+            @fix@Serial.println(m.pctConductive);
         }
         else
         {
-            Serial.println("Measurement failure");
+            @fix@Serial.println("Measurement failure");
         }
     
-        Serial.println();
+        @fix@Serial.println();
     
         PAL.Delay(1000);
 

@@ -44,7 +44,7 @@ void TestSendJustOnesNoStuff()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
     
     m.Init();
 

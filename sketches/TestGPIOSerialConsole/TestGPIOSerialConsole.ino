@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Str.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 static const uint8_t NUM_COMMANDS = 20;
@@ -9,9 +9,9 @@ static SerialShell<NUM_COMMANDS> shell;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
-    Serial.println();
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
+    @fix@Serial.println();
 
     shell.RegisterCommand("write", [](char *cmdStr) {
         Str str(cmdStr);
@@ -23,21 +23,21 @@ void setup()
 
             PAL.PinMode(pin, OUTPUT);
             
-            Serial.print(F("Pin "));
-            Serial.print(pin);
-            Serial.print(F(" -> "));
-            Serial.print(val);
-            Serial.println();
+            @fix@Serial.print(F("Pin "));
+            @fix@Serial.print(pin);
+            @fix@Serial.print(F(" -> "));
+            @fix@Serial.print(val);
+            @fix@Serial.println();
 
             PAL.DigitalWrite(pin, val);
         }
     });
 
     shell.RegisterErrorHandler([](char *cmdStr) {
-        Serial.print("ERR: Unrecognized \"");
-        Serial.print(cmdStr);
-        Serial.print("\"");
-        Serial.println();
+        @fix@Serial.print("ERR: Unrecognized \"");
+        @fix@Serial.print(cmdStr);
+        @fix@Serial.print("\"");
+        @fix@Serial.println();
     });
 
     while (1)

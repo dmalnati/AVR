@@ -25,7 +25,7 @@ public:
                 LOOP_COUNT * 50,
                 usPerOpStr);
         
-        Serial.println(buf);
+        @fix@Serial.println(buf);
 
         delay(500);
     }
@@ -73,8 +73,8 @@ public:
             v1++;  v1++;  v1++;  v1++;  v1++;
         }
 
-        Serial.print(v1);
-        Serial.print('\r');
+        @fix@Serial.print(v1);
+        @fix@Serial.print('\r');
     }
 };
 
@@ -102,8 +102,8 @@ public:
             v1 *= v1;  v1 *= v1;  v1 *= v1;  v1 *= v1;  v1 *= v1;
         }
 
-        Serial.print(v1);
-        Serial.print('\r');
+        @fix@Serial.print(v1);
+        @fix@Serial.print('\r');
     }
 };
 
@@ -131,8 +131,8 @@ public:
             v1 /= v1;  v1 /= v1;  v1 /= v1;  v1 /= v1;  v1 /= v1;
         }
 
-        Serial.print(v1);
-        Serial.print('\r');
+        @fix@Serial.print(v1);
+        @fix@Serial.print('\r');
     }
 };
 
@@ -161,8 +161,8 @@ public:
             v1 <<= BITS;  v1 <<= BITS;  v1 <<= BITS;  v1 <<= BITS;  v1 <<= BITS;
         }
 
-        Serial.print(v1);
-        Serial.print('\r');
+        @fix@Serial.print(v1);
+        @fix@Serial.print('\r');
     }
 };
 
@@ -190,8 +190,8 @@ public:
             v1 >>= BITS;  v1 >>= BITS;  v1 >>= BITS;  v1 >>= BITS;  v1 >>= BITS;
         }
 
-        Serial.print(v1);
-        Serial.print('\r');
+        @fix@Serial.print(v1);
+        @fix@Serial.print('\r');
     }
 };
 
@@ -222,14 +222,14 @@ public:
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {
 
 #if DO_INCR == 1
-        Serial.print("Incr"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Incr"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         ProfilerIncr<uint8_t>{"uint8_t"};
         ProfilerIncr<int8_t>{"int8_t"};
         ProfilerIncr<uint16_t>{"uint16_t"};
@@ -238,12 +238,12 @@ void setup()
         ProfilerIncr<int32_t>{"int32_t"};
         ProfilerIncr<float>{"float"};
         ProfilerIncr<double>{"double"};
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_MULT == 1
-        Serial.print("Mult"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Mult"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         ProfilerMult<uint8_t>{"uint8_t"};
         ProfilerMult<int8_t>{"int8_t"};
         ProfilerMult<uint16_t>{"uint16_t"};
@@ -252,12 +252,12 @@ void setup()
         ProfilerMult<int32_t>{"int32_t"};
         ProfilerMult<float>{"float"};
         ProfilerMult<double>{"double"};
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_DIV == 1
-        Serial.print("Div"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Div"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         ProfilerDiv<uint8_t>{"uint8_t"};
         ProfilerDiv<int8_t>{"int8_t"};
         ProfilerDiv<uint16_t>{"uint16_t"};
@@ -266,7 +266,7 @@ void setup()
         ProfilerDiv<int32_t>{"int32_t"};
         ProfilerDiv<float>{"float"};
         ProfilerDiv<double>{"double"};
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 
@@ -278,8 +278,8 @@ void setup()
 
 
 #if DO_SHIFT_LEFT_8 == 1
-        Serial.print("Shift Left 8"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 8"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint8_t, 0>{"uint8_t << 0"};
         ProfilerShiftLeft<uint8_t, 1>{"uint8_t << 1"};
@@ -291,12 +291,12 @@ void setup()
         ProfilerShiftLeft<uint8_t, 7>{"uint8_t << 7"};
         ProfilerShiftLeft<uint8_t, 8>{"uint8_t << 8"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_LEFT_16 == 1
-        Serial.print("Shift Left 16"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 16"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint16_t, 0>{"uint16_t << 0"};
         ProfilerShiftLeft<uint16_t, 1>{"uint16_t << 1"};
@@ -316,12 +316,12 @@ void setup()
         ProfilerShiftLeft<uint16_t, 15>{"uint16_t << 15"};
         ProfilerShiftLeft<uint16_t, 16>{"uint16_t << 16"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_LEFT_32_1 == 1
-        Serial.print("Shift Left 32 1"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 32 1"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint32_t, 0>{"uint32_t << 0"};
         ProfilerShiftLeft<uint32_t, 1>{"uint32_t << 1"};
@@ -333,13 +333,13 @@ void setup()
         ProfilerShiftLeft<uint32_t, 7>{"uint32_t << 7"};
         ProfilerShiftLeft<uint32_t, 8>{"uint32_t << 8"};
         
-        Serial.println();
+        @fix@Serial.println();
 
 #endif
 
 #if DO_SHIFT_LEFT_32_2 == 1
-        Serial.print("Shift Left 32 2"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 32 2"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint32_t, 9>{"uint32_t << 9"};
         ProfilerShiftLeft<uint32_t, 10>{"uint32_t << 10"};
@@ -350,12 +350,12 @@ void setup()
         ProfilerShiftLeft<uint32_t, 15>{"uint32_t << 15"};
         ProfilerShiftLeft<uint32_t, 16>{"uint32_t << 16"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_LEFT_32_3 == 1
-        Serial.print("Shift Left 32 3"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 32 3"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint32_t, 17>{"uint32_t << 17"};
         ProfilerShiftLeft<uint32_t, 18>{"uint32_t << 18"};
@@ -366,12 +366,12 @@ void setup()
         ProfilerShiftLeft<uint32_t, 23>{"uint32_t << 23"};
         ProfilerShiftLeft<uint32_t, 24>{"uint32_t << 24"};
         
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_LEFT_32_4 == 1
-        Serial.print("Shift Left 32 4"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Left 32 4"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftLeft<uint32_t, 25>{"uint32_t << 25"};
         ProfilerShiftLeft<uint32_t, 26>{"uint32_t << 26"};
@@ -382,7 +382,7 @@ void setup()
         ProfilerShiftLeft<uint32_t, 31>{"uint32_t << 31"};
         ProfilerShiftLeft<uint32_t, 32>{"uint32_t << 32"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 
@@ -409,8 +409,8 @@ void setup()
 
 
 #if DO_SHIFT_RIGHT_8 == 1
-        Serial.print("Shift Right 8"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 8"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint8_t, 0>{"uint8_t >> 0"};
         ProfilerShiftRight<uint8_t, 1>{"uint8_t >> 1"};
@@ -422,13 +422,13 @@ void setup()
         ProfilerShiftRight<uint8_t, 7>{"uint8_t >> 7"};
         ProfilerShiftRight<uint8_t, 8>{"uint8_t >> 8"};
         
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 
 #if DO_SHIFT_RIGHT_16 == 1
-        Serial.print("Shift Right 16"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 16"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint16_t, 0>{"uint16_t >> 0"};
         ProfilerShiftRight<uint16_t, 1>{"uint16_t >> 1"};
@@ -448,15 +448,15 @@ void setup()
         ProfilerShiftRight<uint16_t, 15>{"uint16_t >> 15"};
         ProfilerShiftRight<uint16_t, 16>{"uint16_t >> 16"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 
 
 
 #if DO_SHIFT_RIGHT_32_1 == 1
-        Serial.print("Shift Right 32 1"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 32 1"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint32_t, 0>{"uint32_t >> 0"};
         ProfilerShiftRight<uint32_t, 1>{"uint32_t >> 1"};
@@ -468,13 +468,13 @@ void setup()
         ProfilerShiftRight<uint32_t, 7>{"uint32_t >> 7"};
         ProfilerShiftRight<uint32_t, 8>{"uint32_t >> 8"};
         
-        Serial.println();
+        @fix@Serial.println();
 
 #endif
 
 #if DO_SHIFT_RIGHT_32_2 == 1
-        Serial.print("Shift Right 32 2"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 32 2"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint32_t, 9>{"uint32_t >> 9"};
         ProfilerShiftRight<uint32_t, 10>{"uint32_t >> 10"};
@@ -485,12 +485,12 @@ void setup()
         ProfilerShiftRight<uint32_t, 15>{"uint32_t >> 15"};
         ProfilerShiftRight<uint32_t, 16>{"uint32_t >> 16"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_RIGHT_32_3 == 1
-        Serial.print("Shift Right 32 3"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 32 3"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint32_t, 17>{"uint32_t >> 17"};
         ProfilerShiftRight<uint32_t, 18>{"uint32_t >> 18"};
@@ -501,12 +501,12 @@ void setup()
         ProfilerShiftRight<uint32_t, 23>{"uint32_t >> 23"};
         ProfilerShiftRight<uint32_t, 24>{"uint32_t >> 24"};
         
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 #if DO_SHIFT_RIGHT_32_4 == 1
-        Serial.print("Shift Right 32 4"); Serial.println();
-        Serial.print("----------"); Serial.println();
+        @fix@Serial.print("Shift Right 32 4"); @fix@Serial.println();
+        @fix@Serial.print("----------"); @fix@Serial.println();
         
         ProfilerShiftRight<uint32_t, 25>{"uint32_t >> 25"};
         ProfilerShiftRight<uint32_t, 26>{"uint32_t >> 26"};
@@ -517,7 +517,7 @@ void setup()
         ProfilerShiftRight<uint32_t, 31>{"uint32_t >> 31"};
         ProfilerShiftRight<uint32_t, 32>{"uint32_t >> 32"};
 
-        Serial.println();
+        @fix@Serial.println();
 #endif
 
 

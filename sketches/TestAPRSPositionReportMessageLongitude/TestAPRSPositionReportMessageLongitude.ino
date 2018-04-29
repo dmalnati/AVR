@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "APRSPositionReportMessage.h"
 
 
@@ -21,18 +21,18 @@ void TestLongitude(int16_t degrees, uint8_t minutes, double seconds)
 
     aprm.SetLongitude(degrees, minutes, seconds);
 
-    Serial.print("Buf: \"");
-    Serial.write(buf, BUF_SIZE);
-    Serial.print("\"");
-    Serial.println();
+    @fix@Serial.print("Buf: \"");
+    @fix@Serial.write(buf, BUF_SIZE);
+    @fix@Serial.print("\"");
+    @fix@Serial.println();
     
-    Serial.print("Bytes: "); Serial.println(aprm.GetBytesUsed());
+    @fix@Serial.print("Bytes: "); @fix@Serial.println(aprm.GetBytesUsed());
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     console.RegisterCommand("test", [](char *cmdStr){
         Str str(cmdStr);
@@ -43,13 +43,13 @@ void setup()
             uint8_t minutes = atoi(str.TokenAtIdx(2, ' '));
             double  seconds = atof(str.TokenAtIdx(3, ' '));
 
-            Serial.print(F("Testing: "));
-            Serial.print(degrees);
-            Serial.print(" ");
-            Serial.print(minutes);
-            Serial.print(" ");
-            Serial.print(seconds);
-            Serial.println();
+            @fix@Serial.print(F("Testing: "));
+            @fix@Serial.print(degrees);
+            @fix@Serial.print(" ");
+            @fix@Serial.print(minutes);
+            @fix@Serial.print(" ");
+            @fix@Serial.print(seconds);
+            @fix@Serial.println();
 
             TestLongitude(degrees, minutes, seconds);
         }

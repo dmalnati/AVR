@@ -16,23 +16,23 @@ void ReportOutcome(const char                            *type,
 {
     if (retVal)
     {
-        Serial.print(type);
-        Serial.print(" ");
-        Serial.println("Success -- Temperature read");
+        @fix@Serial.print(type);
+        @fix@Serial.print(" ");
+        @fix@Serial.println("Success -- Temperature read");
 
-        Serial.print("tempF: ");
-        Serial.println(m.tempF);
-        Serial.print("tempC: ");
-        Serial.println(m.tempC);
+        @fix@Serial.print("tempF: ");
+        @fix@Serial.println(m.tempF);
+        @fix@Serial.print("tempC: ");
+        @fix@Serial.println(m.tempC);
     }
     else
     {
-        Serial.print(type);
-        Serial.print(" ");
-        Serial.println("Failure -- Could not read Temperature");
+        @fix@Serial.print(type);
+        @fix@Serial.print(" ");
+        @fix@Serial.println("Failure -- Could not read Temperature");
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void TestSync()
@@ -58,7 +58,7 @@ void TestAsync()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     t.Init();
 

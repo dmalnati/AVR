@@ -15,53 +15,53 @@ static SensorBarometerBMP180 sensor;
 
 void PrintMeasurement(SensorBarometerBMP180::Measurement m)
 {
-    Serial.print("tempF: ");
-    Serial.print(m.tempF);
-    Serial.println();
+    @fix@Serial.print("tempF: ");
+    @fix@Serial.print(m.tempF);
+    @fix@Serial.println();
 
-    Serial.print("tempC: ");
-    Serial.print(m.tempC);
-    Serial.println();
+    @fix@Serial.print("tempC: ");
+    @fix@Serial.print(m.tempC);
+    @fix@Serial.println();
 
-    Serial.print("pressureMilliBarAbsolute: ");
-    Serial.print(m.pressureMilliBarAbsolute);
-    Serial.println();
+    @fix@Serial.print("pressureMilliBarAbsolute: ");
+    @fix@Serial.print(m.pressureMilliBarAbsolute);
+    @fix@Serial.println();
 
-    Serial.print("pressureInchesMercuryAbsolute: ");
-    Serial.print(m.pressureInchesMercuryAbsolute);
-    Serial.println();
+    @fix@Serial.print("pressureInchesMercuryAbsolute: ");
+    @fix@Serial.print(m.pressureInchesMercuryAbsolute);
+    @fix@Serial.println();
 
-    Serial.print("pressureKiloPascalsAbsolute: ");
-    Serial.print(m.pressureKiloPascalsAbsolute);
-    Serial.println();
+    @fix@Serial.print("pressureKiloPascalsAbsolute: ");
+    @fix@Serial.print(m.pressureKiloPascalsAbsolute);
+    @fix@Serial.println();
 
-    Serial.print("pressureMilliBarSeaLevelAdjusted: ");
-    Serial.print(m.pressureMilliBarSeaLevelAdjusted);
-    Serial.println();
+    @fix@Serial.print("pressureMilliBarSeaLevelAdjusted: ");
+    @fix@Serial.print(m.pressureMilliBarSeaLevelAdjusted);
+    @fix@Serial.println();
 
-    Serial.print("pressureInchesMercurySeaLevelAdjusted: ");
-    Serial.print(m.pressureInchesMercurySeaLevelAdjusted);
-    Serial.println();
+    @fix@Serial.print("pressureInchesMercurySeaLevelAdjusted: ");
+    @fix@Serial.print(m.pressureInchesMercurySeaLevelAdjusted);
+    @fix@Serial.println();
 
-    Serial.print("pressureKiloPascalsSeaLevelAdjusted: ");
-    Serial.print(m.pressureKiloPascalsSeaLevelAdjusted);
-    Serial.println();
+    @fix@Serial.print("pressureKiloPascalsSeaLevelAdjusted: ");
+    @fix@Serial.print(m.pressureKiloPascalsSeaLevelAdjusted);
+    @fix@Serial.println();
 
-    Serial.print("altitudeFeetDerived: ");
-    Serial.print(m.altitudeFeetDerived);
-    Serial.println();
+    @fix@Serial.print("altitudeFeetDerived: ");
+    @fix@Serial.print(m.altitudeFeetDerived);
+    @fix@Serial.println();
     
-    Serial.print("altitudeMetersDerived: ");
-    Serial.print(m.altitudeMetersDerived);
-    Serial.println();
+    @fix@Serial.print("altitudeMetersDerived: ");
+    @fix@Serial.print(m.altitudeMetersDerived);
+    @fix@Serial.println();
     
     
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     sensor.Init();
     
@@ -74,14 +74,14 @@ void setup()
         retVal = sensor.GetMeasurement(&m1);
         PinToggle(PIN_DEBUG_TOGGLE, 0);
 
-        if (!retVal) Serial.println("Sensor read fail");
+        if (!retVal) @fix@Serial.println("Sensor read fail");
         PrintMeasurement(m1);
 
         PinToggle(PIN_DEBUG_TOGGLE, 0);
         retVal = sensor.GetMeasurementAndCalculatedValues(&m2, ALTITUDE_SPARKFUN_HQ_METERS);
         PinToggle(PIN_DEBUG_TOGGLE, 0);
 
-        if (!retVal) Serial.println("Sensor read fail");
+        if (!retVal) @fix@Serial.println("Sensor read fail");
         PrintMeasurement(m2);
         
     });

@@ -23,7 +23,7 @@ StepperControllerSerialIface<StepperControllerAsync<StepperControllerBipolar>> s
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     scsi.Init();
 

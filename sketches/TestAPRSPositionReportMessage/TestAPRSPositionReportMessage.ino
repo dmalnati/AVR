@@ -23,51 +23,51 @@ void BuildMessage()
     aprm.SetSymbolCode('O');
     
     
-    Serial.println("Before Comment appendages");
-    Serial.print("bytesUsed: ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.println("Before Comment appendages");
+    @fix@Serial.print("bytesUsed: ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     aprm.SetCommentCourseAndSpeed(273, 777);
-    Serial.println("After Comment Course/Speed");
-    Serial.print("bytesUsed: ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.println("After Comment Course/Speed");
+    @fix@Serial.print("bytesUsed: ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     aprm.SetCommentAltitude(444);
-    Serial.println("After Comment Altitude");
-    Serial.print("bytesUsed: ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.println("After Comment Altitude");
+    @fix@Serial.print("bytesUsed: ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     aprm.AppendCommentString("hi mom!");
-    Serial.println("After Comment string appendage");
-    Serial.print("bytesUsed: ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
+    @fix@Serial.println("After Comment string appendage");
+    @fix@Serial.print("bytesUsed: ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
     
 
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     StreamBlob(Serial, (uint8_t *)buf, BUF_SIZE, 1, 1);
 
-    Serial.println();
-    Serial.println();
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
 
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {

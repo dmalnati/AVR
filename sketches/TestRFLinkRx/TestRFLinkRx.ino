@@ -17,24 +17,24 @@ RFLink rf_;
 
 void OnMsgRcv(RFLinkHeader *hdr, uint8_t *buf, uint8_t bufLen)
 {
-    Serial.print("Recvd ");
-    Serial.print(bufLen);
-    Serial.println();
+    @fix@Serial.print("Recvd ");
+    @fix@Serial.print(bufLen);
+    @fix@Serial.println();
     
-    Serial.print("Realm  : "); Serial.println(hdr->realm);
-    Serial.print("Src    : "); Serial.println(hdr->srcAddr);
-    Serial.print("Dst    : "); Serial.println(hdr->dstAddr);
-    Serial.print("ProtoID: "); Serial.println(hdr->protocolId);
+    @fix@Serial.print("Realm  : "); @fix@Serial.println(hdr->realm);
+    @fix@Serial.print("Src    : "); @fix@Serial.println(hdr->srcAddr);
+    @fix@Serial.print("Dst    : "); @fix@Serial.println(hdr->dstAddr);
+    @fix@Serial.print("ProtoID: "); @fix@Serial.println(hdr->protocolId);
 
     StreamBlob(Serial, buf, bufLen, 1, 1);
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     rf_.SetRealm(RF_REALM);
     rf_.SetSrcAddr(RF_SRC_ADDR);

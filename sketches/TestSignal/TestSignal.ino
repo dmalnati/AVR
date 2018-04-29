@@ -22,7 +22,7 @@ static SignalDAC<SignalSourceSineWave> dac(&sineWave);
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     PAL.PinMode(pinSignalA, OUTPUT);
     PAL.PinMode(pinSignalB, OUTPUT);
@@ -105,14 +105,14 @@ void TestSignalSource()
             ss.GetNextSampleReady();
 
             // columns: count, bitSeparator, 0-val, 1-val
-            Serial.print(count);
-            Serial.print(",");
-            Serial.print(bitSeparator * 255);
-            Serial.print(",");
-            Serial.print(!bitVal ? sample : 0);
-            Serial.print(",");
-            Serial.print(bitVal ? sample : 0);
-            Serial.println();
+            @fix@Serial.print(count);
+            @fix@Serial.print(",");
+            @fix@Serial.print(bitSeparator * 255);
+            @fix@Serial.print(",");
+            @fix@Serial.print(!bitVal ? sample : 0);
+            @fix@Serial.print(",");
+            @fix@Serial.print(bitVal ? sample : 0);
+            @fix@Serial.println();
 
             ++count;
         }

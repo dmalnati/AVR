@@ -48,7 +48,7 @@ void SetupMessage()
 {
     uint8_t *buf = bufShared;
 
-    Serial.println("SetupMessage");
+    @fix@Serial.println("SetupMessage");
     
     msg.Init(buf, BUF_SIZE);
 
@@ -78,11 +78,11 @@ void SetupMessage()
 
     uint8_t bytesUsed = msg.Finalize();
 
-    Serial.print("Bytes used: ");
-    Serial.print(bytesUsed);
-    Serial.println();
+    @fix@Serial.print("Bytes used: ");
+    @fix@Serial.print(bytesUsed);
+    @fix@Serial.println();
     StreamBlob(Serial, buf, bytesUsed, 1, 1);
-    Serial.println();
+    @fix@Serial.println();
 
     Send(buf, bytesUsed);
 }
@@ -91,7 +91,7 @@ void SetupMessage()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     // So I can use Serial in the class for debugging...
     ModemBell202 modemReal;

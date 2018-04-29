@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 /*
@@ -48,10 +48,10 @@ static SerialAsyncConsole<10>     console;
 
 void Test1()
 {
-    evm.LowPowerEnable();  Serial.println("LPE");  PAL.Delay(50);
+    evm.LowPowerEnable();  @fix@Serial.println("LPE");  PAL.Delay(50);
     
     ted1.SetCallback([](){
-        PAL.Delay(50); Serial.println("Test1"); PAL.Delay(50);
+        PAL.Delay(50); @fix@Serial.println("Test1"); PAL.Delay(50);
         
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_250_MS);
         PAL.WatchdogReset();
@@ -60,17 +60,17 @@ void Test1()
     ted1.RegisterForTimedEvent(50);
 
     ted2.SetCallback([](){
-        evm.LowPowerDisable(); Serial.println("LPD");  PAL.Delay(50);
+        evm.LowPowerDisable(); @fix@Serial.println("LPD");  PAL.Delay(50);
     });
     ted2.RegisterForTimedEvent(55);
 }
 
 void Test2()
 {
-    evm.LowPowerEnable();  Serial.println("LPE");  PAL.Delay(50);
+    evm.LowPowerEnable();  @fix@Serial.println("LPE");  PAL.Delay(50);
     
     ted1.SetCallback([](){
-        PAL.Delay(50); Serial.println("Test2"); PAL.Delay(50);
+        PAL.Delay(50); @fix@Serial.println("Test2"); PAL.Delay(50);
         
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_250_MS);
         
@@ -81,26 +81,26 @@ void Test2()
     ted1.RegisterForTimedEvent(50);
 
     ted2.SetCallback([](){
-        evm.LowPowerDisable(); Serial.println("LPD");  PAL.Delay(50);
+        evm.LowPowerDisable(); @fix@Serial.println("LPD");  PAL.Delay(50);
     });
     ted2.RegisterForTimedEvent(55);
 }
 
 void Test3()
 {
-    evm.LowPowerEnable();  Serial.println("LPE");  PAL.Delay(50);
+    evm.LowPowerEnable();  @fix@Serial.println("LPE");  PAL.Delay(50);
 
     PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_250_MS);
 
     ted1.SetCallback([](){
         PAL.WatchdogDisable();
         
-        PAL.Delay(50); Serial.println("Test3"); PAL.Delay(50);
+        PAL.Delay(50); @fix@Serial.println("Test3"); PAL.Delay(50);
     });
     ted1.RegisterForTimedEvent(500);
 
     ted2.SetCallback([](){
-        evm.LowPowerDisable(); Serial.println("LPD");  PAL.Delay(50);
+        evm.LowPowerDisable(); @fix@Serial.println("LPD");  PAL.Delay(50);
     });
     ted2.RegisterForTimedEvent(505);
 }
@@ -112,7 +112,7 @@ void Test4()
     ted1.SetCallback([](){
         PAL.WatchdogDisable();
         
-        PAL.Delay(50); Serial.println("Test4"); PAL.Delay(50);
+        PAL.Delay(50); @fix@Serial.println("Test4"); PAL.Delay(50);
     });
     ted1.RegisterForTimedEvent(500);
 }
@@ -124,18 +124,18 @@ void Test4()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
     {
-        Serial.println();
-        Serial.println();
-        Serial.println("-- Watchdog Reset --");
-        Serial.println();
-        Serial.println();
+        @fix@Serial.println();
+        @fix@Serial.println();
+        @fix@Serial.println("-- Watchdog Reset --");
+        @fix@Serial.println();
+        @fix@Serial.println();
     }
     
-    Serial.println("Starting");
+    @fix@Serial.println("Starting");
 
     console.RegisterCommand("test1", [](char *){ Test1(); });
     console.RegisterCommand("test2", [](char *){ Test2(); });
@@ -143,7 +143,7 @@ void setup()
     console.RegisterCommand("test4", [](char *){ Test4(); });
 
     console.RegisterErrorHandler([](char *){
-        Serial.println("ERR");
+        @fix@Serial.println("ERR");
     });
 
     console.Start();

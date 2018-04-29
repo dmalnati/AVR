@@ -23,7 +23,7 @@ void TestMidiCore()
     {
         MidiCommand m;
         
-        if (midiCmdFromSerial.GetMidiCommand(&m))
+        if (midiCmdFrom@fix@Serial.GetMidiCommand(&m))
         {
             midiSynth.ProcessCommand(m);
         }
@@ -35,13 +35,13 @@ void TestMidiCore()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
-    midiCmdFromSerial.Init(&midiCmdParser);
+    midiCmdFrom@fix@Serial.Init(&midiCmdParser);
     midiSynth.Init();
 
     ted.SetCallback([](){
-        Serial.println("Looping again");
+        @fix@Serial.println("Looping again");
 
         TestMidiCore();
     });

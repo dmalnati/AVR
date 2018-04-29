@@ -11,12 +11,12 @@ static Keypad16Button kpad({
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
-    Serial.println("Starting");
+    @fix@Serial.println("Starting");
     
     kpad.Init([](char c) {
-        Serial.println(c);
+        @fix@Serial.println(c);
     });
 
     evm.MainLoop();

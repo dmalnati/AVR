@@ -8,9 +8,9 @@ static SignalSourceSineWave::IdxType idx;
 
 void TestSignalSourceSineWave(uint16_t sampleRate, uint16_t frequency)
 {
-    Serial.println();
-    Serial.print("sampleRate: "); Serial.println(sampleRate);
-    Serial.print("frequency: "); Serial.println(frequency);
+    @fix@Serial.println();
+    @fix@Serial.print("sampleRate: "); @fix@Serial.println(sampleRate);
+    @fix@Serial.print("frequency: "); @fix@Serial.println(frequency);
 
     //idx.Reset();
     idx.Calibrate(sampleRate, frequency);
@@ -19,8 +19,8 @@ void TestSignalSourceSineWave(uint16_t sampleRate, uint16_t frequency)
     {
         uint8_t val = ss.GetSampleAtIdx(idx);
 
-        Serial.print("step: "); Serial.print(i);
-        Serial.print(", val: "); Serial.println(val);
+        @fix@Serial.print("step: "); @fix@Serial.print(i);
+        @fix@Serial.print(", val: "); @fix@Serial.println(val);
 
         ++idx;
     }
@@ -33,9 +33,9 @@ void TestSignalSourceSineWaveRange(uint16_t sampleRate,
 {
     for (uint16_t freq = freqLow; freq <= freqHigh; freq += freqStep)
     {
-        Serial.println();
-        Serial.print("sampleRate: "); Serial.println(sampleRate);
-        Serial.print("frequency: "); Serial.println(freq);
+        @fix@Serial.println();
+        @fix@Serial.print("sampleRate: "); @fix@Serial.println(sampleRate);
+        @fix@Serial.print("frequency: "); @fix@Serial.println(freq);
         
         idx.Reset();
         idx.Calibrate(sampleRate, freq);
@@ -56,8 +56,8 @@ void TestSignalSourceSineWaveRange(uint16_t sampleRate,
 
             if (show)
             {
-                Serial.print("  idxInt: "); Serial.print(idxInt);
-                Serial.print(", val: "); Serial.print(val);
+                @fix@Serial.print("  idxInt: "); @fix@Serial.print(idxInt);
+                @fix@Serial.print(", val: "); @fix@Serial.print(val);
             }
 
             // check for wrap so we can move along to next freq
@@ -65,10 +65,10 @@ void TestSignalSourceSineWaveRange(uint16_t sampleRate,
             {
                 cont = 0;
 
-                if (show) { Serial.print("   (breakout)"); }
+                if (show) { @fix@Serial.print("   (breakout)"); }
             }
 
-            if (show) { Serial.println(); }
+            if (show) { @fix@Serial.println(); }
 
             idxIntLast = idxInt;
             valLast = val;
@@ -92,7 +92,7 @@ void TestProblemFrequencies()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {

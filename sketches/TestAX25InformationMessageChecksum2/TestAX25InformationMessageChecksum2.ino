@@ -89,7 +89,7 @@ static AX25UIMessage msg;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {
@@ -109,33 +109,33 @@ void DoMessageTest()
     msg.SetSrcAddress("KD2KDD", 9);
     msg.AddRepeaterAddress("WIDE1", 1);
 
-    Serial.println("Post SetAddress");
+    @fix@Serial.println("Post SetAddress");
     StreamBlob(Serial, buf, bufSize, 1);
 
     const char *info = ":KD2KDD   :hi2{2";
     uint8_t infoLen = strlen(info);   // 16
     msg.AppendInfo((uint8_t *)info, infoLen);
 
-    Serial.println("Post AppendInfo");
+    @fix@Serial.println("Post AppendInfo");
     StreamBlob(Serial, buf, bufSize, 1);
 
     // hack in the has-been-repeated bit on the dst address,
     buf[6] |= 0b10000000;
     
     uint8_t bytesUsed = msg.Finalize();
-    Serial.print("Post Finalize (");
-    Serial.print(bytesUsed);
-    Serial.print(" bytes used)");
-    Serial.println();
+    @fix@Serial.print("Post Finalize (");
+    @fix@Serial.print(bytesUsed);
+    @fix@Serial.print(" bytes used)");
+    @fix@Serial.println();
 
-    Serial.println("Container buffer");
+    @fix@Serial.println("Container buffer");
     StreamBlob(Serial, buf, bufSize, 1);
 
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
 
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
  
 void loop()

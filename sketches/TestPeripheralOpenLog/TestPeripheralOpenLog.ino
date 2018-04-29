@@ -17,8 +17,8 @@ static PeripheralOpenLog<2> logger(PIN_LOGGER_TX);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     logger.Init();
 
     PeripheralOpenLogFileHandle *fhOne = logger.GetFileHandle("one.txt");
@@ -31,13 +31,13 @@ void setup()
 
         if ((count % 2))
         {
-            Serial.println("Appending ONE");
+            @fix@Serial.println("Appending ONE");
             fhOne->Append(count);
             fhOne->Append(" ");
         }
         else
         {
-            Serial.println("Appending TWO");
+            @fix@Serial.println("Appending TWO");
             fhTwo->Append(count);
             fhTwo->Append(" ");
         }

@@ -6,7 +6,7 @@ static ProtocolOneWire ow(PIN);
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     ow.Init();
     

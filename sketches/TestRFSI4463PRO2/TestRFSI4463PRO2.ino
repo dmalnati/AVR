@@ -10,7 +10,7 @@ static RFSI4463PRODebug rfd;
 
 void GetPartInfo()
 {
-    Serial.println("GetPartInfo");
+    @fix@Serial.println("GetPartInfo");
     
     RFSI4463PRO::PART_INFO_REP retVal;
 
@@ -20,15 +20,15 @@ void GetPartInfo()
     }
     else
     {
-        Serial.println("ERR");
+        @fix@Serial.println("ERR");
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void GetFuncInfo()
 {
-    Serial.println("GetFuncInfo");
+    @fix@Serial.println("GetFuncInfo");
     
     RFSI4463PRO::FUNC_INFO_REP retVal;
 
@@ -38,15 +38,15 @@ void GetFuncInfo()
     }
     else
     {
-        Serial.println("ERR");
+        @fix@Serial.println("ERR");
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void GetChipStatus()
 {
-    Serial.println("GetChipStatus");
+    @fix@Serial.println("GetChipStatus");
     
     RFSI4463PRO::GET_CHIP_STATUS_REP retVal;
 
@@ -56,15 +56,15 @@ void GetChipStatus()
     }
     else
     {
-        Serial.println("ERR");
+        @fix@Serial.println("ERR");
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void RequestDeviceState()
 {
-    Serial.println("RequestDeviceState");
+    @fix@Serial.println("RequestDeviceState");
     
     RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
 
@@ -74,17 +74,17 @@ void RequestDeviceState()
     }
     else
     {
-        Serial.println("ERR");
+        @fix@Serial.println("ERR");
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     rf.Init();
     rf.Start();
@@ -98,7 +98,7 @@ void setup()
         GetChipStatus();
         
         
-        Serial.println();
+        @fix@Serial.println();
         PAL.Delay(2000);
     }
 }

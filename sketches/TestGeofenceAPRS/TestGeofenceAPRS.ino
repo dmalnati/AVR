@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "GeofenceAPRS.h"
 
 
@@ -13,17 +13,17 @@ void Test(int32_t latitude, int32_t longitude)
 {
     GeofenceAPRS::LocationDetails ld = geofence.GetLocationDetails(latitude, longitude);
 
-    Serial.print("freq: ");
-    Serial.print(ld.freqAprs);
-    Serial.print(", deadZone: ");
-    Serial.println(ld.deadZone);
+    @fix@Serial.print("freq: ");
+    @fix@Serial.print(ld.freqAprs);
+    @fix@Serial.print(", deadZone: ");
+    @fix@Serial.println(ld.deadZone);
 }
 
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     console.RegisterCommand("test", [](char *cmdStr){
         Str str(cmdStr);
@@ -33,11 +33,11 @@ void setup()
             int32_t latitude  = atof(str.TokenAtIdx(1, ' ')) * 1000000;
             int32_t longitude = atof(str.TokenAtIdx(2, ' ')) * 1000000;
 
-            Serial.print(F("Testing: "));
-            Serial.print(latitude);
-            Serial.print(" ");
-            Serial.print(longitude);
-            Serial.println();
+            @fix@Serial.print(F("Testing: "));
+            @fix@Serial.print(latitude);
+            @fix@Serial.print(" ");
+            @fix@Serial.print(longitude);
+            @fix@Serial.println();
 
             Test(latitude, longitude);
         }

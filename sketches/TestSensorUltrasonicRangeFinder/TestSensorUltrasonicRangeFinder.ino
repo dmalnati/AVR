@@ -26,7 +26,7 @@ public:
 
     void Run()
     {
-        Serial.begin(9600);
+        @fix@Serial.begin(9600);
     
         RegisterForTimedEventInterval(500);
 
@@ -41,8 +41,8 @@ private:
 
         sensor_.GetMeasurement(&m);
 
-        Serial.print("Inches: ");
-        Serial.println(m.distIn);
+        @fix@Serial.print("Inches: ");
+        @fix@Serial.println(m.distIn);
     }
 
     Evm::Instance<10,10,10> evm_;

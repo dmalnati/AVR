@@ -13,18 +13,18 @@ static PinInputAnalog pia2(PIN_ANALOG_2);
 
 static void OnAnalogRead(uint8_t pin, uint16_t val)
 {
-    Serial.println(PAL.Millis());
+    @fix@Serial.println(PAL.Millis());
     
-    Serial.print(pin);
-    Serial.print(": ");
-    Serial.println(val);
+    @fix@Serial.print(pin);
+    @fix@Serial.print(": ");
+    @fix@Serial.println(val);
 
-    Serial.println("");
+    @fix@Serial.println("");
 }
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     pia1.SetCallback([=](uint16_t val) { OnAnalogRead(PIN_ANALOG_1, val); });
     pia1.Enable();

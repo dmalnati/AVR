@@ -17,7 +17,7 @@ Pin pinTimer1ISROvf(19, LOW);
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     ta  = t.GetTimerChannelA();
     tb  = t.GetTimerChannelB();
@@ -62,24 +62,24 @@ void TestBaud1200()
     uint16_t top = ticksPerPeriod - 1;
 
     // Let's see what we calculated
-    Serial.println();
-    Serial.print("FUDGE_TIME_US       : ");
-    Serial.println(FUDGE_TIME_US);
-    Serial.print("SCALING_FACTOR      : ");
-    Serial.println(SCALING_FACTOR);
-    Serial.print("US_PER_TICK         : ");
-    Serial.println(US_PER_TICK);
-    Serial.print("TICKS_PER_CYCLE     : ");
-    Serial.println(TICKS_PER_CYCLE);
-    Serial.print("periodLogicalUs     : ");
-    Serial.println(periodLogicalUs);
-    Serial.print("periodUs            : ");
-    Serial.println(periodUs);
-    Serial.print("ticksPerPeriod      : ");
-    Serial.println(ticksPerPeriod);
-    Serial.print("top                 : ");
-    Serial.println(top);
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.print("FUDGE_TIME_US       : ");
+    @fix@Serial.println(FUDGE_TIME_US);
+    @fix@Serial.print("SCALING_FACTOR      : ");
+    @fix@Serial.println(SCALING_FACTOR);
+    @fix@Serial.print("US_PER_TICK         : ");
+    @fix@Serial.println(US_PER_TICK);
+    @fix@Serial.print("TICKS_PER_CYCLE     : ");
+    @fix@Serial.println(TICKS_PER_CYCLE);
+    @fix@Serial.print("periodLogicalUs     : ");
+    @fix@Serial.println(periodLogicalUs);
+    @fix@Serial.print("periodUs            : ");
+    @fix@Serial.println(periodUs);
+    @fix@Serial.print("ticksPerPeriod      : ");
+    @fix@Serial.println(ticksPerPeriod);
+    @fix@Serial.print("top                 : ");
+    @fix@Serial.println(top);
+    @fix@Serial.println();
 
     delay(1000);
 

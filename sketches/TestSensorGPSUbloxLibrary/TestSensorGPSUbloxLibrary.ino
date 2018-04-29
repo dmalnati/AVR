@@ -2,7 +2,7 @@
 #include "Evm.h"
 //#include "SensorGPSUbloxOld.h"
 #include "SensorGPSUblox.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 /*
@@ -29,15 +29,15 @@ static uint8_t numMessagesHandledLast = 0;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Started");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Started");
 
     // Set up GPS
     gps.Init();
     gps.ResetFix();
 
     console.RegisterCommand("reset", [](char *){
-        Serial.println("Reset");
+        @fix@Serial.println("Reset");
         
         gps.ResetFix();
     });
@@ -50,7 +50,7 @@ void setup()
     console.RegisterErrorHandler([](char *cmdStr){
         uint8_t cmdStrLen = strlen(cmdStr);
         
-        Serial.print("Handling NMEA sentence len "); Serial.println(cmdStrLen);
+        @fix@Serial.print("Handling NMEA sentence len "); @fix@Serial.println(cmdStrLen);
         
         for (uint8_t i = 0; i < cmdStrLen; ++i)
         {
@@ -75,17 +75,17 @@ void setup()
     
             if (gps.GetMeasurement(&m))
             {
-                Serial.println("Got Measurement");
+                @fix@Serial.println("Got Measurement");
                 
-                Serial.print("    msSinceLastFix: ");
-                Serial.print(m.msSinceLastFix);
-                Serial.println();
+                @fix@Serial.print("    msSinceLastFix: ");
+                @fix@Serial.print(m.msSinceLastFix);
+                @fix@Serial.println();
     
-                Serial.print("    altitude      : ");
-                Serial.print(m.altitudeFt);
-                Serial.println();
+                @fix@Serial.print("    altitude      : ");
+                @fix@Serial.print(m.altitudeFt);
+                @fix@Serial.println();
     
-                Serial.println();
+                @fix@Serial.println();
 
                 numMessagesHandledLast = numMessagesHandled;
             }

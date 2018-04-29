@@ -39,8 +39,8 @@ void Send(uint8_t *buf, uint8_t bufLen)
     {
         RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
         rf.Command_REQUEST_DEVICE_STATE(rep);
-        Serial.print("State: ");  Serial.println(rep.CURR_STATE.MAIN_STATE);
-        Serial.print("Channel: ");  Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
+        @fix@Serial.print("State: ");  @fix@Serial.println(rep.CURR_STATE.MAIN_STATE);
+        @fix@Serial.print("Channel: ");  @fix@Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
     }
     modem->Start();
 
@@ -65,8 +65,8 @@ void Send(uint8_t *buf, uint8_t bufLen)
     {
         RFSI4463PRO::REQUEST_DEVICE_STATE_REP rep;
         rf.Command_REQUEST_DEVICE_STATE(rep);
-        Serial.print("State: ");  Serial.println(rep.CURR_STATE.MAIN_STATE);
-        Serial.print("Channel: ");  Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
+        @fix@Serial.print("State: ");  @fix@Serial.println(rep.CURR_STATE.MAIN_STATE);
+        @fix@Serial.print("Channel: ");  @fix@Serial.println(rep.CURRENT_CHANNEL.CURRENT_CHANNEL);
     }
 }
 
@@ -81,39 +81,39 @@ void DoMessageTest()
     msg.SetSrcAddress("SRC", 3);
     msg.AddRepeaterAddress("WIDE1", 1);
 
-    //Serial.println("Post SetAddress");
+    //@fix@Serial.println("Post SetAddress");
     //StreamBlob(Serial, buf, bufSize, 1);
 
     const char *info = "Just Some Data";
     uint8_t infoLen = strlen(info);   // 16
     msg.AppendInfo((uint8_t *)info, infoLen);
 
-    //Serial.println("Post AppendInfo");
+    //@fix@Serial.println("Post AppendInfo");
     //StreamBlob(Serial, buf, bufSize, 1);
     
     uint8_t bytesUsed = msg.Finalize();
-    //Serial.print("Post Finalize (");
-    //Serial.print(bytesUsed);
-    //Serial.print(" bytes used)");
-    //Serial.println();
+    //@fix@Serial.print("Post Finalize (");
+    //@fix@Serial.print(bytesUsed);
+    //@fix@Serial.print(" bytes used)");
+    //@fix@Serial.println();
 
-    //Serial.println("Container buffer");
+    //@fix@Serial.println("Container buffer");
     //StreamBlob(Serial, buf, bufSize, 1);
 
-    //Serial.println("Completed buffer (just the used parts)");
+    //@fix@Serial.println("Completed buffer (just the used parts)");
     //StreamBlob(Serial, buf, bytesUsed, 1);
 
-    Serial.println("Sending");
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println("Sending");
+    @fix@Serial.println();
+    @fix@Serial.println();
 
     Send(buf, bytesUsed);
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     // So I can use Serial in the class for debugging...
     ModemBell202Pwm modemReal;

@@ -9,20 +9,20 @@ void Test()
 {
     uint8_t retVal = AppPicoTracker1UserConfigManager::GetUserConfig(userConfig);
 
-    Serial.print("retVal: "); Serial.println(retVal);
+    @fix@Serial.print("retVal: "); @fix@Serial.println(retVal);
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     while (1)
     {
         Test();
 
-        Serial.println();
-        Serial.println();
+        @fix@Serial.println();
+        @fix@Serial.println();
 
         PAL.Delay(1000);
     }

@@ -10,7 +10,7 @@ static ServoController scY(16);
 
 void MoveToStartingPosition()
 {
-    Serial.println("MoveToStartingPosition");
+    @fix@Serial.println("MoveToStartingPosition");
     
     scX.MoveTo(80);
     scY.MoveTo(20);
@@ -35,7 +35,7 @@ void SwipeRight()
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {

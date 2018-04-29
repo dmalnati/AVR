@@ -11,8 +11,8 @@ static const uint16_t FREQ2 = 2200;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     ModemAnalogPwm ma;
     

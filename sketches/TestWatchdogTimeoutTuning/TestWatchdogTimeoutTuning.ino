@@ -10,8 +10,8 @@ void OnWdtTimeout()
 
 void setup() 
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     struct WdtData
     {
@@ -36,7 +36,7 @@ void setup()
     {
         for (auto wdtData : wdtDataArr)
         {
-            Serial.print(wdtData.ms);
+            @fix@Serial.print(wdtData.ms);
 
             PAL.SetInterruptHandlerRawWDT(OnWdtTimeout);
             
@@ -49,9 +49,9 @@ void setup()
             uint32_t timeEnd = PAL.Millis();
             uint32_t timeDiff = timeEnd - timeStart;
 
-            Serial.print(',');
-            Serial.print(timeDiff);
-            Serial.println();
+            @fix@Serial.print(',');
+            @fix@Serial.print(timeDiff);
+            @fix@Serial.println();
         }
     }
 }

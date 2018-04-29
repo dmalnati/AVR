@@ -44,8 +44,8 @@ void Transmit()
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
   // Initialize the Si5351
   // Change the 2nd parameter in init if using a ref osc other
@@ -74,9 +74,9 @@ void setup()
     buf[i] = wsprEncoder.GetToneValForSymbol(i);
   }
 
-  Serial.println("Buffer:");
+  @fix@Serial.println("Buffer:");
   StreamBlob(Serial, buf, 162, 1, 1);
-  Serial.println();
+  @fix@Serial.println();
 }
 
 void loop()
@@ -87,7 +87,7 @@ void loop()
     delay(50);   // delay to debounce
     if (digitalRead(BUTTON) == LOW)
     {
-        Serial.println("Encoding");
+        @fix@Serial.println("Encoding");
         
       Transmit();
       

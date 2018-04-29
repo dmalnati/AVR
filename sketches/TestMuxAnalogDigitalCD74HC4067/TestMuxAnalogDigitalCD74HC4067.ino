@@ -23,8 +23,8 @@ static MuxAnalogDigitalCD74HC4067 mux(PIN_BIT_0,
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     PinInputAnalog *piaList[] = { &pia1, &pia2 };
 
@@ -38,11 +38,11 @@ void setup()
         });
 
         pia->SetCallback([=](uint16_t val){
-            Serial.print("channel: ");
-            Serial.print(channel);
-            Serial.print(", val: ");
-            Serial.print(val);
-            Serial.println();
+            @fix@Serial.print("channel: ");
+            @fix@Serial.print(channel);
+            @fix@Serial.print(", val: ");
+            @fix@Serial.print(val);
+            @fix@Serial.println();
         });
         
         ++channel;

@@ -8,8 +8,8 @@ RFLink_Raw rfr_;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     uint8_t buf[20] = { '\0' };
     
@@ -21,8 +21,8 @@ void setup()
     {
         ++seqNo;
         
-        Serial.print("Sending: ");
-        Serial.println(seqNo);
+        @fix@Serial.print("Sending: ");
+        @fix@Serial.println(seqNo);
         
         ltoa(seqNo, (char *)buf, 10);
         

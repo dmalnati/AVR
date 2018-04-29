@@ -1,6 +1,6 @@
 #include "Evm.h"
 
-#include "MIDICommandFromSerial.h"
+#include "MIDICommandFrom@fix@Serial.h"
 
 
 class Test
@@ -8,9 +8,9 @@ class Test
 public:
     void Start()
     {
-        Serial.begin(31250);
+        @fix@Serial.begin(31250);
 
-        Serial.println("Starting");
+        @fix@Serial.println("Starting");
 
         // Set up callbacks
         mcfs_.SetCallbackOnMIDICommand([this](MIDICommand c){
@@ -28,12 +28,12 @@ private:
 
     void OnMIDICommand(MIDICommand c)
     {
-        Serial.print("MIDICommand: ");
-        Serial.print("type(");    Serial.print((uint8_t)c.type); Serial.print("), ");
-        Serial.print("channel("); Serial.print(c.channel);       Serial.print("), ");
-        Serial.print("param1(");  Serial.print(c.param1);        Serial.print("), ");
-        Serial.print("param2(");  Serial.print(c.param2);        Serial.print(")");
-        Serial.println();
+        @fix@Serial.print("MIDICommand: ");
+        @fix@Serial.print("type(");    @fix@Serial.print((uint8_t)c.type); @fix@Serial.print("), ");
+        @fix@Serial.print("channel("); @fix@Serial.print(c.channel);       @fix@Serial.print("), ");
+        @fix@Serial.print("param1(");  @fix@Serial.print(c.param1);        @fix@Serial.print("), ");
+        @fix@Serial.print("param2(");  @fix@Serial.print(c.param2);        @fix@Serial.print(")");
+        @fix@Serial.println();
     }
 
     Evm::Instance<10,10,10> evm_;

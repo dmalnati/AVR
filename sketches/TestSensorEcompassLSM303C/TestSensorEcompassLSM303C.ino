@@ -13,40 +13,40 @@ static SensorEcompassLSM303C sensor;
 
 void PrintMeasurement(SensorEcompassLSM303C::Measurement m)
 {
-    Serial.print("accelX: ");
-    Serial.print(m.accelX);
-    Serial.println();
+    @fix@Serial.print("accelX: ");
+    @fix@Serial.print(m.accelX);
+    @fix@Serial.println();
 
-    Serial.print("accelY: ");
-    Serial.print(m.accelY);
-    Serial.println();
+    @fix@Serial.print("accelY: ");
+    @fix@Serial.print(m.accelY);
+    @fix@Serial.println();
     
-    Serial.print("accelZ: ");
-    Serial.print(m.accelZ);
-    Serial.println();
+    @fix@Serial.print("accelZ: ");
+    @fix@Serial.print(m.accelZ);
+    @fix@Serial.println();
     
-    Serial.print("magX: ");
-    Serial.print(m.magX);
-    Serial.println();
+    @fix@Serial.print("magX: ");
+    @fix@Serial.print(m.magX);
+    @fix@Serial.println();
 
-    Serial.print("magY: ");
-    Serial.print(m.magY);
-    Serial.println();
+    @fix@Serial.print("magY: ");
+    @fix@Serial.print(m.magY);
+    @fix@Serial.println();
 
-    Serial.print("magZ: ");
-    Serial.print(m.magZ);
-    Serial.println();
+    @fix@Serial.print("magZ: ");
+    @fix@Serial.print(m.magZ);
+    @fix@Serial.println();
     
-    Serial.print("tempF: ");
-    Serial.print(m.tempF);
-    Serial.println();
+    @fix@Serial.print("tempF: ");
+    @fix@Serial.print(m.tempF);
+    @fix@Serial.println();
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     sensor.Init();
     

@@ -12,19 +12,19 @@ RFLink_Raw rfr_;
 
 void OnMsgRcv(uint8_t *buf, uint8_t bufLen)
 {
-    Serial.print("Recvd ");
-    Serial.print(bufLen);
-    Serial.println();
+    @fix@Serial.print("Recvd ");
+    @fix@Serial.print(bufLen);
+    @fix@Serial.println();
 
     StreamBlob(Serial, buf, bufLen, 1, 1);
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     rfr_.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufLen){ OnMsgRcv(buf, bufLen); });
     rfr_.Init(PIN_RX, -1);

@@ -31,9 +31,9 @@ public:
 
     void Start()
     {
-        Serial.begin(9600);
+        @fix@Serial.begin(9600);
 
-        Serial.println("Starting");
+        @fix@Serial.println("Starting");
         
         // Register callbacks for changes in analog value
         pia_.SetCallback([this](uint16_t val){
@@ -73,8 +73,8 @@ private:
         uint16_t frequency =
             FREQ_LOW + ((FREQ_HIGH - FREQ_LOW) * ((double)val / 1023.0));
 
-        Serial.print("val: "); Serial.print(val);
-        Serial.print("-> frequency: "); Serial.println(frequency);
+        @fix@Serial.print("val: "); @fix@Serial.print(val);
+        @fix@Serial.print("-> frequency: "); @fix@Serial.println(frequency);
 
         //sv_.SetFrequency(frequency);
         sv_.StartNote(frequency, TONE_DURATION_MS);

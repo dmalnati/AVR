@@ -12,7 +12,7 @@ static ServoControllerSerialIface<ServoController> scsi(sc, Serial);
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     scsi.Init();
 

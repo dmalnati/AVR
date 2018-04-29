@@ -22,7 +22,7 @@ static void MoveX(uint16_t val)
 {
     uint8_t deg = (double)val * 180.0 / 1023.0;
 
-    Serial.print("MoveX to "); Serial.println(deg);
+    @fix@Serial.print("MoveX to "); @fix@Serial.println(deg);
     scX.MoveTo(deg);
 }
 
@@ -30,7 +30,7 @@ static void MoveY(uint16_t val)
 {
     uint8_t deg = (double)((1023 - val) + 512) * 180.0 / 1023.0;
 
-    Serial.print("MoveY to "); Serial.println(deg);
+    @fix@Serial.print("MoveY to "); @fix@Serial.println(deg);
     scY.MoveTo(deg);
     
     if (0 && val >= 450)
@@ -39,7 +39,7 @@ static void MoveY(uint16_t val)
         uint8_t deg = (double)((1023 - val) + 450) * 180.0 / 1023.0;
         //uint8_t deg = (double)val * 180.0 / 1023.0;
 
-        Serial.print("MoveY to "); Serial.println(deg);
+        @fix@Serial.print("MoveY to "); @fix@Serial.println(deg);
         scY.MoveTo(deg);
     }
 }
@@ -47,23 +47,23 @@ static void MoveY(uint16_t val)
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     sco1.Init();
 
-    Serial.println("before piaX");
+    @fix@Serial.println("before piaX");
     piaX.SetCallback([](uint16_t val) { MoveX(val); });
     piaX.Enable();
 
 
-    Serial.println("before piaY");
+    @fix@Serial.println("before piaY");
     piaY.SetCallback([](uint16_t val) { MoveY(val); });
     piaY.Enable();
 
     scY.SetModeInverted();
     
 
-    Serial.println("before MainLoop");
+    @fix@Serial.println("before MainLoop");
     evm.MainLoop();
 }
 

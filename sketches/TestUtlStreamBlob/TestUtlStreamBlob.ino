@@ -12,51 +12,51 @@ void setup()
         blob[i] = (uint8_t)i;
     }
 
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 }
 
 
 void ShowHexOnly()
 {
-    Serial.println("=== HEX ONLY ===");
+    @fix@Serial.println("=== HEX ONLY ===");
     Show(0, 1);
 }
 
 void ShowBinOnly()
 {
-    Serial.println("=== BINARY ONLY ===");
+    @fix@Serial.println("=== BINARY ONLY ===");
     Show(1, 0);
 }
 
 void ShowBoth()
 {
-    Serial.println("=== HEX AND BINARY ===");
+    @fix@Serial.println("=== HEX AND BINARY ===");
     Show(1, 1);
 }
 
 void ShowNeither()
 {
-    Serial.println("=== NEITHER HEX NOR BINARY ===");
+    @fix@Serial.println("=== NEITHER HEX NOR BINARY ===");
     Show(0, 0);
 }
 
 void Show(uint8_t showBin, uint8_t showHex)
 {
-    Serial.println("str6");
+    @fix@Serial.println("str6");
     StreamBlob(Serial, (uint8_t *)str6, strlen(str6), showBin, showHex);
-    Serial.println();
+    @fix@Serial.println();
 
-    Serial.println("str8");
+    @fix@Serial.println("str8");
     StreamBlob(Serial, (uint8_t *)str8, strlen(str8), showBin, showHex);
-    Serial.println();
+    @fix@Serial.println();
 
-    Serial.println("str9");
+    @fix@Serial.println("str9");
     StreamBlob(Serial, (uint8_t *)str9, strlen(str9), showBin, showHex);
-    Serial.println();
+    @fix@Serial.println();
 
-    Serial.println("Blob of every byte value");
+    @fix@Serial.println("Blob of every byte value");
     StreamBlob(Serial, (uint8_t *)&blob, sizeof(blob), showBin, showHex);
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void loop()

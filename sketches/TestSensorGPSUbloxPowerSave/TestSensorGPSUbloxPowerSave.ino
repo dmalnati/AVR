@@ -1,7 +1,7 @@
 #include "Evm.h"
-#include "SoftwareSerial.h"
+#include "Software@fix@Serial.h"
 #include "SensorGPSUblox.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "UtlStreamBlob.h"
 
 
@@ -39,10 +39,10 @@ struct ParsedMessage
 
 void PrintMessage(ParsedMessage msg)
 {
-    Serial.print(F("msgClass: 0x")); Serial.println(msg.msgClass, HEX);
-    Serial.print(F("msgId   : 0x")); Serial.println(msg.msgId, HEX);
-    Serial.print(F("msglen  : ")); Serial.println(msg.len);
-    Serial.print(F("bufLen  : ")); Serial.println(msg.bufLen);
+    @fix@Serial.print(F("msgClass: 0x")); @fix@Serial.println(msg.msgClass, HEX);
+    @fix@Serial.print(F("msgId   : 0x")); @fix@Serial.println(msg.msgId, HEX);
+    @fix@Serial.print(F("msglen  : ")); @fix@Serial.println(msg.len);
+    @fix@Serial.print(F("bufLen  : ")); @fix@Serial.println(msg.bufLen);
     StreamBlob(Serial, msg.buf, msg.bufLen, 1, 1);
 }
 
@@ -81,13 +81,13 @@ uint8_t GetMessage(ParsedMessage &msg)
     {
         if (ss.available())
         {
-            //Serial.println(F("Available"));
+            //@fix@Serial.println(F("Available"));
             
             uint8_t b = (uint8_t)ss.read();
 
             if (state == State::LOOKING_FOR_HEADER)
             {
-                //Serial.println(F("LOOKING_FOR_HEADER"));
+                //@fix@Serial.println(F("LOOKING_FOR_HEADER"));
                 
                 // store this byte
                 ubxInBuf[idx] = b;
@@ -109,7 +109,7 @@ uint8_t GetMessage(ParsedMessage &msg)
                     }
                     else
                     {
-                        //Serial.print(F("    discarding ")); Serial.println(ubxInBuf[0], HEX);
+                        //@fix@Serial.print(F("    discarding ")); @fix@Serial.println(ubxInBuf[0], HEX);
                         
                         // nope, maybe the last byte that came in is the start,
                         // shift it to the start and carry on
@@ -120,33 +120,33 @@ uint8_t GetMessage(ParsedMessage &msg)
             }
             else if (state == State::LOOKING_FOR_CLASS)
             {
-                //Serial.println(F("LOOKING_FOR_CLASS"));
+                //@fix@Serial.println(F("LOOKING_FOR_CLASS"));
 
                 ubxInBuf[idx] = b;
                 ++idx;
                 
                 msgClass = b;
 
-                //Serial.print(F("    class: "));  Serial.println(b, HEX);
+                //@fix@Serial.print(F("    class: "));  @fix@Serial.println(b, HEX);
 
                 state = State::LOOKING_FOR_ID;
             }
             else if (state == State::LOOKING_FOR_ID)
             {
-                //Serial.println("LOOKING_FOR_ID");
+                //@fix@Serial.println("LOOKING_FOR_ID");
 
                 ubxInBuf[idx] = b;
                 ++idx;
                 
                 msgId = b;
 
-                //Serial.print(F("    id: "));  Serial.println(b, HEX);
+                //@fix@Serial.print(F("    id: "));  @fix@Serial.println(b, HEX);
 
                 state = State::LOOKING_FOR_LEN;
             }
             else if (state == State::LOOKING_FOR_LEN)
             {
-                //Serial.println(F("LOOKING_FOR_LEN"));
+                //@fix@Serial.println(F("LOOKING_FOR_LEN"));
                 
                 ubxInBuf[idx] = b;
                 ++idx;
@@ -163,8 +163,8 @@ uint8_t GetMessage(ParsedMessage &msg)
 
                     len = PAL.ntohs(lenBigEndian);
 
-                    //Serial.print(F("    lenBigEndian: "));  Serial.println(lenBigEndian);
-                    //Serial.print(F("    len         : "));  Serial.println(len);
+                    //@fix@Serial.print(F("    lenBigEndian: "));  @fix@Serial.println(lenBigEndian);
+                    //@fix@Serial.print(F("    len         : "));  @fix@Serial.println(len);
 
                     // length does not include the header, class, id, length, or checksum fields.
                     if (idx + len + 2 <= UBX_IN_BUF_SIZE)
@@ -178,7 +178,7 @@ uint8_t GetMessage(ParsedMessage &msg)
                         // Can't fit
                         cont = 0;
 
-                        //Serial.println(F("Message too large"));
+                        //@fix@Serial.println(F("Message too large"));
                     }
                 }
                 else
@@ -188,7 +188,7 @@ uint8_t GetMessage(ParsedMessage &msg)
             }
             else if (state == State::LOOKING_FOR_CHECKSUM)
             {
-                //Serial.println(F("LOOKING_FOR_CHECKSUM"));
+                //@fix@Serial.println(F("LOOKING_FOR_CHECKSUM"));
                 
                 ubxInBuf[idx] = b;
                 ++idx;
@@ -219,8 +219,8 @@ uint8_t GetMessage(ParsedMessage &msg)
                     uint8_t msgCkA = ubxInBuf[idxChecksumStart + 0];
                     uint8_t msgCkB = ubxInBuf[idxChecksumStart + 1];
 
-                    //Serial.print("ckA, ckB: ");       Serial.print(ckA);    Serial.print(" "); Serial.print(ckB);    Serial.println();
-                    //Serial.print("msgCkA, msgCkB: "); Serial.print(msgCkA); Serial.print(" "); Serial.print(msgCkB); Serial.println();
+                    //@fix@Serial.print("ckA, ckB: ");       @fix@Serial.print(ckA);    @fix@Serial.print(" "); @fix@Serial.print(ckB);    @fix@Serial.println();
+                    //@fix@Serial.print("msgCkA, msgCkB: "); @fix@Serial.print(msgCkA); @fix@Serial.print(" "); @fix@Serial.print(msgCkB); @fix@Serial.println();
 
                     //StreamBlob(Serial, ubxInBuf, UBX_IN_BUF_SIZE, 1, 1);
                     bufLen = idxStopAt;
@@ -232,7 +232,7 @@ uint8_t GetMessage(ParsedMessage &msg)
                     }
                     else
                     {
-                        //Serial.println(F("Checksum failed"));
+                        //@fix@Serial.println(F("Checksum failed"));
                         msg.failReason = "Checksum failed";
                     }
 
@@ -254,7 +254,7 @@ uint8_t GetMessage(ParsedMessage &msg)
         {
             cont = 0;
 
-            //Serial.println(F("Too many attempts, giving up"));
+            //@fix@Serial.println(F("Too many attempts, giving up"));
             msg.failReason = "Too many attempts";
         }
     }
@@ -281,12 +281,12 @@ uint8_t GetMessageOrErr(uint8_t printMessage = 1)
     
     ParsedMessage msg;
 
-    Serial.print(F("Waiting for msg... "));
+    @fix@Serial.print(F("Waiting for msg... "));
     if (GetMessage(msg))
     {
         retVal = 1;
         
-        Serial.println("YES");
+        @fix@Serial.println("YES");
 
         if (printMessage)
         {
@@ -295,19 +295,19 @@ uint8_t GetMessageOrErr(uint8_t printMessage = 1)
     }
     else
     {
-        Serial.print("NO - ");
-        Serial.print(msg.failReason);
-        Serial.println();
+        @fix@Serial.print("NO - ");
+        @fix@Serial.print(msg.failReason);
+        @fix@Serial.println();
     }
-    Serial.println();
+    @fix@Serial.println();
 
     return retVal;
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     gps.Init();
     gps.SetHighAltitudeMode();
@@ -322,7 +322,7 @@ void setup()
         {
             uint32_t intervalMs = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Setting interval to "));  Serial.println(intervalMs);
+            @fix@Serial.print(F("Setting interval to "));  @fix@Serial.println(intervalMs);
             
             gps.SetMessageInterval(intervalMs);
             
@@ -356,11 +356,11 @@ void setup()
             else if (!strcmp(resetModeStr, "controlled_gps_up"))   { resetMode = 0x09; }
         }
 
-        Serial.print(F("Resetting resetType: "));
-        Serial.print(resetType);
-        Serial.print(F(", resetMode: "));
-        Serial.print(resetMode);
-        Serial.println();
+        @fix@Serial.print(F("Resetting resetType: "));
+        @fix@Serial.print(resetType);
+        @fix@Serial.print(F(", resetMode: "));
+        @fix@Serial.print(resetMode);
+        @fix@Serial.println();
 
         // Fill out UBX Message
         ubxMsg.Reset();
@@ -403,7 +403,7 @@ void setup()
         {
             ++count;
         }
-        Serial.print(F("Got ")); Serial.print(count); Serial.println(F(" AID-ALM responses"));
+        @fix@Serial.print(F("Got ")); @fix@Serial.print(count); @fix@Serial.println(F(" AID-ALM responses"));
     });
 
     shell.RegisterCommand("eph", [](char *) {
@@ -426,7 +426,7 @@ void setup()
         {
             ++count;
         }
-        Serial.print(F("Got ")); Serial.print(count); Serial.println(F(" AID-EPH responses"));
+        @fix@Serial.print(F("Got ")); @fix@Serial.print(count); @fix@Serial.println(F(" AID-EPH responses"));
     });
 
     
@@ -469,7 +469,7 @@ void setup()
 
     
     shell.RegisterCommand("log-info", [](char *) {
-        Serial.println(F("LOG-INFO (0x21 0x08)"));
+        @fix@Serial.println(F("LOG-INFO (0x21 0x08)"));
         
         ubxMsg.Reset();
 
@@ -500,7 +500,7 @@ void setup()
 
     // turns out this doesn't work on my NEO-6M, but does on NEO-7M
     shell.RegisterCommand("noglonass", [](char *) {
-        Serial.println(F("Disabling GLONASS"));
+        @fix@Serial.println(F("Disabling GLONASS"));
         // Disable GLONASS mode
         // (CFG-GNSS 0x06 0x3E)
         static uint8_t disable_glonass[20] = {0xB5, 0x62, 0x06, 0x3E, 0x0C, 0x00, 0x00, 0x00, 0x20, 0x01, 0x06, 0x08, 0x0E, 0x00, 0x00, 0x00, 0x01, 0x01, 0x8F, 0xB2};
@@ -512,7 +512,7 @@ void setup()
 
 
     shell.RegisterCommand("gpsonly", [](char *) {
-        Serial.println(F("Enabling GPS only"));
+        @fix@Serial.println(F("Enabling GPS only"));
         // Enable power saving
         uint8_t setGPSonly[28] = {0xB5, 0x62, 0x6, 0x3E, 0x14, 0x0, 0x0, 0x0, 0xFF, 0x2, 0x0, 0x8, 0xFF, 0x0, 0x1, 0x0, 0x1, 0x0, 0x6, 0x8, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x6F, 0xCC};
 
@@ -548,7 +548,7 @@ void setup()
     });
 
     shell.RegisterCommand("lowpower", [](char *) {
-        Serial.println(F("Enabling power save"));
+        @fix@Serial.println(F("Enabling power save"));
 
         // CFG-RXM (0x06 0x11)
         uint8_t enable_powersave[10] = {0xB5, 0x62, 0x06, 0x11, 0x02, 0x00, 0x08, 0x01, 0x22, 0x92};
@@ -559,7 +559,7 @@ void setup()
     });
 
     shell.RegisterCommand("cfg-gnss", [](char *) {
-        Serial.println(F("CFG-GNSS (0x06 0x3E)"));
+        @fix@Serial.println(F("CFG-GNSS (0x06 0x3E)"));
 
         ubxMsg.Reset();
         
@@ -626,7 +626,7 @@ void setup()
     });
 
     shell.RegisterCommand("cfg-pm2", [](char *cmdStr) {
-        Serial.println(F("CFG-PM2 (0x06 0x3B)"));
+        @fix@Serial.println(F("CFG-PM2 (0x06 0x3B)"));
  
         // updateEPH     will be enabled
         //
@@ -655,11 +655,11 @@ void setup()
 
         if (mode == 0)
         {
-            Serial.println(F("    ON/OFF"));
+            @fix@Serial.println(F("    ON/OFF"));
         }
         else
         {
-            Serial.println(F("    Cyclic"));
+            @fix@Serial.println(F("    Cyclic"));
         }
         
         
@@ -726,7 +726,7 @@ void setup()
     });
 
     shell.RegisterCommand("cfg-sbas", [](char *) {
-        Serial.println(F("CFG-SBAS (0x06 0x16)"));
+        @fix@Serial.println(F("CFG-SBAS (0x06 0x16)"));
         
         ubxMsg.Reset();
         
@@ -751,7 +751,7 @@ void setup()
     });
 
     shell.RegisterCommand("cfg-rxm", [](char *cmdStr) {
-        Serial.println(F("CFG-RXM (0x06 0x11)"));
+        @fix@Serial.println(F("CFG-RXM (0x06 0x11)"));
 
         ubxMsg.Reset();
 
@@ -772,11 +772,11 @@ void setup()
 
         if (lowPowerMode == 1)
         {
-            Serial.println(F("    Power Save Mode"));
+            @fix@Serial.println(F("    Power Save Mode"));
         }
         else
         {
-            Serial.println(F("    Other Mode"));
+            @fix@Serial.println(F("    Other Mode"));
         }
 
         ubxMsg.AddFieldU1(8);              // reserved1 - always set to 8
@@ -794,7 +794,7 @@ void setup()
 
 
     shell.RegisterCommand("cfg-rxm-poll", [](char *) {
-        Serial.println(F("CFG-RXM (0x06 0x11) POLL"));
+        @fix@Serial.println(F("CFG-RXM (0x06 0x11) POLL"));
 
         ubxMsg.Reset();
 
@@ -817,7 +817,7 @@ void setup()
 
     
     shell.RegisterCommand("rxm-pmreq", [](char *) {
-        Serial.println(F("RXM-PMREQ (0x02 0x41)"));
+        @fix@Serial.println(F("RXM-PMREQ (0x02 0x41)"));
         
         ubxMsg.Reset();
 
@@ -841,10 +841,10 @@ void setup()
     
 
     shell.RegisterErrorHandler([](char *cmdStr) {
-        Serial.print("ERR: Unrecognized \"");
-        Serial.print(cmdStr);
-        Serial.print("\"");
-        Serial.println();
+        @fix@Serial.print("ERR: Unrecognized \"");
+        @fix@Serial.print(cmdStr);
+        @fix@Serial.print("\"");
+        @fix@Serial.println();
     });
 
     shell.Start();

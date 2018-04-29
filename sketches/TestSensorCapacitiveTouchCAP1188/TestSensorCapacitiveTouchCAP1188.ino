@@ -10,8 +10,8 @@ SensorCapacitiveTouchCAP1188 cap(ADDR);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     Pin dbg(14, LOW);
 
@@ -21,7 +21,7 @@ void setup()
     
     while (1)
     {
-        //Serial.println("Checking");
+        //@fix@Serial.println("Checking");
 
         PAL.DigitalToggle(dbg);
         uint8_t touched = cap.GetTouched();
@@ -33,14 +33,14 @@ void setup()
             {
                 if ((touched << i) & 0x80)
                 {
-                    Serial.print(i);
+                    @fix@Serial.print(i);
                 }
                 else
                 {
-                    Serial.print(" ");
+                    @fix@Serial.print(" ");
                 }
             }
-            Serial.println();
+            @fix@Serial.println();
         }
 
         touchedLast = touched;

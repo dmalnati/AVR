@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "StrFormat.h"
 
 
@@ -10,8 +10,8 @@ static SerialAsyncConsoleEnhanced<10>  console;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     console.RegisterCommand("test", [](char *cmdStr){
         Str str(cmdStr);
@@ -20,14 +20,14 @@ void setup()
         {
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Testing: ")); Serial.println(val);
+            @fix@Serial.print(F("Testing: ")); @fix@Serial.println(val);
 
             char buf[3];
             buf[2] = '\0';
             
             U32ToStrPadLeft(buf, val, 2, '0');
 
-            Serial.print(F("Result: ")); Serial.println(buf);
+            @fix@Serial.print(F("Result: ")); @fix@Serial.println(buf);
         }
     });
 

@@ -1,6 +1,6 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 static Evm::Instance<10,10,10> evm;
@@ -10,8 +10,8 @@ static SerialAsyncConsoleEnhanced<10>  console;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     PAL.Delay(20);
 
     console.RegisterCommand("ping", [](char *cmdStr){
@@ -20,15 +20,15 @@ void setup()
         if (str.TokenCount(' ') == 2)
         {
             uint32_t delayMs  = atol(str.TokenAtIdx(1, ' '));
-            Serial.print("ok ");
-            Serial.println(delayMs);
+            @fix@Serial.print("ok ");
+            @fix@Serial.println(delayMs);
             PAL.Delay(50);
 
             console.Stop();
 
             ted.SetCallback([delayMs](){
-                Serial.print("pong ");
-                Serial.println(delayMs);
+                @fix@Serial.print("pong ");
+                @fix@Serial.println(delayMs);
                 PAL.Delay(50);
 
                 console.Start();

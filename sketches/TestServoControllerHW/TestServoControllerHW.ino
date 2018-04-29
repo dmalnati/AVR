@@ -14,7 +14,7 @@ static ServoControllerHW              &sc2B = sco2.GetServoControllerHWB(); // p
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     sco1.Init();
     sco2.Init();

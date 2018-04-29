@@ -15,9 +15,9 @@ public:
 
     void Start()
     {
-        Serial.begin(9600);
+        @fix@Serial.begin(9600);
 
-        Serial.println("Starting");
+        @fix@Serial.println("Starting");
 
         // Start up serial controller
         ssi_.Init();

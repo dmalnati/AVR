@@ -1,17 +1,17 @@
 #include "StreamWindow.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 void Print(StreamWindow<char> &sw)
 {
-    Serial.print("Cap : "); Serial.println(sw.Capacity());
-    Serial.print("Size: "); Serial.println(sw.Size());
+    @fix@Serial.print("Cap : "); @fix@Serial.println(sw.Capacity());
+    @fix@Serial.print("Size: "); @fix@Serial.println(sw.Size());
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     //
     // Here we're going to:
@@ -30,11 +30,11 @@ void setup()
 
     StreamWindow<char> sw(buf, BUF_SIZE - 1, '\0');
 
-    Serial.print("Buf size: "); Serial.println(BUF_SIZE);
-    Serial.print("  buf: \""); Serial.print(buf); Serial.println("\"");
-    Serial.println("Initial StreamWindow:");
+    @fix@Serial.print("Buf size: "); @fix@Serial.println(BUF_SIZE);
+    @fix@Serial.print("  buf: \""); @fix@Serial.print(buf); @fix@Serial.println("\"");
+    @fix@Serial.println("Initial StreamWindow:");
     Print(sw);
-    Serial.println();
+    @fix@Serial.println();
 
 
 
@@ -42,29 +42,29 @@ void setup()
 
     // The "error handler" here is just to catch arbitrary input
     shell.RegisterErrorHandler([&](char *cmdStr){
-        Serial.print("Got: \"");
-        Serial.print(cmdStr);
-        Serial.print("\", len: ");
-        Serial.print(strlen(cmdStr));
-        Serial.println();
+        @fix@Serial.print("Got: \"");
+        @fix@Serial.print(cmdStr);
+        @fix@Serial.print("\", len: ");
+        @fix@Serial.print(strlen(cmdStr));
+        @fix@Serial.println();
 
         for (uint8_t i = 0; i < strlen(cmdStr); ++i)
         {
-            Serial.print("Adding: \""); Serial.print(cmdStr[i]); Serial.println("\"");
+            @fix@Serial.print("Adding: \""); @fix@Serial.print(cmdStr[i]); @fix@Serial.println("\"");
             sw.Append(cmdStr[i]);
             Print(sw);
-            Serial.print("  buf: \""); Serial.print(buf); Serial.println("\"");
-            Serial.println();
+            @fix@Serial.print("  buf: \""); @fix@Serial.print(buf); @fix@Serial.println("\"");
+            @fix@Serial.println();
         }
 
-        Serial.println("Consumed");
+        @fix@Serial.println("Consumed");
     });
 
     shell.RegisterCommand("reset", [&](char *){
-        Serial.println("Resetting");
+        @fix@Serial.println("Resetting");
         sw.Reset();
         Print(sw);
-        Serial.print("  buf: \""); Serial.print(buf); Serial.println("\"");
+        @fix@Serial.print("  buf: \""); @fix@Serial.print(buf); @fix@Serial.println("\"");
     });
 
     

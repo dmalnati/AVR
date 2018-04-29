@@ -13,8 +13,8 @@ static ShiftRegisterOut sro(PIN_CLOCK, PIN_LATCH, PIN_SERIAL);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     Write(1);
 }

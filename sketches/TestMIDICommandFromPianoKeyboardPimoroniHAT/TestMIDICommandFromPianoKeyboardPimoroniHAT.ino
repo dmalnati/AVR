@@ -8,7 +8,7 @@ static MIDICommandFromPianoKeyboardPimoroniHAT hatToMidi;
 
 void setup()
 {
-    Serial.begin(31250);
+    @fix@Serial.begin(31250);
 
     hatToMidi.GetHat().EnableLEDs();
     hatToMidi.Init();

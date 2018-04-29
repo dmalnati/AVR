@@ -97,21 +97,21 @@ void DoReqRep(const char *op, uint8_t req, uint8_t repBufLen)
     uint8_t repBuf[repBufLen];
     memset(repBuf, 0, repBufLen);
     
-    Serial.print(op);
-    Serial.print(": ");
-    Serial.print(req, HEX);
-    Serial.print(" -> [");
-    Serial.print(repBufLen);
-    Serial.print("] ");
+    @fix@Serial.print(op);
+    @fix@Serial.print(": ");
+    @fix@Serial.print(req, HEX);
+    @fix@Serial.print(" -> [");
+    @fix@Serial.print(repBufLen);
+    @fix@Serial.print("] ");
 
     SendAndWaitAndReceive(req, repBuf, repBufLen);
 
     for (uint16_t i = 0; i < repBufLen; ++i)
     {
-        Serial.print(repBuf[i], HEX);
+        @fix@Serial.print(repBuf[i], HEX);
     }
     
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void DoNOP()
@@ -137,8 +137,8 @@ void DoGET_PH_STATUS()
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     
 
@@ -154,8 +154,8 @@ void setup()
 
     while (1)
     {
-        Serial.println();
-        Serial.println("Loop start");
+        @fix@Serial.println();
+        @fix@Serial.println("Loop start");
         
         DoNOP();
         DoPART_INFO();

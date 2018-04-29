@@ -1,35 +1,35 @@
 #include "Str.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 void OnLineReceived(char *line)
 {
-    Serial.print("line before: \""); Serial.print(line); Serial.println("\"");
-    Serial.print("Buffer: "); PrintBuf();
+    @fix@Serial.print("line before: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
+    @fix@Serial.print("Buffer: "); PrintBuf();
 
     char delim = ' ';
 
     {
         Str str(line);
     
-        Serial.print("Length    : "); Serial.println(str.Length());
-        Serial.print("TokenCount: "); Serial.println(str.TokenCount(delim));
-        Serial.print("line pre-iteration: \""); Serial.print(line); Serial.println("\"");
-        Serial.print("Buffer: "); PrintBuf();
+        @fix@Serial.print("Length    : "); @fix@Serial.println(str.Length());
+        @fix@Serial.print("TokenCount: "); @fix@Serial.println(str.TokenCount(delim));
+        @fix@Serial.print("line pre-iteration: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
+        @fix@Serial.print("Buffer: "); PrintBuf();
         for (uint8_t i = 0; i < str.TokenCount(delim); ++i)
         {
-            Serial.print("    [");
-            Serial.print(i);
-            Serial.print("]: \"");
-            Serial.print(str.TokenAtIdx(i, delim));
-            Serial.print("\"");
-            Serial.println();
+            @fix@Serial.print("    [");
+            @fix@Serial.print(i);
+            @fix@Serial.print("]: \"");
+            @fix@Serial.print(str.TokenAtIdx(i, delim));
+            @fix@Serial.print("\"");
+            @fix@Serial.println();
         }
-        Serial.print("line pre-release: \""); Serial.print(line); Serial.println("\"");
+        @fix@Serial.print("line pre-release: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
     }
-    Serial.print("line post-release: \""); Serial.print(line); Serial.println("\"");
-    Serial.print("Buffer: "); PrintBuf();
-    Serial.println();
+    @fix@Serial.print("line post-release: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
+    @fix@Serial.print("Buffer: "); PrintBuf();
+    @fix@Serial.println();
 }
 
 
@@ -42,20 +42,20 @@ void PrintBuf()
     {
         if (buf[i])
         {
-            Serial.print(buf[i]);
+            @fix@Serial.print(buf[i]);
         }
         else
         {
-            Serial.print('.');
+            @fix@Serial.print('.');
         }
     }
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     while (1)
     {   

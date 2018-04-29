@@ -3,7 +3,7 @@
 #include "ModemBell202.h"
 #include "AX25UIMessage.h"
 #include "Str.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "UtlStreamBlob.h"
 
 
@@ -79,7 +79,7 @@ void DoMessageTest()
     
     uint8_t bytesUsed = msg.Finalize();
 
-    Serial.println("Sending");
+    @fix@Serial.println("Sending");
 
     Send(buf, bytesUsed);
 }
@@ -90,9 +90,9 @@ void DoMessageTest()
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
-    Serial.println();
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
+    @fix@Serial.println();
 
 
     // Set up classes
@@ -132,7 +132,7 @@ void setup()
         {
             uint32_t freq = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Setting freq to ")); Serial.println(freq);
+            @fix@Serial.print(F("Setting freq to ")); @fix@Serial.println(freq);
 
             rf.SetFrequency(freq, 1);
         }
@@ -147,7 +147,7 @@ void setup()
         {
             uint32_t dev = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Setting dev to ")); Serial.println(dev);
+            @fix@Serial.print(F("Setting dev to ")); @fix@Serial.println(dev);
 
             rf.SetDeviation(dev, 1);
         }
@@ -193,7 +193,7 @@ void setup()
         {
             uint32_t freq = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Setting freq to ")); Serial.println(freq);
+            @fix@Serial.print(F("Setting freq to ")); @fix@Serial.println(freq);
 
             ma.SetFrequency(freq);
         }
@@ -223,7 +223,7 @@ void setup()
             
             uint8_t highLow = atoi(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Setting mod pin ")); Serial.println(highLow ? F("HIGH") : F("LOW"));
+            @fix@Serial.print(F("Setting mod pin ")); @fix@Serial.println(highLow ? F("HIGH") : F("LOW"));
 
             PAL.PinMode(MODULATION_PIN, OUTPUT);
             PAL.DigitalWrite(MODULATION_PIN, highLow ? HIGH : LOW);
@@ -242,17 +242,17 @@ void setup()
 
 
     shell.RegisterErrorHandler([](char *cmdStr) {
-        Serial.print("ERR: Unrecognized \"");
-        Serial.print(cmdStr);
-        Serial.print("\"");
-        Serial.println();
+        @fix@Serial.print("ERR: Unrecognized \"");
+        @fix@Serial.print(cmdStr);
+        @fix@Serial.print("\"");
+        @fix@Serial.println();
     });
 
 
     // We know we want the modulation pin in a known state.
     // Let's pick low.  Why not.
     modpin((char *)"modpin 0");
-    Serial.println();
+    @fix@Serial.println();
     
     
     while (1)

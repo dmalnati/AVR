@@ -38,18 +38,18 @@ void BuildMessageAscii()
     aprm.SetCommentVoltage(4.723);
 
     
-    Serial.print("Bytes (ASCII Msg): ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.print("Bytes (ASCII Msg): ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     StreamBlob(Serial, (uint8_t *)buf, BUF_SIZE, 1, 1);
 
-    Serial.println();
-    Serial.println();
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
 
 void BuildMessageBinaryEncoded()
@@ -66,24 +66,24 @@ void BuildMessageBinaryEncoded()
     aprm.SetCommentSeqNoBinaryEncoded(15);
 
     
-    Serial.print("Bytes (Binary Msg): ");
-    Serial.print(aprm.GetBytesUsed());
-    Serial.println();
-    Serial.println(buf);
-    Serial.println();
+    @fix@Serial.print("Bytes (Binary Msg): ");
+    @fix@Serial.print(aprm.GetBytesUsed());
+    @fix@Serial.println();
+    @fix@Serial.println(buf);
+    @fix@Serial.println();
 
     StreamBlob(Serial, (uint8_t *)buf, BUF_SIZE, 1, 1);
 
-    Serial.println();
-    Serial.println();
-    Serial.println();
-    Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
+    @fix@Serial.println();
 }
 
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {

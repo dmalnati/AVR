@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "LedBlinker.h"
 
 
@@ -17,8 +17,8 @@ static LedBlinker lbThree(PIN_THREE);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
 
     lbOne.Start();
@@ -72,7 +72,7 @@ void setup()
     });
 
     shell.RegisterErrorHandler([&](char *cmdStr){
-        Serial.print("ERR: \""); Serial.print(cmdStr); Serial.print("\"");
+        @fix@Serial.print("ERR: \""); @fix@Serial.print(cmdStr); @fix@Serial.print("\"");
     });
 
     shell.Start();

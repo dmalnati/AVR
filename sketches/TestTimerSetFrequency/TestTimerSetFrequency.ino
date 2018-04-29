@@ -23,11 +23,11 @@ static TimerInterrupt *t2Ovf = t2.GetTimerOverflowHandler();
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     
     ted.SetCallback([](){
-        Serial.println("Looping again");
+        @fix@Serial.println("Looping again");
         
         TestTimer2SetFrequency();
     });

@@ -9,8 +9,8 @@ TimedEventHandlerDelegate ted3;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     uint32_t count1 = 0;
     uint32_t count2 = 0;
@@ -24,9 +24,9 @@ void setup()
     });
 
     ted3.SetCallback([&](){
-        Serial.print("Count1: "); Serial.println(count1);
+        @fix@Serial.print("Count1: "); @fix@Serial.println(count1);
         count1 = 0;
-        Serial.print("Count2: "); Serial.println(count2);
+        @fix@Serial.print("Count2: "); @fix@Serial.println(count2);
         count2 = 0;
     });
 

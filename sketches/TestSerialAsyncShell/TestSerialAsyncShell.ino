@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 
 static Evm::Instance<10,10,10> evm;
@@ -10,35 +10,35 @@ static TimedEventHandlerDelegate tedStart;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     shell.RegisterCommand("one", [](char *cmdStr){
-        Serial.println(cmdStr);
+        @fix@Serial.println(cmdStr);
     });
 
     shell.RegisterCommand("two", [](char *cmdStr){
-        Serial.println(cmdStr);
+        @fix@Serial.println(cmdStr);
     });
 
     shell.RegisterCommand("start", [](char *){
-        Serial.println("Starting");
+        @fix@Serial.println("Starting");
         shell.Start();
     });
 
     shell.RegisterCommand("stop", [](char *){
-        Serial.println("Stopping, but coming back in a second");
+        @fix@Serial.println("Stopping, but coming back in a second");
         shell.Stop();
 
         tedStart.SetCallback([](){
-            Serial.println("Auto re-starting");
+            @fix@Serial.println("Auto re-starting");
             shell.Start();
         });
         tedStart.RegisterForTimedEvent(1000);
     });
 
     shell.RegisterErrorHandler([&](char *cmdStr){
-        Serial.print("ERR: \""); Serial.print(cmdStr); Serial.print("\"");
+        @fix@Serial.print("ERR: \""); @fix@Serial.print(cmdStr); @fix@Serial.print("\"");
     });
 
     shell.Start();
@@ -47,7 +47,7 @@ void setup()
     uint8_t count = 0;
     ted.SetCallback([&](){
         ++count;
-        Serial.print("ted "); Serial.println(count);
+        @fix@Serial.print("ted "); @fix@Serial.println(count);
     });
     ted.RegisterForTimedEventInterval(1000);
 

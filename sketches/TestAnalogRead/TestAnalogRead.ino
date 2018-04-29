@@ -29,15 +29,15 @@ void ReportAnalogRead(PinState &pinState)
     // decide if value changed
     if (pinState.oldVal != pinState.newVal)
     {
-        Serial.print(pinState.pin);
-        Serial.print(": ");
-        Serial.println(pinState.newVal);
+        @fix@Serial.print(pinState.pin);
+        @fix@Serial.print(": ");
+        @fix@Serial.println(pinState.newVal);
     }
 }
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     while (1)
     {

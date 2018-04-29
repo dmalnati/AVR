@@ -17,7 +17,7 @@ static ModemBell202 *modem;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     // So I can use Serial in the class for debugging...
     ModemBell202 modemReal;
@@ -42,7 +42,7 @@ void DPrint(const char *msg)
     return;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        Serial.println(msg);
+        @fix@Serial.println(msg);
     }
 }
 
@@ -210,9 +210,9 @@ void GetSetUpBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
     
     uint8_t bytesUsed = msg.Finalize();
 
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
-    Serial.println();
+    @fix@Serial.println();
 
     // Fill out return parameters
     *bufRet    = buf;
@@ -239,9 +239,9 @@ void GetSetUpTestBuffer(uint8_t **bufRet, uint8_t *bufLenRet)
     msg.AppendInfo((uint8_t *)info, strlen(info));
     uint8_t bytesUsed = msg.Finalize();
     
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
-    Serial.println();
+    @fix@Serial.println();
 
     // Fill out return parameters
     *bufRet    = buf;
@@ -267,9 +267,9 @@ void GetSetUpTestBuffer2(uint8_t **bufRet, uint8_t *bufLenRet)
     msg.AppendInfo((uint8_t *)info, sizeof(info));
     uint8_t bytesUsed = msg.Finalize();
     
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
-    Serial.println();
+    @fix@Serial.println();
 
     // Fill out return parameters
     *bufRet    = buf;
@@ -295,9 +295,9 @@ void GetSetUpTestBufferMatchAPRSDroid(uint8_t **bufRet, uint8_t *bufLenRet)
     msg.AppendInfo((uint8_t *)info, strlen(info));
     uint8_t bytesUsed = msg.Finalize();
     
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
-    Serial.println();
+    @fix@Serial.println();
 
     // Fill out return parameters
     *bufRet    = buf;

@@ -29,19 +29,19 @@ long readVcc() {
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     while (1)
     {
         uint32_t vccTheirs = readVcc();
         uint32_t vccMine   = PAL.ReadVccMillivolts();
 
-        Serial.print("VCC Theirs: ");
-        Serial.println(vccTheirs);
-        Serial.print("VCC Mine  : ");
-        Serial.println(vccMine);
-        Serial.println();
+        @fix@Serial.print("VCC Theirs: ");
+        @fix@Serial.println(vccTheirs);
+        @fix@Serial.print("VCC Mine  : ");
+        @fix@Serial.println(vccMine);
+        @fix@Serial.println();
 
         PAL.Delay(1000);
     }

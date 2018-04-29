@@ -12,8 +12,8 @@ static const uint32_t DELAY_MS = 3000;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     PAL.Delay(20);
 
     uint8_t count = 1;

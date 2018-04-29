@@ -80,8 +80,8 @@ void SendCombination(uint16_t combo10bit)
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     rf.Init();
     const uint32_t FREQ = 310000000;

@@ -23,7 +23,7 @@ TimedEventHandlerDelegate tedB;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     PAL.PinMode(pinSignalA, OUTPUT);
     PAL.PinMode(pinSignalB, OUTPUT);
@@ -226,32 +226,32 @@ void OnTimeout()
 {
     ++LOOP_COUNT;
     
-    Serial.println("--------------");
-    Serial.print("Loop: ");
-    Serial.println(LOOP_COUNT);
-    Serial.print("PRR: 0x");
-    Serial.println(PRR, HEX);
-    Serial.print("CPU Prescaler: ");
-    Serial.println(PAL.GetCpuPrescalerValue());
-    Serial.print("CPU Frequency: ");
-    Serial.println(PAL.GetCpuFreq());
-    Serial.print("TimerPrescalerValue: ");
-    Serial.println(t.GetTimerPrescalerValue());
-    Serial.print("Timer ticks/sec: ");
-    Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue());
-    Serial.print("Timer ticks/ms: ");
-    Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000.0);
-    Serial.print("Timer ticks/us: ");
-    Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000000.0);
+    @fix@Serial.println("--------------");
+    @fix@Serial.print("Loop: ");
+    @fix@Serial.println(LOOP_COUNT);
+    @fix@Serial.print("PRR: 0x");
+    @fix@Serial.println(PRR, HEX);
+    @fix@Serial.print("CPU Prescaler: ");
+    @fix@Serial.println(PAL.GetCpuPrescalerValue());
+    @fix@Serial.print("CPU Frequency: ");
+    @fix@Serial.println(PAL.GetCpuFreq());
+    @fix@Serial.print("TimerPrescalerValue: ");
+    @fix@Serial.println(t.GetTimerPrescalerValue());
+    @fix@Serial.print("Timer ticks/sec: ");
+    @fix@Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue());
+    @fix@Serial.print("Timer ticks/ms: ");
+    @fix@Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000.0);
+    @fix@Serial.print("Timer ticks/us: ");
+    @fix@Serial.println((double)PAL.GetCpuFreq() / (double)t.GetTimerPrescalerValue() / 1000000.0);
 
     
-    Serial.print("Timer:");
+    @fix@Serial.print("Timer:");
     for (uint8_t i = 0; i < 16; ++i)
     {
-        Serial.print(" ");
-        Serial.print(t.GetTimerValue());
+        @fix@Serial.print(" ");
+        @fix@Serial.print(t.GetTimerValue());
     }
-    Serial.println();
+    @fix@Serial.println();
 
     // capture as fast as possible
     static const uint16_t SAMPLE_COUNT = 16;
@@ -262,13 +262,13 @@ void OnTimeout()
 
         //i -= (i && valList[i] == valList[i - 1]) ? 1 : 0;
     }
-    Serial.print("Timer Capture:");
+    @fix@Serial.print("Timer Capture:");
     for (uint16_t i = 0; i < SAMPLE_COUNT; ++i)
     {
-        Serial.print(" ");
-        Serial.print(valList[i]);
+        @fix@Serial.print(" ");
+        @fix@Serial.print(valList[i]);
     }
-    Serial.println();
+    @fix@Serial.println();
 }
 
 

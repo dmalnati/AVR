@@ -7,8 +7,8 @@
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     while (1)
     {
@@ -20,11 +20,11 @@ void setup()
         PAL.DelaySleep(DELAY_MS);
         uint32_t timeAfterDelaySleep = PAL.Millis();
 
-        Serial.print("Time Start           : "); Serial.println(timeStart);
-        Serial.print("Time After Delay     : "); Serial.println(timeAfterDelay);
-        Serial.print("Time After DelaySleep: "); Serial.println(timeAfterDelaySleep);
+        @fix@Serial.print("Time Start           : "); @fix@Serial.println(timeStart);
+        @fix@Serial.print("Time After Delay     : "); @fix@Serial.println(timeAfterDelay);
+        @fix@Serial.print("Time After DelaySleep: "); @fix@Serial.println(timeAfterDelaySleep);
 
-        Serial.println();
+        @fix@Serial.println();
 
         PAL.Delay(200);
     }

@@ -14,8 +14,8 @@ static ShiftRegisterOutput<SHIFT_REGISTERS> sroo(sr);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     Write(SHIFT_REGISTERS);
 }
@@ -38,11 +38,11 @@ void Write(const uint8_t srCount)
             for (uint8_t i = 0; i < (srCount * 8); ++i)
             {
                 #if 0
-                Serial.print("Pin ");
-                Serial.print(i);
-                Serial.print(", val: ");
-                Serial.print(i % 2 ? toggleVal : !toggleVal);
-                Serial.println();
+                @fix@Serial.print("Pin ");
+                @fix@Serial.print(i);
+                @fix@Serial.print(", val: ");
+                @fix@Serial.print(i % 2 ? toggleVal : !toggleVal);
+                @fix@Serial.println();
                 #endif
                 
                 pinList[i].DigitalWrite(i % 2 ? toggleVal : !toggleVal);

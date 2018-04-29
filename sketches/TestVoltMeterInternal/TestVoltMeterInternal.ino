@@ -28,8 +28,8 @@ long readVcc() {
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     uint32_t low  = 999999;
     uint32_t high = 0;
@@ -48,13 +48,13 @@ void setup()
 
         if ((timeNow - timeStart) >= intervalMs)
         {
-            Serial.print("VCC: ");
-            Serial.print(vcc);
-            Serial.print(", high: ");
-            Serial.print(high);
-            Serial.print(", low: ");
-            Serial.print(low);
-            Serial.println();
+            @fix@Serial.print("VCC: ");
+            @fix@Serial.print(vcc);
+            @fix@Serial.print(", high: ");
+            @fix@Serial.print(high);
+            @fix@Serial.print(", low: ");
+            @fix@Serial.print(low);
+            @fix@Serial.println();
 
             high = 0;
             low  = 999999;

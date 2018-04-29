@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 
 /*
  * Test that interval timers work.
@@ -14,11 +14,11 @@ static TimedEventHandlerDelegate ted;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     ted.SetCallback([&](){
-        Serial.println(PAL.Millis());
+        @fix@Serial.println(PAL.Millis());
     });
 
     console.RegisterCommand("start", [](char *cmdStr){
@@ -28,9 +28,9 @@ void setup()
         {
             uint32_t timeoutMs = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Single timeout(")); Serial.print(PAL.Millis()); Serial.print(F("): "));
-            Serial.print(timeoutMs);
-            Serial.println();
+            @fix@Serial.print(F("Single timeout(")); @fix@Serial.print(PAL.Millis()); @fix@Serial.print(F("): "));
+            @fix@Serial.print(timeoutMs);
+            @fix@Serial.println();
 
             ted.RegisterForTimedEvent(timeoutMs);
         }
@@ -43,9 +43,9 @@ void setup()
         {
             uint32_t timeoutMs = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Interval timeout(")); Serial.print(PAL.Millis()); Serial.print(F("): "));
-            Serial.print(timeoutMs);
-            Serial.println();
+            @fix@Serial.print(F("Interval timeout(")); @fix@Serial.print(PAL.Millis()); @fix@Serial.print(F("): "));
+            @fix@Serial.print(timeoutMs);
+            @fix@Serial.println();
 
             ted.RegisterForTimedEventInterval(timeoutMs);
         }
@@ -54,18 +54,18 @@ void setup()
             uint32_t timeoutMs      = atol(str.TokenAtIdx(1, ' '));
             uint32_t firstTimeoutMs = atol(str.TokenAtIdx(2, ' '));
 
-            Serial.print(F("Interval timeout(")); Serial.print(PAL.Millis()); Serial.print(F("): "));
-            Serial.print(timeoutMs);
-            Serial.print(", ");
-            Serial.print(firstTimeoutMs);
-            Serial.println();
+            @fix@Serial.print(F("Interval timeout(")); @fix@Serial.print(PAL.Millis()); @fix@Serial.print(F("): "));
+            @fix@Serial.print(timeoutMs);
+            @fix@Serial.print(", ");
+            @fix@Serial.print(firstTimeoutMs);
+            @fix@Serial.println();
 
             ted.RegisterForTimedEventInterval(timeoutMs, firstTimeoutMs);
         }
     });
 
     console.RegisterCommand("stop", [](char *cmdStr){
-        Serial.print(F("Stopping (")); Serial.print(PAL.Millis()); Serial.println(")");
+        @fix@Serial.print(F("Stopping (")); @fix@Serial.print(PAL.Millis()); @fix@Serial.println(")");
         ted.DeRegisterForTimedEvent();
     });
 

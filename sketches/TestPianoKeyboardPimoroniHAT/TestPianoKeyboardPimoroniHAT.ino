@@ -8,24 +8,24 @@ PianoKeyboardPimoroniHAT hat;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
-    Serial.println("Starting");
+    @fix@Serial.println("Starting");
     
     hat.SetCallbackOnKeyDown([](uint8_t key){
-        Serial.print("OnKeyDown: "); Serial.println(key);
+        @fix@Serial.print("OnKeyDown: "); @fix@Serial.println(key);
     });
     hat.SetCallbackOnKeyUp([](uint8_t key){
-        Serial.print("OnKeyUp  : "); Serial.println(key);
+        @fix@Serial.print("OnKeyUp  : "); @fix@Serial.println(key);
     });
     hat.SetCallbackOnInstrumentChangeKeyPress([](){
-        Serial.println("OnInstrumentChangeKeyPress");
+        @fix@Serial.println("OnInstrumentChangeKeyPress");
     });
     hat.SetCallbackOnOctaveKeyUpPress([](){
-        Serial.println("OnOctaveKeyUpPress");
+        @fix@Serial.println("OnOctaveKeyUpPress");
     });
     hat.SetCallbackOnOctaveKeyDownPress([](){
-        Serial.println("OnOctaveKeyDownPress");
+        @fix@Serial.println("OnOctaveKeyDownPress");
     });
 
     hat.EnableLEDs();

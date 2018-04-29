@@ -20,8 +20,8 @@ void Blink(uint8_t count = 1, uint32_t delayMs = 500)
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     Blink(5, 100);
 
@@ -33,7 +33,7 @@ void setup()
         
         for (uint32_t delaySleepDurationMs : arr)
         {
-            Serial.print("loop: ");  Serial.println(delaySleepDurationMs);
+            @fix@Serial.print("loop: ");  @fix@Serial.println(delaySleepDurationMs);
             
             Blink(1);
 

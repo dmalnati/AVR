@@ -152,15 +152,15 @@ void set_tx_buffer()
     break;
   }
 
-  Serial.println("Buffer:");
+  @fix@Serial.println("Buffer:");
   StreamBlob(Serial, tx_buffer, 255, 1, 1);
-  Serial.println();
+  @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
   // Initialize the Si5351
   // Change the 2nd parameter in init if using a ref osc other
@@ -245,7 +245,7 @@ void loop()
     delay(50);   // delay to debounce
     if (digitalRead(BUTTON) == LOW)
     {
-        Serial.println("Encoding");
+        @fix@Serial.println("Encoding");
         
       encode();
       delay(50); //delay to avoid extra triggers

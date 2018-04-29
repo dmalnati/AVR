@@ -11,8 +11,8 @@ static ShiftRegisterIn sr(PIN_LOAD, PIN_CLOCK, PIN_CLOCK_ENABLE, PIN_SERIAL);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     ReadAndCompare(2);
 }
@@ -43,7 +43,7 @@ void CompareBits(uint8_t *bufLast, uint8_t *buf, uint8_t bufLen)
 
         if (bitmap != bitmapLast)
         {
-            Serial.print("Byte "); Serial.println(i);
+            @fix@Serial.print("Byte "); @fix@Serial.println(i);
             
             for (uint8_t j = 0; j < 8; ++j)
             {
@@ -52,13 +52,13 @@ void CompareBits(uint8_t *bufLast, uint8_t *buf, uint8_t bufLen)
                 
                 if (bitVal != bitValLast)
                 {
-                    Serial.print("  PISO Pin ");
-                    Serial.print(7 - j);
-                    Serial.print(": changed from ");
-                    Serial.print(bitValLast);
-                    Serial.print(" to ");
-                    Serial.print(bitVal);
-                    Serial.println();
+                    @fix@Serial.print("  PISO Pin ");
+                    @fix@Serial.print(7 - j);
+                    @fix@Serial.print(": changed from ");
+                    @fix@Serial.print(bitValLast);
+                    @fix@Serial.print(" to ");
+                    @fix@Serial.print(bitVal);
+                    @fix@Serial.println();
                 }
             }
         }

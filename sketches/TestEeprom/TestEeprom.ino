@@ -16,14 +16,14 @@ static EepromAccessor<SomeStruct, CAPACITY> ea;
 
 void PrintSomeStruct(SomeStruct &ss)
 {
-    Serial.print("SomeStruct { ");
-    Serial.print(ss.a);
-    Serial.print(", ");
-    Serial.print(ss.b);
-    Serial.print(", ");
-    Serial.print(ss.c);
-    Serial.print(" }");
-    Serial.println();
+    @fix@Serial.print("SomeStruct { ");
+    @fix@Serial.print(ss.a);
+    @fix@Serial.print(", ");
+    @fix@Serial.print(ss.b);
+    @fix@Serial.print(", ");
+    @fix@Serial.print(ss.c);
+    @fix@Serial.print(" }");
+    @fix@Serial.println();
 }
 
 char *ReadLine()
@@ -33,7 +33,7 @@ char *ReadLine()
     const uint8_t BUF_SIZE = 100;
     static char buf[BUF_SIZE] = { 0 };
 
-    uint8_t retValSer = Serial.readBytesUntil('\n', buf, BUF_SIZE);
+    uint8_t retValSer = @fix@Serial.readBytesUntil('\n', buf, BUF_SIZE);
 
     if (retValSer)
     {
@@ -46,11 +46,11 @@ char *ReadLine()
 
 void PrintOk(SomeStruct ss, uint8_t idx, uint8_t ok)
 {
-    if (ok) { Serial.print("OK : ["); }
-    else    { Serial.print("NOK: ["); }
+    if (ok) { @fix@Serial.print("OK : ["); }
+    else    { @fix@Serial.print("NOK: ["); }
     
-    Serial.print(idx);
-    Serial.print("]: ");
+    @fix@Serial.print(idx);
+    @fix@Serial.print("]: ");
     PrintSomeStruct(ss);
 }
 
@@ -71,7 +71,7 @@ void OnLineReceived(char *line)
     {
         uint8_t idx = atoi(&line[2]);
         
-        Serial.print("Reading idx "); Serial.println(idx);
+        @fix@Serial.print("Reading idx "); @fix@Serial.println(idx);
 
         SomeStruct ssTmp;
         
@@ -87,7 +87,7 @@ void OnLineReceived(char *line)
     else if (op == 'w')
     {
         uint8_t idx = atoi(&line[2]);
-        Serial.print("Writing idx "); Serial.println(idx);
+        @fix@Serial.print("Writing idx "); @fix@Serial.println(idx);
 
         uint8_t ok = ea.WriteToIdx(ss, idx);
 
@@ -100,7 +100,7 @@ void OnLineReceived(char *line)
     else if (op == 'd')
     {
         uint8_t idx = atoi(&line[2]);
-        Serial.print("Deleting idx "); Serial.println(idx);
+        @fix@Serial.print("Deleting idx "); @fix@Serial.println(idx);
 
         uint8_t ok = ea.DeleteAtIdx(idx);
 
@@ -113,41 +113,41 @@ void OnLineReceived(char *line)
     else if (op == 'i')
     {
         int8_t incrBy = atoi(&line[2]);
-        Serial.print("Incrementing current buffer by "); Serial.println(incrBy);
+        @fix@Serial.print("Incrementing current buffer by "); @fix@Serial.println(incrBy);
 
-        Serial.print("Before: "); PrintSomeStruct(ss);
+        @fix@Serial.print("Before: "); PrintSomeStruct(ss);
         ss.a += incrBy;
         ss.b += incrBy;
         ss.c += incrBy;
-        Serial.print("After : "); PrintSomeStruct(ss);
+        @fix@Serial.print("After : "); PrintSomeStruct(ss);
     }
     else if (op == 's')
     {
-        Serial.println("Showing current buffer ");
+        @fix@Serial.println("Showing current buffer ");
         PrintSomeStruct(ss);
     }
     else if (op == 'a')
     {
-        Serial.println("Showing complete array ");
+        @fix@Serial.println("Showing complete array ");
 
         for (uint8_t i = 0; i < ea.GetCapacity(); ++i)
         {
             SomeStruct ssTmp;
             uint8_t ok = ea.ReadFromIdx(ssTmp, i, 1);
 
-            Serial.print(ok ? "OK : [" : "NOK: ["); Serial.print(i); Serial.print("]: ");
+            @fix@Serial.print(ok ? "OK : [" : "NOK: ["); @fix@Serial.print(i); @fix@Serial.print("]: ");
             PrintSomeStruct(ssTmp);
         }
     }
 
-    Serial.println();
+    @fix@Serial.println();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
-    Serial.print("Capacity: "); Serial.println(ea.GetCapacity());
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
+    @fix@Serial.print("Capacity: "); @fix@Serial.println(ea.GetCapacity());
 
     ss.a = 0;
     ss.b = 1;

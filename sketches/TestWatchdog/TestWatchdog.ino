@@ -15,12 +15,12 @@ static WatchdogTimeout wt = WatchdogTimeout::TIMEOUT_8000_MS;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println();
-    Serial.println("Starting");
-    Serial.print("Mode: ");
-    Serial.print((uint8_t)PAL.GetStartupMode());
-    Serial.println();
+    @fix@Serial.begin(9600);
+    @fix@Serial.println();
+    @fix@Serial.println("Starting");
+    @fix@Serial.print("Mode: ");
+    @fix@Serial.print((uint8_t)PAL.GetStartupMode());
+    @fix@Serial.println();
 
     PAL.WatchdogEnable(wt);
 
@@ -28,15 +28,15 @@ void setup()
     {
         PAL.WatchdogReset();
         
-        Serial.print("Sleeping for ");
-        Serial.print(ms);
-        Serial.print("ms");
-        Serial.println();
+        @fix@Serial.print("Sleeping for ");
+        @fix@Serial.print(ms);
+        @fix@Serial.print("ms");
+        @fix@Serial.println();
 
         PAL.Delay(ms);
     }
     
-    Serial.println("Looping forever");
+    @fix@Serial.println("Looping forever");
 
     while (1)
     {

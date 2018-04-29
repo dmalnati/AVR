@@ -14,7 +14,7 @@ static AX25UIMessage msg;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
     
     uint8_t *buf     = bufShared;
     uint8_t  bufSize = BUF_SIZE;
@@ -27,7 +27,7 @@ void setup()
 
     msg.SetAddress(addrDst7char, addrSrc7char, addrRepeaterStr);
 
-    Serial.println("Post SetAddress");
+    @fix@Serial.println("Post SetAddress");
     StreamBlob(Serial, buf, bufSize, 1);
 
 
@@ -36,25 +36,25 @@ void setup()
     
     msg.AppendInfo((uint8_t *)info1, strlen(info1));
 
-    Serial.println("Post AppendInfo1");
+    @fix@Serial.println("Post AppendInfo1");
     StreamBlob(Serial, buf, bufSize, 1);
     
     msg.AppendInfo((uint8_t *)info2, strlen(info2));
     
-    Serial.println("Post AppendInfo2");
+    @fix@Serial.println("Post AppendInfo2");
     StreamBlob(Serial, buf, bufSize, 1);
 
 
     uint8_t bytesUsed = msg.Finalize();
-    Serial.print("Post Finalize (");
-    Serial.print(bytesUsed);
-    Serial.print(" bytes used)");
-    Serial.println();
+    @fix@Serial.print("Post Finalize (");
+    @fix@Serial.print(bytesUsed);
+    @fix@Serial.print(" bytes used)");
+    @fix@Serial.println();
 
-    Serial.println("Container buffer");
+    @fix@Serial.println("Container buffer");
     StreamBlob(Serial, buf, bufSize, 1);
 
-    Serial.println("Completed buffer (just the used parts)");
+    @fix@Serial.println("Completed buffer (just the used parts)");
     StreamBlob(Serial, buf, bytesUsed, 1);
 
     

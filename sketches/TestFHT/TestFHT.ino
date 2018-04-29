@@ -11,7 +11,7 @@
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     // Set up ADC
     //TIMSK0 = 0; // turn off timer0 for lower jitter
@@ -52,25 +52,25 @@ void setup()
         uint32_t timeEndProcess = PAL.Micros();
 
         // Send data
-        Serial.print("FHT_N: "); Serial.println(FHT_N);
-        Serial.print("Collect Time: ");  Serial.println(timeEndCollect - timeStart);
-        Serial.print("Process Time: ");  Serial.println(timeEndProcess - timeEndCollect);
-        Serial.print("Total   Time: ");  Serial.println(timeEndProcess - timeStart);
+        @fix@Serial.print("FHT_N: "); @fix@Serial.println(FHT_N);
+        @fix@Serial.print("Collect Time: ");  @fix@Serial.println(timeEndCollect - timeStart);
+        @fix@Serial.print("Process Time: ");  @fix@Serial.println(timeEndProcess - timeEndCollect);
+        @fix@Serial.print("Total   Time: ");  @fix@Serial.println(timeEndProcess - timeStart);
 
         uint32_t perSampleTimeUs = (timeEndCollect - timeStart) / FHT_N;
         uint32_t samplesPerSec   = 1000000 / perSampleTimeUs;
         
-        Serial.print("Per-Sample Time (us): "); Serial.println(perSampleTimeUs);
-        Serial.print("Samples per-sec: "); Serial.println(samplesPerSec);
+        @fix@Serial.print("Per-Sample Time (us): "); @fix@Serial.println(perSampleTimeUs);
+        @fix@Serial.print("Samples per-sec: "); @fix@Serial.println(samplesPerSec);
         for (uint16_t i = 0; i < FHT_N/2; ++i)
         {
-            Serial.print(i);
-            Serial.print(": ");
-            //Serial.println(fht_log_out[i]);
-            Serial.println(fht_lin_out[i]);
-            //Serial.println(fht_lin_out8[i]);
+            @fix@Serial.print(i);
+            @fix@Serial.print(": ");
+            //@fix@Serial.println(fht_log_out[i]);
+            @fix@Serial.println(fht_lin_out[i]);
+            //@fix@Serial.println(fht_lin_out8[i]);
         }
-        Serial.println();
+        @fix@Serial.println();
         
     }
 

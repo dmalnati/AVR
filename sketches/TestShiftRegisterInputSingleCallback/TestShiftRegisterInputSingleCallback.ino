@@ -17,17 +17,17 @@ static ShiftRegisterInputSingleCallback<3> sri(sr);
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
 
     sri.SetCallback([](uint8_t pinLogical, uint8_t logicLevel){
-        Serial.print("Pin ");
-        Serial.print(pinLogical);
-        Serial.print(" changed from ");
-        Serial.print(!logicLevel);
-        Serial.print(" to ");
-        Serial.print(logicLevel);
-        Serial.println();
+        @fix@Serial.print("Pin ");
+        @fix@Serial.print(pinLogical);
+        @fix@Serial.print(" changed from ");
+        @fix@Serial.print(!logicLevel);
+        @fix@Serial.print(" to ");
+        @fix@Serial.print(logicLevel);
+        @fix@Serial.println();
     });
 
     uint8_t forceRefresh = 1;

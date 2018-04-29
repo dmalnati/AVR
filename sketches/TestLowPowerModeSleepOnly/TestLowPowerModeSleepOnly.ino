@@ -7,8 +7,8 @@ static const uint32_t SLEEP_MS = 30000;
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     // Just burn regular CPU on startup so it's easy to spot
     // the difference when going low power

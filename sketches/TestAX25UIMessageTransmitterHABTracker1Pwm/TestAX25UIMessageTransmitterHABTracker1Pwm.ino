@@ -1,5 +1,5 @@
 #include "Evm.h"
-#include "UtlSerial.h"
+#include "Utl@fix@Serial.h"
 #include "RFSI4463PRO.h"
 #include "AX25UIMessageTransmitter.h"
 #include "APRSPositionReportMessageHABTracker1.h"
@@ -66,20 +66,20 @@ void Test()
     amt.SetDelayMsBetweenTransmits(2000);
 
     static uint32_t timeLast = 0;
-    Serial.print("Transmitting - ");
+    @fix@Serial.print("Transmitting - ");
     uint32_t timeNow = PAL.Millis();
     uint32_t timeDiff = timeNow - timeLast;
     timeLast = timeNow;
-    Serial.print(timeDiff);
-    Serial.println(" ms since last");
+    @fix@Serial.print(timeDiff);
+    @fix@Serial.println(" ms since last");
     
     amt.Transmit();
 }
 
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("Starting");
+    @fix@Serial.begin(9600);
+    @fix@Serial.println("Starting");
     
     radio.SetFrequency(144390000);
     radio.Init();
@@ -96,9 +96,9 @@ void setup()
         {
             uint32_t freq = atol(str.TokenAtIdx(1, ' '));
 
-            Serial.print(F("Changing freq to : "));
-            Serial.print(freq);
-            Serial.println();
+            @fix@Serial.print(F("Changing freq to : "));
+            @fix@Serial.print(freq);
+            @fix@Serial.println();
 
             radio.SetFrequency(freq);
         }

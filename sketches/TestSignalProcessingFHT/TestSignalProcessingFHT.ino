@@ -6,7 +6,7 @@ static SignalProcessingFHT fht;
 
 void setup()
 {
-    Serial.begin(9600);
+    @fix@Serial.begin(9600);
 
     Pin pinAnalog(23);
 
@@ -17,15 +17,15 @@ void setup()
         if (fht.GetMeasurement(pinAnalog, &m))
         {
             // Send data
-            Serial.print("valListLen: "); Serial.println(m.valListLen);
+            @fix@Serial.print("valListLen: "); @fix@Serial.println(m.valListLen);
     
             for (uint16_t i = 0; i < m.valListLen/2; ++i)
             {
-                Serial.print(i);
-                Serial.print(": ");
-                Serial.println(m.valList[i]);
+                @fix@Serial.print(i);
+                @fix@Serial.print(": ");
+                @fix@Serial.println(m.valList[i]);
             }
-            Serial.println();
+            @fix@Serial.println();
         }
     }
 }
