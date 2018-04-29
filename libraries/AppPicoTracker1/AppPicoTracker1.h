@@ -2,6 +2,7 @@
 #define __APP_PICO_TRACKER_1_H__
 
 
+#include "Log.h"
 #include "Eeprom.h"
 #include "Evm.h"
 #include "LedBlinker.h"
@@ -57,11 +58,11 @@ public:
     void Run()
     {
         // Init serial and announce startup
-        @fix@Serial.begin(9600);
-        @fix@Serial.println(F("Starting"));
+        LogStart(9600);
+        Log(P("Starting"));
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
-            @fix@Serial.println(F("WDTR"));
+            Log(P("WDTR"));
         }
         
         // Drive GPS power supply pin low, has been seen to float high enough
@@ -141,7 +142,7 @@ private:
         tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(0);
         
         // Handle async events
-        @fix@Serial.println(F("Running"));
+        Log(P("Running"));
         PAL.Delay(1000);
         
         evm_.MainLoopLowPower();
@@ -156,7 +157,7 @@ private:
     void OnWakeAndEvaluateTimeout()
     {
         // Log
-        @fix@Serial.println("\nWake");
+        Log("\nWake");
 
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
@@ -168,7 +169,7 @@ private:
         evm_.LowPowerDisable();
         
         // Start GPS
-        @fix@Serial.println("GPS ON");
+        Log("GPS ON");
         StartGPS();
         
         // Keep track of when GPS started so you can track duration waiting
@@ -207,7 +208,7 @@ private:
         StatsIncrGpsLockWaitSecs((PAL.Millis() - gpsLockWaitStart_) / 1000);
         
         // Turn off GPS
-        @fix@Serial.println("GPS OFF");
+        Log("GPS OFF");
         StopGPS();
         
         // Consult with Geofence to determine details about where we are
@@ -276,13 +277,13 @@ private:
             radio_.SetFrequency(locationDetails.freqAprs);
             
             // Log
-            @fix@Serial.println("TX");
+            Log("TX");
             
             // Send message
             SendMessage();
             
             // Log
-            @fix@Serial.println("TXEND");
+            Log("TXEND");
         }
         else
         {
@@ -301,9 +302,7 @@ private:
         evm_.LowPowerEnable();
         
         // Log
-        @fix@Serial.print("Sleep ");
-        @fix@Serial.println(wakeAndEvaluateMs);
-        PAL.Delay(50);
+        Log("Sleep ", wakeAndEvaluateMs);
     }
     
     

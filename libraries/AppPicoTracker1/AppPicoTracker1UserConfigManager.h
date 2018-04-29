@@ -5,7 +5,7 @@
 #include "PAL.h"
 #include "Eeprom.h"
 #include "Str.h"
-#include "Utl@fix@Serial.h"
+#include "UtlSerial.h"
 
 
 class AppPicoTracker1UserConfigManager
@@ -78,17 +78,17 @@ public:
         }
         else
         {
-            @fix@Serial.print(F("No serial input -- "));
+            LogNNL(P("No serial input -- "));
             
             retVal = ea_.Read(userConfig);
             
             if (retVal)
             {
-                @fix@Serial.println(F("OK: prior config found"));
+                Log(P("OK: prior config found"));
             }
             else
             {
-                @fix@Serial.println(F("ERR: no prior config found"));
+                Log(P("ERR: no prior config found"));
             }
         }
 
@@ -102,7 +102,7 @@ public:
     {
         uint8_t retVal = 0;
         
-        @fix@Serial.println(F("Ground to configure"));
+        Log(P("Ground to configure"));
         PAL.Delay(5000);
         
         // Force pin, which could be floating, and is seen to float and cause,
@@ -116,7 +116,7 @@ public:
         {
             retVal = 1;
             
-            @fix@Serial.println(F("OK: un-ground to continue\n"));
+            Log(P("OK: un-ground to continue\n"));
             
             while (PAL.DigitalRead(PIN_SERIAL_RX) == 0) {}
         }
@@ -128,9 +128,9 @@ public:
         // around with signal transitions.
         // This was seen in testing.
         PAL.Delay(50);
-        while (@fix@Serial.available())
+        while (S0.Available())
         {
-            @fix@Serial.read();
+            S0.Read();
         }
         
         return retVal;
@@ -144,11 +144,11 @@ public:
         
         if (userConfigAcquired)
         {
-            @fix@Serial.println(F("Prior config loaded"));
+            Log(P("Prior config loaded"));
         }
         else
         {
-            @fix@Serial.println(F("No prior config, defaulting"));
+            Log(P("No prior config, defaulting"));
         }
         
         uint8_t firstTime = 1;
@@ -159,15 +159,15 @@ public:
             const uint8_t BUF_SIZE = 100;
             char buf[BUF_SIZE];
             
-            auto strDeviceId                         = PSTR("id");
-            auto strAprsCallsign                     = PSTR("callsign");
-            auto strRadioTransmitCount               = PSTR("transmitCount");
-            auto strRadioDelayMsBetweenTransmits     = PSTR("msBetweenTransmits");
-            auto strGeoLowHighAltitudeFtThreshold    = PSTR("lhAltFtThreshold");
-            auto strGeoHighAltitudeWakeAndEvaluateMs = PSTR("hAlt.wakeAndEvaluateMs");
-            auto strGeoLowAltitudeWakeAndEvaluateMs  = PSTR("lAlt.wakeAndEvaluateMs");
-            auto strGeoLowAltitudeStickyMs           = PSTR("lAlt.stickyMs");
-            auto strGeoDeadZoneWakeAndEvaluateMs     = PSTR("dz.wakeAndEvaluateMs");
+            auto strDeviceId                         = P("id");
+            auto strAprsCallsign                     = P("callsign");
+            auto strRadioTransmitCount               = P("transmitCount");
+            auto strRadioDelayMsBetweenTransmits     = P("msBetweenTransmits");
+            auto strGeoLowHighAltitudeFtThreshold    = P("lhAltFtThreshold");
+            auto strGeoHighAltitudeWakeAndEvaluateMs = P("hAlt.wakeAndEvaluateMs");
+            auto strGeoLowAltitudeWakeAndEvaluateMs  = P("lAlt.wakeAndEvaluateMs");
+            auto strGeoLowAltitudeStickyMs           = P("lAlt.stickyMs");
+            auto strGeoDeadZoneWakeAndEvaluateMs     = P("dz.wakeAndEvaluateMs");
             
             uint8_t strLen = 0;
             if (!firstTime)
@@ -188,7 +188,7 @@ public:
                 {
                     const char *name = str.TokenAtIdx(0, ' ');
                     
-                    if (!strcmp_P(name, PSTR("reset")))
+                    if (!strcmp_P(name, P("reset")))
                     {
                         UserConfig userConfigTmp;
                         
@@ -198,18 +198,18 @@ public:
                         understood = 1;
                         updated    = 1;
                     }
-                    if (!strcmp_P(name, PSTR("delete")))
+                    if (!strcmp_P(name, P("delete")))
                     {
                         // Debug only
                         ea_.Delete();
                         
-                        @fix@Serial.println(F("Deleted"));
-                        @fix@Serial.println();
+                        Log(P("Deleted"));
+                        LogNL();
                         PAL.Delay(100);
                         
                         PAL.SoftReset();
                     }
-                    if (!strcmp_P(name, PSTR("run")))
+                    if (!strcmp_P(name, P("run")))
                     {
                         cont = 0;
                         
@@ -296,36 +296,32 @@ public:
                 
                 if (!understood)
                 {
-                    @fix@Serial.print(F("ERR: "));
-                    @fix@Serial.print('"');
-                    @fix@Serial.print(str.UnsafePtr());
-                    @fix@Serial.println('"');
+                    Log(P("ERR: "), '"', str.UnsafePtr(), '"');
                 }
                 
                 if (updated)
                 {
-                    @fix@Serial.println(F("\nSaved"));
+                    Log(P("\nSaved"));
                     ea_.Write(userConfig);
                     
                     userConfigAcquired = 1;
                     
-                    @fix@Serial.println();
+                    LogNL();
                 }
                 
                 if (updated || firstTime)
                 {
-                    #define TOF(x) ((const __FlashStringHelper *)(x))
-                    @fix@Serial.print(TOF(strDeviceId));                         @fix@Serial.print('['); @fix@Serial.print(UserConfig::DEVICE_ID_LEN); @fix@Serial.print("] = "); @fix@Serial.println(userConfig.device.id);
-                    @fix@Serial.print(TOF(strAprsCallsign));                     @fix@Serial.print('['); @fix@Serial.print(UserConfig::CALLSIGN_LEN); @fix@Serial.print("] = "); @fix@Serial.println(userConfig.aprs.callsign);
-                    @fix@Serial.print(TOF(strRadioTransmitCount));               @fix@Serial.print(" = "); @fix@Serial.println(userConfig.radio.transmitCount);
+                    Log(strDeviceId, '[', UserConfig::DEVICE_ID_LEN, "] = ", userConfig.device.id);
+                    Log(strAprsCallsign, '[', UserConfig::CALLSIGN_LEN, "] = ", userConfig.aprs.callsign);
+                    Log(strRadioTransmitCount, " = ", userConfig.radio.transmitCount);
                     PrintNameAndMs(strRadioDelayMsBetweenTransmits, userConfig.radio.delayMsBetweenTransmits);
-                    @fix@Serial.print(TOF(strGeoLowHighAltitudeFtThreshold));    @fix@Serial.print(" = "); @fix@Serial.println(userConfig.geo.lowHighAltitudeFtThreshold);
+                    Log(strGeoLowHighAltitudeFtThreshold, " = ", userConfig.geo.lowHighAltitudeFtThreshold);
                     PrintNameAndMs(strGeoHighAltitudeWakeAndEvaluateMs, userConfig.geo.highAltitude.wakeAndEvaluateMs);
                     PrintNameAndMs(strGeoLowAltitudeWakeAndEvaluateMs, userConfig.geo.lowAltitude.wakeAndEvaluateMs);
                     PrintNameAndMs(strGeoLowAltitudeStickyMs, userConfig.geo.lowAltitude.stickyMs);
                     PrintNameAndMs(strGeoDeadZoneWakeAndEvaluateMs, userConfig.geo.deadZone.wakeAndEvaluateMs);
                     
-                    @fix@Serial.println();
+                    LogNL();
                 }
                 
                 if (firstTime)
@@ -338,26 +334,20 @@ public:
         return userConfigAcquired;
     }
     
-    static void PrintNameAndMs(const char *name, uint32_t valueMs)
+    static void PrintNameAndMs(PStr name, uint32_t valueMs)
     {
         uint32_t tmp = valueMs;
         
-        @fix@Serial.print(TOF(name));
-        @fix@Serial.print(F(" = "));
-        @fix@Serial.print(valueMs);
+        LogNNL(name, P(" = "), valueMs);
         
         tmp = tmp / 1000;
-        @fix@Serial.print(F(" ("));
-        @fix@Serial.print(tmp);
-        @fix@Serial.print(F("s, "));
+        LogNNL(P(" ("), tmp, P("s, "));
         
         tmp = tmp / 60;
-        @fix@Serial.print(tmp);
-        @fix@Serial.print(F("m, "));
+        LogNNL(tmp, P("m, "));
         
         tmp = tmp / 60;
-        @fix@Serial.print(tmp);
-        @fix@Serial.println(F("h)"));
+        Log(tmp, P("h)"));
     }
     
     
