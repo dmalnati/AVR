@@ -1,8 +1,13 @@
 #include "PAL.h"
 #include "PStr.h"
+#include "LogBlob.h"
 #include "Log.h"
 
 
+void TestBasic()
+{
+    LogNL();
+}
 
 void TestStrings()
 {
@@ -150,12 +155,23 @@ void TestTemplates()
     LogNL();
 }
 
+void TestEnhanced()
+{
+    char buf[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                 "abcdefghijklmnopqrstuvwxyz"
+                 "0123456789";
+
+    LogBlob((uint8_t *)buf, sizeof(buf), 1, 1);
+}
+
+
 void setup()
 {
     LogStart(9600);
 
     while (1)
     {
+        TestBasic();
         TestStrings();
         TestPString();
         TestChars();
@@ -163,6 +179,7 @@ void setup()
         TestSignedInts();
         TestFloatingPoint();
         TestTemplates();
+        TestEnhanced();
 
         LogNL();
 

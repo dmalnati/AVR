@@ -1,15 +1,20 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "UtlStreamBlob.h"
+#ifndef __LOG_BLOB_H__
+#define __LOG_BLOB_H__
 
 
-void StreamBlob(Print    &stream,
-                uint8_t  *buf,
-                uint16_t  bufSize,
-                uint8_t   showBin,
-                uint8_t   showHex)
+#include "Log.h"
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Enhanced
+//
+////////////////////////////////////////////////////////////////////////////////
+
+void LogBlob(uint8_t  *buf,
+             uint16_t  bufSize,
+             uint8_t   showBin = 0,
+             uint8_t   showHex = 1)
 {
     char bufSprintf[9];
     
@@ -21,9 +26,9 @@ void StreamBlob(Print    &stream,
         sprintf(bufSprintf, "%08X", byteCount);
         
         // Print byte start
-        stream.print("0x");
-        stream.print(bufSprintf);
-        stream.print(": ");
+        LogNNL(P("0x"));
+        LogNNL(bufSprintf);
+        LogNNL(P(": "));
         
         // Calculate how many real vs pad bytes to output
         uint8_t realBytes = (byteCount + 8 > bufSize) ?
@@ -39,16 +44,16 @@ void StreamBlob(Print    &stream,
                 uint8_t b = buf[byteCount + i];
                 
                 sprintf(bufSprintf, "%02X", b);
-                stream.print(bufSprintf);
-                stream.print(" ");
+                LogNNL(bufSprintf);
+                LogNNL(' ');
             }
             
             for (uint8_t i = 0; i < padBytes; ++i)
             {
-                stream.print("   ");
+                LogXNNL(' ', 3);
             }
             
-            stream.print("| ");
+            LogNNL(P("| "));
         }
         
         // Print binary
@@ -60,38 +65,38 @@ void StreamBlob(Print    &stream,
                 
                 for (uint8_t j = 0; j < 8; ++j)
                 {
-                    stream.print((b & 0x80) ? 1 : 0);
+                    LogNNL((b & 0x80) ? 1 : 0);
                     
                     b <<= 1;
                 }
                 
-                stream.print(" ");
+                LogNNL(' ');
             }
             
             for (uint8_t i = 0; i < padBytes; ++i)
             {
-                stream.print("         ");
+                LogXNNL(' ', 9);
             }
             
-            stream.print("| ");
+            LogNNL(P("| "));
         }
         
         // Print visible
         for (uint8_t i = 0; i < realBytes; ++i)
         {
-            uint8_t b = buf[byteCount + i];
+            char b = buf[byteCount + i];
             
             if (isprint(b))
             {
-                stream.write(b);
+                LogNNL(b);
             }
             else
             {
-                stream.print('.');
+                LogNNL('.');
             }
         }
 
-        stream.println();
+        LogNL();
         
         // Account for used data
         byteCount += realBytes;
@@ -100,10 +105,7 @@ void StreamBlob(Print    &stream,
 }
 
 
-
-
-
-
+#endif  // __LOG_BLOB_H__
 
 
 
