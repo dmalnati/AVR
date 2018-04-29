@@ -20,6 +20,20 @@ void TestStrings()
     LogNL();
 }
 
+void TestBuffer()
+{
+    Log("Buffer");
+    LogX('-', 25);
+    
+    char buf1[] = "buf1";
+    char buf2[] = "buf2";
+    
+    LogBuf((uint8_t *)buf1, strlen(buf1));
+    LogBufNNL((uint8_t *)buf2, strlen(buf2)); LogNL();
+    
+    LogNL();
+}
+
 void TestPString()
 {
     Log("PString");
@@ -178,6 +192,7 @@ void setup()
     {
         TestBasic();
         TestStrings();
+        TestBuffer();
         TestPString();
         TestChars();
         TestUnsignedInts();
