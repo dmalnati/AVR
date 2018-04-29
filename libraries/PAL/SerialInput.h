@@ -1,5 +1,5 @@
-#ifndef __UTL_SERIAL_H__
-#define __UTL_SERIAL_H__
+#ifndef __SERIAL_INPUT_H__
+#define __SERIAL_INPUT_H__
 
 
 #include "Serial.h"
@@ -493,7 +493,7 @@ private:
 };
 
 
-#endif  // __UTL_SERIAL_H__
+#endif  // __SERIAL_INPUT_H__
 
 
 

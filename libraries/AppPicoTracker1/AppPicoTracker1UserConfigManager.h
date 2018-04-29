@@ -5,7 +5,7 @@
 #include "PAL.h"
 #include "Eeprom.h"
 #include "Str.h"
-#include "UtlSerial.h"
+#include "SerialInput.h"
 
 
 class AppPicoTracker1UserConfigManager

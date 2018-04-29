@@ -1,6 +1,6 @@
 #include "Log.h"
 #include "Str.h"
-#include "UtlSerial.h"
+#include "SerialInput.h"
 
 
 void OnLineReceived(char *line)
