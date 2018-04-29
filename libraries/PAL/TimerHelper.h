@@ -2,6 +2,9 @@
 #define __TIMER_HELPER_H__
 
 
+#include "PAL.h"
+
+
 template <typename TimerClass>
 class TimerHelper
 {
@@ -65,11 +68,11 @@ public:
         }
         
         /*
-        Serial.print("SetOverflowInterruptFrequency: ");
-        Serial.println(frequency);
-        Serial.println("Final best");
+        LogNNL("SetOverflowInterruptFrequency: ");
+        Log(frequency);
+        Log("Final best");
         bestAttempt.Print();
-        Serial.println();  Serial.println();
+        Log();  Log();
         */
         
         // Store the best attempt for use later
@@ -120,20 +123,20 @@ private:
         void Print()
         {
             /*
-            Serial.print("timerPrescalerVal: ");
-            Serial.println(timerPrescalerVal);
-            Serial.print("durationUsSingleTick: ");
-            Serial.println(durationUsSingleTick);
-            Serial.print("tickCountPerRequestedFrequency: ");
-            Serial.println(tickCountPerRequestedFrequency);
-            Serial.print("tickCount: ");
-            Serial.println(tickCount);
-            Serial.print("durationUsUsingTickCount: ");
-            Serial.println(durationUsUsingTickCount);
-            Serial.print("frequencyUsingTickCount: ");
-            Serial.println(frequencyUsingTickCount);
-            Serial.print("error: ");
-            Serial.println(error);
+            LogNNL("timerPrescalerVal: ");
+            Log(timerPrescalerVal);
+            LogNNL("durationUsSingleTick: ");
+            Log(durationUsSingleTick);
+            LogNNL("tickCountPerRequestedFrequency: ");
+            Log(tickCountPerRequestedFrequency);
+            LogNNL("tickCount: ");
+            Log(tickCount);
+            LogNNL("durationUsUsingTickCount: ");
+            Log(durationUsUsingTickCount);
+            LogNNL("frequencyUsingTickCount: ");
+            Log(frequencyUsingTickCount);
+            LogNNL("error: ");
+            Log(error);
             */
         }
     };

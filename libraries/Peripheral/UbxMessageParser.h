@@ -57,7 +57,7 @@ private:
     {
         if (state == State::LOOKING_FOR_HEADER)
         {
-            //Serial.println(F("LOOKING_FOR_HEADER"));
+            //Log(F("LOOKING_FOR_HEADER"));
             
             // store this byte
             buf_[idx] = b;
@@ -79,7 +79,7 @@ private:
                 }
                 else
                 {
-                    //Serial.print(F("    discarding ")); Serial.println(buf_[0], HEX);
+                    //LogNNL(F("    discarding ")); Log(buf_[0], HEX);
                     
                     // nope, maybe the last byte that came in is the start,
                     // shift it to the start and carry on
@@ -90,33 +90,33 @@ private:
         }
         else if (state == State::LOOKING_FOR_CLASS)
         {
-            //Serial.println(F("LOOKING_FOR_CLASS"));
+            //Log(F("LOOKING_FOR_CLASS"));
 
             buf_[idx] = b;
             ++idx;
             
             msgClass = b;
 
-            //Serial.print(F("    class: "));  Serial.println(b, HEX);
+            //LogNNL(F("    class: "));  Log(b, HEX);
 
             state = State::LOOKING_FOR_ID;
         }
         else if (state == State::LOOKING_FOR_ID)
         {
-            //Serial.println("LOOKING_FOR_ID");
+            //Log("LOOKING_FOR_ID");
 
             buf_[idx] = b;
             ++idx;
             
             msgId = b;
 
-            //Serial.print(F("    id: "));  Serial.println(b, HEX);
+            //LogNNL(F("    id: "));  Log(b, HEX);
 
             state = State::LOOKING_FOR_LEN;
         }
         else if (state == State::LOOKING_FOR_LEN)
         {
-            //Serial.println(F("LOOKING_FOR_LEN"));
+            //Log(F("LOOKING_FOR_LEN"));
             
             buf_[idx] = b;
             ++idx;
@@ -133,8 +133,8 @@ private:
 
                 len = PAL.ntohs(lenBigEndian);
 
-                //Serial.print(F("    lenBigEndian: "));  Serial.println(lenBigEndian);
-                //Serial.print(F("    len         : "));  Serial.println(len);
+                //LogNNL(F("    lenBigEndian: "));  Log(lenBigEndian);
+                //LogNNL(F("    len         : "));  Log(len);
 
                 // length does not include the header, class, id, length, or checksum fields.
                 if (idx + len + 2 <= UBX_IN_BUF_SIZE)
@@ -148,7 +148,7 @@ private:
                     // Can't fit
                     cont = 0;
 
-                    //Serial.println(F("Message too large"));
+                    //Log(F("Message too large"));
                 }
             }
             else
@@ -158,7 +158,7 @@ private:
         }
         else if (state == State::LOOKING_FOR_CHECKSUM)
         {
-            //Serial.println(F("LOOKING_FOR_CHECKSUM"));
+            //Log(F("LOOKING_FOR_CHECKSUM"));
             
             buf_[idx] = b;
             ++idx;
@@ -189,8 +189,8 @@ private:
                 uint8_t msgCkA = buf_[idxChecksumStart + 0];
                 uint8_t msgCkB = buf_[idxChecksumStart + 1];
 
-                //Serial.print("ckA, ckB: ");       Serial.print(ckA);    Serial.print(" "); Serial.print(ckB);    Serial.println();
-                //Serial.print("msgCkA, msgCkB: "); Serial.print(msgCkA); Serial.print(" "); Serial.print(msgCkB); Serial.println();
+                //LogNNL("ckA, ckB: ");       LogNNL(ckA);    LogNNL(" "); LogNNL(ckB);    Log();
+                //LogNNL("msgCkA, msgCkB: "); LogNNL(msgCkA); LogNNL(" "); LogNNL(msgCkB); Log();
 
                 //StreamBlob(Serial, buf_, UBX_IN_BUF_SIZE, 1, 1);
                 bufLen = idxStopAt;
@@ -202,7 +202,7 @@ private:
                 }
                 else
                 {
-                    //Serial.println(F("Checksum failed"));
+                    //Log(F("Checksum failed"));
                     msg.failReason = "Checksum failed";
                 }
 

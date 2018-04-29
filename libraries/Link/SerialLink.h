@@ -2,6 +2,7 @@
 #define __SERIAL_LINK_H__
 
 
+#include "Serial.h"
 #include "Function.h"
 #include "TimedEventHandler.h"
 #include "crc.h"
@@ -106,10 +107,10 @@ public:
             hdr->checksum = checksum;
             
             // Send via Serial connection
-            uint8_t lenWritten = Serial.write(bufTx_, sizeof(SerialLinkHeader) + bufSize);
+            S0.Write((bufTx_, sizeof(SerialLinkHeader) + bufSize));
             
             // Success if data fully sent
-            retVal = (lenWritten == (sizeof(SerialLinkHeader) + bufSize));
+            retVal = 1;
         }
         
         return retVal;
@@ -122,10 +123,10 @@ private:
     {
         uint8_t retVal = 0;
         
-        uint8_t cont = Serial.available();
+        uint8_t cont = S0.Available();
         while (cont)
         {
-            uint8_t firstByte = Serial.read();
+            uint8_t firstByte = S0.Read();
             
             if (firstByte == PREAMBLE_BYTE)
             {
@@ -142,7 +143,7 @@ private:
 
             if (cont)
             {
-                cont = Serial.available();
+                cont = S0.Available();
             }
         }
         
@@ -153,9 +154,9 @@ private:
     {
         uint8_t bytesAdded = 0;
         
-        while (Serial.available() && bufRxSize_ != BUF_CAPACITY)
+        while (S0.Available() && bufRxSize_ != BUF_CAPACITY)
         {
-            uint8_t nextByte = Serial.read();
+            uint8_t nextByte = S0.Read();
             
             bufRx_[bufRxSize_] = nextByte;
             ++bufRxSize_;

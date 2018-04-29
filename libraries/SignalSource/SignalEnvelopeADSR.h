@@ -88,13 +88,13 @@ public:
         Reset();
         
         state_ = State::ATTACK;
-        // Serial.println("Attack");
-        // Serial.print("attackDurationMs_ "); Serial.print(attackDurationMs_);
-        // Serial.print("decayDurationMs_ "); Serial.print(decayDurationMs_);
-        // Serial.print("sustainLevelPct_ "); Serial.print(sustainLevelPct_);
-        // Serial.print("sustainLevel_ "); Serial.print(sustainLevel_);
-        // Serial.print("releaseDurationMs_ "); Serial.print(releaseDurationMs_);
-        // Serial.println();
+        // Log("Attack");
+        // LogNNL("attackDurationMs_ "); LogNNL(attackDurationMs_);
+        // LogNNL("decayDurationMs_ "); LogNNL(decayDurationMs_);
+        // LogNNL("sustainLevelPct_ "); LogNNL(sustainLevelPct_);
+        // LogNNL("sustainLevel_ "); LogNNL(sustainLevel_);
+        // LogNNL("releaseDurationMs_ "); LogNNL(releaseDurationMs_);
+        // Log();
     }
     
     void StartRelease()

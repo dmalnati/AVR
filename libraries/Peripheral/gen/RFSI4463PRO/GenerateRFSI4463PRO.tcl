@@ -387,7 +387,7 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
         # Generate code
         gend "void Print(RFSI4463PRO::${name}_REP &val)"
         gend "\{"
-        gend "    Serial.println(F(\"${name}_REP\"));"
+        gend "    Log(F(\"${name}_REP\"));"
         gend ""
 
         set varNameLast ""
@@ -401,12 +401,12 @@ proc GenerateDebugCode { name cmd reqByteDefList repByteDefList } {
                 set varStr [format $formatStr $varName]
 
                 if { $varName != $varNameLast } {
-                    gend "    Serial.print(F(\"${varStr} : \"));"
-                    gend "    Serial.print(val.${varName});"
-                    gend "    Serial.print(F(\" (0x\"));"
-                    gend "    Serial.print(val.${varName}, HEX);"
-                    gend "    Serial.print(F(\")\"));"
-                    gend "    Serial.println();"
+                    gend "    LogNNL(F(\"${varStr} : \"));"
+                    gend "    LogNNL(val.${varName});"
+                    gend "    LogNNL(F(\" (0x\"));"
+                    gend "    LogNNL(val.${varName}, HEX);"
+                    gend "    LogNNL(F(\")\"));"
+                    gend "    Log();"
                 }
 
                 set varNameLast $varName

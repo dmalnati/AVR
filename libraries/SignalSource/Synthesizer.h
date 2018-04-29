@@ -82,13 +82,13 @@ public:
         
         /*
         double usPerLoopWithMargin   = usPerLoop / pctCpuFloat;
-        Serial.print("usPerIsr: ");              Serial.println(usPerIsr);
-        Serial.print("usPerLoop: ");             Serial.println(usPerLoop);
-        Serial.print("usPerLoopAdjusted: ");     Serial.println(usPerLoopAdjusted);
-        Serial.print("loopsPerSec: ");           Serial.println(loopsPerSec);
-        Serial.print("usePctCpu: ");             Serial.println(usePctCpu);
-        Serial.print("loopsPerSecWithMargin: "); Serial.println(loopsPerSecWithMargin);
-        Serial.print("usPerLoopWithMargin: ");   Serial.println(usPerLoopWithMargin);
+        LogNNL("usPerIsr: ");              Log(usPerIsr);
+        LogNNL("usPerLoop: ");             Log(usPerLoop);
+        LogNNL("usPerLoopAdjusted: ");     Log(usPerLoopAdjusted);
+        LogNNL("loopsPerSec: ");           Log(loopsPerSec);
+        LogNNL("usePctCpu: ");             Log(usePctCpu);
+        LogNNL("loopsPerSecWithMargin: "); Log(loopsPerSecWithMargin);
+        LogNNL("usPerLoopWithMargin: ");   Log(usPerLoopWithMargin);
         */
         
         SynthesizerVoiceClass::SetSampleRate(loopsPerSecWithMargin);

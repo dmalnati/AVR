@@ -54,13 +54,13 @@ public:
             static const uint16_t MAX_ADC_VALUE = 1024;
             
             
-            Serial.print("adcVal: ");
-            Serial.println(adcVal);
-            Serial.print("MAX_ADC_VALUE: ");
-            Serial.println(MAX_ADC_VALUE);
+            LogNNL("adcVal: ");
+            LOg(adcVal);
+            LogNNL("MAX_ADC_VALUE: ");
+            Log(MAX_ADC_VALUE);
             double pctConductiveFloat = ((double)adcVal / MAX_ADC_VALUE * 100.0);
-            Serial.print("pctConductiveFloat: ");
-            Serial.println(pctConductiveFloat);
+            LogNNL("pctConductiveFloat: ");
+            Log(pctConductiveFloat);
             
             // Convert to percentage
             m->pctConductive = (uint8_t)((double)adcVal / MAX_ADC_VALUE * 100.0);

@@ -55,13 +55,13 @@ private:
         uint8_t retVal    = 0;
         uint8_t bytesSeen = 0;
         
-        if (cmd && Serial.available())
+        if (cmd && S0.Available())
         {
             uint8_t cont = 1;
             
             while (cont)
             {
-                uint8_t b = Serial.read();
+                uint8_t b = S0.Read();
                 
                 ++bytesSeen;
                 
@@ -75,7 +75,7 @@ private:
                 }
                 else
                 {
-                    if (Serial.available() == 0)
+                    if (S0.Available() == 0)
                     {
                         cont = 0;
                     }

@@ -8,6 +8,7 @@
 
 #include "Function.h"
 #include "Pin.h"
+#include "Log.h"
 
 #include <Arduino.h>
 

@@ -307,6 +307,7 @@ proc Generate { fdOut } {
     P "#define __GEOFENCE_APRS_DATA_H__"
     P ""
     P ""
+    P "#include \"PAL.h\""
     P "#include \"GeofenceAPRSBoundingArea.h\""
     P ""
     P ""
@@ -491,7 +492,7 @@ proc GenerateIfElseChain { { debugOutput 0 } } {
         puts "${prefix} (GeofenceAPRSData::In${name}(latitude, longitude))"
         puts "\{"
         if { $debugOutput } {
-            puts "    Serial.println(F(\"In${name}\"));"
+            puts "    Log(P(\"In${name}\"));"
         }
         puts "\}"
 
