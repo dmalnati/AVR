@@ -8,20 +8,20 @@
 // Not actually used, just needs a concrete instance
 // to be here to safely instantiate any objects (gps)
 // which use the evm behind the scenes.
-Evm::Instance<10,10,10> evm;
+static Evm::Instance<0,5,0> evm;
 
-static const int8_t PIN_GPS_RX = 5;
-static const int8_t PIN_GPS_TX = 6;
+static const int8_t PIN_GPS_RX = 23;
+static const int8_t PIN_GPS_TX = 24;
 static SensorGPSUblox gps(PIN_GPS_RX, PIN_GPS_TX);
 
 static SoftwareSerial &ss = gps.DebugGetSS();
 
-static const uint8_t NUM_COMMANDS = 20;
-static SerialShell<NUM_COMMANDS> shell;
+static const uint8_t NUM_COMMANDS = 16;
+static SerialAsyncConsoleEnhanced<NUM_COMMANDS>  shell;
 
 static UbxMessage<100> ubxMsg;
 
-static const uint8_t UBX_IN_BUF_SIZE = 150;
+static const uint8_t UBX_IN_BUF_SIZE = 50;
 static uint8_t ubxInBuf[UBX_IN_BUF_SIZE] = { 0 };
 
 
@@ -281,7 +281,7 @@ uint8_t GetMessageOrErr(uint8_t printMessage = 1)
     
     ParsedMessage msg;
 
-    Serial.print("Waiting for msg... ");
+    Serial.print(F("Waiting for msg... "));
     if (GetMessage(msg))
     {
         retVal = 1;
@@ -846,11 +846,10 @@ void setup()
         Serial.print("\"");
         Serial.println();
     });
-    
-    while (1)
-    {
-        shell.Run();
-    }
+
+    shell.Start();
+
+    evm.MainLoop();
 }
 
 void loop() {
