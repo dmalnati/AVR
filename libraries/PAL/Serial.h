@@ -180,6 +180,53 @@ public:
         
         return retVal;
     }
+    
+    // This sucks, would rather not implement but have to due to legacy
+    // SerialReadLine requirement.  Drop as soon as possible.
+    uint8_t ReadBytesUntil(uint8_t bStop, uint8_t *buf, uint16_t bufSize)
+    {
+        uint8_t retVal = 0;
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            if (retVal < bufSize)
+            {
+                if (Available())
+                {
+                    uint8_t b = Read();
+                    
+                    if (b == bStop)
+                    {
+                        // we can stop now, we found our byte.
+                        // we don't increment the number of bytes consumed
+                        // because we're not storing this terminator.
+                        cont = 0;
+                    }
+                    else
+                    {
+                        // found a non-stop byte, add to buffer and increment
+                        // the number of bytes found.
+                        
+                        buf[retVal] = b;
+                        
+                        ++retVal;
+                    }
+                }
+                else
+                {
+                    // nothing to do really, just keep waiting
+                }
+            }
+            else
+            {
+                // buffer filled
+                cont = 0;
+            }
+        }
+        
+        return retVal;
+    }
 
 private:
 

@@ -4,7 +4,7 @@
 
 #include <math.h>
 
-#include "Software@fix@Serial.h"
+#include "SoftwareSerial.h"
 
 #include "PAL.h"
 #include "TimedEventHandler.h"
