@@ -2,6 +2,8 @@
 #define __UTL_SERIAL_H__
 
 
+#include "Serial.h"
+#include "Log.h"
 #include "Function.h"
 #include "Str.h"
 #include "StreamWindow.h"
@@ -114,9 +116,9 @@ private:
         
         while (cont)
         {
-            if (@fix@Serial.available())
+            if (S0.Available())
             {
-                char c = @fix@Serial.read();
+                char c = S0.Read();
                 
                 if (c == '\n')
                 {
@@ -250,7 +252,7 @@ public:
                 
                 if (verbose_)
                 {
-                    @fix@Serial.println();
+                    LogNL();
                 }
             }            
         });
@@ -258,12 +260,12 @@ public:
         
         if (verbose_)
         {
-            @fix@Serial.println(F("Commands:"));
+            Log(P("Commands:"));
             for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
             {
-                @fix@Serial.println(cmdToFnList_[i].cmd);
+                Log(cmdToFnList_[i].cmd);
             }
-            @fix@Serial.println();
+            LogNL();
         }
     };
     
@@ -326,11 +328,7 @@ private:
 
                 PAL.PinMode(pin, OUTPUT);
                 
-                @fix@Serial.print(F("Pin "));
-                @fix@Serial.print(pin);
-                @fix@Serial.print(F(" -> "));
-                @fix@Serial.print(val);
-                @fix@Serial.println();
+                Log(P("Pin "), pin, P(" -> "), val);
 
                 PAL.DigitalWrite(pin, val);
             }
@@ -342,22 +340,15 @@ private:
                 PAL.PinMode(pin, INPUT);
                 
                 uint8_t val = PAL.DigitalRead(pin);
-                
-                @fix@Serial.print(F("Pin "));
-                @fix@Serial.print(pin);
-                @fix@Serial.print(F(" <- "));
-                @fix@Serial.print(val);
-                @fix@Serial.println();
+
+                Log(P("Pin "), pin, P(" <- "), val);
             }
         });
         
         if (enableDefaultErrorHandler)
         {
             this->RegisterErrorHandler([](char *cmdStr) {
-                @fix@Serial.print(F("ERR: \""));
-                @fix@Serial.print(cmdStr);
-                @fix@Serial.print(F("\""));
-                @fix@Serial.println();
+                Log(P("ERR: \""), cmdStr, '\"');
             });
         }
     }
@@ -372,7 +363,8 @@ uint8_t SerialReadLine(char *buf, uint8_t bufSize)
  
     while (!retVal)
     {
-        retVal = @fix@Serial.readBytesUntil('\n', buf, bufSize);
+        
+        retVal = S0.ReadBytesUntil('\n', (uint8_t *)buf, bufSize);
 
         if (retVal < bufSize)
         {
@@ -386,9 +378,9 @@ uint8_t SerialReadLine(char *buf, uint8_t bufSize)
             uint8_t cont = 1;
             while (cont)
             {
-                if (@fix@Serial.available())
+                if (S0.Available())
                 {
-                    char c = @fix@Serial.read();
+                    char c = S0.Read();
                     
                     if (c == '\n')
                     {
@@ -447,12 +439,12 @@ public:
     
     void Run()
     {
-        @fix@Serial.println(F("Commands:"));
+        Log(P("Commands:"));
         for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
         {
-            @fix@Serial.println(cmdToFnList_[i].cmd);
+            Log(cmdToFnList_[i].cmd);
         }
-        @fix@Serial.println();
+        LogNL();
 
         while (running_)
         {
@@ -484,7 +476,7 @@ public:
                     fnErr_(buf_);
                 }
                 
-                @fix@Serial.println();
+                LogNL();
             }
         }
     };

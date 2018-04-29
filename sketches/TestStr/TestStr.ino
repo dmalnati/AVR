@@ -1,35 +1,31 @@
+#include "Log.h"
 #include "Str.h"
-#include "Utl@fix@Serial.h"
+#include "UtlSerial.h"
 
 
 void OnLineReceived(char *line)
 {
-    @fix@Serial.print("line before: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
-    @fix@Serial.print("Buffer: "); PrintBuf();
+    Log("line before: \"", line, "\"");
+    LogNNL("Buffer: "); PrintBuf();
 
     char delim = ' ';
 
     {
         Str str(line);
     
-        @fix@Serial.print("Length    : "); @fix@Serial.println(str.Length());
-        @fix@Serial.print("TokenCount: "); @fix@Serial.println(str.TokenCount(delim));
-        @fix@Serial.print("line pre-iteration: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
-        @fix@Serial.print("Buffer: "); PrintBuf();
+        Log("Length    : ", str.Length());
+        Log("TokenCount: ", str.TokenCount(delim));
+        Log("line pre-iteration: \"", line, "\"");
+        LogNNL("Buffer: "); PrintBuf();
         for (uint8_t i = 0; i < str.TokenCount(delim); ++i)
         {
-            @fix@Serial.print("    [");
-            @fix@Serial.print(i);
-            @fix@Serial.print("]: \"");
-            @fix@Serial.print(str.TokenAtIdx(i, delim));
-            @fix@Serial.print("\"");
-            @fix@Serial.println();
+            Log("    [", i, "]: \"", str.TokenAtIdx(i, delim), "\"");
         }
-        @fix@Serial.print("line pre-release: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
+        Log("line pre-release: \"", line, "\"");
     }
-    @fix@Serial.print("line post-release: \""); @fix@Serial.print(line); @fix@Serial.println("\"");
-    @fix@Serial.print("Buffer: "); PrintBuf();
-    @fix@Serial.println();
+    Log("line post-release: \"", line, "\"");
+    LogNNL("Buffer: "); PrintBuf();
+    LogNL();
 }
 
 
@@ -42,20 +38,20 @@ void PrintBuf()
     {
         if (buf[i])
         {
-            @fix@Serial.print(buf[i]);
+            LogNNL(buf[i]);
         }
         else
         {
-            @fix@Serial.print('.');
+            LogNNL('.');
         }
     }
-    @fix@Serial.println();
+    LogNL();
 }
 
 void setup()
 {
-    @fix@Serial.begin(9600);
-    @fix@Serial.println("Starting");
+    LogStart(9600);
+    Log("Starting");
     
     while (1)
     {   
