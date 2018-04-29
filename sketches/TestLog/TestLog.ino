@@ -157,11 +157,16 @@ void TestTemplates()
 
 void TestEnhanced()
 {
+    Log("Enhanced");
+    LogX('-', 25);
+    
     char buf[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                  "abcdefghijklmnopqrstuvwxyz"
                  "0123456789";
 
     LogBlob((uint8_t *)buf, sizeof(buf), 1, 1);
+
+    LogNL();
 }
 
 
