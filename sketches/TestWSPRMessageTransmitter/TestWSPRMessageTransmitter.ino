@@ -73,7 +73,15 @@ void setup()
 
         mt.RadioOff();
     });
-    
+
+    console.RegisterCommand("test", [](char *){
+        LogNNL("Testing settings - ");
+
+        uint8_t retVal = mt.Test(&m);
+
+        Log(retVal ? "OK" : "ERR");
+    });
+
 
     console.Start();
     

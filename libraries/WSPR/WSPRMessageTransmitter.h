@@ -47,6 +47,24 @@ public:
     {
         fnOnRadioOff_ = fnOnRadioOff;
     }
+    
+    uint8_t Test(WSPRMessage *msg)
+    {
+        uint8_t retVal = 0;
+        
+        // Get access to data in message
+        const char *callsign = NULL;
+        const char *grid     = NULL;
+        uint8_t     powerDbm = 0;
+        
+        msg->GetData(callsign, grid, powerDbm);
+        
+        // Test
+        uint8_t testOnly = 1;
+        retVal = wsprEncoder_.Encode(callsign, grid, powerDbm, testOnly);
+        
+        return retVal;
+    }
 
     void RadioOn()
     {

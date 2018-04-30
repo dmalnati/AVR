@@ -14,6 +14,7 @@
 #include <string.h>
 //#include "UtlLogBlob.h"
 
+#include "CString.h"
 #include "PAL.h"
 #include "BitField.h"
 
@@ -47,18 +48,122 @@
 
 class WSPREncoder
 {
+    static const uint8_t CALLSIGN_LEN = 6;
+    static const uint8_t GRID_LEN     = 4;
+    
 public:
 
-static uint8_t Encode(const char *callsign, const char *grid, uint8_t powerDbm)
+static uint8_t Encode(const char *callsignInput,
+                      const char *gridInput,
+                      uint8_t     powerDbmInput,
+                      uint8_t     testOnly = 0)
 {
-    uint8_t retVal = 0;
+    uint8_t retVal = 1;
     
     // Do validation and correction before handing off to unsafe genmsg
-    retVal = 1;
     
+    // Work with local buffers to modify data
+    char    callsign[CALLSIGN_LEN + 1] = { 0 };
+    char    grid[CALLSIGN_LEN + 1]     = { 0 };
+    uint8_t powerDbm                   = powerDbmInput;
+    
+    CString csCallsign(callsign, CALLSIGN_LEN + 1);
+    CString csGrid(grid, GRID_LEN + 1);
+    
+    csCallsign.Copy(callsignInput);
+    csGrid.Copy(gridInput);
+    
+    // Check if we've truncated strings
+    if (strlen(callsignInput) != csCallsign.Length() ||
+        strlen(gridInput)     != csGrid.Length())
+    {
+        retVal = 0;
+    }
+    
+    // Make sure all are upper case
     if (retVal)
     {
-        // Generate
+        csCallsign.ToUpper();
+        csGrid.ToUpper();
+    }
+    
+    // Validate callsign format
+    //
+    // From G4JNT's analysis:
+    // The third character is forced to be always a number.
+    // To cope with callsigns that start letter followed by a number,
+    // a space is appended to the front if necessary. 
+    if (retVal)
+    {
+        if (csCallsign.Length() >= 3)
+        {
+            if (isdigit(csCallsign[2]))
+            {
+                // it's ok
+            }
+            else
+            {
+                // pad left with a space
+                uint8_t shiftWorked = csCallsign.Prepend(' ');
+                
+                retVal = shiftWorked;
+                
+                // this might not have fixed it.  more shifting wouldn't either
+                // however, because validation later says 2nd char can't be a
+                // space.
+            }
+        }
+        else
+        {
+            retVal = 0;
+        }
+    }
+    
+    // Short callsigns are then further padded out to six characters by
+    // appending spaces to the end 
+    if (retVal)
+    {
+        csCallsign.PadRight(' ');
+    }
+    
+    // N1 = [Ch 1]                 The first character can take on any of the 37 values including [sp],
+    // N2 = N1 * 36 + [Ch 2]       but the second character cannot then be a space so can have 36 values
+    // N3 = N2 * 10 + [Ch 3]       The third character must always be a number, so only 10 values are possible.
+    // N4 = 27 * N3 + [Ch 4] – 10]
+    // N5 = 27 * N4 + [Ch 5] – 10] Characters at the end cannot be numbers,
+    // N6 = 27 * N5 + [Ch 6] – 10] so only 27 values are possible.
+    if (retVal)
+    {
+        if (!isalnum(csCallsign[0]) && csCallsign[0] != ' ') { retVal = 0; }
+        if (!isalnum(csCallsign[1])                        ) { retVal = 0; }
+        if (!isdigit(csCallsign[2])                        ) { retVal = 0; }
+        if (!isalpha(csCallsign[3]) && csCallsign[3] != ' ') { retVal = 0; }
+        if (!isalpha(csCallsign[4]) && csCallsign[4] != ' ') { retVal = 0; }
+        if (!isalpha(csCallsign[5]) && csCallsign[5] != ' ') { retVal = 0; }
+    }
+    
+    // Validate grid is the right format
+    //
+    // Designating the four locator characters as [Loc 1] to [Loc 4], the first two can each take
+    // on the 18 values ‘A’ to ‘R’ only so are allocated numbers from 0 – 17. The second pair
+    // can take only the values 0 – 9. 
+    if (retVal)
+    {
+        if (!isalpha(csGrid[0]) || csGrid[0] < 'A' || csGrid[0] > 'R') { retVal = 0; }
+        if (!isalpha(csGrid[1]) || csGrid[1] < 'A' || csGrid[1] > 'R') { retVal = 0; }
+        if (!isdigit(csGrid[2])                                      ) { retVal = 0; }
+        if (!isdigit(csGrid[3])                                      ) { retVal = 0; }
+    }
+    
+    // Cap power if above 60
+    if (powerDbm > 60)
+    {
+        powerDbm = 60;
+    }
+    
+    // Encode
+    if (retVal && !testOnly)
+    {
         genmsg(callsign, grid, powerDbm);
     }
     
