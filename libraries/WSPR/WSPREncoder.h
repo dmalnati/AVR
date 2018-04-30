@@ -49,6 +49,22 @@ class WSPREncoder
 {
 public:
 
+static uint8_t Encode(const char *callsign, const char *grid, uint8_t powerDbm)
+{
+    uint8_t retVal = 0;
+    
+    // Do validation and correction before handing off to unsafe genmsg
+    retVal = 1;
+    
+    if (retVal)
+    {
+        // Generate
+        genmsg(callsign, grid, powerDbm);
+    }
+    
+    return retVal;
+}
+
 static uint8_t GetToneValForSymbol(uint8_t idx)
 {
     uint16_t bitIdx = idx * 2;
@@ -60,6 +76,7 @@ static uint8_t GetToneValForSymbol(uint8_t idx)
 }
 
 
+private:
 
 static int 
 chval1(int ch)
