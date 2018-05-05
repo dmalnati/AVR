@@ -30,7 +30,7 @@ public:
         
         int32_t clkGenSkew = 0;
         
-        int32_t timerDelayOffset = 0;
+        int32_t systemClockOffsetMs = 0;
     };
 
     void SetCalibration(Calibration calibration)
@@ -38,14 +38,9 @@ public:
         calibration_ = calibration;
     }
     
-    void SetCallbackRadioOn(function<void()> fnOnRadioOn)
+    void SetCallbackOnBitChange(function<void()> fnOnBitChange)
     {
-        fnOnRadioOn_ = fnOnRadioOn;
-    }
-    
-    void SetCallbackRadioOff(function<void()> fnOnRadioOff)
-    {
-        fnOnRadioOff_ = fnOnRadioOff;
+        fnOnBitChange_ = fnOnBitChange;
     }
     
     uint8_t Test(WSPRMessage *msg)
@@ -68,9 +63,6 @@ public:
 
     void RadioOn()
     {
-        // Fire callback
-        fnOnRadioOn_();
-        
         // Apply calibration values
         radio_.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
         
@@ -81,8 +73,10 @@ public:
         radio_.output_enable(SI5351_CLK0, 1);
     }
     
-    void Send(WSPRMessage *msg)
+    uint8_t Send(WSPRMessage *msg)
     {
+        uint8_t retVal = 0;
+        
         // Get access to data in message
         const char *callsign = NULL;
         const char *grid     = NULL;
@@ -92,30 +86,43 @@ public:
         
         
         // Encode
-        wsprEncoder_.Encode(callsign, grid, powerDbm);
+        retVal = wsprEncoder_.Encode(callsign, grid, powerDbm);
+        
+        
+        // Allow calibration to compensate for system clock not being accurate
+        // enough to hit precise bit duration
+        uint32_t msBitDuration = WSPR_DELAY_MS + calibration_.systemClockOffsetMs;
         
         
         // Clock out the bits
         for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT; i++)
         {
+            uint32_t timeStart = PAL.Millis();
+            
+            // Change bit
             uint32_t freqInHundrethds = 
                 (WSPR_DEFAULT_FREQ * 100) + 
                 (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING);
             
             radio_.set_freq(freqInHundrethds, SI5351_CLK0);
 
-            int16_t offset = -8;
-            PAL.Delay(WSPR_DELAY_MS + offset);
+            // Allow calling code to do something here
+            fnOnBitChange_();
+            
+            // Calculate time of next bit transition from where we are now
+            uint32_t timeEnd          = PAL.Millis();
+            uint32_t msSleepRemaining = (msBitDuration - (timeEnd - timeStart));
+            
+            PAL.Delay(msSleepRemaining);
         }
+        
+        return retVal;
     }
 
     void RadioOff()
     {
         // Disable the clock
         radio_.output_enable(SI5351_CLK0, 0);
-        
-        // Fire callback
-        fnOnRadioOff_();
     }
     
     
@@ -127,8 +134,7 @@ private:
     
     Calibration calibration_;
     
-    function<void()> fnOnRadioOn_;
-    function<void()> fnOnRadioOff_;
+    function<void()> fnOnBitChange_;
 };
 
 

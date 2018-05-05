@@ -8,8 +8,9 @@ static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
 static SerialAsyncConsoleEnhanced<10>  console;
 
-static WSPRMessage            m;
-static WSPRMessageTransmitter mt;
+static WSPRMessage                          m;
+static WSPRMessageTransmitter               mt;
+static WSPRMessageTransmitter::Calibration  mtc;
 
 
 void setup()
@@ -65,6 +66,7 @@ void setup()
     console.RegisterCommand("send", [](char *){
         Log("Sending");
 
+        mt.SetCalibration(mtc);
         mt.Send(&m);
     });
     
@@ -82,8 +84,24 @@ void setup()
         Log(retVal ? "OK" : "ERR");
     });
 
+    console.RegisterCommand("systemClockOffsetMs", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            mtc.systemClockOffsetMs = atol(str.TokenAtIdx(1, ' '));
+            
+            Log("Setting systemClockOffsetMs to ", mtc.systemClockOffsetMs);
+        }
+    });
+
 
     console.Start();
+
+    // Set some defaults
+    m.SetCallsign("KD2KDD");
+    m.SetGrid("AB12");
+    m.SetPower(27);
     
     evm.MainLoop();
 }
