@@ -4,16 +4,16 @@
 static AppPicoTrackerWSPR1Config cfg =
 {
     // GPS
-    .pinGpsEnable   = 26,
+    .pinGpsEnable   = 14,
     .pinGpsSerialRx = 23,
     .pinGpsSerialTx = 24,
 
     // WSPR TX
-    .pinWsprTxEnable = 0,
+    .pinWsprTxEnable = 15,
 
     // Status LEDs
-    .pinLedRed   = 13,
-    .pinLedGreen = 12,
+    .pinLedRed   = 12,
+    .pinLedGreen = 13,
 };
 
 static AppPicoTrackerWSPR1 app(cfg);

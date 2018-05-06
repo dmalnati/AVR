@@ -8,11 +8,17 @@ public:
 
     struct UserConfig
     {
+        int32_t systemClockOffsetMs = 0;
+        
+        // help the tracker guess better about how early to wake up
+        uint32_t expectedGpsLockDurationMs = 45000;
     };
     
-    static uint8_t GetUserConfig(UserConfig &)
+    static uint8_t GetUserConfig(UserConfig &userConfig)
     {
         uint8_t retVal = 0;
+        
+        userConfig;
 
         return retVal;
     }

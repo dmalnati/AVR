@@ -29,8 +29,9 @@ private:
     
 public:
     SensorGPSUblox(int8_t pinRx, int8_t pinTx)
-    : ss_(PAL.GetArduinoPinFromPhysicalPin(pinRx),
-          PAL.GetArduinoPinFromPhysicalPin(pinTx))
+    : pinTx_(pinTx)
+    , ss_(PAL.GetArduinoPinFromPhysicalPin(pinRx),
+          PAL.GetArduinoPinFromPhysicalPin(pinTx_))
     {
         // nothing to do
     }
@@ -45,7 +46,6 @@ public:
     {
         return tgps_;
     }
-
     
     // All configuration has to take place post-Init, as messages are relayed
     // to the GPS, and that isn't possible until after Init.
@@ -71,8 +71,24 @@ public:
         ss_.listen();
         
         // Set timers to come read serial data periodically
-        timer_.SetCallback([this]() { this->OnTimeout(); });
+        timer_.SetCallback([this]() { OnPoll(); });
         timer_.RegisterForTimedEventInterval(POLL_PERIOD_MS);
+    }
+    
+    void DisableSerialOutput()
+    {
+        // Not really disabled, obviously, more like the pin put low since there
+        // are some garbage GPS modules which will sink huge current through
+        // serial-in.
+        //
+        // This is a desperation workaround to allow calling code to deal with
+        // that themselves.
+        PAL.DigitalWrite(pinTx_, LOW);
+    }
+    
+    void EnableSerialOutput()
+    {
+        PAL.DigitalWrite(pinTx_, HIGH);
     }
     
     void ResetFix()
@@ -191,7 +207,7 @@ public:
         uint8_t  hour;
         uint8_t  minute;
         uint8_t  second;
-        uint8_t  hundredths;
+        uint16_t millisecond;
         uint32_t fixAge;
         
         uint32_t courseDegrees;
@@ -211,6 +227,7 @@ public:
         uint32_t altitudeFt;
     };
     
+    // May not return true if the async polling hasn't acquired enough data yet
     uint8_t GetMeasurement(Measurement *m)
     {
         uint8_t retVal = 0;
@@ -221,6 +238,50 @@ public:
             retVal = 1;
             
             GetMeasurementInternal(m);
+        }
+        
+        return retVal;
+    }
+    
+    // This function ignores the fact that other async polling events may be
+    // going on.  They do not impact this functionality.
+    uint8_t GetNewMeasurementSynchronous(Measurement   *m,
+                                         uint32_t       timeoutMs,
+                                         uint32_t      *timeUsedMs = NULL)
+    {
+        ResetFix();
+        
+        uint8_t retVal = 0;
+        
+        uint32_t timeStart = PAL.Millis();
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            OnPoll();
+            
+            uint8_t measurementOk = GetMeasurement(m);
+
+            uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
+            
+            if (timeUsedMs)
+            {
+                *timeUsedMs = timeUsedMsInternal;
+            }
+            
+            if (measurementOk)
+            {
+                retVal = 1;
+                
+                cont = 0;
+            }
+            else
+            {
+                if (timeUsedMsInternal >= timeoutMs)
+                {
+                    cont = 0;
+                }
+            }
         }
         
         return retVal;
@@ -238,14 +299,16 @@ private:
                            &m->longitudeDegreesMillionths,
                            &m->msSinceLastFix);
         tgps_.get_datetime(&m->date, &m->time, NULL);
+        uint8_t hundredths;
         tgps_.crack_datetime(&m->year,
                              &m->month,
                              &m->day,
                              &m->hour,
                              &m->minute,
                              &m->second,
-                             &m->hundredths,
+                             &hundredths,
                              &m->fixAge);
+        m->millisecond = hundredths * 10;
  
         m->courseDegrees = tgps_.course() / 100;    // convert from 100ths of a degree
         m->speedKnots    = tgps_.speed() / 100;     // convert from 100ths of a knot
@@ -271,7 +334,7 @@ private:
         }
     }
 
-    void OnTimeout()
+    void OnPoll()
     {
         // We only want to consume serial data, not extract measurements.
         while (ss_.available() > 0)
@@ -391,7 +454,8 @@ private:
         seconds = valRemaining;                                         // eg 12.7608
     }
 
-
+    uint8_t pinTx_;
+    
     SoftwareSerial ss_;
     TinyGPS        tgps_;
     
