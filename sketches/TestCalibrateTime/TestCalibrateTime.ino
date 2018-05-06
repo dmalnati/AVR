@@ -7,7 +7,7 @@ static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
 static SerialAsyncConsoleEnhanced<10>  console;
 
-static const uint8_t PIN_TOGGLE = 15;
+static const uint8_t PIN_TOGGLE = 26;
 static Pin pinToggle(PIN_TOGGLE, LOW);
 
 static uint32_t ms       = 0;

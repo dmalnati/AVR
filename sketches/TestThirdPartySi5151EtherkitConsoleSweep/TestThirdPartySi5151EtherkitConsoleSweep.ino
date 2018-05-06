@@ -1,6 +1,7 @@
 #include "PAL.h"
 #include "Evm.h"
-#include "Utl@fix@Serial.h"
+#include "SerialInput.h"
+#include "Log.h"
 #include "si5351.h"
 
 
@@ -21,18 +22,18 @@ static uint32_t stepDelayMs = 100;
 
 void PrintStatus()
 {
-    @fix@Serial.print("low  : "); @fix@Serial.println(freqLow);
-    @fix@Serial.print("high : "); @fix@Serial.println(freqHigh);
-    @fix@Serial.print("step : "); @fix@Serial.println(freqStep);
-    @fix@Serial.print("delay: "); @fix@Serial.println(stepDelayMs);
-    @fix@Serial.println();
+    Log("low  : ", freqLow);
+    Log("high : ", freqHigh);
+    Log("step : ", freqStep);
+    Log("delay: ", stepDelayMs);
+    Log();
 }
 
 
 void setup()
 {
-    @fix@Serial.begin(9600);
-    @fix@Serial.println("Starting");
+    LogStart(9600);
+    Log("Starting");
 
     // Set up command interface
     console.RegisterCommand("low", [](char *cmdStr){
@@ -80,7 +81,7 @@ void setup()
     });
     
     console.RegisterCommand("start", [](char *){
-        @fix@Serial.println("Start");
+        Log("Start");
 
         freqCurr = freqLow;
 
@@ -88,7 +89,7 @@ void setup()
         ted.SetCallback([](){
             if (freqCurr <= freqHigh)
             {
-                @fix@Serial.println(freqCurr);
+                Log(freqCurr);
                 si5351.set_freq((uint64_t)freqCurr * (uint64_t)100ULL, SI5351_CLK0);
 
                 freqCurr += freqStep;
@@ -98,7 +99,7 @@ void setup()
             }
             else
             {
-                @fix@Serial.println("Done");
+                Log("Done");
             }
         });
 
@@ -110,7 +111,7 @@ void setup()
     });
 
     console.RegisterCommand("stop", [](char *){
-        @fix@Serial.println("Stop");
+        Log("Stop");
 
         // Stop processing events
         ted.DeRegisterForTimedEvent();
@@ -128,12 +129,12 @@ void setup()
         {
             freq = atol(str.TokenAtIdx(1, ' '));
 
-            @fix@Serial.print("Freq now "); @fix@Serial.println(freq);
+            LogNNL("Freq now "); Log(freq);
         }
     });
 
     console.RegisterCommand("on", [](char *){
-        @fix@Serial.println("On");
+        Log("On");
 
         si5351.set_freq((uint64_t)freq * (uint64_t)100ULL, SI5351_CLK0);
 
@@ -141,7 +142,7 @@ void setup()
     });
 
     console.RegisterCommand("off", [](char *){
-        @fix@Serial.println("Off");
+        Log("Off");
 
         si5351.output_enable(SI5351_CLK0, 0);
     });
@@ -163,14 +164,21 @@ void setup()
 
             if (ok)
             {
-                @fix@Serial.print("Drive now "); @fix@Serial.println(mA);
+                LogNNL("Drive now "); Log(mA);
             }
             else
             {
-                @fix@Serial.println("Must specify 2, 4, 6, or 8");
+                Log("Must specify 2, 4, 6, or 8");
             }
         }
     });
+
+    auto fnInit = [](char *){
+        si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
+        si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
+    };
+    
+    console.RegisterCommand("init", fnInit);
 
     console.Start();
     
@@ -178,8 +186,7 @@ void setup()
     
 
     // Set up library
-    si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
-    si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
+    fnInit(NULL);
 
     // Handle events
     evm.MainLoop();
