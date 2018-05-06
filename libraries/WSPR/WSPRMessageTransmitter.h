@@ -20,17 +20,8 @@ public:
 
     struct Calibration
     {
-        enum CrystalCapacitance
-        {
-            CAP_8PF,
-            CAP_10PF,
-        };
-        
-        CrystalCapacitance crystalCap = CrystalCapacitance::CAP_8PF;
-        
-        int32_t clkGenSkew = 0;
-        
-        int32_t systemClockOffsetMs = 0;
+        int32_t crystalCorrectionFactor = 0;
+        int32_t systemClockOffsetMs     = 0;
     };
 
     void SetCalibration(Calibration calibration)
@@ -64,7 +55,13 @@ public:
     void RadioOn()
     {
         // Apply calibration values
-        radio_.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
+        // - param 1 - assuming 10pF load capacitence
+            // notably didn't see difference at 10MHz testing between 8 and 10pF
+        // - param 2 - assuming 25MHz crystal, 0 means this
+        // - param 3 - tunable calibration value
+        radio_.init(SI5351_CRYSTAL_LOAD_10PF,
+                    0,
+                    calibration_.crystalCorrectionFactor);
         
         // Configure to drive at max power
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);

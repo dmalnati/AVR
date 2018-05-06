@@ -34,10 +34,16 @@ uint64_t target_freq = 1000000000ULL; // 10 MHz, in hundredths of hertz
 void setup()
 {
   // Start serial and initialize the Si5351
-  Serial.begin(57600);
+  Serial.begin(9600);
+
+  // enable pin 15 which is specifically for the WSPR1 tracker to enable the power subsystem
+  // kind of a hack but oh well
+  pinMode(9, OUTPUT);   // pin 9 in arduino is pin 15 on the chip
+  digitalWrite(9, HIGH);
 
   // The crystal load value needs to match in order to have an accurate calibration
-  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
+  //si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
+  si5351.init(SI5351_CRYSTAL_LOAD_10PF, 0, 0);
 
   // Start on target frequency
   si5351.set_correction(cal_factor, SI5351_PLL_INPUT_XO);

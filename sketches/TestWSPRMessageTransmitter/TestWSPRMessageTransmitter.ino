@@ -84,6 +84,17 @@ void setup()
         Log(retVal ? "OK" : "ERR");
     });
 
+    console.RegisterCommand("crystalCorrectionFactor", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            mtc.crystalCorrectionFactor = atol(str.TokenAtIdx(1, ' '));
+            
+            Log("Setting crystalCorrectionFactor to ", mtc.crystalCorrectionFactor);
+        }
+    });
+    
     console.RegisterCommand("systemClockOffsetMs", [](char *cmdStr){
         Str str(cmdStr);
         
