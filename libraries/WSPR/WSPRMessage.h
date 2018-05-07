@@ -12,7 +12,7 @@ class WSPRMessage
     
 public:
 
-    uint8_t SetCallsign(char *callsign)
+    uint8_t SetCallsign(const char *callsign)
     {
         uint8_t retVal = 0;
         
@@ -21,7 +21,7 @@ public:
         return retVal;
     }
     
-    uint8_t SetGrid(char *grid)
+    uint8_t SetGrid(const char *grid)
     {
         uint8_t retVal = 0;
         

@@ -64,7 +64,7 @@ static uint8_t Encode(const char *callsignInput,
     
     // Work with local buffers to modify data
     char    callsign[CALLSIGN_LEN + 1] = { 0 };
-    char    grid[CALLSIGN_LEN + 1]     = { 0 };
+    char    grid[GRID_LEN + 1]         = { 0 };
     uint8_t powerDbm                   = powerDbmInput;
     
     CString csCallsign(callsign, CALLSIGN_LEN + 1);

@@ -60,21 +60,21 @@ public:
         }
         
         // Shut down subsystems
-        // Floating pins have been seen to be enough to be high enough to enable
+        // Floating pins have been seen to be enough to be high enough to
+        // cause unintentional operation
         
-        // GPS
+        // GPS Subsystem
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
-        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        StopSubsystemGPS();
         
-        // WSPR
+        // WSPR Subsystem
         PAL.PinMode(cfg_.pinWsprTxEnable, OUTPUT);
-        PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
+        StopSubsystemWSPR();
         
-        // Set up LED pins as output
+        // Set up LEDs and blink to indicate power up
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
         PAL.PinMode(cfg_.pinLedGreen, OUTPUT);
         
-        // Blink to indicate power on
         Blink(cfg_.pinLedRed,   100);
         Blink(cfg_.pinLedGreen, 100);
 
@@ -95,11 +95,6 @@ public:
                 StatsIncrNumWdtRestarts();
             }
             
-            
-            
-            // is this comment true anymore?  haven't worked out tx schedule yet...
-            
-            
             // Begin tracker reporting, fire first event immediately.
             // No point using interval, the decision about how long to sleep for is
             // evaluated each time.
@@ -110,7 +105,6 @@ public:
             
             // Handle async events
             Log(P("Running"));
-            
             evm_.MainLoopLowPower();
         }
         else
@@ -141,125 +135,110 @@ private:
 
     void OnWakeAndEvaluateTimeout()
     {
-        // Log
-        Log("\nWake");
+        Log(P("\nWake"));
 
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
-        // No need for low-power mode while we're attempting to do the primary
-        // tracker behavior of lock and send.
-        // Besides, we're going to async-spin waiting for a GPS lock, and in the
-        // meantime we can use a watchdog
-        evm_.LowPowerDisable();
-        
         // Start GPS
-        Log("GPS ON");
+        Log(P("GPS ON"));
         StartGPS();
         
         // Warm up transmitter
+        Log(P("Warming transmitter"));
         PrepareToSendMessage();
         
         // Lock onto two-minute mark on GPS time
-        uint8_t gpsLockOk = WaitForNextGPSTwoMinuteMark();
+        Log(P("GPS locking to next 2 minute mark"));
+        uint8_t gpsLockOk = gps_.WaitForNextGPSTwoMinuteMark(&gpsMeasurement_);
         
+        Log(P("GPS Lock "), gpsLockOk ? P("OK") : P("NOT OK"));
+        
+        // Unconditionally turn off GPS, we have what we need one way or another
+        Log(P("GPS OFF"));
+        StopGPS();
+        
+        // If locked, prepare to transmit
         if (gpsLockOk)
         {
+            // The GPS has locked at an even minute and :00 seconds.
             // We're going to transmit at the :01 second mark.
+            //
             // Do some useful work in the meantime, but keep track of how much
-            // time it takes.
+            // time it takes so we can wake up on time.
             uint32_t timeStart = PAL.Millis();
             
             // Pack message now that we know where we are
-            FillOutStandardWSPRMessage();
+            uint8_t messageOk = FillOutStandardWSPRMessage();
+            
+            // Test message before sending (but send regardless)
+            Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
             
             // Figure out how long that took
             uint32_t timeEnd = PAL.Millis();
             uint32_t timeDiff = timeEnd - timeStart;
             
             // Wait for the :01 mark
-            PAL.Delay(1000L - timeDiff);
+            const uint32_t ONE_SECOND = 1000UL;
+            if (timeDiff < ONE_SECOND)
+            {
+                PAL.Delay(ONE_SECOND - timeDiff);
+            }
             Log(P("TX"));
             
             // Actually send WSPR
             SendMessage();
-
-            // Debug
-            Log(P("    Fill out took: "), timeDiff);
-        }
-        else
-        {
-            // keep a stat?
         }
         
-        
-        
-        
-        
-        
-        
-        // Wait for remaining time, continuously sync'ing against GPS
-        
-        
-        
-        // Now burn off final 1 second
-        
-        
-        
-        
-        
-        // keep stat about bad gps locks
-        
-        
-        // unconditionally turn off transmitter
-        // unconditionally turn off gps
-        
-        
+        // Schedule next wakeup
+        uint32_t wakeAndEvaluateDelayMs = 0;
+        tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
         
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
         
-        // Re-enable low-power mode, since the main async events are few and far
-        // between at this point
-        evm_.LowPowerEnable();
-        
-        // Log
-        LogNNL("Sleep ", wakeAndEvaluateMs);
+        Log(P("Sleep "), wakeAndEvaluateDelayMs);
     }
     
     
     ///////////////////////////////////////////////////////////////////////////
     //
-    // Message Sending
+    // WSPR Transmitter Control
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void PrepareToSendMessage()
+    void StartSubsystemWSPR()
     {
-        // Enable power to subsystem
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, HIGH);
         
-        // Set up calibration details
-        WSPRMessageTransmitter::Calibration c;
-        
-        c.systemClockOffsetMs = userConfig_.systemClockOffsetMs;
+        // Give device time to start up.  Value found empirically.
+        PAL.Delay(50);
+    }
+    
+    void StopSubsystemWSPR()
+    {
+        PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
+    }
+    
+    void PrepareToSendMessage()
+    {
+        // Enable subsystem
+        StartSubsystemWSPR();
         
         // Configure transmitter with calibration details
-        wsprMessageTransmitter_.SetCalibration(c);
+        // Debug
+        userConfig_.mtCalibration.crystalCorrectionFactor = 0;
+        userConfig_.mtCalibration.systemClockOffsetMs     = 8;
+        wsprMessageTransmitter_.SetCalibration(userConfig_.mtCalibration);
         
         // Prepare system for send, warm up internals
         wsprMessageTransmitter_.RadioOn();
     }
-    
-    void FillOutStandardWSPRMessage()
+
+    uint8_t SendMessage()
     {
-        wsprMessage_.SetCallsign(userConfig_.callsign);
-        wsprMessage_.SetGrid();
-        wsprMessage_.SetPower();            
-    }
-    
-    void SendMessage()
-    {
+        uint8_t retVal = 0;
+        
         // Kick the watchdog
         PAL.WatchdogReset();
         
@@ -269,13 +248,77 @@ private:
         });
    
         // Send the message synchronously
-        wsprMessageTransmitter_.Send(&wsprMessage_);
+        retVal = wsprMessageTransmitter_.Send(&wsprMessage_);
         
         // Go back to idle state
         wsprMessageTransmitter_.RadioOff();
         
-        // Cut power to subsystem
-        PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
+        // Disable subsystem
+        StopSubsystemWSPR();
+        
+        return retVal;
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // WSPR Message Construction
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    uint8_t FillOutStandardWSPRMessage()
+    {
+        // Modify the GPS maidenheadGrid to be 4 char instead of 6
+        gpsMeasurement_.maidenheadGrid[4] = '\0';
+        
+        // Keep a mapping of altitude to power level as an encoding
+        struct
+        {
+            uint32_t altitudeFt;
+            uint8_t  powerDbm;
+        } altitudeToPowerList[] = {
+            {     0,   0 },
+            {  2222,   3 },
+            {  4444,   7 },
+            {  6667,  10 },
+            {  8889,  13 },
+            { 11111,  17 },
+            { 13333,  20 },
+            { 15556,  23 },
+            { 17778,  27 },
+            { 20000,  30 },
+            { 22222,  33 },
+            { 24444,  37 },
+            { 26667,  40 },
+            { 28889,  43 },
+            { 31111,  47 },
+            { 33333,  50 },
+            { 35556,  53 },
+            { 37778,  57 },
+            { 40000,  60 },
+        };
+        
+        // Default to lowest altitude, and progressively look for altitudes that
+        // we are gte to.
+        uint8_t powerDbm = altitudeToPowerList[0].powerDbm;
+        for (auto altToPwr : altitudeToPowerList)
+        {
+            if (gpsMeasurement_.altitudeFt >= altToPwr.altitudeFt)
+            {
+                powerDbm = altToPwr.powerDbm;
+            }
+        }
+        
+        // Fill out actual message
+        //wsprMessage_.SetCallsign((const char *)userConfig_.callsign);
+        // temporary workaround while waiting to implement this
+        wsprMessage_.SetCallsign("KD2KDD");
+        wsprMessage_.SetGrid(gpsMeasurement_.maidenheadGrid);
+        // debug
+        //wsprMessage_.SetGrid("AB12");
+        wsprMessage_.SetPower(powerDbm);
+        
+        return wsprMessageTransmitter_.Test(&wsprMessage_);
     }
     
     
@@ -285,10 +328,32 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////////
     
+    void StartSubsystemGPS()
+    {
+        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+
+        gps_.EnableSerialInput();
+        gps_.EnableSerialOutput();
+    }
+    
+    void StopSubsystemGPS()
+    {
+        // Work around a hardware issue where the GPS will draw lots of current
+        // through a logic input
+        gps_.DisableSerialOutput();
+        
+        // stop interrupts from firing in underlying code
+        gps_.DisableSerialInput();
+        
+        // disable power supply to GPS
+        // (battery backup for module-stored data supplied through other pin)
+        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+    }
+    
     void StartGPS()
     {
-        // enable power supply to GPS
-        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+        // Enable subsystem
+        StartSubsystemGPS();
         
         // re-init to begin cycle again
         gps_.Init();
@@ -303,17 +368,13 @@ private:
         // acquired next time the GPS starts up
         gps_.ResetFix();
         
-        // stop interrups from firing in underlying code
-        gps_.DisableSerialInput();
-        
         // cause the gps module to store the metadata is has learned from
         // the satellites it can see and used to get a lock.
         // this will be read again automatically by the module on startup.
         gps_.SaveConfiguration();
-        
-        // disable power supply to GPS
-        // (battery backup for module-stored data supplied through other pin)
-        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+
+        // Disable subsystem
+        StopSubsystemGPS();
     }
     
     
@@ -377,15 +438,13 @@ private:
         // design around testing board and application
         
         // bring in design observations from prior boards
-        
-        // give up on gps lock after a timeout
-        
-        // hide WSPR tx and message making behind other classes
-        
+                
         // how to handle clock speed of device differing between chips?
             // calibration interface?
             
         // which counters to keep?
+        
+        // print out time when locked on
     }
     
     

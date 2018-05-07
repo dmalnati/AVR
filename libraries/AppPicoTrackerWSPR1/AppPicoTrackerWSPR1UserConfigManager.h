@@ -11,18 +11,17 @@ public:
 
     struct UserConfig
     {
-        WSPRMessageTransmitter::Calibration mtCalibration;
+        static const uint8_t CALLSIGN_LEN = 6;
         
-        // help the tracker guess better about how early to wake up
-        uint32_t expectedGpsLockDurationMs = 45000;
+        char *callsign[CALLSIGN_LEN + 1] = { 0 };
+        
+        WSPRMessageTransmitter::Calibration mtCalibration;
     };
     
-    static uint8_t GetUserConfig(UserConfig &userConfig)
+    static uint8_t GetUserConfig(UserConfig &/*userConfig*/)
     {
-        uint8_t retVal = 0;
+        uint8_t retVal = 1;
         
-        userConfig;
-
         return retVal;
     }
 
