@@ -224,6 +224,9 @@ public:
         uint8_t  longitudeMinutes;
         double   longitudeSeconds;
         
+        static const uint8_t MAIDENHEAD_GRID_LEN = 6;
+        char maidenheadGrid[MAIDENHEAD_GRID_LEN + 1] = { 0 };
+        
         uint32_t altitudeFt;
     };
     
@@ -538,7 +541,11 @@ private:
                                                      m->longitudeDegrees,
                                                      m->longitudeMinutes,
                                                      m->longitudeSeconds);
-
+        
+        ConvertToMaidenheadGrid(m->latitudeDegreesMillionths,
+                                m->longitudeDegreesMillionths,
+                                m->maidenheadGrid);
+        
         int32_t altitude = tgps_.altitude();
         if (altitude < 0)
         {
@@ -581,6 +588,9 @@ private:
         ss_.write(buf, bufLen);
     }
     
+    
+public:
+
     /* 
      * Formats
      * -------
@@ -643,10 +653,10 @@ private:
      * https://www.google.com/maps/dir/40+44+12.6414,+-74+2+2.32/40.736878,-74.0339778/@40.7368945,-74.0342609,19.67z/data=!4m7!4m6!1m3!2m2!1d-74.0339778!2d40.7368448!1m0!3e3
      *
      */
-    void ConvertTinyGPSLatLongToDegreesMinutesSeconds(int32_t   latOrLong,
-                                                      int16_t  &degrees,
-                                                      uint8_t  &minutes,
-                                                      double   &seconds)
+    static void ConvertTinyGPSLatLongToDegreesMinutesSeconds(int32_t   latOrLong,
+                                                             int16_t  &degrees,
+                                                             uint8_t  &minutes,
+                                                             double   &seconds)
     {
         static const uint32_t ONE_MILLION     = 1000000;
         static const uint8_t  MIN_PER_DEGREE  = 60;
@@ -671,6 +681,44 @@ private:
         
         seconds = valRemaining;                                         // eg 12.7608
     }
+    
+    //
+    // https://en.wikipedia.org/wiki/Maidenhead_Locator_System
+    //
+    // Implementation adapted from TT7:
+    // https://github.com/TomasTT7/TT7F-Float-Tracker/blob/master/Software/ARM_WSPR.h
+    // https://github.com/TomasTT7/TT7F-Float-Tracker/blob/master/Software/ARM_WSPR.c
+    //
+    // test here: http://k7fry.com/grid/
+    //
+    //  40.738059  -74.036227 -> FN20XR
+    // -26.30196   -66.709667 -> FG63PQ
+    // -31.951585  115.824861 -> OF78VB
+    //  10.813707  106.609537 -> OK30HT
+    //
+    // Will fill out 6-char maidenhead grid
+    static void ConvertToMaidenheadGrid(int32_t  latitudeDegreesMillionths,
+                                        int32_t  longitudeDegreesMillionths,
+                                        char    *grid)
+    {
+        // Put lat/long in 10-thousandths
+        int32_t lat = latitudeDegreesMillionths  / 100;
+        int32_t lng = longitudeDegreesMillionths / 100;
+        
+        // Put into grid space, no negative degrees
+        lat += (90  * 10000UL);
+        lng += (180 * 10000UL);
+        
+        grid[0] = 'A' +   (lng / 200000);
+        grid[1] = 'A' +   (lat / 100000);
+        grid[2] = '0' +  ((lng % 200000) / 20000);
+        grid[3] = '0' +  ((lat % 100000) / 10000);
+        grid[4] = 'A' + (((lng % 200000) % 20000) / 834);
+        grid[5] = 'A' + (((lat % 100000) % 10000) / 417);
+    }
+    
+    
+private:
 
     uint8_t pinTx_;
     

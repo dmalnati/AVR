@@ -185,6 +185,32 @@ void setup()
         }
     });
 
+    // grid <latFloat> <lngFloat>
+    console.RegisterCommand("grid", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 3)
+        {
+            float latFloat = atof(str.TokenAtIdx(1, ' '));
+            float lngFloat = atof(str.TokenAtIdx(2, ' '));
+
+            uint32_t latMillionths = latFloat * 1000000UL;
+            uint32_t lngMillionths = lngFloat * 1000000UL;
+
+            Log("Converting:");
+            Log("  lat: ", latFloat, " -> ", latMillionths);
+            Log("  lng: ", lngFloat, " -> ", lngMillionths);
+
+            SensorGPSUblox::Measurement mTmp;
+
+            gps.ConvertToMaidenheadGrid(latMillionths, lngMillionths, mTmp.maidenheadGrid);
+
+            Log("  grd: ", mTmp.maidenheadGrid);
+        }
+    });
+
+    
+
     console.Start();
     
     // handle events
