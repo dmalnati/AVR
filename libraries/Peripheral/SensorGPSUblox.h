@@ -21,6 +21,13 @@ public:
     static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 0;
     
+    // Account for the minimum of 2 NMEA sentences which have to be consumed
+    // in order to get a fresh synchronous lock.
+    // This is ~140 bytes at 9600 baud.
+    // Each byte is a bit under 1ms with 8N1 encoding, so we'll leave
+    // it calculated as 135ms.
+    static const uint32_t MIN_DELAY_NEW_TIME_LOCK_MS = 135;
+    
 private:
     static const uint32_t BAUD                  = 9600;
     static const uint32_t POLL_PERIOD_MS        = 25;
@@ -29,8 +36,9 @@ private:
     
 public:
     SensorGPSUblox(int8_t pinRx, int8_t pinTx)
-    : pinTx_(pinTx)
-    , ss_(PAL.GetArduinoPinFromPhysicalPin(pinRx),
+    : pinRx_(pinRx)
+    , pinTx_(pinTx)
+    , ss_(PAL.GetArduinoPinFromPhysicalPin(pinRx_),
           PAL.GetArduinoPinFromPhysicalPin(pinTx_))
     {
         // nothing to do
@@ -60,6 +68,11 @@ public:
     
     void DisableSerialInput()
     {
+        // Drastic requirement discovered through trial an error when working
+        // with knockoff gps module.
+        PAL.PinMode(pinRx_, OUTPUT);
+        PAL.DigitalWrite(pinRx_, LOW);
+        
         ss_.stopListening();
         
         timer_.DeRegisterForTimedEvent();
@@ -67,6 +80,10 @@ public:
     
     void EnableSerialInput()
     {
+        // Drastic requirement discovered through trial an error when working
+        // with knockoff gps module.
+        PAL.PinMode(pinRx_, INPUT);
+        
         ss_.begin(BAUD);
         ss_.listen();
         
@@ -720,6 +737,7 @@ public:
     
 private:
 
+    uint8_t pinRx_;
     uint8_t pinTx_;
     
     SoftwareSerial ss_;

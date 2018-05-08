@@ -151,6 +151,19 @@ private:
         // Lock onto two-minute mark on GPS time
         Log(P("GPS locking to next 2 minute mark"));
         uint8_t gpsLockOk = gps_.WaitForNextGPSTwoMinuteMark(&gpsMeasurement_);
+
+        // The GPS may have locked at an even minute and :00 seconds.
+        // We're going to transmit at the :01 second mark.
+        //
+        // Do some useful work in the meantime, but keep track of how much
+        // time it takes so we can wake up on time.
+        //
+        // We also account for the fact that the genuine real-world time change
+        // occurred in the past, and we're only learning about it after
+        // having processed the output data from the GPS, which is relatively
+        // slow at 9600 baud.
+        uint32_t timeAtMark =
+            PAL.Millis() - SensorGPSUblox::MIN_DELAY_NEW_TIME_LOCK_MS;
         
         Log(P("GPS Lock "), gpsLockOk ? P("OK") : P("NOT OK"));
         
@@ -161,32 +174,25 @@ private:
         // If locked, prepare to transmit
         if (gpsLockOk)
         {
-            // The GPS has locked at an even minute and :00 seconds.
-            // We're going to transmit at the :01 second mark.
-            //
-            // Do some useful work in the meantime, but keep track of how much
-            // time it takes so we can wake up on time.
-            uint32_t timeStart = PAL.Millis();
-            
             // Pack message now that we know where we are
             uint8_t messageOk = FillOutStandardWSPRMessage();
             
             // Test message before sending (but send regardless)
             Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
             
-            // Figure out how long that took
-            uint32_t timeEnd = PAL.Millis();
-            uint32_t timeDiff = timeEnd - timeStart;
+            // Figure out how long we've been operating since the mark
+            uint32_t timeDiff = PAL.Millis() - timeAtMark;
             
-            // Wait for the :01 mark
+            // Wait for the :01 second mark after even minute, accounting for 
+            // time which has elapsed since the even minute
             const uint32_t ONE_SECOND = 1000UL;
             if (timeDiff < ONE_SECOND)
             {
                 PAL.Delay(ONE_SECOND - timeDiff);
             }
-            Log(P("TX"));
             
-            // Actually send WSPR
+            // Send WSPR message
+            Log(P("TX"));
             SendMessage();
         }
         
@@ -231,6 +237,11 @@ private:
         userConfig_.mtCalibration.systemClockOffsetMs     = 8;
         wsprMessageTransmitter_.SetCalibration(userConfig_.mtCalibration);
         
+        // Set up the transmitter to kick the watchdog when sending data later
+        wsprMessageTransmitter_.SetCallbackOnBitChange([](){
+            PAL.WatchdogReset();
+        });
+        
         // Prepare system for send, warm up internals
         wsprMessageTransmitter_.RadioOn();
     }
@@ -242,11 +253,6 @@ private:
         // Kick the watchdog
         PAL.WatchdogReset();
         
-        // Set up the transmitter to kick the watchdog also
-        wsprMessageTransmitter_.SetCallbackOnBitChange([](){
-            PAL.WatchdogReset();
-        });
-   
         // Send the message synchronously
         retVal = wsprMessageTransmitter_.Send(&wsprMessage_);
         
@@ -330,9 +336,10 @@ private:
     
     void StartSubsystemGPS()
     {
+        gps_.EnableSerialInput();
+        
         PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
 
-        gps_.EnableSerialInput();
         gps_.EnableSerialOutput();
     }
     
@@ -342,12 +349,12 @@ private:
         // through a logic input
         gps_.DisableSerialOutput();
         
-        // stop interrupts from firing in underlying code
-        gps_.DisableSerialInput();
-        
         // disable power supply to GPS
         // (battery backup for module-stored data supplied through other pin)
         PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        
+        // stop interrupts from firing in underlying code
+        gps_.DisableSerialInput();
     }
     
     void StartGPS()
@@ -360,6 +367,9 @@ private:
         
         // assert this is a high-altitude mode
         gps_.SetHighAltitudeMode();
+        
+        // Only care about two messages, indicate so
+        gps_.EnableOnlyGGAAndRMC();
     }
 
     void StopGPS()
