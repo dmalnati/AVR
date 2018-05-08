@@ -300,7 +300,7 @@ private:
 
 template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 30>
 class SerialAsyncConsoleEnhanced
-: public SerialAsyncConsole<NUM_COMMANDS + 2, NUM_BYTES_SERIAL>
+: public SerialAsyncConsole<NUM_COMMANDS + 3, NUM_BYTES_SERIAL>
 {
 public:
 
@@ -343,6 +343,10 @@ private:
 
                 Log(P("Pin "), pin, P(" <- "), val);
             }
+        });
+        
+        this->RegisterCommand("reset", [](char *){
+            PAL.SoftReset();
         });
         
         if (enableDefaultErrorHandler)
