@@ -13,6 +13,9 @@
 
 struct AppPicoTrackerWSPR1Config
 {
+    // Regulator control
+    uint8_t pinRegPowerSaveEnable;
+    
     // GPS
     uint8_t pinGpsEnable;
     uint8_t pinGpsSerialRx; // receive GPS data from this pin
@@ -58,6 +61,10 @@ public:
         {
             Log(P("WDTR"));
         }
+        
+        // Set up control over regulator power save mode.
+        PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
+        RegulatorPowerSaveDisable();
         
         // Shut down subsystems
         // Floating pins have been seen to be enough to be high enough to
@@ -136,6 +143,10 @@ private:
     void OnWakeAndEvaluateTimeout()
     {
         Log(P("\nWake"));
+        
+        // We're about to use a lot of power, so turn off power-saving mode,
+        // which has a lower efficiency at higher current draw.
+        RegulatorPowerSaveDisable();
 
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
@@ -146,7 +157,7 @@ private:
         
         // Warm up transmitter
         Log(P("Warming transmitter"));
-        PrepareToSendMessage();
+        //PrepareToSendMessage();
         
         // Lock onto two-minute mark on GPS time
         Log(P("GPS locking to next 2 minute mark"));
@@ -164,6 +175,13 @@ private:
         // slow at 9600 baud.
         uint32_t timeAtMark =
             PAL.Millis() - SensorGPSUblox::MIN_DELAY_NEW_TIME_LOCK_MS;
+        
+        
+        
+        
+        PrepareToSendMessage();
+        
+        
         
         Log(P("GPS Lock "), gpsLockOk ? P("OK") : P("NOT OK"));
         
@@ -204,6 +222,11 @@ private:
         PAL.WatchdogDisable();
         
         Log(P("Sleep "), wakeAndEvaluateDelayMs);
+        
+        // We're about to sleep and use very little power, so turn on
+        // power-saving mode, which has a higher efficiency at lower current
+        // draw.
+        RegulatorPowerSaveEnable();
     }
     
     
@@ -325,6 +348,23 @@ private:
         wsprMessage_.SetPower(powerDbm);
         
         return wsprMessageTransmitter_.Test(&wsprMessage_);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Power Regulator Controls
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    void RegulatorPowerSaveEnable()
+    {
+        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, HIGH);
+    }
+    
+    void RegulatorPowerSaveDisable()
+    {
+        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, LOW);
     }
     
     

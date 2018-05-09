@@ -3,6 +3,9 @@
 
 static AppPicoTrackerWSPR1Config cfg =
 {
+    // Regulator control
+    .pinRegPowerSaveEnable = 6,
+    
     // GPS
     .pinGpsEnable   = 14,
     .pinGpsSerialRx = 23,
