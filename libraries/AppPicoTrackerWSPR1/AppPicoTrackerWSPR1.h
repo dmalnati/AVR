@@ -147,7 +147,7 @@ private:
         // We're about to use a lot of power, so turn off power-saving mode,
         // which has a lower efficiency at higher current draw.
         RegulatorPowerSaveDisable();
-
+        
         // Begin monitoring code which has been seen to hang
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
@@ -359,12 +359,12 @@ private:
     
     void RegulatorPowerSaveEnable()
     {
-        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, HIGH);
+        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, LOW);
     }
     
     void RegulatorPowerSaveDisable()
     {
-        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, LOW);
+        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, HIGH);
     }
     
     
