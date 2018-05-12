@@ -68,7 +68,7 @@ public:
         // Drive GPS power supply pin low, has been seen to float high enough
         // to activate
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
-        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        StopSubsystemGPS();
         
         // Set up LED pins as output
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
@@ -388,10 +388,33 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////////
     
+    void StartSubsystemGPS()
+    {
+        gps_.EnableSerialInput();
+        
+        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+
+        gps_.EnableSerialOutput();
+    }
+    
+    void StopSubsystemGPS()
+    {
+        // Work around a hardware issue where the GPS will draw lots of current
+        // through a logic input
+        gps_.DisableSerialOutput();
+        
+        // disable power supply to GPS
+        // (battery backup for module-stored data supplied through other pin)
+        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        
+        // stop interrupts from firing in underlying code
+        gps_.DisableSerialInput();
+    }
+    
     void StartGPS()
     {
-        // enable power supply to GPS
-        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+        // Enable subsystem
+        StartSubsystemGPS();
         
         // re-init to begin cycle again
         gps_.Init();
@@ -406,17 +429,13 @@ private:
         // acquired next time the GPS starts up
         gps_.ResetFix();
         
-        // stop interrups from firing in underlying code
-        gps_.DisableSerialInput();
-        
         // cause the gps module to store the metadata is has learned from
         // the satellites it can see and used to get a lock.
         // this will be read again automatically by the module on startup.
         gps_.SaveConfiguration();
         
-        // disable power supply to GPS
-        // (battery backup for module-stored data supplied through other pin)
-        PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+        // Disable subsystem
+        StopSubsystemGPS();
     }
     
     
