@@ -58,7 +58,13 @@ proc KmlAddPlacemarkLineString { name desc latLngAltList { styleId "" } { extrud
     puts "                <altitudeMode>absolute</altitudeMode>"
     puts "                <coordinates>"
     foreach { lat lng alt } $latLngAltList {
-        set altMeters [expr double($alt) / 3.28084]
+        if { $alt == "" } {
+            set alt 0
+        }
+
+        if { [catch {expr double($alt) / 3.28084} altMeters] } {
+            set altMeters 0
+        }
 
         puts "${lng},${lat},${altMeters}"
     }
