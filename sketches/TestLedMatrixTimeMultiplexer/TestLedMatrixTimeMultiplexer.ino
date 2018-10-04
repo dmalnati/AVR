@@ -4,7 +4,7 @@
 
 
 static Evm::Instance<10,10,10> evm;
-static SerialAsyncConsoleEnhanced<10> shell;
+static SerialAsyncConsoleEnhanced<20> shell;
 
 static const uint8_t ROW_COUNT = 3;
 static const uint8_t COL_COUNT = 2;
@@ -12,6 +12,21 @@ static const uint8_t ROW_PIN_LIST[ROW_COUNT] = { 19, 18, 17 };
 static const uint8_t COL_PIN_LIST[COL_COUNT] = { 16, 15 };
 static LedMatrixTimeMultiplexer<ROW_COUNT, COL_COUNT> mux(ROW_PIN_LIST, COL_PIN_LIST);
 
+static TimedEventHandlerDelegate ted;
+
+
+
+  void SetAll(uint8_t onOff)
+  {
+    for (uint8_t row = 0; row < ROW_COUNT; ++row)
+    {
+      for (uint8_t col = 0; col < COL_COUNT; ++col)
+      {
+        mux.SetLedState(row, col, onOff);
+      }
+    }
+  }
+  
 
 void setup()
 {
@@ -35,6 +50,55 @@ void setup()
           mux.SetLedState(row, col, onOff);
       }
   });
+
+  
+  shell.RegisterCommand("allon", [](char *){
+      Log("Setting all off");
+      SetAll(1);
+  });
+
+  shell.RegisterCommand("alloff", [](char *){
+      Log("Setting all off");
+      SetAll(0);
+  });
+
+
+  shell.RegisterCommand("timeron", [](char *cmdStr){
+      Str str(cmdStr);
+
+      uint32_t delayMs = 1000;
+  
+      if (str.TokenCount(' ') == 2)
+      {
+          delayMs = atol(str.TokenAtIdx(1, ' '));
+      }
+      
+      Log("Timer on: ", delayMs, " ms");
+      
+      ted.SetCallback([](){
+        static uint8_t idx = 0;
+
+        // calculate current row/col
+        uint8_t row = idx / COL_COUNT;
+        uint8_t col = idx - (row * COL_COUNT);
+
+        // toggle current pin
+        mux.SetLedState(row, col, !mux.GetLedState(row, col));
+
+        // move to next index
+        idx = (idx + 1) % (ROW_COUNT * COL_COUNT);
+      });
+
+      ted.RegisterForTimedEventInterval(delayMs);
+  });
+
+  shell.RegisterCommand("timeroff", [](char *){
+      Log("Timer off");
+      ted.DeRegisterForTimedEvent();
+  });
+
+  
+
 
 #if 0
   shell.RegisterCommand("p", [](char *cmdStr){
@@ -100,11 +164,16 @@ void setup()
   });
 
   shell.Start();
+  shell.Exec("ms 2");
+  shell.Exec("allon");
+  shell.Exec("timeron");  
 
   Log("Running");
 
   evm.MainLoop();
 }
+
+
 
 void loop(){}
 

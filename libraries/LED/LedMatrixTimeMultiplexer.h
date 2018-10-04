@@ -56,6 +56,18 @@ public:
         }
     }
     
+    uint8_t GetLedState(uint8_t row, uint8_t col)
+    {
+        uint8_t retVal = 0;
+        
+        if (row < ROW_COUNT && col < COL_COUNT)
+        {
+            retVal = rowByColMatrix_[row][col].onOff;
+        }
+        
+        return retVal;
+    }
+    
     void SetRowIntervalMs(uint32_t rowIntervalMs)
     {
         rowIntervalMs_ = rowIntervalMs;
@@ -88,7 +100,11 @@ private:
     {
         RowClear(rowIdx_);
         
-        rowIdx_ = (rowIdx_ + 1) % ROW_COUNT;
+        rowIdx_ = (rowIdx_ + 1);
+        if (rowIdx_ == ROW_COUNT)
+        {
+            rowIdx_ = 0;
+        }
         
         RowPaint(rowIdx_);
     }
@@ -128,8 +144,8 @@ private:
 
 
 
-    uint8_t rowPinList_[ROW_COUNT] = { 0 };
-    uint8_t colPinList_[COL_COUNT] = { 0 };
+    Pin rowPinList_[ROW_COUNT];
+    Pin colPinList_[COL_COUNT];
 
     LedData rowByColMatrix_[ROW_COUNT][COL_COUNT];
     
