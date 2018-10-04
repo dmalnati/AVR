@@ -63,6 +63,11 @@ public:
         cbFn_ = cbFn;
     }
     
+    function<void(char *)> GetCallback()
+    {
+        return cbFn_;
+    }
+    
     void SetPollPeriod(uint32_t pollPeriodMs)
     {
         pollPeriodMs_ = pollPeriodMs;
@@ -221,12 +226,12 @@ public:
         isRunning_ = 1;
         
         sarl_.Attach(buf_, BUF_SIZE);
-        sarl_.SetCallback([this](char *str){
-            uint8_t strLen = strlen(str);
+        sarl_.SetCallback([this](char *strCmd){
+            uint8_t strLen = strlen(strCmd);
             
             if (strLen)
             {
-                Str str(buf_);
+                Str str(strCmd);
                 
                 const char *cmd = str.TokenAtIdx(0, ' ');
 
@@ -239,7 +244,7 @@ public:
                         
                         str.Release();
                         
-                        cmdToFnList_[i].fn(buf_);
+                        cmdToFnList_[i].fn(strCmd);
                     }
                 }
                 
@@ -247,7 +252,7 @@ public:
                 {
                     str.Release();
                         
-                    fnErr_(buf_);
+                    fnErr_(strCmd);
                 }
                 
                 if (verbose_)
@@ -279,6 +284,11 @@ public:
     uint8_t IsRunning()
     {
         return isRunning_;
+    }
+    
+    void Exec(const char *strCmd)
+    {
+        sarl_.GetCallback()((char *)strCmd);
     }
 
 private:
