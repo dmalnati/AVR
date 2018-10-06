@@ -38,11 +38,22 @@ class RFSI4463PRO
     static const uint32_t EXTERNAL_CRYSTAL_FREQ      = 30000000;
     
     
+    
+public:
+
+    enum class ModulationType : uint8_t
+    {
+        MT_OOK = 1,
+        MT_2FSK = 2,
+    };
+    
+    
 public:
     RFSI4463PRO(uint8_t pinChipSelect, uint8_t pinShutdown)
     : pinChipSelect_(pinChipSelect)
     , pinShutdown_(pinShutdown)
     , deviationFreq_(0)
+    , modulationType_(ModulationType::MT_2FSK)
     {
         // Nothing to do
     }
@@ -78,6 +89,11 @@ public:
             SetDeviationInternal(deviationFreq_);
             ChangeStateToTx();
         }
+    }
+    
+    void SetModulationType(ModulationType modulationType)
+    {
+        modulationType_ = modulationType;
     }
     
     void Start()
@@ -248,8 +264,8 @@ private:
         // Real-time sourcing
         prop.BYTE0.MOD_SOURCE = 1;
         
-        // 2FSK
-        prop.BYTE0.MOD_TYPE = 2;
+        // Modulation Type
+        prop.BYTE0.MOD_TYPE = (uint8_t)modulationType_;
         
         return SetProperty(prop);
     }
@@ -529,6 +545,8 @@ private:
     uint8_t  pinShutdown_;
     uint32_t frequency_;
     uint32_t deviationFreq_;
+    
+    ModulationType modulationType_;
 };
 
 
