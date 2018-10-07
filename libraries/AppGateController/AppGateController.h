@@ -23,6 +23,12 @@ struct AppGateControllerConfig
     uint8_t pinLed2;
     uint8_t pinLed3;
     uint8_t pinLed4;
+    
+    uint8_t pinButtonStartBruteForce;
+    uint8_t pinButtonStartForceOpen;
+    uint8_t pinButtonStartJam;
+    uint8_t pinButtonStop;
+
 };
 
 
@@ -50,6 +56,10 @@ public:
     AppGateController(AppGateControllerConfig &cfg)
     : cfg_(cfg)
     , radio_(cfg_.pinSlaveSelect, cfg_.pinShutdown)
+    , inStartBruteForce_(cfg_.pinButtonStartBruteForce)
+    , inStartForceOpen_(cfg_.pinButtonStartForceOpen)
+    , inStartJam_(cfg_.pinButtonStartJam)
+    , inStop_(cfg_.pinButtonStop)
     {
         for (auto pin : (uint8_t[]){
             cfg_.pinOOK, 
@@ -72,6 +82,9 @@ public:
         // Start up Radio
         RadioStart();
         
+        // Set up physical interface
+        SetupPhysicalInterface();
+        
         // Set up interactive controls
         SetupShellCommands();
         
@@ -88,9 +101,68 @@ private:
     // Shell Commands
     //
     ///////////////////////////////////////////////////////////////////////////
+    
+    void SetupPhysicalInterface()
+    {
+        inStartBruteForce_.SetCallback([this](uint8_t){
+            shell_.Exec("brute");
+        });
+        
+        inStartForceOpen_.SetCallback([this](uint8_t){
+            shell_.Exec("forceopen");
+        });
+        
+        inStartJam_.SetCallback([this](uint8_t){
+            shell_.Exec("jam");
+        });
+        
+        inStop_.SetCallback([this](uint8_t){
+            shell_.Exec("stop");
+        });
+        
+        inStartBruteForce_.Enable();
+        inStartForceOpen_.Enable();
+        inStartJam_.Enable();
+        inStop_.Enable();
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Shell Commands
+    //
+    ///////////////////////////////////////////////////////////////////////////
 
     void SetupShellCommands()
     {
+        shell_.RegisterCommand("brute", [this](char *){
+            uint16_t low  = 0;
+            uint16_t high = 0b0000001111111111;
+            
+            Log("Brute");
+            SendCombinationRangeAsync(low, high);
+        });
+        
+        shell_.RegisterCommand("open", [this](char *){
+            Log("Open");
+            Open();
+        });
+        
+        shell_.RegisterCommand("jam", [this](char *){
+            Log("Jam");
+            Jam();
+        });
+        
+        shell_.RegisterCommand("forceopen", [this](char *){
+            Log("ForceOpen");
+            ForceOpen();
+        });
+        
+        shell_.RegisterCommand("stop", [this](char *){
+            Log("Stop");
+            Stop();
+        });
+        
         shell_.RegisterCommand("codeSendCount", [this](char *cmdStr){
             Str str(cmdStr);
       
@@ -111,29 +183,6 @@ private:
 
                 PrintConfig(sc_);
             }
-        });
-        
-        shell_.RegisterCommand("brute", [this](char *){
-            uint16_t low  = 0;
-            uint16_t high = 0b0000001111111111;
-            
-            SendCombinationRangeAsync(low, high);
-        });
-        
-        shell_.RegisterCommand("open", [this](char *){
-            Open();
-        });
-        
-        shell_.RegisterCommand("jam", [this](char *){
-            Jam();
-        });
-        
-        shell_.RegisterCommand("forceopen", [this](char *){
-            ForceOpen();
-        });
-        
-        shell_.RegisterCommand("stop", [this](char *){
-            Stop();
         });
         
         shell_.RegisterCommand("rfstart", [this](char *){
@@ -480,6 +529,11 @@ private:
     AppGateControllerConfig &cfg_;
     
     RFSI4463PRO radio_;
+    
+    PinInput inStartBruteForce_;
+    PinInput inStartForceOpen_;
+    PinInput inStartJam_;
+    PinInput inStop_;
     
     SendConfig sc_;
     
