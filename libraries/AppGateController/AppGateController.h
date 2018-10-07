@@ -36,7 +36,7 @@ class AppGateController
     // Defaults reflect my gate
     struct SendConfig
     {
-        uint8_t codeSendCount       = 5;
+        uint8_t  codeSendCount      = 5;
         uint32_t delayBetweenCodeMs = 2;
         
         uint32_t bitDurationUs             = 1960;
@@ -117,7 +117,6 @@ private:
             uint16_t low  = 0;
             uint16_t high = 0b0000001111111111;
             
-            //SendCombinationRange(low, high);
             SendCombinationRangeAsync(low, high);
         });
         
@@ -130,7 +129,11 @@ private:
         });
         
         shell_.RegisterCommand("forceopen", [this](char *){
-            //ForceOpen();
+            ForceOpen();
+        });
+        
+        shell_.RegisterCommand("stop", [this](char *){
+            Stop();
         });
         
         shell_.RegisterCommand("rfstart", [this](char *){
@@ -217,7 +220,7 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void SetLEDs(uint8_t pct)
+    void SetBruteForceLEDs(uint8_t pct)
     {
         struct
         {
@@ -243,15 +246,43 @@ private:
         }
     }
     
+    void SetOpenStartLEDs()
+    {
+        SetBruteForceLEDs(0);
+    }
+    
+    void SetOpenEndLEDs()
+    {
+        SetBruteForceLEDs(100);
+    }
+    
+    void SetJamLEDs()
+    {
+        static uint8_t count = 0;
+        static uint8_t onOff = 0;
+        
+        if (count < 10)
+        {
+            PAL.DigitalWrite(cfg_.pinLed1, onOff ? HIGH : LOW);
+            PAL.DigitalWrite(cfg_.pinLed2, onOff ? LOW  : HIGH);
+            PAL.DigitalWrite(cfg_.pinLed3, onOff ? HIGH : LOW);
+            PAL.DigitalWrite(cfg_.pinLed4, onOff ? LOW  : HIGH);
+            
+            ++count;
+        }
+        else
+        {
+            onOff = !onOff;
+            
+            count = 0;
+        }
+    }
     
     ///////////////////////////////////////////////////////////////////////////
     //
     // Basic Code Transmission Control - Async
     //
     ///////////////////////////////////////////////////////////////////////////
-    
-    
-    TimedEventHandlerDelegate ledTed_;
     
     void SendCombinationRangeAsync(uint16_t low, uint16_t high)
     {
@@ -293,7 +324,7 @@ private:
             
             uint8_t pct = (double)used / (double)range * 100.0;
             
-            SetLEDs(pct);
+            SetBruteForceLEDs(pct);
         });
         ledTed_();
         ledTed_.RegisterForTimedEventInterval(100, 0);
@@ -380,19 +411,66 @@ private:
     
     void Open()
     {
-        SendCombinationRangeAsync(cfg_.myGateCombo, cfg_.myGateCombo);
+        SetOpenStartLEDs();
+        
+        SendCombinationRange(cfg_.myGateCombo, cfg_.myGateCombo);
+        
+        SetOpenEndLEDs();
     }
 
     void ForceOpen()
     {
+        NewAsyncSequence();
+        
+        forceTed_.SetCallback([this](){
+            Open();
+        });
+        
+        uint32_t intervalMs =
+            (sc_.bitDurationUs / 1000 * 10) + 
+            sc_.delayBetweenCodeMs +
+            10; // just for good luck
+        
+        forceTed_.RegisterForTimedEventInterval(intervalMs, 0);
     }
     
     void Jam()
     {
-        PAL.DigitalToggle(cfg_.pinOOK);
-        PAL.DelayMicroseconds(sc_.bitHighDurationWhenLowUs);
+        const uint16_t JUNK = 0b0000001111111111;
+
+        NewAsyncSequence();
+        
+        forceTed_.SetCallback([this](){
+            SetJamLEDs();
+            
+            SendCombinationRange(JUNK, JUNK);
+        });
+        
+        uint32_t intervalMs = (sc_.bitDurationUs / 1000 * 10) / 2;
+        
+        forceTed_.RegisterForTimedEventInterval(intervalMs, 0);
+    }
+    
+    void Stop()
+    {
+        NewAsyncSequence();
     }
 
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Keeping track of timers and LED controllers
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
+    void NewAsyncSequence()
+    {
+        ledTed_.DeRegisterForTimedEvent();
+        forceTed_.DeRegisterForTimedEvent();
+        sendCombinationTed_.DeRegisterForTimedEvent();
+        
+        SetBruteForceLEDs(100);
+    }
 
 
 private:
@@ -406,6 +484,8 @@ private:
     SendConfig sc_;
     
     TimedEventHandlerDelegate sendCombinationTed_;
+    TimedEventHandlerDelegate ledTed_;
+    TimedEventHandlerDelegate forceTed_;
 
     SerialAsyncConsoleEnhanced<20> shell_;
 
