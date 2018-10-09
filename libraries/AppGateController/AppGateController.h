@@ -43,7 +43,7 @@ class AppGateController
     struct SendConfig
     {
         uint8_t  codeSendCount      = 5;
-        uint32_t delayBetweenCodeMs = 2;
+        uint32_t delayBetweenCodeMs = 5;
         
         uint32_t bitDurationUs             = 1960;
         uint32_t bitHighDurationWhenHighUs = 1450;
@@ -78,6 +78,9 @@ public:
     {
         LogStart(9600);
         Log("Starting");
+        
+        // Show starting indication
+        FlashOnce();
         
         // Start up Radio
         RadioStart();
@@ -268,6 +271,13 @@ private:
     // Status LED Logic
     //
     ///////////////////////////////////////////////////////////////////////////
+    
+    void FlashOnce()
+    {
+        SetBruteForceLEDs(0);
+        PAL.Delay(1000);
+        SetBruteForceLEDs(100);
+    }
     
     void SetBruteForceLEDs(uint8_t pct)
     {
