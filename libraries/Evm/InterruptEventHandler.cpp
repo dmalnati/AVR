@@ -3,7 +3,7 @@
 
 
 uint8_t InterruptEventHandler::
-RegisterForInterruptEvent(uint8_t pin, uint8_t mode)
+RegisterForInterruptEvent()
 {
     uint8_t retVal;
 
@@ -13,7 +13,7 @@ RegisterForInterruptEvent(uint8_t pin, uint8_t mode)
         DeRegisterForInterruptEvent();
         
         retVal =
-            RegisterForPCIntEvent(pin, ConvertToPCIntEventHandlerMode(mode));
+            RegisterForPCIntEvent(pin_, ConvertToPCIntEventHandlerMode(mode_));
     }
     
     return retVal;

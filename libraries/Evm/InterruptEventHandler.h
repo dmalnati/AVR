@@ -60,11 +60,12 @@ class InterruptEventHandler
     friend class EvmActual;
     
 public:
-    InterruptEventHandler()
-    : mode_(LEVEL_UNDEFINED)
+    InterruptEventHandler(uint8_t pin, uint8_t mode)
+    : pin_(pin)
+    , mode_(mode)
     , logicLevel_(0)
     {
-        // nothing to do
+        // Nothing to do
     }
     
     virtual ~InterruptEventHandler()
@@ -72,7 +73,6 @@ public:
         DeRegisterForInterruptEvent();
     }
 
-    uint8_t GetMode()       const { return mode_; }
     uint8_t GetLogicLevel() const { return logicLevel_; }
     
     //////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
 
-    uint8_t RegisterForInterruptEvent(uint8_t pin, uint8_t mode);
+    uint8_t RegisterForInterruptEvent();
     uint8_t DeRegisterForInterruptEvent();
     
     virtual void OnInterruptEvent(uint8_t logicLevel) = 0;
@@ -127,6 +127,7 @@ private:
     virtual void OnPCIntEvent(uint8_t logicLevel);
     
     
+    uint8_t pin_;
     uint8_t mode_;
     uint8_t logicLevel_;
 };
@@ -136,32 +137,45 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// Object Wrappers
+// Helpers
 //
 //////////////////////////////////////////////////////////////////////
 
-template <typename T>
+
 class InterruptEventHandlerDelegate
 : public InterruptEventHandler
 {
-    typedef void (T::*MemberCallbackFn)(uint8_t logicLevel);
-    
 public:
-    void SetCallback(T *obj, MemberCallbackFn func)
+    InterruptEventHandlerDelegate(uint8_t pin, uint8_t mode)
+    : InterruptEventHandler(pin, mode)
     {
-        obj_  = obj;
-        func_ = func;
+        // Nothing to do
+    }
+    
+    void SetCallback(function<void(uint8_t)> cbFn)
+    {
+        cbFn_ = cbFn;
+    }
+    
+    function<void(uint8_t)> GetCallback()
+    {
+        return cbFn_;
+    }
+    
+    void operator()()
+    {
+        GetCallback()(GetLogicLevel());
     }
 
 private:
     virtual void OnInterruptEvent(uint8_t logicLevel)
     {
-        if (obj_ && func_) { ((*obj_).*func_)(logicLevel); }
+        cbFn_(logicLevel);
     }
 
-    T                *obj_;
-    MemberCallbackFn  func_;
+    function<void(uint8_t)> cbFn_;
 };
+
 
 
 
