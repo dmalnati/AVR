@@ -207,6 +207,65 @@ void Log(int8_t val)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Number modifiers
+//
+////////////////////////////////////////////////////////////////////////////////
+
+class LogBIN
+{
+    friend void ::LogNNL(LogBIN);
+    
+    struct Data
+    {
+        uint32_t val      = 0;
+        uint32_t bitCount = 32;
+    };
+    
+public:
+    LogBIN(uint32_t val, uint8_t showPrefix = 1)
+    : showPrefix_(showPrefix)
+    {
+        data_.val      = val;
+        data_.bitCount = 32;
+    }
+    
+private:
+    
+    void LogNNL()
+    {
+        if (showPrefix_)
+        {
+            ::LogNNL("0b");
+        }
+        
+        for (uint8_t bitCount = 0; bitCount < data_.bitCount; ++bitCount)
+        {
+            uint8_t bitVal = !!((data_.val << bitCount) & 0x80000000);
+            
+            ::LogNNL(bitVal ? '1' : '0');
+        }
+    }
+
+    Data data_;
+    uint8_t showPrefix_;
+};
+
+
+void LogNNL(LogBIN val)
+{
+    val.LogNNL();
+}
+
+void Log(LogBIN val)
+{
+    LogNNL(val);
+    LogNL();
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Floating Point
 //
 ////////////////////////////////////////////////////////////////////////////////
