@@ -244,6 +244,82 @@ public:
         }
     }
     
+    
+    uint8_t DigitalWatch(Pin       pin,
+                         uint8_t   levelToWatch,
+                         uint32_t  timeoutUs,
+                         uint32_t *measuredDurationUs = NULL)
+    {
+        uint8_t retVal = 0;
+        
+        // Confirm we're on the expected initial level
+        uint8_t  logicLevel = DigitalRead(pin);
+        uint32_t timeStart  = Micros();
+        
+        if (logicLevel == levelToWatch)
+        {
+            // Hold this current level
+            uint32_t timeElapsed = 0;
+            
+            while (timeElapsed < timeoutUs && logicLevel == levelToWatch)
+            {
+                timeElapsed = Micros() - timeStart;
+                
+                logicLevel = DigitalRead(pin);
+            }
+            
+            // Confirm that we haven't timed out in order to indicate success
+            if (timeElapsed < timeoutUs)
+            {
+                retVal = 1;
+                
+                if (measuredDurationUs)
+                {
+                    *measuredDurationUs = timeElapsed;
+                }
+            }
+        }
+        else
+        {
+            // failed preconditions, quit
+        }
+        
+        return retVal;
+    }
+    
+    
+    // Expected use:
+    // - Decoding bits in pulse-width-encoded signal
+    // - If you want to measure, say, HIGH peaks
+    //   - you're already in a LOW, you want to wait to go HIGH, then
+    //     measure the time there before going LOW again
+    //       - there is a giveup time on waiting for the first transition
+    // - Works for both HIGH and LOW peaks
+    //
+    // Specify the HIGH_LOW_VALUE as HIGH if you want to measure the HIGH duration
+    uint8_t DigitalChangeWatch(Pin      pin,
+                               uint8_t  levelToWatchFor,
+                               uint32_t timeoutCurrentLevelUs,
+                               uint32_t timeoutReqdLevelUs,
+                               uint32_t *measuredDurationUs = NULL)
+    {
+        uint8_t retVal = 0;
+        
+        // Check we are at the expected initial level, and that we transition
+        // to the next level within our giveup time
+        if (DigitalWatch(pin, !levelToWatchFor, timeoutCurrentLevelUs))
+        {
+            if (DigitalWatch(pin, levelToWatchFor, timeoutReqdLevelUs, measuredDurationUs))
+            {
+                retVal = 1;
+            }
+        }
+        
+        return retVal;
+    }
+    
+    
+    
     static uint8_t GetPortValueFromPhysicalPin(uint8_t physicalPin)
     {
         uint8_t retVal = 0;
