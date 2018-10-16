@@ -10,7 +10,7 @@ class LedMatrixTimeMultiplexer
 {
 private:
 
-    static const uint32_t DEFAULT_ROW_INTERVAL_MS = 1;
+    static const uint32_t DEFAULT_ROW_INTERVAL_US = 100;
 
     struct LedData
     {
@@ -68,9 +68,14 @@ public:
         return retVal;
     }
     
-    void SetRowIntervalMs(uint32_t rowIntervalMs)
+    void SetRowIntervalUs(uint32_t rowIntervalUs)
     {
-        rowIntervalMs_ = rowIntervalMs;
+        rowIntervalUs_ = rowIntervalUs;
+        
+        if (running_)
+        {
+            ted_.RegisterForIdleTimeHiResTimedEventInterval(rowIntervalUs_);
+        }
     }
 
     void Start()
@@ -81,7 +86,9 @@ public:
             RenderNextRow();
         });
         
-        ted_.RegisterForTimedEventInterval(rowIntervalMs_);
+        ted_.RegisterForIdleTimeHiResTimedEventInterval(rowIntervalUs_);
+        
+        running_ = 1;
     }
     
     void Stop()
@@ -90,7 +97,9 @@ public:
         
         rowIdx_ = 0;
         
-        ted_.DeRegisterForTimedEvent();
+        ted_.DeRegisterForIdleTimeHiResTimedEvent();
+        
+        running_ = 0;
     }
 
 
@@ -151,8 +160,10 @@ private:
     
     uint8_t rowIdx_ = 0;
     
-    uint32_t                   rowIntervalMs_ = DEFAULT_ROW_INTERVAL_MS;
-    TimedEventHandlerDelegate  ted_;
+    uint32_t rowIntervalUs_ = DEFAULT_ROW_INTERVAL_US;
+    IdleTimeHiResTimedEventHandlerDelegate ted_;
+    
+    uint8_t running_ = 0;
     
 };
 
