@@ -11,6 +11,8 @@ class LedMatrixTimeMultiplexer
 private:
 
     static const uint32_t DEFAULT_ROW_INTERVAL_US = 100;
+    
+    static const uint16_t PIN_COUNT = ROW_COUNT * COL_COUNT;
 
     struct LedData
     {
@@ -48,12 +50,32 @@ public:
         }
     }
     
+    void SetLedState(uint8_t pinNum, uint8_t onOff)
+    {
+        if (pinNum < PIN_COUNT)
+        {
+            pinMatrix_[pinNum].onOff = onOff;
+        }
+    }
+    
     void SetLedState(uint8_t row, uint8_t col, uint8_t onOff)
     {
         if (row < ROW_COUNT && col < COL_COUNT)
         {
             rowByColMatrix_[row][col].onOff = onOff;
         }
+    }
+    
+    uint8_t GetLedState(uint8_t pinNum)
+    {
+        uint8_t retVal = 0;
+        
+        if (pinNum < PIN_COUNT)
+        {
+            retVal = pinMatrix_[pinNum].onOff;
+        }
+        
+        return retVal;
     }
     
     uint8_t GetLedState(uint8_t row, uint8_t col)
@@ -157,6 +179,7 @@ private:
     Pin colPinList_[COL_COUNT];
 
     LedData rowByColMatrix_[ROW_COUNT][COL_COUNT];
+    LedData *pinMatrix_ = (LedData *)rowByColMatrix_;
     
     uint8_t rowIdx_ = 0;
     
