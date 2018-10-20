@@ -65,7 +65,6 @@ public:
     {
         Stop();
 
-
         if (fnDataListAddNextIdx_ != 0)
         {
             ted_.SetCallback([this](){
@@ -96,7 +95,6 @@ private:
     void OnTimeout()
     {
         fnDataList_[fnDataListRunNextIdx_].fn();
-
         ++fnDataListRunNextIdx_;
         
         if (fnDataListRunNextIdx_ < fnDataListAddNextIdx_)
