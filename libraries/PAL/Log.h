@@ -1,6 +1,7 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
+
 #include <float.h>
 
 #include "PStr.h"
@@ -13,15 +14,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogStart(uint32_t baud)
-{
-    S0.Start(baud);
-}
-
-void LogEnd()
-{
-    S0.Stop();
-}
+extern void LogStart(uint32_t baud);
+extern void LogEnd();
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,10 +24,7 @@ void LogEnd()
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNL()
-{
-    S0.Write('\n');
-}
+extern void LogNL();
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,16 +33,8 @@ void LogNL()
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(const char *str)
-{
-    S0.Write((uint8_t *)str, strlen(str));
-}
-
-void Log(const char *str)
-{
-    LogNNL(str);
-    LogNL();
-}
+extern void LogNNL(const char *str);
+extern void Log(const char *str);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,16 +43,8 @@ void Log(const char *str)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogBufNNL(uint8_t *buf, uint16_t bufSize)
-{
-    S0.Write(buf, bufSize);
-}
-
-void LogBuf(uint8_t *buf, uint16_t bufSize)
-{
-    LogBufNNL(buf, bufSize);
-    LogNL();
-}
+extern void LogBufNNL(uint8_t *buf, uint16_t bufSize);
+extern void LogBuf(uint8_t *buf, uint16_t bufSize);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,33 +53,8 @@ void LogBuf(uint8_t *buf, uint16_t bufSize)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(PStr val)
-{
-    const char *p = (const char *)val;
-    
-    uint8_t cont = 1;
-    while (cont)
-    {
-        char c = pgm_read_byte(p);
-        
-        if (c != '\0')
-        {
-            S0.Write(c);
-            
-            ++p;
-        }
-        else
-        {
-            cont = 0;
-        }
-    }
-}
-
-void Log(PStr val)
-{
-    LogNNL(val);
-    LogNL();
-}
+extern void LogNNL(PStr val);
+extern void Log(PStr val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,16 +63,8 @@ void Log(PStr val)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(char val)
-{
-    S0.Write(val);
-}
-
-void Log(char val)
-{
-    LogNNL(val);
-    LogNL();
-}
+extern void LogNNL(char val);
+extern void Log(char val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,38 +73,12 @@ void Log(char val)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(uint32_t val)
-{
-    char buf[15];
-    ultoa(val, buf, 10);
-    LogNNL(buf);
-}
-
-void Log(uint32_t val)
-{
-    LogNNL(val);
-    LogNL();
-}
-
-void LogNNL(uint16_t val)
-{
-    LogNNL((uint32_t)val);
-}
-
-void Log(uint16_t val)
-{
-    Log((uint32_t)val);
-}
-
-void LogNNL(uint8_t val)
-{
-    LogNNL((uint32_t)val);
-}
-
-void Log(uint8_t val)
-{
-    Log((uint32_t)val);
-}
+extern void LogNNL(uint32_t val);
+extern void Log(uint32_t val);
+extern void LogNNL(uint16_t val);
+extern void Log(uint16_t val);
+extern void LogNNL(uint8_t val);
+extern void Log(uint8_t val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,38 +87,12 @@ void Log(uint8_t val)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(int32_t val)
-{
-    char buf[15];
-    ltoa(val, buf, 10);
-    LogNNL(buf);
-}
-
-void Log(int32_t val)
-{
-    LogNNL(val);
-    LogNL();
-}
-
-void LogNNL(int16_t val)
-{
-    LogNNL((int32_t)val);
-}
-
-void Log(int16_t val)
-{
-    Log((int32_t)val);
-}
-
-void LogNNL(int8_t val)
-{
-    LogNNL((int32_t)val);
-}
-
-void Log(int8_t val)
-{
-    Log((int32_t)val);
-}
+extern void LogNNL(int32_t val);
+extern void Log(int32_t val);
+extern void LogNNL(int16_t val);
+extern void Log(int16_t val);
+extern void LogNNL(int8_t val);
+extern void Log(int8_t val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,17 +141,8 @@ private:
 };
 
 
-void LogNNL(LogBIN val)
-{
-    val.LogNNL();
-}
-
-void Log(LogBIN val)
-{
-    LogNNL(val);
-    LogNL();
-}
-
+extern void LogNNL(LogBIN val);
+extern void Log(LogBIN val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,37 +151,8 @@ void Log(LogBIN val)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogNNL(double val)
-{
-    // Support 3 decimal places
-    
-    // this is -MAX_DBL, which is the largest printed number I can find:
-    // 00000000011111111112222222222333333333344444
-    // 12345678901234567890123456789012345678901234
-    // -340282350000000000000000000000000000000.000
-    
-    if (isnan(val))
-    {
-        LogNNL(P("NaN"));
-    }
-    else if (isinf(val))
-    {
-        LogNNL(P("INF"));
-    }
-    else
-    {
-        char buf[45];
-        dtostrf(val, -1, 3, buf);
-        LogNNL(buf);
-    }
-}
-    
-
-void Log(double val)
-{
-    LogNNL(val);
-    LogNL();
-}
+extern void LogNNL(double val);
+extern void Log(double val);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,15 +161,8 @@ void Log(double val)
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void Log()
-{
-    // Nothing to do, simply here to make the templating work
-}
-
-void LogNNL()
-{
-    // Nothing to do, simply here to make the templating work
-}
+extern void Log();
+extern void LogNNL();
 
 template <typename T1, typename T2, typename ...Ts>
 void LogNNL(T1 &&val1, T2 &&val2, Ts &&...args)
