@@ -15,6 +15,19 @@ private:
     {
         function<void()> fn;
         uint32_t delayBeforeStartMs;
+        
+        FnData()
+        : delayBeforeStartMs(0)
+        {
+            // Nothing to do
+        }
+        
+        FnData(function<void()> fnInput, uint32_t delayBeforeStartMsInput)
+        : fn(fnInput)
+        , delayBeforeStartMs(delayBeforeStartMsInput)
+        {
+            // Nothing to do
+        }
     };
     
 public:
@@ -29,15 +42,13 @@ public:
 
         for (auto &fnData : fnDataList_)
         {
-            fnData.fn                 = [](){};
-            fnData.delayBeforeStartMs = 0;
+            fnData = FnData{};
         }
 
         fnDataListAddNextIdx_ = 0;
         fnDataListRunNextIdx_ = 0;
         
-        fnDataOnComplete_.fn                 = [](){};
-        fnDataOnComplete_.delayBeforeStartMs = 0;
+        fnDataOnComplete_ = FnData{};
     }
 
     uint8_t Append(function<void()> fn, uint32_t delayBeforeStartMs = 0)
