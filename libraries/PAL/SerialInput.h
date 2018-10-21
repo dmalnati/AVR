@@ -370,43 +370,45 @@ private:
 
 
 
-
-uint8_t SerialReadLine(char *buf, uint8_t bufSize)
+class SerialReadLineClass
 {
-    uint8_t retVal = 0;
- 
-    while (!retVal)
+    static uint8_t SerialReadLine(char *buf, uint8_t bufSize)
     {
-        
-        retVal = S0.ReadBytesUntil('\n', (uint8_t *)buf, bufSize);
-
-        if (retVal < bufSize)
+        uint8_t retVal = 0;
+     
+        while (!retVal)
         {
-            buf[retVal] = '\0';
-        }
-        else
-        {
-            buf[bufSize - 1] = '\0';
             
-            // newline wasn't hit, and bytes weren't discarded, so consume them
-            uint8_t cont = 1;
-            while (cont)
+            retVal = S0.ReadBytesUntil('\n', (uint8_t *)buf, bufSize);
+
+            if (retVal < bufSize)
             {
-                if (S0.Available())
+                buf[retVal] = '\0';
+            }
+            else
+            {
+                buf[bufSize - 1] = '\0';
+                
+                // newline wasn't hit, and bytes weren't discarded, so consume them
+                uint8_t cont = 1;
+                while (cont)
                 {
-                    char c = S0.Read();
-                    
-                    if (c == '\n')
+                    if (S0.Available())
                     {
-                        cont = 0;
+                        char c = S0.Read();
+                        
+                        if (c == '\n')
+                        {
+                            cont = 0;
+                        }
                     }
                 }
             }
         }
+        
+        return retVal;
     }
-    
-    return retVal;
-}
+};
 
 template <uint8_t NUM_COMMANDS, uint8_t NUM_BYTES_SERIAL = 100>
 class SerialShell
@@ -462,7 +464,7 @@ public:
 
         while (running_)
         {
-            uint8_t strLen = SerialReadLine(buf_, BUF_SIZE);
+            uint8_t strLen = SerialReadLineClass::SerialReadLine(buf_, BUF_SIZE);
 
             if (strLen)
             {
