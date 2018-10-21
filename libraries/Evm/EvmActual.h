@@ -53,6 +53,10 @@ public:
     
     virtual
     void LowPowerDisable();
+    
+    virtual uint8_t GetIdleEventCount();
+    virtual uint8_t GetTimedEventCount();
+    virtual uint8_t GetInterruptEventCount();
 
 
 private:

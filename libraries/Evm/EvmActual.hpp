@@ -321,6 +321,12 @@ MainLoopLowPower()
 {
     while (1)
     {
+        // Only handle idle events when low power mode not enabled
+        if (!lowPowerEnabled_)
+        {
+            ServiceIdleTimeEventHandlers();
+        }
+        
         // If low power is enabled and there are no timed events queued, then
         // there never will be, therefore the DelaySleep will never fire, and
         // the device will consume regular power.
@@ -359,6 +365,26 @@ LowPowerDisable()
     lowPowerEnabled_ = 0;
 }
 
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
+GetIdleEventCount()
+{
+    return idleTimeEventHandlerList_.Size();
+}
+
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
+GetTimedEventCount()
+{
+    return timedEventHandlerList_.Size();
+}
+
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
+GetInterruptEventCount()
+{
+    return interruptEventHandlerList_.Size();
+}
 
 
 
