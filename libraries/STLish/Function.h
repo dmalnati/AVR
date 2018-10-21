@@ -19,7 +19,7 @@
 // - Lots of comments as I tried to figure out how it worked
 //
 
-#define FUNCTION_STORAGE_REQUIREMENT_MAX (sizeof(void *) * 4)
+#define FUNCTION_STORAGE_REQUIREMENT_MAX (sizeof(void *) * 5)
 
 
 /*
