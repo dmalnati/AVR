@@ -31,6 +31,9 @@ public:
     
     LedMatrixTimeMultiplexer(const uint8_t (& rowPinList)[ROW_COUNT],
                              const uint8_t (& colPinList)[COL_COUNT])
+    : rowIdx_(0)
+    , rowIntervalUs_(DEFAULT_ROW_INTERVAL_US)
+    , running_(0)
     {
         // Store, set all pins as output, set low
         for (uint8_t row = 0; row < ROW_COUNT; ++row)
@@ -181,12 +184,12 @@ private:
     LedData rowByColMatrix_[ROW_COUNT][COL_COUNT];
     LedData *pinMatrix_ = (LedData *)rowByColMatrix_;
     
-    uint8_t rowIdx_ = 0;
+    uint8_t rowIdx_;
     
-    uint32_t rowIntervalUs_ = DEFAULT_ROW_INTERVAL_US;
+    uint32_t rowIntervalUs_;
     IdleTimeHiResTimedEventHandlerDelegate ted_;
     
-    uint8_t running_ = 0;
+    uint8_t running_;
     
 };
 
