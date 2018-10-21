@@ -27,6 +27,7 @@ class SensorCapacitiveTouchCAP1188
 public:
     SensorCapacitiveTouchCAP1188(uint8_t addr)
     : addr_(addr)
+    , bitmapTouchedLast_(0)
     {
         // Nothing to do
         
@@ -175,6 +176,7 @@ public:
         I2C.WriteRegister(addr_, REG_SENSOR_STANDBY_INPUT_ENABLE, bitmapUse);
     }
     
+    
     uint8_t GetTouched()
     {
         // Get current value
@@ -236,7 +238,7 @@ private:
     uint8_t addr_;
     
     function<void(uint8_t bitmapTouched)> cbFn_;
-    uint8_t bitmapTouchedLast_ = 0;
+    uint8_t bitmapTouchedLast_;
     
     TimedEventHandlerDelegate ted_;
     
