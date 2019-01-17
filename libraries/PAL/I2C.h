@@ -77,7 +77,11 @@ public:
     
     uint8_t SlaveAddrPresent(uint8_t slaveAddr)
     {
-        return Send(slaveAddr, NULL, 0);
+        uint8_t retVal = Send(slaveAddr, NULL, 0);
+        
+        PAL.DelayMicroseconds(10);
+        
+        return retVal;
     }
     
     uint8_t SendAndReceive(uint8_t  slaveAddr,
