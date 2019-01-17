@@ -53,6 +53,33 @@ public:
     //
     //////////////////////////////////////////////////////////////////////
     
+    // Address 0 is a write-only, no-acknowledge address (broadcast).
+    // We use the fact that 0 cannot be the address of the first slave and
+    // instead use 0 to indicate that there is no first slave.
+    // Any other value is the first address which responded.
+    uint8_t GetFirstSlaveAddrPresent()
+    {
+        uint8_t retVal = 0;
+        uint8_t found  = 0;
+        
+        for (uint8_t i = 0; i <= 127 && !found; ++i)
+        {
+            if (SlaveAddrPresent(i))
+            {
+                retVal = i;
+                
+                found = 1;
+            }
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t SlaveAddrPresent(uint8_t slaveAddr)
+    {
+        return Send(slaveAddr, NULL, 0);
+    }
+    
     uint8_t SendAndReceive(uint8_t  slaveAddr,
                            uint8_t *bufTx,
                            uint8_t  bufTxLen,
@@ -329,6 +356,9 @@ private:
     void SendStopUnconditional()
     {
         TWCR = (1 << TWINT)|(1 << TWEN) | (1 << TWSTO);
+        
+        // Wait for stop condition to complete
+        while (!(TWCR & (1 << TWSTO)));
     }
     
     
