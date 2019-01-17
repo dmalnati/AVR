@@ -2,17 +2,17 @@
 #define __LCD_FRENTALY_20X4_H__
 
 
+#include "I2C.h"
 #include "LiquidCrystal_I2C.h"
 
 
 class LCDFrentaly20x4
 {
-    static const uint8_t I2C_ADDR  = 0x3F;
     static const uint8_t COL_COUNT = 20;
     static const uint8_t ROW_COUNT = 4;
     
 public:
-    LCDFrentaly20x4(uint8_t i2cAddr = I2C_ADDR)
+    LCDFrentaly20x4(uint8_t i2cAddr = I2C.GetFirstSlaveAddrPresent())
     : lcd_(i2cAddr, COL_COUNT, ROW_COUNT)
     {
         // Nothing to do
