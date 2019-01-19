@@ -36,8 +36,8 @@ public:
         pinInputB_.Disable();
     }
     
-    // -1 refers to turning right
-    //  1 refers to turning left
+    //  1 refers to turning right
+    // -1 refers to turning left
     void SetCallback(function<void(int8_t leftOrRight)> cbFn)
     {
         cbFn_ = cbFn;
