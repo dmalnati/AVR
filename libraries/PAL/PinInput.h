@@ -22,7 +22,8 @@ public:
     PinInput(uint8_t pin,
              uint8_t mode        = LEVEL_RISING,
              uint8_t activeLevel = LOW)
-    : pin_(pin)
+    : InterruptEventHandler(pin, GetInterruptEventHandlerMode(activeLevel, mode))
+    , pin_(pin)
     , activeLevel_(activeLevel)
     , mode_(mode)
     {
@@ -33,7 +34,7 @@ public:
         Disable();
     }
     
-    void SetCallback(function<void(uint8_t logicLevel)> &&cbFn)
+    void SetCallback(function<void(uint8_t logicLevel)> cbFn)
     {
         cbFn_ = cbFn;
     }
@@ -73,17 +74,15 @@ public:
             
             if (mode_ == LEVEL_UNDEFINED || mode_ == LEVEL_RISING)
             {
-                RegisterForInterruptEvent(pin_, LEVEL_RISING);
+                // Nothing to do
             }
             else if (mode_ == LEVEL_FALLING)
             {
                 PAL.PinMode(pin_, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin_, LEVEL_FALLING);
             }
             else
             {
                 PAL.PinMode(pin_, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin_, LEVEL_RISING_AND_FALLING);
             }
         }
         else
@@ -93,23 +92,69 @@ public:
             if (mode_ == LEVEL_RISING)
             {
                 PAL.PinMode(pin_, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin_, LEVEL_FALLING);
             }
             else if (mode_ == LEVEL_UNDEFINED || mode_ == LEVEL_FALLING)
             {
-                RegisterForInterruptEvent(pin_, LEVEL_RISING);
+                // Nothing to do
             }
             else
             {
                 PAL.PinMode(pin_, INPUT_PULLUP);
-                RegisterForInterruptEvent(pin_, LEVEL_RISING_AND_FALLING);
             }
         }
+        
+        RegisterForInterruptEvent();
         
         logicLevelActual_ = PAL.DigitalRead(pin_);
     }
     
 private:
+
+    uint8_t GetInterruptEventHandlerMode(uint8_t activeLevel, uint8_t mode)
+    {
+        uint8_t retVal = LEVEL_FALLING;
+        
+        // Assume an undefined transition mode means changing from
+        // logical 0 to logical 1
+
+        if (activeLevel == HIGH)
+        {
+            // High voltage == logical 1
+            
+            if (mode == LEVEL_UNDEFINED || mode == LEVEL_RISING)
+            {
+                retVal = LEVEL_RISING;
+            }
+            else if (mode == LEVEL_FALLING)
+            {
+                retVal = LEVEL_FALLING;
+            }
+            else
+            {
+                retVal = LEVEL_RISING_AND_FALLING;
+            }
+        }
+        else
+        {
+            // Low voltage == logical 1
+            
+            if (mode == LEVEL_RISING)
+            {
+                retVal = LEVEL_FALLING;
+            }
+            else if (mode == LEVEL_UNDEFINED || mode == LEVEL_FALLING)
+            {
+                retVal = LEVEL_RISING;
+            }
+            else
+            {
+                retVal = LEVEL_RISING_AND_FALLING;
+            }
+        }
+        
+        return retVal;
+    }
+    
     virtual void OnInterruptEvent(uint8_t logicLevel)
     {
         logicLevelActual_ = logicLevel;
