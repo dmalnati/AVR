@@ -148,6 +148,27 @@ public:
         return SendAndReceive(slaveAddr, &reg, 1, &val, 1);
     }
     
+    uint8_t WriteRegister16(uint8_t slaveAddr, uint8_t reg, uint16_t val)
+    {
+        // Assume the device is operating in network byte order
+        uint16_t  valNbo = PAL.htons(val);
+        uint8_t  *p      = (uint8_t *)&valNbo;
+        uint8_t   buf[3] = { reg, p[0], p[1] };
+        uint8_t   bufLen = 3;
+        
+        return Send(slaveAddr, buf, bufLen);
+    }
+    
+    uint16_t ReadRegister16(uint8_t slaveAddr, uint8_t reg, uint16_t &val)
+    {
+        uint8_t retVal = SendAndReceive(slaveAddr, &reg, 1, (uint8_t *)&val, 2);
+        
+        // Assume the device is operating in network byte order
+        val = PAL.ntohs(val);
+        
+        return retVal;
+    }
+    
     
 private:
 
