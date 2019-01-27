@@ -1,4 +1,5 @@
 #include "PAL.h"
+#include "Log.h"
 
 // https://provideyourown.com/2012/secret-arduino-voltmeter-measure-battery-voltage/
 long readVcc() {
@@ -29,19 +30,16 @@ long readVcc() {
 
 void setup()
 {
-    @fix@Serial.begin(9600);
-    @fix@Serial.println("Starting");
+    LogStart(9600);
+    Log("Starting");
     
     while (1)
     {
         uint32_t vccTheirs = readVcc();
         uint32_t vccMine   = PAL.ReadVccMillivolts();
 
-        @fix@Serial.print("VCC Theirs: ");
-        @fix@Serial.println(vccTheirs);
-        @fix@Serial.print("VCC Mine  : ");
-        @fix@Serial.println(vccMine);
-        @fix@Serial.println();
+        Log("VCC Theirs: ", vccTheirs);
+        Log("VCC Mine  : ", vccMine);
 
         PAL.Delay(1000);
     }
