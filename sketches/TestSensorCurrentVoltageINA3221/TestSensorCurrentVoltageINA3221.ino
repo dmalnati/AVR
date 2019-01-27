@@ -26,25 +26,55 @@ void setup()
         retVal = sensor.GetRegConfiguration(regVal);
         Log("GetRegCfg(", retVal, "): ", LogBIN(regVal));
 
+
+
+        uint16_t microVolts = 0;
+        uint16_t milliAmps  = 0;
+        uint16_t milliVolts = 0;
+
         // Read channel 1
-        retVal = c1->GetShuntVoltage(regVal);
-        Log("C1:GetShuntVoltage(", retVal, "): ", LogBIN(regVal), ", ", regVal);
-        retVal = c1->GetBusVoltage(regVal);
-        Log("C1:GetBusVoltage(", retVal, ")  : ", LogBIN(regVal), ", ", regVal);
-
-        // Read channel 2
-        retVal = c2->GetShuntVoltage(regVal);
-        Log("C2:GetShuntVoltage(", retVal, "): ", LogBIN(regVal), ", ", regVal);
-        retVal = c2->GetBusVoltage(regVal);
-        Log("C2:GetBusVoltage(", retVal, ")  : ", LogBIN(regVal), ", ", regVal);
-
-        // Read channel 3
-        retVal = c3->GetShuntVoltage(regVal);
-        Log("C3:GetShuntVoltage(", retVal, "): ", LogBIN(regVal), ", ", regVal);
-        retVal = c3->GetBusVoltage(regVal);
-        Log("C3:GetBusVoltage(", retVal, ")  : ", LogBIN(regVal), ", ", regVal);
-
+        retVal = c1->GetShuntMicroVolts(microVolts);
+        Log("C1:GetShuntMicroVolts(", retVal, "): ", microVolts);
+        retVal = c1->GetShuntMilliAmps(milliAmps);
+        Log("C1:GetShuntMilliAmps(", retVal, "): ", milliAmps);
+        retVal = c1->GetBusMilliVolts(milliVolts);
+        Log("C1:GetBusMilliVolts(", retVal, "): ", milliVolts);
         
+        // Read channel 2
+        retVal = c2->GetShuntMicroVolts(microVolts);
+        Log("C2:GetShuntMicroVolts(", retVal, "): ", microVolts);
+        retVal = c2->GetShuntMilliAmps(milliAmps);
+        Log("C2:GetShuntMilliAmps(", retVal, "): ", milliAmps);
+        retVal = c2->GetBusMilliVolts(milliVolts);
+        Log("C2:GetBusMilliVolts(", retVal, "): ", milliVolts);
+        
+        // Read channel 3
+        retVal = c3->GetShuntMicroVolts(microVolts);
+        Log("C3:GetShuntMicroVolts(", retVal, "): ", microVolts);
+        retVal = c3->GetShuntMilliAmps(milliAmps);
+        Log("C3:GetShuntMilliAmps(", retVal, "): ", milliAmps);
+        retVal = c3->GetBusMilliVolts(milliVolts);
+        Log("C3:GetBusMilliVolts(", retVal, "): ", milliVolts);
+
+
+        // Speed test
+        uint32_t countGood = 0;
+        uint32_t countBad  = 0;
+        uint32_t timeStart = PAL.Micros();
+        while (PAL.Micros() - timeStart < 1000000)
+        {
+            if (c3->GetShuntMilliAmps(milliAmps))
+            {
+                ++countGood;
+            }
+            else
+            {
+                ++countBad;
+            }
+        }
+
+        Log("Timed good (", countGood, "/sec) and bad (", countBad, "/sec)");
+
 
         LogNL();
     });

@@ -9,6 +9,9 @@
  * http://www.ti.com/lit/ds/symlink/ina3221.pdf
  *
  * 12-bit bus voltage readings (plus pos/neg bit)
+ *
+ * Assumes shim resistor value of 0.1 ohm.
+ *
  */
 class SensorCurrentVoltageINA3221
 {
@@ -29,41 +32,61 @@ public:
             // Nothing to do
         }
         
-        uint8_t GetShuntVoltage(uint16_t &regVal)
+        uint8_t GetShuntMicroVolts(uint16_t &microVolts)
         {
             uint8_t retVal = 0;
             
             if (channelNumber_ == 1)
             {
-                retVal = sensor_->GetChannel1ShuntVoltage(regVal);
+                retVal = sensor_->GetChannel1ShuntMicroVolts(microVolts);
             }
             else if (channelNumber_ == 2)
             {
-                retVal = sensor_->GetChannel2ShuntVoltage(regVal);
+                retVal = sensor_->GetChannel2ShuntMicroVolts(microVolts);
             }
             else if (channelNumber_ == 3)
             {
-                retVal = sensor_->GetChannel3ShuntVoltage(regVal);
+                retVal = sensor_->GetChannel3ShuntMicroVolts(microVolts);
             }
             
             return retVal;
         }
         
-        uint8_t GetBusVoltage(uint16_t &regVal)
+        uint8_t GetShuntMilliAmps(uint16_t &milliAmps)
         {
             uint8_t retVal = 0;
             
             if (channelNumber_ == 1)
             {
-                retVal = sensor_->GetChannel1BusVoltage(regVal);
+                retVal = sensor_->GetChannel1ShuntMilliAmps(milliAmps);
             }
             else if (channelNumber_ == 2)
             {
-                retVal = sensor_->GetChannel2BusVoltage(regVal);
+                retVal = sensor_->GetChannel2ShuntMilliAmps(milliAmps);
             }
             else if (channelNumber_ == 3)
             {
-                retVal = sensor_->GetChannel3BusVoltage(regVal);
+                retVal = sensor_->GetChannel3ShuntMilliAmps(milliAmps);
+            }
+            
+            return retVal;
+        }
+        
+        uint8_t GetBusMilliVolts(uint16_t &milliVolts)
+        {
+            uint8_t retVal = 0;
+            
+            if (channelNumber_ == 1)
+            {
+                retVal = sensor_->GetChannel1BusMilliVolts(milliVolts);
+            }
+            else if (channelNumber_ == 2)
+            {
+                retVal = sensor_->GetChannel2BusMilliVolts(milliVolts);
+            }
+            else if (channelNumber_ == 3)
+            {
+                retVal = sensor_->GetChannel3BusMilliVolts(milliVolts);
             }
             
             return retVal;
@@ -110,11 +133,151 @@ public:
         return &channel3_;
     }
     
-    uint8_t GetChannel1ShuntVoltage(uint16_t &regVal)
+    
+    uint8_t GetChannel1ShuntMicroVolts(uint16_t &microVolts)
     {
-        const uint8_t ADDR = 0x01;
+        return GetShuntMicroVolts(0x01, microVolts);
+    }
+    
+    uint8_t GetChannel1ShuntMilliAmps(uint16_t &milliAmps)
+    {
+        return GetShuntMilliAmps(0x01, milliAmps);
+    }
+    
+    uint8_t GetChannel1BusMilliVolts(uint16_t &milliVolts)
+    {
+        return GetBusMilliVolts(0x02, milliVolts);
+    }
+    
+    
+    uint8_t GetChannel2ShuntMicroVolts(uint16_t &microVolts)
+    {
+        return GetShuntMicroVolts(0x03, microVolts);
+    }
+    
+    uint8_t GetChannel2ShuntMilliAmps(uint16_t &milliAmps)
+    {
+        return GetShuntMilliAmps(0x03, milliAmps);
+    }
+    
+    uint8_t GetChannel2BusMilliVolts(uint16_t &milliVolts)
+    {
+        return GetBusMilliVolts(0x04, milliVolts);
+    }
+    
+    
+    uint8_t GetChannel3ShuntMicroVolts(uint16_t &microVolts)
+    {
+        return GetShuntMicroVolts(0x05, microVolts);
+    }
+    
+    uint8_t GetChannel3ShuntMilliAmps(uint16_t &milliAmps)
+    {
+        return GetShuntMilliAmps(0x05, milliAmps);
+    }
+    
+    uint8_t GetChannel3BusMilliVolts(uint16_t &milliVolts)
+    {
+        return GetBusMilliVolts(0x06, milliVolts);
+    }
+    
+    
+    
+    
+    
+
+private:
+
+
+    uint8_t GetShuntMicroVolts(uint8_t addr, uint16_t &microVolts)
+    {
+        uint16_t regVal = 0;
+        uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
         
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
+        microVolts = ConvertShuntRegValToMicroVolts(regVal);
+        
+        return retVal;
+    }
+    
+    uint8_t GetShuntMilliAmps(uint8_t addr, uint16_t &milliAmps)
+    {
+        uint16_t regVal = 0;
+        uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
+        
+        milliAmps = ConvertShuntRegValToMilliAmps(regVal);
+        
+        return retVal;
+    }
+    
+    uint8_t GetBusMilliVolts(uint8_t addr, uint16_t &milliVolts)
+    {
+        uint16_t regVal = 0;
+        uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
+        
+        milliVolts = ConvertBusRegValToMilliVolts(regVal);
+        
+        return retVal;
+    }
+    
+
+
+
+
+    /*
+     * Register values top out at expressing 163.8mV.
+     * Increments of 40uV.
+     *
+     * Can decode by:
+     * [todo: take care of sign bit]
+     *
+     * 0b0000000111110000 = 496
+     * - shift right by 3 to remove trailing 3 0-padded bitset (0b0000000000111110 =     62   )
+     * - multiply by 40uV step                                 (0b0000100110110000 =  2,480 uV)
+     *
+     * However, notice that
+     * - shift right by 3 is divide by 8
+     * - multiply by 40 is multiply by 4 then multiply by 10
+     * 
+     * So, why not:
+     * - take initial value 496
+     * - divide by 2 (combine div by 8 and mult by 4)
+     * - multiply by 10 (the rest of the multiply by 40 after the initial 4 above)
+     *
+     */
+    uint16_t ConvertShuntRegValToMicroVolts(uint16_t regVal)
+    {
+        return ((regVal >> 1) * 10);
+    }
+    
+    /*
+     * Register values top out at expressing 163.8mV.
+     * Increments of 40uV.
+     *
+     * Can decode by:
+     * [todo: take care of sign bit]
+     *
+     * 0b0000000111110000 = 496
+     * - shift right by 3 to remove trailing 3 0-padded bitset (0b0000000000111110 =     62   )
+     * - multiply by 40uV step                                 (0b0000100110110000 =  2,480 uV)
+     * - divide by shim resistor value (mOhm = 100 (0.1 ohm))
+     *   which is the same as multiplying by 10                (0b0110000011100000 = 24,800 uV)
+     * - divide by 1000 to go from uV to mV                    (0b0000000000011000 =     24 mV)
+     *
+     * However, notice that
+     * - shift right by 3 is divide by 8
+     * - multiply by 40 is multiply by 4 then multiply by 10
+     * - then another multiply by 10
+     * - then divide by 1000
+     * 
+     * So, why not:
+     * - take initial value 496
+     * - divide by 2 (combine div by 8 and mult by 4)
+     * - divide by 10 (combine 10 * 10 / 1000)
+     *
+     */
+    uint16_t ConvertShuntRegValToMilliAmps(uint16_t regVal)
+    {
+        return ((regVal >> 1) / 10);
     }
     
     /*
@@ -143,45 +306,16 @@ public:
      * (4872 >> 3 = 609) / (2^12=4096) * 32.76 = 4.870810546875
      * 
      */
-    uint8_t GetChannel1BusVoltage(uint16_t &regVal)
+    uint16_t ConvertBusRegValToMilliVolts(uint16_t regVal)
     {
-        const uint8_t ADDR = 0x02;
-        
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
+        return regVal;
     }
-    
-    uint8_t GetChannel2ShuntVoltage(uint16_t &regVal)
-    {
-        const uint8_t ADDR = 0x03;
-        
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
-    }
-    
-    uint8_t GetChannel2BusVoltage(uint16_t &regVal)
-    {
-        const uint8_t ADDR = 0x04;
-        
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
-    }
-    
-    uint8_t GetChannel3ShuntVoltage(uint16_t &regVal)
-    {
-        const uint8_t ADDR = 0x05;
-        
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
-    }
-    
-    uint8_t GetChannel3BusVoltage(uint16_t &regVal)
-    {
-        const uint8_t ADDR = 0x06;
-        
-        return I2C.ReadRegister16(I2C_ADDR, ADDR, regVal);
-    }
-
     
 
 private:
 
+    uint16_t mOhm_;
+    
     Channel channel1_;
     Channel channel2_;
     Channel channel3_;
