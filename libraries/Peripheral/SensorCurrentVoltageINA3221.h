@@ -107,16 +107,197 @@ public:
     {
         // Nothing to do
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Configuration
+    //
+    ////////////////////////////////////////////////////////////////////////////
     
-    uint8_t GetRegConfiguration(uint16_t &regVal)
+    uint8_t GetChannel1Enable(uint8_t &enable)
     {
-        return I2C.ReadRegister16(I2C_ADDR, REG_CONFIGURATION, regVal);
+        return GetChannelEnable(1, enable);
     }
     
-    uint8_t SetRegConfiguration(uint16_t regVal)
+    uint8_t SetChannel1Enable(uint8_t enable)
     {
-        return I2C.WriteRegister16(I2C_ADDR, REG_CONFIGURATION, regVal);
+        return SetChannelEnable(1, enable);
     }
+    
+    uint8_t GetChannel2Enable(uint8_t &enable)
+    {
+        return GetChannelEnable(2, enable);
+    }
+    
+    uint8_t SetChannel2Enable(uint8_t enable)
+    {
+        return SetChannelEnable(2, enable);
+    }
+    
+    uint8_t GetChannel3Enable(uint8_t &enable)
+    {
+        return GetChannelEnable(3, enable);
+    }
+
+    uint8_t SetChannel3Enable(uint8_t enable)
+    {
+        return SetChannelEnable(3, enable);
+    }
+
+    
+    uint8_t GetAverageSampleCount(uint16_t &averageSampleCount)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            retVal = 1;
+            
+            uint16_t avgCfg__averageSampleCount[] = {
+                1,  // default
+                4,
+                16,
+                64,
+                128,
+                256,
+                512,
+                1024
+            };
+            
+            uint8_t avgCfg = (regVal & 0b0000111000000000) >> 9;
+            
+            averageSampleCount = avgCfg__averageSampleCount[avgCfg];
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t SetAverageSampleCount(uint16_t averageSampleCount)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            uint16_t avgCfg = 0;
+            
+                 if (averageSampleCount ==    1) { avgCfg = 0; }
+            else if (averageSampleCount ==    4) { avgCfg = 1; }
+            else if (averageSampleCount ==   16) { avgCfg = 2; }
+            else if (averageSampleCount ==   64) { avgCfg = 3; }
+            else if (averageSampleCount ==  128) { avgCfg = 4; }
+            else if (averageSampleCount ==  256) { avgCfg = 5; }
+            else if (averageSampleCount ==  512) { avgCfg = 6; }
+            else if (averageSampleCount == 1024) { avgCfg = 7; }
+            
+            uint16_t maskPlace  = (0b0000000000000111 << 9);
+            uint16_t bits       = avgCfg << 9;
+            
+            regVal = (regVal & ~maskPlace) | bits;
+            
+            retVal = SetRegConfiguration(regVal);
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t GetBusVoltageConversionTimeUs(uint16_t &cvtTimeUs)
+    {
+        return GetConversionTimeUs(0b0000000111000000, 6, cvtTimeUs);
+    }
+    
+    uint8_t SetBusVoltageConversionTimeUs(uint16_t cvtTimeUs)
+    {
+        return SetConversionTimeUs(0b0000000111000000, 6, cvtTimeUs);
+    }
+    
+    uint8_t GetShuntVoltageConversionTimeUs(uint16_t &cvtTimeUs)
+    {
+        return GetConversionTimeUs(0b0000000000111000, 3, cvtTimeUs);
+    }
+    
+    uint8_t SetShuntVoltageConversionTimeUs(uint16_t cvtTimeUs)
+    {
+        return SetConversionTimeUs(0b0000000000111000, 3, cvtTimeUs);
+    }
+    
+    uint8_t GetOperatingMode(uint8_t &operatingMode)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            retVal = 1;
+            
+            operatingMode = (regVal & 0b0000000000000111);
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t SetOperatingMode(uint8_t operatingMode)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            uint16_t maskPlace  = 0b0000000000000111;
+            uint16_t bits       = operatingMode & maskPlace;
+            
+            regVal = (regVal & ~maskPlace) | bits;
+            
+            retVal = SetRegConfiguration(regVal);            
+        }
+        
+        return retVal;
+    }
+    
+    void PrintConfiguration()
+    {
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            uint8_t ch1Enabled = 0;
+            uint8_t ch2Enabled = 0;
+            uint8_t ch3Enabled = 0;
+            GetChannel1Enable(ch1Enabled);
+            GetChannel2Enable(ch2Enabled);
+            GetChannel3Enable(ch3Enabled);
+            Log(P("CH1: "), ch1Enabled);
+            Log(P("CH2: "), ch2Enabled);
+            Log(P("CH3: "), ch3Enabled);
+
+            uint16_t averageSampleCount = 0;
+            GetAverageSampleCount(averageSampleCount);
+            Log(P("AvgSamples: "), averageSampleCount);
+            
+            uint16_t busVoltageConvertTimeUs = 0;
+            GetBusVoltageConversionTimeUs(busVoltageConvertTimeUs);
+            Log(P("BusCvtTimeUs: :"), busVoltageConvertTimeUs);
+            
+            uint16_t shuntVoltageConvertTimeUs = 0;
+            GetShuntVoltageConversionTimeUs(shuntVoltageConvertTimeUs);
+            Log(P("ShuntCvtTimeUs: :"), shuntVoltageConvertTimeUs);
+            
+            uint8_t operatingMode = 0;
+            GetOperatingMode(operatingMode);
+            Log(P("OpMode: "), LogBIN(operatingMode));
+        }
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Channel access objects
+    //
+    ////////////////////////////////////////////////////////////////////////////
     
     Channel *GetChannel1()
     {
@@ -134,6 +315,12 @@ public:
     }
     
     
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Channel reading
+    //
+    ////////////////////////////////////////////////////////////////////////////
+    
     uint8_t GetChannel1ShuntMicroVolts(uint16_t &microVolts)
     {
         return GetShuntMicroVolts(0x01, microVolts);
@@ -149,7 +336,7 @@ public:
         return GetBusMilliVolts(0x02, milliVolts);
     }
     
-    
+
     uint8_t GetChannel2ShuntMicroVolts(uint16_t &microVolts)
     {
         return GetShuntMicroVolts(0x03, microVolts);
@@ -182,11 +369,116 @@ public:
     }
     
     
-    
-    
-    
 
-private:
+//private:
+
+    uint8_t GetRegConfiguration(uint16_t &regVal)
+    {
+        return I2C.ReadRegister16(I2C_ADDR, REG_CONFIGURATION, regVal);
+    }
+    
+    uint8_t SetRegConfiguration(uint16_t regVal)
+    {
+        return I2C.WriteRegister16(I2C_ADDR, REG_CONFIGURATION, regVal);
+    }
+    
+    
+    uint8_t GetChannelEnable(uint8_t chanNum, uint8_t &enabled)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            retVal = 1;
+            
+            enabled = !!((0b1000000000000000 >> chanNum) & regVal);
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t SetChannelEnable(uint8_t chanNum, uint8_t enable)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            uint16_t maskPlace  =          (0b1000000000000000 >> chanNum);
+            uint16_t bits       = enable ? (0b1000000000000000 >> chanNum) : 0;
+            
+            regVal = (regVal & ~maskPlace) | bits;
+            
+            retVal = SetRegConfiguration(regVal);
+        }
+        
+        return retVal;
+    }
+    
+    
+    uint8_t GetConversionTimeUs(uint16_t mask, uint8_t shift, uint16_t &cvtTimeUs)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            retVal = 1;
+            
+            uint16_t ctCfg__conversionTimeUs[] = {
+                140,
+                204,
+                332,
+                588,
+                1100,   // default
+                2116,
+                4156,
+                8244,
+            };
+            
+            uint8_t ctCfg = (regVal & mask) >> shift;
+            
+            cvtTimeUs = ctCfg__conversionTimeUs[ctCfg];
+        }
+        
+        return retVal;
+    }
+    
+    uint8_t SetConversionTimeUs(uint16_t mask, uint8_t shift, uint16_t cvtTimeUs)
+    {
+        uint8_t retVal = 0;
+        
+        uint16_t regVal = 0;
+        
+        if (GetRegConfiguration(regVal))
+        {
+            uint16_t ctCfg = 0;
+            
+                 if (cvtTimeUs ==  140) { ctCfg = 0; }
+            else if (cvtTimeUs ==  204) { ctCfg = 1; }
+            else if (cvtTimeUs ==  332) { ctCfg = 2; }
+            else if (cvtTimeUs ==  588) { ctCfg = 3; }
+            else if (cvtTimeUs == 1100) { ctCfg = 4; }
+            else if (cvtTimeUs == 2116) { ctCfg = 5; }
+            else if (cvtTimeUs == 4156) { ctCfg = 6; }
+            else if (cvtTimeUs == 8244) { ctCfg = 7; }
+            
+            uint16_t maskPlace  = mask;
+            uint16_t bits       = ctCfg << shift;
+            
+            regVal = (regVal & ~maskPlace) | bits;
+            
+            retVal = SetRegConfiguration(regVal);
+        }
+        
+        return retVal;
+    }
+
+    
 
 
     uint8_t GetShuntMicroVolts(uint8_t addr, uint16_t &microVolts)
