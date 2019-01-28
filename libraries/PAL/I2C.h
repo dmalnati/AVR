@@ -447,9 +447,6 @@ private:
     void SendStopUnconditional()
     {
         TWCR = (1 << TWINT)|(1 << TWEN) | (1 << TWSTO);
-        
-        // Wait for stop condition to complete
-        while (!(TWCR & (1 << TWSTO)));
     }
     
     
