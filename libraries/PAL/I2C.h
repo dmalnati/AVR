@@ -35,7 +35,6 @@ class TWIClass
     static const uint8_t MISC_STATUS_BUS_ERROR          = 0x00;
     
     // Other
-    static const uint32_t DEFAULT_CLOCK_FREQ = 100000;
     static const uint8_t  DEFAULT_PRESCALER  = 1;
     
 public:
@@ -44,7 +43,38 @@ public:
     : health_(1)
     , unexpectedTWIStatus_(0)
     {
-        SetSCLPeriod();
+        SetFreq100K();
+    }
+    
+    //////////////////////////////////////////////////////////////////////
+    //
+    // User Code -- Bus speed
+    //
+    //////////////////////////////////////////////////////////////////////
+    
+    uint8_t SetFreq100K()
+    {
+        return SetSCLPeriod(100000);
+    }
+    
+    uint8_t SetFreq400K()
+    {
+        return SetSCLPeriod(400000);
+    }
+    
+    uint8_t SetFreq(uint32_t clockFreq)
+    {
+        return SetSCLPeriod(clockFreq);
+    }
+    
+    void SetFreqMax()
+    {
+        SetSCLPeriodMax();
+    }
+    
+    uint32_t GetFreq()
+    {
+        return GetSCLPeriodAsFreq();
     }
     
     //////////////////////////////////////////////////////////////////////
@@ -178,9 +208,45 @@ private:
     //
     //////////////////////////////////////////////////////////////////////
 
-    void SetSCLPeriod()
+    uint8_t SetSCLPeriod(uint32_t clockFreq)
     {
-        TWBR = (((PAL.GetCpuFreq() / DEFAULT_CLOCK_FREQ) - 16 ) / 2);
+        uint8_t retVal = 0;
+        
+        // Initial formula was this:
+        // TWBR = (((PAL.GetCpuFreq() / clockFreq) - 16 ) / 2);
+        //
+        // However, when clockFreq was too high, the initial division
+        // of cpuFreq/clockFreq would yield 0, then subtracting 16 puts
+        // it negative, making a large unsigned number, then divided, making
+        // for actually a slower bus speed than defaults.
+        //
+        // To protect against that, check the initial calculations and snap
+        // to a TWBR=0 case when exceeding.
+        
+        uint16_t initialDivision = (PAL.GetCpuFreq() / clockFreq);
+        
+        if (initialDivision >= 16)
+        {
+            retVal = 1;
+            
+            TWBR = (((PAL.GetCpuFreq() / clockFreq) - 16 ) / 2);
+        }
+        else
+        {
+            SetSCLPeriodMax();
+        }
+        
+        return retVal;
+    }
+    
+    void SetSCLPeriodMax()
+    {
+        TWBR = 0;
+    }
+    
+    uint32_t GetSCLPeriodAsFreq()
+    {
+        return PAL.GetCpuFreq() / (((uint32_t)TWBR * 2) + 16);
     }
 
     
