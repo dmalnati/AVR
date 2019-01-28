@@ -140,6 +140,27 @@ public:
         return retVal;
     }
     
+    // 5000 (5 seconds) seen emperically as enough time to level out after
+    // delayed rise and sagging on startup.
+    static inline uint16_t ReadVccMillivoltsMaxInTime(uint32_t msDuration = 5000)
+    {
+        uint16_t retVal = ReadVccMillivolts();
+        
+        uint32_t timeNow = Millis();
+        while ((Millis() - timeNow) < msDuration)
+        {
+            uint16_t tmp = ReadVccMillivolts();
+            
+            if (tmp > retVal)
+            {
+                retVal = tmp;
+            }
+        }
+        
+        return retVal;
+    }
+
+    
     static inline uint16_t AnalogRead(Pin pin)
     {
         return AnalogReadInternal(pin.adcChannelBits_);
