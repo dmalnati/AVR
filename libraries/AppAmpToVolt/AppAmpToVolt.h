@@ -25,8 +25,6 @@
  *
  */
 
-
-
 struct AppAmpToVoltConfig
 {
 };
@@ -83,18 +81,19 @@ private:
     
     void SetupSensor()
     {
-            /*
-     * I'm seeing a 2.5ms delay between current change and the sensor picking
-     * it up.
-     *
-     * Reading the spec, we have:
-     * - 3 channels, each with 2 voltage readings
-     * - each can support averaging, each taking between 140us to 8.244ms
-     *
-     * For my initial application, I need only channel 1 shunt voltage.
-     *
-     *
-     */
+        /*
+         * I'm seeing a 2.5ms delay between current change and the sensor
+         * picking it up by default.
+         *
+         * Reading the spec, we have:
+         * - 3 channels, each with 2 voltage readings
+         * - each can support averaging, each taking between 140us to 8.244ms
+         *
+         * For my initial application, I need only channel 1 shunt voltage.
+         *
+         * This is configured below.
+         *
+         */
     
         sensor_.SetChannel2Enable(0);
         sensor_.SetChannel3Enable(0);
@@ -201,13 +200,18 @@ private:
             PublishAnalogOut1(analogOut);
             PAL.DigitalWrite(dbg2_, LOW);
             
-            Log(milliAmps, ", [", idx, "] ao(", analogOut, ") = ", analogOut * STEP_SIZE_MILLI_VOLTS);
+            //Log(milliAmps, ", [", idx, "] ao(", analogOut, ") = ", analogOut * STEP_SIZE_MILLI_VOLTS);
         }
         analogOutLast = analogOut;
     }
     
     void PublishAnalogOut1(uint8_t val)
     {
+        // Software compensate for weird voltage upswing when current rises
+        // (see spreadsheet)
+        val = val >> 1;
+        
+        // Calculate bits to distribute to the ports hooked up to R2R
         uint8_t portB = val >> 6;
         uint8_t portD = val << 2;
         
@@ -229,36 +233,6 @@ private:
     SensorCurrentVoltageINA3221           sensor_;
     SensorCurrentVoltageINA3221::Channel *c1_;
     
-    
-    
-    
-    
-    
-    
-    
-    // Support milliamps up to 1,000
-    
-    // Assume a 5v top of range
-    // At 5v, and 256 steps, we can step at 19.5v increments
-    // However, knowing how to map onto the 256 steps is difficult because
-    // rouding won't work quickly enough.
-    // Instead, effectively hash on the milliAmp values in a way which is
-    // quick to calculate.
-    //
-    // I want to err low.  Initial use-case is for high-current consumption
-    // so I'd rather be conservative on reporting issues.
-    //
-    // Therefore, 0-20mA consumption maps to 0 consumption
-    //
-    // 
-    
-    
-    // Take the entire 5v range and map onto it
-    
-    // 5000 possible milliAmp values
-    // We'll scrape off the last few bits by shifting right.
-    // That gets us 625 buckets
-    
     static const     uint16_t MILLI_AMPS_MAX        = 1000;
     static const     uint8_t  BITS_TO_DROP          = 4;
     static const     uint8_t  STEP_SIZE_MILLI_AMPS  = (1 << BITS_TO_DROP);
@@ -271,20 +245,9 @@ private:
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
+    // Debug
     Pin dbg1_;
     Pin dbg2_;
-    
-
-    
-    
 };
 
 
