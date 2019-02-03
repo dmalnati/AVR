@@ -61,6 +61,17 @@ public:
         {
             Log(P("WDTR"));
         }
+        else if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_BROWNOUT)
+        {
+            Log(P("BODR"));
+        }
+        
+        // This device surges lower than standard BOD would account for, make
+        // sure to complain if not actually fused to handle that.
+        if (PAL.GetFuseBODLimMilliVolts() != 1800)
+        {
+            Log(P("BOD WRONG -- Set to 1800"));
+        }
         
         // Set up control over regulator power save mode.
         PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
@@ -157,7 +168,7 @@ private:
         
         // Warm up transmitter
         Log(P("Warming transmitter"));
-        //PrepareToSendMessage();
+        //PreSendMessage();
         
         // Lock onto two-minute mark on GPS time
         Log(P("GPS locking to next 2 minute mark"));
@@ -179,7 +190,7 @@ private:
         
         
         
-        PrepareToSendMessage();
+        PreSendMessage();
         
         
         
@@ -213,6 +224,8 @@ private:
             Log(P("TX"));
             SendMessage();
         }
+        
+        PostSendMessage();
         
         // Schedule next wakeup
         uint32_t wakeAndEvaluateDelayMs = 0;
@@ -249,7 +262,7 @@ private:
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
     }
     
-    void PrepareToSendMessage()
+    void PreSendMessage()
     {
         // Enable subsystem
         StartSubsystemWSPR();
@@ -279,13 +292,16 @@ private:
         // Send the message synchronously
         retVal = wsprMessageTransmitter_.Send(&wsprMessage_);
         
+        return retVal;
+    }
+    
+    void PostSendMessage()
+    {
         // Go back to idle state
         wsprMessageTransmitter_.RadioOff();
         
         // Disable subsystem
         StopSubsystemWSPR();
-        
-        return retVal;
     }
     
     
@@ -376,10 +392,29 @@ private:
     
     void StartSubsystemGPS()
     {
+        const uint32_t DURATION_GPS_START_MS = 50;
+        
         gps_.EnableSerialInput();
         
+        // Prevent inrush current from sagging VCC by slowly enabling GPS.
+        // Values for duration, as well as high/low durations found
+        // emprically.
+        
+        uint32_t timeNow = PAL.Millis();
+        
+        while (PAL.Millis() - timeNow < DURATION_GPS_START_MS)
+        {
+            PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+            PAL.DelayMicroseconds(60);
+            
+            PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
+            PAL.DelayMicroseconds(60);
+            
+            PAL.WatchdogReset();
+        }
+        
         PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
-
+        
         gps_.EnableSerialOutput();
     }
     
