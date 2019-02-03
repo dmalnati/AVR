@@ -2,6 +2,7 @@
 #define __PAL_H__
 
 
+#include <avr/boot.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <util/atomic.h>
@@ -604,7 +605,60 @@ public:
     static void PowerUpADC()      { ADCSRA |= _BV(ADEN);           }
     
     
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // Fuses
+    //
+    ////////////////////////////////////////////////////////////////////////////
     
+    /*
+     * For standard fuses, this is what you get from functions:
+     *
+     * Fuse High: 0b11011011
+     * Fuse Low : 0b11100010
+     * Fuse Ext : 0b11111101
+     * Fuse Lock: 0b11111111
+     *
+     * IE the confusion about setting fuses using inverted logic isn't present
+     * in the actual reading of the bits.
+     *
+     * If the datasheet says BODLEVEL 2:0 fuses 0b101 is 2.7v, you'll see 0b101
+     *
+     */
+    
+    static uint8_t GetFuseHigh()
+    {
+        return boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
+    }
+    
+    static uint8_t GetFuseLow()
+    {
+        return boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS);
+    }
+    
+    static uint8_t GetFuseExtended()
+    {
+        return boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS);
+    }
+    
+    static uint8_t GetFuseLock()
+    {
+        return boot_lock_fuse_bits_get(GET_LOCK_BITS);
+    }
+    
+    // retVal of 0 either means disabled, or reserved/invalid
+    static uint16_t GetFuseBODLimMilliVolts()
+    {
+        uint16_t retVal = 0;
+        
+        uint8_t bodLevel = GetFuseExtended() & 0b111;
+        
+             if (bodLevel == 0b110) { retVal = 1800; }
+        else if (bodLevel == 0b101) { retVal = 2700; }
+        else if (bodLevel == 0b100) { retVal = 4300; }
+        
+        return retVal;
+    }
     
     
     ////////////////////////////////////////////////////////////////////////////
