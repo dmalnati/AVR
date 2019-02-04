@@ -251,7 +251,11 @@ private:
     
     void StartSubsystemWSPR()
     {
-        PAL.DigitalWrite(cfg_.pinWsprTxEnable, HIGH);
+        const uint32_t DURATION_START_MS  = 150;
+        const uint32_t DURATION_ON_OFF_US = 250;
+
+        // Prevent inrush current from sagging VCC by slowly enabling GPS.
+        SlowStart(cfg_.pinWsprTxEnable, DURATION_START_MS, DURATION_ON_OFF_US);
         
         // Give device time to start up.  Value found empirically.
         PAL.Delay(50);
@@ -392,28 +396,13 @@ private:
     
     void StartSubsystemGPS()
     {
-        const uint32_t DURATION_GPS_START_MS = 50;
-        
+        const uint32_t DURATION_START_MS  = 50;
+        const uint32_t DURATION_ON_OFF_US = 60;
+
         gps_.EnableSerialInput();
         
         // Prevent inrush current from sagging VCC by slowly enabling GPS.
-        // Values for duration, as well as high/low durations found
-        // emprically.
-        
-        uint32_t timeNow = PAL.Millis();
-        
-        while (PAL.Millis() - timeNow < DURATION_GPS_START_MS)
-        {
-            PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
-            PAL.DelayMicroseconds(60);
-            
-            PAL.DigitalWrite(cfg_.pinGpsEnable, LOW);
-            PAL.DelayMicroseconds(60);
-            
-            PAL.WatchdogReset();
-        }
-        
-        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
+        SlowStart(cfg_.pinGpsEnable, DURATION_START_MS, DURATION_ON_OFF_US);
         
         gps_.EnableSerialOutput();
     }
@@ -463,6 +452,33 @@ private:
     }
     
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Power Control
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    // Values for duration, as well as high/low durations found
+    // emprically.
+    static void SlowStart(uint8_t pin, uint32_t durationMs, uint32_t onOffUs)
+    {
+        uint32_t timeNow = PAL.Millis();
+        
+        while (PAL.Millis() - timeNow < durationMs)
+        {
+            PAL.DigitalWrite(pin, HIGH);
+            PAL.DelayMicroseconds(onOffUs);
+            
+            PAL.DigitalWrite(pin, LOW);
+            PAL.DelayMicroseconds(onOffUs);
+            
+            PAL.WatchdogReset();
+        }
+        
+        PAL.DigitalWrite(pin, HIGH);
+    }
+    
+        
     ///////////////////////////////////////////////////////////////////////////
     //
     // Stats Keeping
