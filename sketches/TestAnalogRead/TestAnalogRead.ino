@@ -1,5 +1,5 @@
+#include "Log.h"
 #include "PAL.h"
-
 
 
 struct PinState
@@ -18,6 +18,7 @@ static PinState pinStateList[] = {
     { 28, 0, 0 }
 };
 
+
 void ReportAnalogRead(PinState &pinState)
 {
     // move prior newVal to oldVal
@@ -29,15 +30,14 @@ void ReportAnalogRead(PinState &pinState)
     // decide if value changed
     if (pinState.oldVal != pinState.newVal)
     {
-        @fix@Serial.print(pinState.pin);
-        @fix@Serial.print(": ");
-        @fix@Serial.println(pinState.newVal);
+        Log(pinState.pin, ": ", pinState.newVal);
     }
 }
 
 void setup()
 {
-    @fix@Serial.begin(9600);
+    LogStart(9600);
+    Log("Starting");
 
     while (1)
     {
