@@ -54,7 +54,7 @@ ServiceIdleTimeEventHandlers()
 
 template <uint8_t A, uint8_t B, uint8_t C>
 uint8_t EvmActual<A,B,C>::
-RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
+RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout, uint32_t timeNow)
 {
     // Keeping track of these states here, and not in the
     // TimedEventHandler code, is necessary because for interval timers, the
@@ -62,7 +62,7 @@ RegisterTimedEventHandler(TimedEventHandler *teh, uint32_t timeout)
     // TimedEventHandler code to do so.
     
     // Note what time it is when timer requested
-    uint32_t timeNow = PAL.Millis();
+    //uint32_t timeNow = PAL.Millis();
     
     // Keep track of some useful state
     teh->timeQueued_ = timeNow;
@@ -77,6 +77,13 @@ uint8_t EvmActual<A,B,C>::
 DeRegisterTimedEventHandler(TimedEventHandler *teh)
 {
     return timedEventHandlerList_.Remove(teh);
+}
+
+template <uint8_t A, uint8_t B, uint8_t C>
+uint8_t EvmActual<A,B,C>::
+IsRegisteredTimedEventHandler(TimedEventHandler *teh)
+{
+    return timedEventHandlerList_.HasElement(teh);
 }
 
 template <uint8_t A, uint8_t B, uint8_t C>
@@ -111,7 +118,56 @@ ServiceTimedEventHandlers()
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
                 {
-                    RegisterTimedEventHandler(teh, teh->intervalTimeout_);
+                    // Rigid calculations basically say to aim to have the event
+                    // actually fire on the interval, taking into consideration
+                    // execution time.
+                    // It does not attempt to make up for missed intervals, nor
+                    // keep sync'd to a timeline (though that will happen
+                    // provided intervals aren't completely missed).
+                    if (teh->isRigid_)
+                    {
+                        // Calculate the wall clock time when next event should
+                        // actually fire.
+                        uint32_t timeNextEventShouldFire = 
+                            (teh->timeQueued_ + teh->timeout_) + // wall time when scheduled
+                            teh->intervalTimeout_;               // plus the interval
+                        
+                        // Determine actaul current wall clock time
+                        timeNow = PAL.Millis();
+                        
+                        // Cope with the fact that the calculated
+                        // next time may be in the past, complicating comparing
+                        // the two numbers.
+                        //
+                        // In the scenario where the calculated time is in the
+                        // future, the duration into the future should be
+                        // less-than or equal-to the interval duration, but
+                        // still a positive number.
+                        //
+                        // In the scenario where the calculated next time is in
+                        // the past, the subtraction will lead to a larger
+                        // number than the interval, which is what happens with
+                        // negative numbers in unsigned ints, so we know it's
+                        // the past.
+                        //
+                        uint32_t timeDiff = timeNextEventShouldFire - timeNow;
+                        
+                        uint32_t delayMs;
+                        if (timeDiff <= teh->intervalTimeout_)
+                        {
+                            delayMs = timeDiff;
+                        }
+                        else
+                        {
+                            delayMs = 0;
+                        }
+                        
+                        RegisterTimedEventHandler(teh, delayMs, timeNow);
+                    }
+                    else
+                    {
+                        RegisterTimedEventHandler(teh, teh->intervalTimeout_);
+                    }
                 }
                 
                 // only keep going if remaining quota of events remains

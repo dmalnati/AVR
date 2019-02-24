@@ -24,13 +24,17 @@ class TimedEventHandler
     friend class EvmActual;
     
 public:
-    TimedEventHandler() : isInterval_(0) { }
+    TimedEventHandler() : isInterval_(0), isRigid_(0) { }
     virtual ~TimedEventHandler() { DeRegisterForTimedEvent(); }
 
     uint8_t RegisterForTimedEvent(uint32_t timeout);
     uint8_t RegisterForTimedEventInterval(uint32_t timeout);
     uint8_t RegisterForTimedEventInterval(uint32_t timeout, uint32_t firstTimeout);
+    uint8_t RegisterForTimedEventIntervalRigid(uint32_t timeout);
+    uint8_t RegisterForTimedEventIntervalRigid(uint32_t timeout, uint32_t firstTimeout);
     uint8_t DeRegisterForTimedEvent();
+    uint8_t IsRegistered();
+    uint32_t GetTimeQueued();
     
     virtual void OnTimedEvent() = 0;
 
@@ -39,6 +43,7 @@ private:
     uint32_t timeQueued_;
     uint32_t timeout_;
     uint8_t  isInterval_;
+    uint8_t  isRigid_;
     uint32_t intervalTimeout_;
 };
 

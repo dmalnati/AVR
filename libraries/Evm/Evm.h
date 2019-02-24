@@ -86,9 +86,13 @@ private:
     // Timed Events
     virtual
     uint8_t RegisterTimedEventHandler(TimedEventHandler *teh,
-                                      uint32_t timeout)         = 0;
+                                      uint32_t timeout,
+                                      uint32_t timeNow = PAL.Millis())         = 0;
     virtual
     uint8_t DeRegisterTimedEventHandler(TimedEventHandler *teh) = 0;
+    
+    virtual
+    uint8_t IsRegisteredTimedEventHandler(TimedEventHandler *teh) = 0;
     
     // Interrupt Events
     virtual
