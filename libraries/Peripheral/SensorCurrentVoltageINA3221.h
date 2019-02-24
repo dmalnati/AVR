@@ -32,7 +32,7 @@ public:
             // Nothing to do
         }
         
-        uint8_t GetShuntMicroVolts(uint16_t &microVolts)
+        uint8_t GetShuntMicroVolts(int16_t &microVolts)
         {
             uint8_t retVal = 0;
             
@@ -52,7 +52,7 @@ public:
             return retVal;
         }
         
-        uint8_t GetShuntMilliAmps(uint16_t &milliAmps)
+        uint8_t GetShuntMilliAmps(int16_t &milliAmps)
         {
             uint8_t retVal = 0;
             
@@ -72,7 +72,7 @@ public:
             return retVal;
         }
         
-        uint8_t GetBusMilliVolts(uint16_t &milliVolts)
+        uint8_t GetBusMilliVolts(int16_t &milliVolts)
         {
             uint8_t retVal = 0;
             
@@ -321,49 +321,49 @@ public:
     //
     ////////////////////////////////////////////////////////////////////////////
     
-    uint8_t GetChannel1ShuntMicroVolts(uint16_t &microVolts)
+    uint8_t GetChannel1ShuntMicroVolts(int16_t &microVolts)
     {
         return GetShuntMicroVolts(0x01, microVolts);
     }
     
-    uint8_t GetChannel1ShuntMilliAmps(uint16_t &milliAmps)
+    uint8_t GetChannel1ShuntMilliAmps(int16_t &milliAmps)
     {
         return GetShuntMilliAmps(0x01, milliAmps);
     }
     
-    uint8_t GetChannel1BusMilliVolts(uint16_t &milliVolts)
+    uint8_t GetChannel1BusMilliVolts(int16_t &milliVolts)
     {
         return GetBusMilliVolts(0x02, milliVolts);
     }
     
 
-    uint8_t GetChannel2ShuntMicroVolts(uint16_t &microVolts)
+    uint8_t GetChannel2ShuntMicroVolts(int16_t &microVolts)
     {
         return GetShuntMicroVolts(0x03, microVolts);
     }
     
-    uint8_t GetChannel2ShuntMilliAmps(uint16_t &milliAmps)
+    uint8_t GetChannel2ShuntMilliAmps(int16_t &milliAmps)
     {
         return GetShuntMilliAmps(0x03, milliAmps);
     }
     
-    uint8_t GetChannel2BusMilliVolts(uint16_t &milliVolts)
+    uint8_t GetChannel2BusMilliVolts(int16_t &milliVolts)
     {
         return GetBusMilliVolts(0x04, milliVolts);
     }
     
     
-    uint8_t GetChannel3ShuntMicroVolts(uint16_t &microVolts)
+    uint8_t GetChannel3ShuntMicroVolts(int16_t &microVolts)
     {
         return GetShuntMicroVolts(0x05, microVolts);
     }
     
-    uint8_t GetChannel3ShuntMilliAmps(uint16_t &milliAmps)
+    uint8_t GetChannel3ShuntMilliAmps(int16_t &milliAmps)
     {
         return GetShuntMilliAmps(0x05, milliAmps);
     }
     
-    uint8_t GetChannel3BusMilliVolts(uint16_t &milliVolts)
+    uint8_t GetChannel3BusMilliVolts(int16_t &milliVolts)
     {
         return GetBusMilliVolts(0x06, milliVolts);
     }
@@ -481,7 +481,7 @@ public:
     
 
 
-    uint8_t GetShuntMicroVolts(uint8_t addr, uint16_t &microVolts)
+    uint8_t GetShuntMicroVolts(uint8_t addr, int16_t &microVolts)
     {
         uint16_t regVal = 0;
         uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
@@ -491,7 +491,7 @@ public:
         return retVal;
     }
     
-    uint8_t GetShuntMilliAmps(uint8_t addr, uint16_t &milliAmps)
+    uint8_t GetShuntMilliAmps(uint8_t addr, int16_t &milliAmps)
     {
         uint16_t regVal = 0;
         uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
@@ -501,7 +501,7 @@ public:
         return retVal;
     }
     
-    uint8_t GetBusMilliVolts(uint8_t addr, uint16_t &milliVolts)
+    uint8_t GetBusMilliVolts(uint8_t addr, int16_t &milliVolts)
     {
         uint16_t regVal = 0;
         uint8_t  retVal = I2C.ReadRegister16(I2C_ADDR, addr, regVal);
@@ -512,15 +512,38 @@ public:
     }
     
 
-
-
+    /*
+     * Some values conveyed by the module may be returned in two's compliment.
+     *
+     * However, the absolute value of the value may require processing before
+     * being actually useful.
+     *
+     * So this function effectively returns the absolute integer value along
+     * with an indication of whether it was negative or not.
+     *
+     * It is up to the calling code to apply the negation post-processing.
+     *
+     */
+    uint8_t ComplimentIfNecessary(uint16_t &val)
+    {
+        uint8_t isNegative = 0;
+        
+        if ((int16_t)val < 0)
+        {
+            isNegative = 1;
+            
+            val = ~val + 1;
+        }
+        
+        return isNegative;
+    }
+    
 
     /*
      * Register values top out at expressing 163.8mV.
      * Increments of 40uV.
      *
      * Can decode by:
-     * [todo: take care of sign bit]
      *
      * 0b0000000111110000 = 496
      * - shift right by 3 to remove trailing 3 0-padded bitset (0b0000000000111110 =     62   )
@@ -536,9 +559,14 @@ public:
      * - multiply by 10 (the rest of the multiply by 40 after the initial 4 above)
      *
      */
-    uint16_t ConvertShuntRegValToMicroVolts(uint16_t regVal)
+    int16_t ConvertShuntRegValToMicroVolts(uint16_t regVal)
     {
-        return ((regVal >> 1) * 10);
+        uint8_t isNegative = ComplimentIfNecessary(regVal);
+        int16_t retVal     = (int16_t)((regVal >> 1) * 10);
+        
+        retVal = isNegative ? -retVal : retVal;
+        
+        return retVal;
     }
     
     /*
@@ -546,7 +574,6 @@ public:
      * Increments of 40uV.
      *
      * Can decode by:
-     * [todo: take care of sign bit]
      *
      * 0b0000000111110000 = 496
      * - shift right by 3 to remove trailing 3 0-padded bitset (0b0000000000111110 =     62   )
@@ -567,9 +594,14 @@ public:
      * - divide by 10 (combine 10 * 10 / 1000)
      *
      */
-    uint16_t ConvertShuntRegValToMilliAmps(uint16_t regVal)
+    int16_t ConvertShuntRegValToMilliAmps(uint16_t regVal)
     {
-        return ((regVal >> 1) / 10);
+        uint8_t isNegative = ComplimentIfNecessary(regVal);
+        int16_t retVal     = (int16_t)((regVal >> 1) / 10);
+        
+        retVal = isNegative ? -retVal : retVal;
+        
+        return retVal;
     }
     
     /*
@@ -588,7 +620,6 @@ public:
      *
      *
      * Can decode by:
-     * [todo: take care of sign bit]
      *
      * 0b0001001100001000 = 4872 -- this is 4.872V
      *
@@ -598,20 +629,22 @@ public:
      * (4872 >> 3 = 609) / (2^12=4096) * 32.76 = 4.870810546875
      * 
      */
-    uint16_t ConvertBusRegValToMilliVolts(uint16_t regVal)
+    int16_t ConvertBusRegValToMilliVolts(uint16_t regVal)
     {
-        return regVal;
+        uint8_t isNegative = ComplimentIfNecessary(regVal);
+        int16_t retVal     = (int16_t)regVal;
+        
+        retVal = isNegative ? -retVal : retVal;
+        
+        return retVal;
     }
     
 
 private:
 
-    uint16_t mOhm_;
-    
     Channel channel1_;
     Channel channel2_;
     Channel channel3_;
-
 };
 
 

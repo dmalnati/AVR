@@ -13,7 +13,7 @@ static SensorCurrentVoltageINA3221::Channel *c3 = sensor.GetChannel3();
 
 void DoC1VoltageReadSpeedTest()
 {
-    uint16_t milliAmps = 0;
+    int16_t  milliAmps = 0;
     uint32_t countGood = 0;
     uint32_t countBad  = 0;
     uint32_t timeStart = PAL.Micros();
@@ -86,9 +86,9 @@ void setup()
 
         
 
-        uint16_t microVolts = 0;
-        uint16_t milliAmps  = 0;
-        uint16_t milliVolts = 0;
+        int16_t microVolts = 0;
+        int16_t milliAmps  = 0;
+        int16_t milliVolts = 0;
 
         // Read channel 1
         retVal = c1->GetShuntMicroVolts(microVolts);
