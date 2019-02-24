@@ -1,4 +1,20 @@
+#include <stdio.h>
+
 #include "Log.h"
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// STDIO Support
+//
+////////////////////////////////////////////////////////////////////////////////
+
+static void LogStream(char c, FILE *)
+{
+    LogNNL(c);
+}
+
+static FILE streamStdout;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10,6 +26,10 @@
 void LogStart(uint32_t baud)
 {
     S0.Start(baud);
+    
+    // Support stdio streams
+    fdev_setup_stream(&streamStdout, LogStream, NULL, _FDEV_SETUP_WRITE);
+    stdout = &streamStdout;
 }
 
 void LogEnd()
@@ -27,6 +47,14 @@ void LogEnd()
 void LogNL()
 {
     S0.Write('\n');
+}
+
+void LogNL(uint8_t count)
+{
+    for (uint16_t i = 0; i < count; ++i)
+    {
+        LogNL();
+    }
 }
 
 
@@ -272,6 +300,7 @@ void LogNNL()
 {
     // Nothing to do, simply here to make the templating work
 }
+
 
 
 
