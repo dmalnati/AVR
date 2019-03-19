@@ -111,7 +111,7 @@ uint8_t GetMessage(ParsedMessage &msg)
                 ubxInBuf[idx] = b;
                 ++idx;
 
-                HexPrint(b);
+                //HexPrint(b);
 
                 // check if we received a byte previously
                 // need 2 to match header
@@ -140,33 +140,33 @@ uint8_t GetMessage(ParsedMessage &msg)
             }
             else if (state == State::LOOKING_FOR_CLASS)
             {
-                Log(P("LOOKING_FOR_CLASS"));
+                //Log(P("LOOKING_FOR_CLASS"));
 
                 ubxInBuf[idx] = b;
                 ++idx;
                 
                 msgClass = b;
 
-                Log(P("    class: "), b);
+                //Log(P("    class: "), b);
 
                 state = State::LOOKING_FOR_ID;
             }
             else if (state == State::LOOKING_FOR_ID)
             {
-                Log(P("LOOKING_FOR_ID"));
+                //Log(P("LOOKING_FOR_ID"));
 
                 ubxInBuf[idx] = b;
                 ++idx;
                 
                 msgId = b;
 
-                Log(P("    id: "), b);
+                //Log(P("    id: "), b);
 
                 state = State::LOOKING_FOR_LEN;
             }
             else if (state == State::LOOKING_FOR_LEN)
             {
-                Log(P("LOOKING_FOR_LEN"));
+                //Log(P("LOOKING_FOR_LEN"));
                 
                 ubxInBuf[idx] = b;
                 ++idx;
@@ -183,8 +183,8 @@ uint8_t GetMessage(ParsedMessage &msg)
 
                     len = PAL.ntohs(lenBigEndian);
 
-                    Log(P("    lenBigEndian: "), lenBigEndian);
-                    Log(P("    len         : "), len);
+                    //Log(P("    lenBigEndian: "), lenBigEndian);
+                    //Log(P("    len         : "), len);
 
                     // length does not include the header, class, id, length, or checksum fields.
                     if (idx + len + 2 <= UBX_IN_BUF_SIZE)
@@ -208,7 +208,7 @@ uint8_t GetMessage(ParsedMessage &msg)
             }
             else if (state == State::LOOKING_FOR_CHECKSUM)
             {
-                Log(P("LOOKING_FOR_CHECKSUM"));
+                //Log(P("LOOKING_FOR_CHECKSUM"));
                 
                 ubxInBuf[idx] = b;
                 ++idx;
@@ -301,7 +301,6 @@ uint8_t GetMessageOrErr(uint8_t printMessage = 1)
     
     ParsedMessage msg;
 
-    Log(P("Waiting for msg... "));
     if (GetMessage(msg))
     {
         retVal = 1;
@@ -327,11 +326,6 @@ void setup()
     LogStart(9600);
     Log("Starting");
 
-    //gps.EnableSerialInput();
-    //gps.EnableSerialOutput();
-    gps.Init();
-    gps.SetHighAltitudeMode();
-    GetMessageOrErr();
 
 
 
@@ -854,6 +848,13 @@ void setup()
         GetMessageOrErr();
     });
 
+    shell.RegisterCommand("ham", [](char *) {
+        Log(P("gps.SetHighAltitudeMode()"));
+        
+        gps.SetHighAltitudeMode();
+        GetMessageOrErr();
+    });
+
     
 
     shell.RegisterErrorHandler([](char *cmdStr) {
@@ -861,6 +862,20 @@ void setup()
     });
 
     shell.Start();
+    
+    
+    //gps.EnableSerialInput();
+    //gps.EnableSerialOutput();
+    gps.Init();
+    shell.Exec("ham");
+    //gps.SetHighAltitudeMode();
+    //GetMessageOrErr();
+
+
+    
+    
+    
+
 
     evm.MainLoop();
 }
