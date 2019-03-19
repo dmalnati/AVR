@@ -180,6 +180,7 @@ class SerialAsyncConsole
     struct CmdToFn
     {
         const char                   *cmd;
+        int8_t                        minArgCount;
         function<void(char *cmdStr)>  fn;
     };
     
@@ -193,6 +194,7 @@ public:
     }
     
     uint8_t RegisterCommand(const char                   *cmd,
+                            uint8_t                       minArgCount,
                             function<void(char *cmdStr)>  fn)
     {
         uint8_t retVal = 0;
@@ -201,7 +203,7 @@ public:
         {
             retVal = 1;
             
-            CmdToFn ctf{ cmd, fn };
+            CmdToFn ctf{ cmd, (int8_t)minArgCount, fn };
             
             cmdToFnList_[cmdToFnListIdx_] = ctf;
             
@@ -209,6 +211,12 @@ public:
         }
         
         return retVal;
+    }
+    
+    uint8_t RegisterCommand(const char                   *cmd,
+                            function<void(char *cmdStr)>  fn)
+    {
+        return RegisterCommand(cmd, (uint8_t)-1, fn);
     }
     
     void RegisterErrorHandler(function<void(char *cmdStr)> fnErr)
@@ -242,9 +250,35 @@ public:
                     {
                         found = 1;
                         
+                        // Check if min arguments apply, and if yes, if present
+                        uint8_t executeFunction = 1;
+                        if (cmdToFnList_[i].minArgCount != -1)
+                        {
+                            uint8_t argCount = str.TokenCount(' ') - 1;
+                            
+                            if (argCount != cmdToFnList_[i].minArgCount)
+                            {
+                                executeFunction = 0;
+                                
+                                if (verbose_)
+                                {
+                                    Log(P("ERR: "),
+                                        cmdToFnList_[i].cmd,
+                                        ' ',
+                                        argCount,
+                                        '/',
+                                        cmdToFnList_[i].minArgCount,
+                                        P(" args provided"));
+                                }
+                            }
+                        }
+                        
                         str.Release();
                         
-                        cmdToFnList_[i].fn(strCmd);
+                        if (executeFunction)
+                        {
+                            cmdToFnList_[i].fn(strCmd);
+                        }
                     }
                 }
                 
@@ -268,7 +302,14 @@ public:
             Log(P("Commands:"));
             for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
             {
-                Log(cmdToFnList_[i].cmd);
+                if (cmdToFnList_[i].minArgCount == -1)
+                {
+                    Log(cmdToFnList_[i].cmd);
+                }
+                else
+                {
+                    Log(cmdToFnList_[i].cmd, '<', cmdToFnList_[i].minArgCount, '>');
+                }                
             }
             LogNL();
         }
