@@ -400,6 +400,18 @@ private:
             PAL.SoftReset();
         });
         
+        this->RegisterCommand("dlp", 1, [](char *cmdStr){
+            Str str(cmdStr);
+
+            uint32_t delayMs = atol(str.TokenAtIdx(1, ' '));
+            
+            Log(P("DelayLowPower "), delayMs, " ms");
+            
+            PAL.DelayLowPower(delayMs);
+            
+            Log(P("  awake again"));
+        });
+        
         if (enableDefaultErrorHandler)
         {
             this->RegisterErrorHandler([](char *cmdStr) {
