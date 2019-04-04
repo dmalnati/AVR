@@ -297,8 +297,10 @@ unsigned int timerSeconds;
 unsigned char fault;
 #ifdef VERSION == 2
 unsigned int timerUpdate;
-unsigned char temperature[SCREEN_WIDTH - X_AXIS_START];
-unsigned char x;
+
+
+
+
 #endif
 
 // PID control interface
@@ -308,6 +310,204 @@ PID reflowOvenPID(&input, &output, &setpoint, kp, ki, kd, DIRECT);
 LiquidCrystal lcd(lcdRsPin, lcdEPin, lcdD4Pin, lcdD5Pin, lcdD6Pin, lcdD7Pin);
 #elif VERSION == 2
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
+
+
+
+
+class TemperaturePlotter
+{
+    struct Point
+    {
+        uint8_t x;
+        uint8_t y;
+    };
+    
+    struct Rectangle
+    {
+        Point upperLeft;
+        Point lowerRight;
+    };
+    
+    // Graph area -- the entire section of the screen dedicated to all aspects
+    //               of drawing, including axis labels, axis, and plotted values
+    //
+    // Plot area -- just the section of the screen where plotted values go.
+    //              a subset of the Graph area
+    
+    static constexpr Rectangle graphArea_ =
+    {
+        {   0, 18 },
+        { 127, 63 }
+    };
+    
+    static constexpr Rectangle plotArea_ =
+    {
+        {  18, 18 },
+        { 127, 63 }
+    };
+    
+    static const uint8_t GRAPH_HEIGHT_PX = graphArea_.lowerRight.y - graphArea_.upperLeft.y + 1;
+    static const uint8_t GRAPH_WIDTH_PX  = graphArea_.lowerRight.x - graphArea_.upperLeft.x + 1;
+    
+    static const uint8_t PLOT_HEIGHT_PX = plotArea_.lowerRight.y - plotArea_.upperLeft.y + 1;
+    static const uint8_t PLOT_WIDTH_PX  = plotArea_.lowerRight.x - plotArea_.upperLeft.x + 1;
+    
+    static const uint8_t SENSOR_VALUE_LIST_LEN = PLOT_WIDTH_PX;
+    
+    static const uint8_t TEMPERATURE_MIN =   0;
+    static const uint8_t TEMPERATURE_MAX = 250;
+
+    
+public:
+
+    TemperaturePlotter(Adafruit_SSD1306 &oled, reflowProfile_t &reflowProfile)
+    : oled_(oled)
+    , reflowProfile_(reflowProfile)
+    {
+        ClearSensorData();
+    }
+    
+    void ClearSensorData()
+    {
+        for (uint8_t i = 0; i < SENSOR_VALUE_LIST_LEN; ++i)
+        {
+            sensorValueList_[i] = 0;
+        }
+        
+        sensorValueListIdx_ = 0;
+    }
+    
+    void AddSensorReading(uint8_t temp)
+    {
+        // Check if we've run out of room to hold all samples.
+        // If yes, shift them all and store the next.
+        // This gives the appearance of a sliding window.
+        if (sensorValueListIdx_ == SENSOR_VALUE_LIST_LEN)
+        {
+            for (uint8_t i = 1; i < SENSOR_VALUE_LIST_LEN; ++i)
+            {
+                sensorValueList_[i - 1] = sensorValueList_[i];
+            }
+            
+            sensorValueListIdx_ = SENSOR_VALUE_LIST_LEN - 1;
+        }
+        
+        sensorValueList_[sensorValueListIdx_] = temp;
+        ++sensorValueListIdx_;
+    }
+    
+    void Draw()
+    {
+        ClearGraphArea();
+        
+        if (reflowProfile_ == REFLOW_PROFILE_LEADFREE)
+        {
+            PlotTargetLeadFree();
+        }
+        else
+        {
+            PlotTargetLeaded();
+        }
+        
+        PlotSensorData();
+    }
+
+    
+private:
+
+    void PlotTargetLeadFree()
+    {
+        uint8_t ySoakMax   = GetTempAsY(TEMPERATURE_SOAK_MAX_LF);
+        uint8_t yReflowMax = GetTempAsY(TEMPERATURE_REFLOW_MAX_LF);
+        
+        DrawDashedHorizontalLine(plotArea_.upperLeft.x, plotArea_.lowerRight.x, ySoakMax);
+        DrawDashedHorizontalLine(plotArea_.upperLeft.x, plotArea_.lowerRight.x, yReflowMax);
+    }
+    
+    void PlotTargetLeaded()
+    {
+        uint8_t ySoakMax   = GetTempAsY(TEMPERATURE_SOAK_MAX_PB);
+        uint8_t yReflowMax = GetTempAsY(TEMPERATURE_REFLOW_MAX_PB);
+        
+        DrawDashedHorizontalLine(plotArea_.upperLeft.x, plotArea_.lowerRight.x, ySoakMax);
+        DrawDashedHorizontalLine(plotArea_.upperLeft.x, plotArea_.lowerRight.x, yReflowMax);
+    }
+    
+    void DrawDashedHorizontalLine(uint8_t xStart, uint8_t xEnd, uint8_t y)
+    {
+        for (uint8_t x = xStart; x <= xEnd; x += 5)
+        {
+            oled_.drawPixel(x, y, WHITE);
+        }
+    }
+    
+    void PlotSensorData()
+    {
+        for (uint8_t i = 0; i < SENSOR_VALUE_LIST_LEN; ++i)
+        {
+            uint8_t x = plotArea_.upperLeft.x + i;
+            uint8_t y = GetTempAsY(sensorValueList_[i]);
+            
+            oled_.drawPixel(x, y, WHITE);
+        }
+    }
+    
+    uint8_t GetTempAsY(uint8_t temp)
+    {
+        uint8_t y = map(temp,
+                        TEMPERATURE_MIN,
+                        TEMPERATURE_MAX,
+                        plotArea_.lowerRight.y,
+                        plotArea_.upperLeft.y);
+
+        return y;
+    }
+    
+    // Erase both interactive sample and target plot
+    void ClearGraphArea()
+    {
+        oled_.drawRect(graphArea_.upperLeft.x,
+                       graphArea_.upperLeft.y,
+                       GRAPH_WIDTH_PX,
+                       GRAPH_HEIGHT_PX,
+                       BLACK);
+        
+        DrawGraphAxesAndLabels();
+    }
+    
+    void DrawGraphAxesAndLabels()
+    {
+        // Temperature markers
+        oled_.setCursor(0, 18);
+        oled_.print(F("250"));
+        oled_.setCursor(0, 36);
+        oled_.print(F("150"));
+        oled_.setCursor(0, 54);
+        oled_.print(F(" 50"));
+        // Draw temperature and time axis
+        oled_.drawLine(18, 18, 18, 63, WHITE);
+        oled_.drawLine(18, 63, 127, 63, WHITE);
+    }
+
+private:
+
+    Adafruit_SSD1306 &oled_;
+    reflowProfile_t  &reflowProfile_;
+
+    uint8_t sensorValueList_[SENSOR_VALUE_LIST_LEN];
+    uint8_t sensorValueListIdx_ = 0;
+};
+
+
+
+TemperaturePlotter  plotter(oled, reflowProfile);
+
+
+
+
+
+
+
 #endif
 // MAX31856 thermocouple interface
 Adafruit_MAX31856 thermocouple = Adafruit_MAX31856(thermocoupleCSPin);
@@ -378,7 +578,7 @@ void setup()
   oled.println();
   oled.println(F("      04-03-19"));
   oled.display();
-  delay(3000);
+  delay(1000);
   oled.clearDisplay();
 #endif
 
@@ -512,18 +712,8 @@ void loop()
       oled.print(F("PB"));
     }
     
-    // Temperature markers
-    oled.setCursor(0, 18);
-    oled.print(F("250"));
-    oled.setCursor(0, 36);
-    oled.print(F("150"));
-    oled.setCursor(0, 54);
-    oled.print(F("50"));
-    // Draw temperature and time axis
-    oled.drawLine(18, 18, 18, 63, WHITE);
-    oled.drawLine(18, 63, 127, 63, WHITE);
-    oled.setCursor(115, 0);
-
+    plotter.Draw();
+    
     // If currently in error state
     if (reflowState == REFLOW_STATE_ERROR)
     {
@@ -551,20 +741,13 @@ void loop()
         if ((timerSeconds % 3) == 0)
         {
           timerUpdate = timerSeconds;
-          unsigned char averageReading = map(input, 0, 250, 63, 19);
-          if (x < (SCREEN_WIDTH - X_AXIS_START))
-          {
-            temperature[x++] = averageReading;
-          }
+          
+          plotter.AddSensorReading(input);
         }
       }
     }
     
-    unsigned char timeAxis;
-    for (timeAxis = 0; timeAxis < x; timeAxis++)
-    {
-      oled.drawPixel(timeAxis + X_AXIS_START, temperature[timeAxis], WHITE);
-    }
+    plotter.Draw();
     
     // Update screen
     oled.display();
@@ -594,12 +777,7 @@ void loop()
           // Initialize reflow plot update timer
           timerUpdate = 0;
           
-          for (x = 0; x < (SCREEN_WIDTH - X_AXIS_START); x++)
-          {
-            temperature[x] = 0;
-          }
-          // Initialize index for average temperature array used for reflow plot
-          x = 0;
+          plotter.ClearSensorData();
           #endif
           
           // Initialize PID control window starting time
