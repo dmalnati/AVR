@@ -505,9 +505,6 @@ TemperaturePlotter  plotter(oled, reflowProfile);
 
 
 
-
-
-
 #endif
 // MAX31856 thermocouple interface
 Adafruit_MAX31856 thermocouple = Adafruit_MAX31856(thermocoupleCSPin);
@@ -573,10 +570,10 @@ void setup()
   oled.setCursor(0, 0);
   oled.println(F("     Tiny Reflow"));
   oled.println(F("     Controller"));
-  oled.println();
   oled.println(F("       v2.00"));
-  oled.println();
   oled.println(F("      04-03-19"));
+  oled.println();
+  oled.println(F("      [modded]"));
   oled.display();
   delay(1000);
   oled.clearDisplay();
@@ -854,6 +851,16 @@ void loop()
         setpoint = TEMPERATURE_COOL_MIN;
         // Proceed to cooling state
         reflowState = REFLOW_STATE_COOL;
+        
+        
+        // Alert that cooling down phase is beginning
+        for (uint8_t i = 0; i < 3; ++i)
+        {
+            digitalWrite(buzzerPin, HIGH);
+            delay(400);
+            digitalWrite(buzzerPin, LOW);
+            delay(100);
+        }
       }
       break;
 
