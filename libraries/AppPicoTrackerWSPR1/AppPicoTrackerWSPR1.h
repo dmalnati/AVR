@@ -13,6 +13,12 @@
 
 struct AppPicoTrackerWSPR1Config
 {
+    // Human interfacing
+    uint8_t pinConfigure;
+    
+    // Pre-regulator power sensing
+    uint8_t pinInputVoltage;
+    
     // Regulator control
     uint8_t pinRegPowerSaveEnable;
     
@@ -33,14 +39,26 @@ struct AppPicoTrackerWSPR1Config
 class AppPicoTrackerWSPR1
 {
 private:
-    static const uint8_t C_IDLE  =  0;
-    static const uint8_t C_TIMED = 20;
-    static const uint8_t C_INTER =  0;
+
+    enum class Step : uint8_t
+    {
+        GPS_LOCATION_LOCK,
+        GPS_TIME_LOCK_AND_SEND,
+    };
+
+    enum class SolarState : uint8_t
+    {
+        NEED_GPS_DATA,
+        NEED_TO_TRANSMIT,
+    };
+
     
 public:
     AppPicoTrackerWSPR1(AppPicoTrackerWSPR1Config &cfg)
     : cfg_(cfg)
+    , solarState_(SolarState::NEED_GPS_DATA)
     , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
+    , gpsLocationLockOk_(0)
     {
         // Nothing to do
     }
@@ -66,11 +84,11 @@ public:
             Log(P("BODR"));
         }
         
-        // This device surges lower than standard BOD would account for, make
-        // sure to complain if not actually fused to handle that.
-        if (PAL.GetFuseBODLimMilliVolts() != 1800)
+        // Don't allow being too low of a BOD.
+        if (PAL.GetFuseBODLimMilliVolts() != 2700)
         {
-            Log(P("BOD WRONG -- Set to 1800"));
+            Log(P("BOD WRONG -- Set to 2700"));
+            PAL.SoftReset();
         }
         
         // Set up control over regulator power save mode.
@@ -97,7 +115,7 @@ public:
         Blink(cfg_.pinLedGreen, 100);
 
         // Get user config
-        if (AppPicoTrackerWSPR1UserConfigManager::GetUserConfig(userConfig_))
+        if (AppPicoTrackerWSPR1UserConfigManager::GetUserConfig(cfg_.pinConfigure, userConfig_))
         {
             // Blink to indicate good configuration
             for (uint8_t i = 0; i < 3; ++i)
@@ -105,21 +123,16 @@ public:
                 Blink(cfg_.pinLedGreen, 300);
             }
             
-            // Maintain counters about restarts.
-            // Also causes stats to be pulled from EEPROM into SRAM unconditionally.
-            StatsIncrNumRestarts();
-            if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
-            {
-                StatsIncrNumWdtRestarts();
-            }
-            
             // Begin tracker reporting, fire first event immediately.
             // No point using interval, the decision about how long to sleep for is
             // evaluated each time.
-            tedWakeAndEvaluateTimeout_.SetCallback([this](){
-                OnWakeAndEvaluateTimeout();
+            tedWake_.SetCallback([this](){
+                OnWake();
             });
-            tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(0);
+            tedWake_.RegisterForTimedEvent(0);
+            
+            // Going into low-current sleep, enable power save
+            RegulatorPowerSaveEnable();
             
             // Handle async events
             Log(P("Running"));
@@ -137,21 +150,13 @@ public:
     
 private:
 
-    void Blink(uint8_t pin, uint32_t durationMs)
-    {
-        PAL.DigitalWrite(pin, HIGH);
-        PAL.Delay(durationMs);
-        PAL.DigitalWrite(pin, LOW);
-        PAL.Delay(durationMs);
-    }
-
     ///////////////////////////////////////////////////////////////////////////
     //
     // Main Wake/Lock/Send logic
     //
     ///////////////////////////////////////////////////////////////////////////
-
-    void OnWakeAndEvaluateTimeout()
+    
+    void OnWake()
     {
         Log(P("\nWake"));
         
@@ -159,87 +164,187 @@ private:
         // which has a lower efficiency at higher current draw.
         RegulatorPowerSaveDisable();
         
-        // Begin monitoring code which has been seen to hang
+        // Protect against hangs, which has happened
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
-        // Start GPS
-        Log(P("GPS ON"));
-        StartGPS();
-        
-        // Warm up transmitter
-        Log(P("Warming transmitter"));
-        //PreSendMessage();
-        
-        // Lock onto two-minute mark on GPS time
-        Log(P("GPS locking to next 2 minute mark"));
-        uint8_t gpsLockOk = gps_.WaitForNextGPSTwoMinuteMark(&gpsMeasurement_);
-
-        // The GPS may have locked at an even minute and :00 seconds.
-        // We're going to transmit at the :01 second mark.
-        //
-        // Do some useful work in the meantime, but keep track of how much
-        // time it takes so we can wake up on time.
-        //
-        // We also account for the fact that the genuine real-world time change
-        // occurred in the past, and we're only learning about it after
-        // having processed the output data from the GPS, which is relatively
-        // slow at 9600 baud.
-        uint32_t timeAtMark =
-            PAL.Millis() - SensorGPSUblox::MIN_DELAY_NEW_TIME_LOCK_MS;
-        
-        
-        
-        
-        PreSendMessage();
-        
-        
-        
-        Log(P("GPS Lock "), gpsLockOk ? P("OK") : P("NOT OK"));
-        
-        // Unconditionally turn off GPS, we have what we need one way or another
-        Log(P("GPS OFF"));
-        StopGPS();
-        
-        // If locked, prepare to transmit
-        if (gpsLockOk)
+        // Get GPS location lock if one isn't already available from a prior run.
+        // Consider available power if solar.
+        if (DoThisStep(Step::GPS_LOCATION_LOCK) &&
+            InputVoltageSufficient(userConfig_.minMilliVoltGpsLocationLock))
         {
-            // Pack message now that we know where we are
-            uint8_t messageOk = FillOutStandardWSPRMessage();
+            // Start GPS
+            Log(P("GPS ON"));
+            StartGPS();
             
-            // Test message before sending (but send regardless)
-            Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
-            
-            // Figure out how long we've been operating since the mark
-            uint32_t timeDiff = PAL.Millis() - timeAtMark;
-            
-            // Wait for the :01 second mark after even minute, accounting for 
-            // time which has elapsed since the even minute
-            const uint32_t ONE_SECOND = 1000UL;
-            if (timeDiff < ONE_SECOND)
+            // Attempt to get lock, but time out if taking too long
+            gpsLocationLockOk_ =
+                gps_.GetGPSLockUnderWatchdog(&gpsLocationMeasurement_,
+                                             userConfig_.gpsLockTimeoutMs);
+        
+            // Stop GPS
+            Log(P("GPS OFF"));
+            StopGPS();
+
+            if (gpsLocationLockOk_)
             {
-                PAL.Delay(ONE_SECOND - timeDiff);
+                solarState_ = SolarState::NEED_TO_TRANSMIT;
             }
-            
-            // Send WSPR message
-            Log(P("TX"));
-            SendMessage();
+            else
+            {
+                // Hmm, go to sleep and try again later?
+                // Sleep for how long?
+            }
         }
         
-        PostSendMessage();
-        
-        // Schedule next wakeup
-        uint32_t wakeAndEvaluateDelayMs = 0;
-        tedWakeAndEvaluateTimeout_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
+        // Sync to 2 minute mark if GPS location acquired
+        // Consider available power if solar.
+        if (DoThisStep(Step::GPS_TIME_LOCK_AND_SEND) &&
+            InputVoltageSufficient(userConfig_.minMilliVoltGpsTimeLock) &&
+            gpsLocationLockOk_)
+        {
+            // Warm up transmitter
+            Log(P("Warming transmitter"));
+            //PreSendMessage();
+            
+            // Lock onto two-minute mark on GPS time
+            Log(P("GPS ON"));
+            StartGPS();
+
+            Log(P("GPS locking to next 2 minute mark"));
+            uint8_t gpsTimeLockOk = gps_.WaitForNextGPSTwoMinuteMark(&gpsLocationMeasurement_);
+
+            // The GPS may have locked at an even minute and :00 seconds.
+            // We're going to transmit at the :01 second mark.
+            //
+            // Do some useful work in the meantime, but keep track of how much
+            // time it takes so we can wake up on time.
+            //
+            // We also account for the fact that the genuine real-world time change
+            // occurred in the past, and we're only learning about it after
+            // having processed the output data from the GPS, which is relatively
+            // slow at 9600 baud.
+            uint32_t timeAtMark =
+                PAL.Millis() - SensorGPSUblox::MIN_DELAY_NEW_TIME_LOCK_MS;
+            
+            Log(P("GPS Time Lock "), gpsTimeLockOk ? P("OK") : P("NOT OK"));
+            
+            // Unconditionally turn off GPS, we have what we need one way or another
+            Log(P("GPS OFF"));
+            StopGPS();
+            
+            // If time locked, prepare to transmit.
+            // Consider available power if solar.
+            if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit) &&
+                gpsTimeLockOk)
+            {
+                PreSendMessage();
+                
+                // Pack message now that we know where we are
+                uint8_t messageOk = FillOutStandardWSPRMessage();
+                
+                // Test message before sending (but send regardless)
+                Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
+                
+                // Figure out how long we've been operating since the mark
+                uint32_t timeDiff = PAL.Millis() - timeAtMark;
+                
+                // Wait for the :01 second mark after even minute, accounting for 
+                // time which has elapsed since the even minute
+                const uint32_t ONE_SECOND = 1000UL;
+                if (timeDiff < ONE_SECOND)
+                {
+                    PAL.Delay(ONE_SECOND - timeDiff);
+                }
+                
+                // Send WSPR message
+                Log(P("TX"));
+                SendMessage();
+                
+                PostSendMessage();
+                
+                // Change solar state and declare gps lock no longer good
+                solarState_ = SolarState::NEED_GPS_DATA;
+                gpsLocationLockOk_ = 0;
+            }
+        }
         
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
-        
-        Log(P("Sleep "), wakeAndEvaluateDelayMs);
         
         // We're about to sleep and use very little power, so turn on
         // power-saving mode, which has a higher efficiency at lower current
         // draw.
         RegulatorPowerSaveEnable();
+        
+        // Schedule next wakeup
+        uint32_t wakeAndEvaluateDelayMs = 0;
+        tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
+        
+        Log(P("Sleep "), wakeAndEvaluateDelayMs);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Solar and State Interpretation
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    // Convenience function to wrap up the policy about what steps to do and
+    // in what order, depending on solar or battery.
+    //
+    // The rules are:
+    // - If battery powered, do every step in order
+    // - If solar powered
+    //   - depends on the state you came in at, which represents the fact that
+    //     you may have a GPS location lock that you haven't transmitted yet
+    //     from a prior run.
+    //
+    uint8_t DoThisStep(Step step)
+    {
+        uint8_t retVal = 0;
+        
+        if (userConfig_.solarMode)
+        {
+            if (step == Step::GPS_LOCATION_LOCK)
+            {
+                retVal = (solarState_ == SolarState::NEED_GPS_DATA);
+            }
+            else if (step == Step::GPS_TIME_LOCK_AND_SEND)
+            {
+                retVal = (solarState_ == SolarState::NEED_TO_TRANSMIT);
+            }
+        }
+        else    // battery mode
+        {
+            retVal = 1;
+        }
+        
+        return retVal;
+    }
+    
+    // Abstract away the differences between battery and solar when considering
+    // whether a particular step has sufficient power to proceed.
+    uint8_t InputVoltageSufficient(uint16_t solarMilliVoltMinimum)
+    {
+        uint8_t retVal = 0;
+        
+        if (userConfig_.solarMode)
+        {
+            // Circuit has a voltage divider halve the input voltage.
+            uint16_t inputMilliVolt = PAL.AnalogRead(cfg_.pinInputVoltage) * 2;
+            
+            if (inputMilliVolt >= solarMilliVoltMinimum)
+            {
+                retVal = 1;
+            }
+        }
+        else    // battery mode
+        {
+            retVal = 1;
+        }
+        
+        return retVal;
     }
     
     
@@ -318,7 +423,7 @@ private:
     uint8_t FillOutStandardWSPRMessage()
     {
         // Modify the GPS maidenheadGrid to be 4 char instead of 6
-        gpsMeasurement_.maidenheadGrid[4] = '\0';
+        gpsLocationMeasurement_.maidenheadGrid[4] = '\0';
         
         // Keep a mapping of altitude to power level as an encoding
         struct
@@ -352,7 +457,7 @@ private:
         uint8_t powerDbm = altitudeToPowerList[0].powerDbm;
         for (auto altToPwr : altitudeToPowerList)
         {
-            if (gpsMeasurement_.altitudeFt >= altToPwr.altitudeFt)
+            if (gpsLocationMeasurement_.altitudeFt >= altToPwr.altitudeFt)
             {
                 powerDbm = altToPwr.powerDbm;
             }
@@ -362,7 +467,7 @@ private:
         //wsprMessage_.SetCallsign((const char *)userConfig_.callsign);
         // temporary workaround while waiting to implement this
         wsprMessage_.SetCallsign("KD2KDD");
-        wsprMessage_.SetGrid(gpsMeasurement_.maidenheadGrid);
+        wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
         // debug
         //wsprMessage_.SetGrid("AB12");
         wsprMessage_.SetPower(powerDbm);
@@ -478,51 +583,21 @@ private:
         PAL.DigitalWrite(pin, HIGH);
     }
     
-        
+    
     ///////////////////////////////////////////////////////////////////////////
     //
-    // Stats Keeping
+    // Misc
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void StatsIncr(uint16_t &counter, uint16_t incrBy = 1)
+    void Blink(uint8_t pin, uint32_t durationMs)
     {
-        persistentCountersAccessor_.Read(persistentCounters_);
-        
-        counter += incrBy;
-        
-        persistentCountersAccessor_.Write(persistentCounters_);
+        PAL.DigitalWrite(pin, HIGH);
+        PAL.Delay(durationMs);
+        PAL.DigitalWrite(pin, LOW);
+        PAL.Delay(durationMs);
     }
-    
-    void StatsIncrSeqNo()
-    {
-        StatsIncr(persistentCounters_.SEQ_NO);
-    }
-    
-    void StatsIncrGpsLockWaitSecs(uint16_t incrBy)
-    {
-        StatsIncr(persistentCounters_.GPS_LOCK_WAIT_SECS, incrBy);
-    }
-    
-    void StatsIncrNumRestarts()
-    {
-        StatsIncr(persistentCounters_.NUM_RESTARTS);
-    }
-    
-    void StatsIncrNumWdtRestarts()
-    {
-        StatsIncr(persistentCounters_.NUM_WDT_RESTARTS);
-    }
-    
-    void StatsIncrNumMsgsNotSent()
-    {
-        StatsIncr(persistentCounters_.NUM_MSGS_NOT_SENT);
-    }
-    
-    
-    
-    
-    
+
     
     
     
@@ -534,6 +609,10 @@ private:
 
     void ToDo()
     {
+        
+        
+/*
+        
         // control whether regulator is in power save mode or not
         
         // design around testing board and application
@@ -546,6 +625,26 @@ private:
         // which counters to keep?
         
         // print out time when locked on
+        
+        
+        
+        No BOD lower voltage allowed
+        
+        Change pin signalling configuration away from being serial in
+        
+        
+                
+        GPS giveup timeout
+        GPS time sync decoupled from lock
+        Care about voltage levels of input for operating certain events
+        Solar vs battery support
+            Tracker can be in different states depending whether GPS locked last run
+                No information persists across reboots
+                
+        
+        
+*/
+        
     }
     
     
@@ -556,33 +655,26 @@ private:
 
 private:
 
+    static const uint8_t C_IDLE  =  0;
+    static const uint8_t C_TIMED = 20;
+    static const uint8_t C_INTER =  0;
+    
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
     AppPicoTrackerWSPR1Config &cfg_;
     
     AppPicoTrackerWSPR1UserConfigManager::UserConfig userConfig_;
     
-    TimedEventHandlerDelegate tedWakeAndEvaluateTimeout_;
+    SolarState  solarState_;
+    
+    TimedEventHandlerDelegate tedWake_;
     
     SensorGPSUblox               gps_;
-    SensorGPSUblox::Measurement  gpsMeasurement_;
+    SensorGPSUblox::Measurement  gpsLocationMeasurement_;
+    uint8_t                      gpsLocationLockOk_;
     
     WSPRMessage             wsprMessage_;
     WSPRMessageTransmitter  wsprMessageTransmitter_;
-    
-    uint8_t inLowAltitudeStickyPeriod_ = 1;
-    
-    struct PersistentCounters
-    {
-        uint16_t SEQ_NO             = 0;
-        uint16_t GPS_LOCK_WAIT_SECS = 0;
-        uint16_t NUM_RESTARTS       = 0;
-        uint16_t NUM_WDT_RESTARTS   = 0;
-        uint16_t NUM_MSGS_NOT_SENT  = 0;
-    };
-    
-    PersistentCounters                 persistentCounters_;
-    EepromAccessor<PersistentCounters> persistentCountersAccessor_;
 };
 
 

@@ -3,6 +3,12 @@
 
 static AppPicoTrackerWSPR1Config cfg =
 {
+    // Human interfacing
+    .pinConfigure = 25,
+    
+    // Pre-regulator power sensing
+    .pinInputVoltage = 26,
+    
     // Regulator control
     .pinRegPowerSaveEnable = 6,
     
