@@ -28,11 +28,69 @@ public:
     // it calculated as 135ms.
     static const uint32_t MIN_DELAY_NEW_TIME_LOCK_MS = 135;
     
+    struct Measurement
+    {
+        uint32_t msSinceLastFix;
+        
+        uint32_t date;
+        uint32_t time;
+        
+        int16_t  year;
+        uint8_t  month;
+        uint8_t  day;
+        uint8_t  hour;
+        uint8_t  minute;
+        uint8_t  second;
+        uint16_t millisecond;
+        uint32_t fixAge;
+        
+        uint32_t courseDegrees;
+        uint32_t speedKnots;
+        
+        int32_t latitudeDegreesMillionths;
+        int32_t longitudeDegreesMillionths;
+        
+        int16_t  latitudeDegrees;
+        uint8_t  latitudeMinutes;
+        double   latitudeSeconds;
+        
+        int16_t  longitudeDegrees;
+        uint8_t  longitudeMinutes;
+        double   longitudeSeconds;
+        
+        static const uint8_t MAIDENHEAD_GRID_LEN = 6;
+        char maidenheadGrid[MAIDENHEAD_GRID_LEN + 1] = { 0 };
+        
+        uint32_t altitudeFt;
+    };
+    
+    enum class ResetType : uint16_t
+    {
+        HOT  = 0x0000,
+        WARM = 0x0001,
+        COLD = 0xFFFF,
+    };
+    
+    enum class ResetMode : uint8_t
+    {
+        HW                  = 0x00,
+        SW                  = 0x01,
+        SW_GPS_ONLY         = 0x02,
+        HW_AFTER_SD         = 0x04,
+        CONTROLLED_GPS_DOWN = 0x08,
+        CONTROLLED_GPS_UP   = 0x09,
+    };
+
+    
 private:
     static const uint32_t BAUD                  = 9600;
     static const uint32_t POLL_PERIOD_MS        = 25;
     static const uint16_t GPS_WARMUP_TIME_MS    = 200;
     static const uint8_t  MAX_UBX_MESSAGE_SIZE  = 44;
+    
+    using FnGetAbstractMeasurement               = uint8_t (SensorGPSUblox::*)(Measurement *);
+    using FnGetNewAbstractMeasurementSynchronous = uint8_t (SensorGPSUblox::*)(Measurement *, uint32_t, uint32_t *);
+    
     
 public:
 
@@ -239,24 +297,6 @@ public:
         PAL.Delay(bufLen);
     }
     
-    
-    enum class ResetType : uint16_t
-    {
-        HOT  = 0x0000,
-        WARM = 0x0001,
-        COLD = 0xFFFF,
-    };
-    
-    enum class ResetMode : uint8_t
-    {
-        HW                  = 0x00,
-        SW                  = 0x01,
-        SW_GPS_ONLY         = 0x02,
-        HW_AFTER_SD         = 0x04,
-        CONTROLLED_GPS_DOWN = 0x08,
-        CONTROLLED_GPS_UP   = 0x09,
-    };
-    
     // Default to the hardest reset possible, complete expunging of all data
     void ResetModule(ResetType resetType = ResetType::COLD,
                      ResetMode resetMode = ResetMode::HW)
@@ -320,43 +360,6 @@ public:
         tgps_.ResetFix();
     }
     
-    struct Measurement
-    {
-        uint32_t msSinceLastFix;
-        
-        uint32_t date;
-        uint32_t time;
-        
-        int16_t  year;
-        uint8_t  month;
-        uint8_t  day;
-        uint8_t  hour;
-        uint8_t  minute;
-        uint8_t  second;
-        uint16_t millisecond;
-        uint32_t fixAge;
-        
-        uint32_t courseDegrees;
-        uint32_t speedKnots;
-        
-        int32_t latitudeDegreesMillionths;
-        int32_t longitudeDegreesMillionths;
-        
-        int16_t  latitudeDegrees;
-        uint8_t  latitudeMinutes;
-        double   latitudeSeconds;
-        
-        int16_t  longitudeDegrees;
-        uint8_t  longitudeMinutes;
-        double   longitudeSeconds;
-        
-        static const uint8_t MAIDENHEAD_GRID_LEN = 6;
-        char maidenheadGrid[MAIDENHEAD_GRID_LEN + 1] = { 0 };
-        
-        uint32_t altitudeFt;
-    };
-    
-    
     
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -391,83 +394,13 @@ public:
                                              uint32_t       timeoutMs,
                                              uint32_t      *timeUsedMs = NULL)
     {
-        ResetFix();
-        
-        uint8_t retVal = 0;
-        
-        uint32_t timeStart = PAL.Millis();
-        
-        uint8_t cont = 1;
-        while (cont)
-        {
-            OnPoll();
-            
-            uint8_t measurementOk = GetTimeMeasurement(m);
-
-            uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
-            
-            if (timeUsedMs)
-            {
-                *timeUsedMs = timeUsedMsInternal;
-            }
-            
-            if (measurementOk)
-            {
-                retVal = 1;
-                
-                cont = 0;
-            }
-            else
-            {
-                if (timeUsedMsInternal >= timeoutMs)
-                {
-                    cont = 0;
-                }
-            }
-        }
-        
-        return retVal;
+        return GetNewAbstractMeasurementSynchronous(&SensorGPSUblox::GetTimeMeasurement, m, timeoutMs, timeUsedMs);
     }
-    
-    
+
     uint8_t GetNewTimeMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
     {
-        const uint32_t ONE_SECOND_MS = 1000L;
-        
-        uint8_t retVal = 0;
-        
-        uint32_t durationRemainingMs = timeoutMs;
-        
-        uint8_t cont = 1;
-        while (cont)
-        {
-            // Kick the watchdog
-            PAL.WatchdogReset();
-            
-            // Calculate how long to wait for, one second or less each time
-            uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
-            
-            // Attempt lock
-            retVal = GetNewTimeMeasurementSynchronous(m, timeoutMsGps);
-            
-            if (retVal)
-            {
-                cont = 0;
-            }
-            else
-            {
-                durationRemainingMs -= timeoutMsGps;
-                
-                if (durationRemainingMs == 0)
-                {
-                    cont = 0;
-                }
-            }
-        }
-        
-        return retVal;
+        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewTimeMeasurementSynchronous, m, timeoutMs);
     }
-
     
     uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(Measurement *m)
     {
@@ -653,10 +586,6 @@ public:
     // Location-related Locks
     //
     ///////////////////////////////////////////////////////////////////////////
-
-
-    
-    
     
     // May not return true if the async polling hasn't acquired enough data yet
     uint8_t GetLocationMeasurement(Measurement *m)
@@ -674,90 +603,19 @@ public:
         return retVal;
     }
     
-    
     // This function ignores the fact that other async polling events may be
     // going on.  They do not impact this functionality.
     uint8_t GetNewLocationMeasurementSynchronous(Measurement   *m,
                                                  uint32_t       timeoutMs,
                                                  uint32_t      *timeUsedMs = NULL)
     {
-        ResetFix();
-        
-        uint8_t retVal = 0;
-        
-        uint32_t timeStart = PAL.Millis();
-        
-        uint8_t cont = 1;
-        while (cont)
-        {
-            OnPoll();
-            
-            uint8_t measurementOk = GetLocationMeasurement(m);
-
-            uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
-            
-            if (timeUsedMs)
-            {
-                *timeUsedMs = timeUsedMsInternal;
-            }
-            
-            if (measurementOk)
-            {
-                retVal = 1;
-                
-                cont = 0;
-            }
-            else
-            {
-                if (timeUsedMsInternal >= timeoutMs)
-                {
-                    cont = 0;
-                }
-            }
-        }
-        
-        return retVal;
+        return GetNewAbstractMeasurementSynchronous(&SensorGPSUblox::GetLocationMeasurement, m, timeoutMs, timeUsedMs);
     }
-    
     
     uint8_t GetNewLocationMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
     {
-        const uint32_t ONE_SECOND_MS = 1000L;
-        
-        uint8_t retVal = 0;
-        
-        uint32_t durationRemainingMs = timeoutMs;
-        
-        uint8_t cont = 1;
-        while (cont)
-        {
-            // Kick the watchdog
-            PAL.WatchdogReset();
-            
-            // Calculate how long to wait for, one second or less each time
-            uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
-            
-            // Attempt lock
-            retVal = GetNewLocationMeasurementSynchronous(m, timeoutMsGps);
-            
-            if (retVal)
-            {
-                cont = 0;
-            }
-            else
-            {
-                durationRemainingMs -= timeoutMsGps;
-                
-                if (durationRemainingMs == 0)
-                {
-                    cont = 0;
-                }
-            }
-        }
-        
-        return retVal;
+        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewLocationMeasurementSynchronous, m, timeoutMs);
     }
-    
 
 
 private:
@@ -820,7 +678,6 @@ private:
             tgps_.encode(b);
         }
     }
-    
     
     void SetMessageRate(uint8_t ubxClass, uint8_t ubxId, uint8_t rate)
     {
@@ -970,7 +827,95 @@ public:
         grid[5] = 'A' + (((lat % 100000) % 10000) / 417);
     }
     
+private:
+
+    // This function ignores the fact that other async polling events may be
+    // going on.  They do not impact this functionality.
+    uint8_t GetNewAbstractMeasurementSynchronous(FnGetAbstractMeasurement  fn,
+                                                 Measurement              *m,
+                                                 uint32_t                  timeoutMs,
+                                                 uint32_t                 *timeUsedMs = NULL)
+    {
+        ResetFix();
+        
+        uint8_t retVal = 0;
+        
+        uint32_t timeStart = PAL.Millis();
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            OnPoll();
+            
+            uint8_t measurementOk = (*this.*fn)(m);
+
+            uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
+            
+            if (timeUsedMs)
+            {
+                *timeUsedMs = timeUsedMsInternal;
+            }
+            
+            if (measurementOk)
+            {
+                retVal = 1;
+                
+                cont = 0;
+            }
+            else
+            {
+                if (timeUsedMsInternal >= timeoutMs)
+                {
+                    cont = 0;
+                }
+            }
+        }
+        
+        return retVal;
+    }
     
+    uint8_t GetNewAbstractMeasurementSynchronousUnderWatchdog(FnGetNewAbstractMeasurementSynchronous  fn,
+                                                              Measurement                            *m,
+                                                              uint32_t                                timeoutMs)
+    {
+        const uint32_t ONE_SECOND_MS = 1000L;
+        
+        uint8_t retVal = 0;
+        
+        uint32_t durationRemainingMs = timeoutMs;
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            // Kick the watchdog
+            PAL.WatchdogReset();
+            
+            // Calculate how long to wait for, one second or less each time
+            uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
+            
+            // Attempt lock
+            retVal = (*this.*fn)(m, timeoutMsGps, NULL);
+            
+            if (retVal)
+            {
+                cont = 0;
+            }
+            else
+            {
+                durationRemainingMs -= timeoutMsGps;
+                
+                if (durationRemainingMs == 0)
+                {
+                    cont = 0;
+                }
+            }
+        }
+        
+        return retVal;
+    }
+
+
+
 private:
 
     uint8_t pinRx_;
