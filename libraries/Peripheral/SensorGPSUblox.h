@@ -397,9 +397,9 @@ public:
         return GetNewAbstractMeasurementSynchronous(&SensorGPSUblox::GetTimeMeasurement, m, timeoutMs, timeUsedMs);
     }
 
-    uint8_t GetNewTimeMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
+    uint8_t GetNewTimeMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs, uint32_t *timeUsedMs = NULL)
     {
-        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewTimeMeasurementSynchronous, m, timeoutMs);
+        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewTimeMeasurementSynchronous, m, timeoutMs, timeUsedMs);
     }
     
     uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(Measurement *m)
@@ -612,9 +612,9 @@ public:
         return GetNewAbstractMeasurementSynchronous(&SensorGPSUblox::GetLocationMeasurement, m, timeoutMs, timeUsedMs);
     }
     
-    uint8_t GetNewLocationMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
+    uint8_t GetNewLocationMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs, uint32_t *timeUsedMs = NULL)
     {
-        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewLocationMeasurementSynchronous, m, timeoutMs);
+        return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewLocationMeasurementSynchronous, m, timeoutMs, timeUsedMs);
     }
 
 
@@ -876,11 +876,14 @@ private:
     
     uint8_t GetNewAbstractMeasurementSynchronousUnderWatchdog(FnGetNewAbstractMeasurementSynchronous  fn,
                                                               Measurement                            *m,
-                                                              uint32_t                                timeoutMs)
+                                                              uint32_t                                timeoutMs,
+                                                              uint32_t                               *timeUsedMs)
     {
         const uint32_t ONE_SECOND_MS = 1000L;
         
         uint8_t retVal = 0;
+        
+        uint32_t timeStart = PAL.Millis();
         
         uint32_t durationRemainingMs = timeoutMs;
         
@@ -894,7 +897,7 @@ private:
             uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
             
             // Attempt lock
-            retVal = (*this.*fn)(m, timeoutMsGps, NULL);
+            retVal = (*this.*fn)(m, timeoutMsGps, timeUsedMs);
             
             if (retVal)
             {
@@ -909,6 +912,11 @@ private:
                     cont = 0;
                 }
             }
+        }
+        
+        if (timeUsedMs)
+        {
+            *timeUsedMs = PAL.Millis() - timeStart;
         }
         
         return retVal;

@@ -251,6 +251,7 @@ off
         Str str(cmdStr);
 
         uint32_t timeoutMs  = 5000;
+        uint32_t timeUsedMs = 0;
         
         if (str.TokenCount(' ') == 2)
         {
@@ -262,16 +263,16 @@ off
         Log(P("GetNewTimeMeasurementSynchronousUnderWatchdog(&m, "), timeoutMs, ')');
         
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_2000_MS);
-        uint8_t gpsLockOk = gps.GetNewTimeMeasurementSynchronousUnderWatchdog(&m, timeoutMs);
+        uint8_t gpsLockOk = gps.GetNewTimeMeasurementSynchronousUnderWatchdog(&m, timeoutMs, &timeUsedMs);
         PAL.WatchdogDisable();
         
         if (gpsLockOk)
         {
-            Log(P("Time Locked"));
+            Log(P("Time Locked, ms: "), timeUsedMs);
         }
         else
         {
-            Log(P("Time NOT Locked"));
+            Log(P("Time NOT Locked, ms: "), timeUsedMs);
         }
     });
     
@@ -381,6 +382,7 @@ off
         Str str(cmdStr);
 
         uint32_t timeoutMs  = 5000;
+        uint32_t timeUsedMs = 0;
         
         if (str.TokenCount(' ') == 2)
         {
@@ -392,16 +394,16 @@ off
         Log(P("GetNewLocationMeasurementSynchronousUnderWatchdog(&m, "), timeoutMs, ')');
         
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_2000_MS);
-        uint8_t gpsLockOk = gps.GetNewLocationMeasurementSynchronousUnderWatchdog(&m, timeoutMs);
+        uint8_t gpsLockOk = gps.GetNewLocationMeasurementSynchronousUnderWatchdog(&m, timeoutMs, &timeUsedMs);
         PAL.WatchdogDisable();
         
         if (gpsLockOk)
         {
-            Log(P("Location Locked"));
+            Log(P("Location Locked, ms: "), timeUsedMs);
         }
         else
         {
-            Log(P("Location NOT Locked"));
+            Log(P("Location NOT Locked, ms: "), timeUsedMs);
         }
     });
 
