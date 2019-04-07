@@ -35,6 +35,13 @@ private:
     static const uint8_t  MAX_UBX_MESSAGE_SIZE  = 44;
     
 public:
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Ctor / Init / Debug
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
     SensorGPSUblox(int8_t pinRx, int8_t pinTx)
     : pinRx_(pinRx)
     , pinTx_(pinTx)
@@ -42,17 +49,6 @@ public:
           PAL.GetArduinoPinFromPhysicalPin(pinTx_))
     {
         // nothing to do
-    }
-    
-    // Debug
-    SoftwareSerial &DebugGetSS()
-    {
-        return ss_;
-    }
-    
-    TinyGPS &DebugGetTinyGPS()
-    {
-        return tgps_;
     }
     
     // All configuration has to take place post-Init, as messages are relayed
@@ -66,6 +62,24 @@ public:
         EnableSerialInput();
     }
     
+    // Debug
+    SoftwareSerial &DebugGetSS()
+    {
+        return ss_;
+    }
+    
+    TinyGPS &DebugGetTinyGPS()
+    {
+        return tgps_;
+    }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Fine-grained control over active interface to GPS to account for
+    // garbage knockoff GPS modules which try to power themselves this way.
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
     void DisableSerialInput()
     {
         // Drastic requirement discovered through trial an error when working
@@ -108,11 +122,13 @@ public:
         PAL.DigitalWrite(pinTx_, HIGH);
     }
     
-    void ResetFix()
-    {
-        tgps_.ResetFix();
-    }
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Configure behavior of and Command GPS module (post-Init)
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
     void SetHighAltitudeMode()
     {
         ubxMessage_.Reset();
@@ -145,6 +161,10 @@ public:
         ubxMessage_.GetBuf(&buf, &bufLen);
         
         ss_.write(buf, bufLen);
+        
+        // Sync-wait for all bytes to be written.
+        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
+        PAL.Delay(bufLen);
     }
 
     void SetMessageInterval(uint16_t intervalMs)
@@ -164,6 +184,10 @@ public:
         ubxMessage_.GetBuf(&buf, &bufLen);
         
         ss_.write(buf, bufLen);
+        
+        // Sync-wait for all bytes to be written.
+        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
+        PAL.Delay(bufLen);
     }
     
     void EnableOnlyGGAAndRMC()
@@ -209,6 +233,91 @@ public:
         ubxMessage_.GetBuf(&buf, &bufLen);
 
         ss_.write(buf, bufLen);
+        
+        // Sync-wait for all bytes to be written.
+        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
+        PAL.Delay(bufLen);
+    }
+    
+    
+    enum class ResetType : uint16_t
+    {
+        HOT  = 0x0000,
+        WARM = 0x0001,
+        COLD = 0xFFFF,
+    };
+    
+    enum class ResetMode : uint8_t
+    {
+        HW                  = 0x00,
+        SW                  = 0x01,
+        SW_GPS_ONLY         = 0x02,
+        HW_AFTER_SD         = 0x04,
+        CONTROLLED_GPS_DOWN = 0x08,
+        CONTROLLED_GPS_UP   = 0x09,
+    };
+    
+    // Default to the hardest reset possible, complete expunging of all data
+    void ResetModule(ResetType resetType = ResetType::COLD,
+                     ResetMode resetMode = ResetMode::HW)
+    {
+        ubxMessage_.Reset();
+
+        // CFG-RST (0x06 0x04)
+        ubxMessage_.SetClass(0x06);
+        ubxMessage_.SetId(0x04);
+
+        ubxMessage_.AddFieldX2((uint16_t)resetType);
+        ubxMessage_.AddFieldU1((uint8_t)resetMode);
+        ubxMessage_.AddFieldU1(0);   // reserved
+
+        uint8_t *buf;
+        uint8_t  bufLen;
+        ubxMessage_.GetBuf(&buf, &bufLen);
+
+        ss_.write(buf, bufLen);
+        
+        // Sync-wait for all bytes to be written.
+        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
+        PAL.Delay(bufLen);
+    }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Runtime interface, getting/reseting locks on GPS data
+    //
+    // 2 things you can use the GPS for:
+    // - locking onto time
+    // - locking onto location
+    // 
+    // There are multiple similar interfaces to interact with each type.
+    //
+    // Note: Once Init() is called, data from GPS (when on) is polled continuously
+    //       and used to maintain state about whether a lock has been acquired.
+    // 
+    // Interfaces for time/location below fall into two categories:
+    // - Accessing already-acquired data which may reveal we have a lock
+    // - Synchronously discarding any lock and re-acquiring a lock
+    //
+    //
+    // Accessing already-acquired data which may reveal we have a lock
+    // ---------------------------------------------------------------
+    // GetTimeMeasurement / GetLocationMeasurement
+    // 
+    // 
+    // Synchronously discarding any lock and re-acquiring a lock
+    // ---------------------------------------------------------
+    // GetNewTimeMeasurementSynchronous              / GetNewLocationMeasurementSynchronous
+    // GetNewTimeMeasurementSynchronousUnderWatchdog / GetNewLocationMeasurementSynchronousUnderWatchdog
+    // GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog / -
+    //
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    void ResetFix()
+    {
+        tgps_.ResetFix();
     }
     
     struct Measurement
@@ -247,16 +356,29 @@ public:
         uint32_t altitudeFt;
     };
     
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Time-related Locks
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
     // May not return true if the async polling hasn't acquired enough data yet
-    uint8_t GetMeasurement(Measurement *m)
+    uint8_t GetTimeMeasurement(Measurement *m)
     {
         uint8_t retVal = 0;
         
         // Check if both necessary sentences have been received
-        if (tgps_.GetLastTimeRMC() != 0 && tgps_.GetLastTimeGGA() != 0)
+        if (tgps_.HasTimeLock())
         {
             retVal = 1;
             
+            // Tell software to move the locked time into a place where it can
+            // be extracted through normal means.
+            tgps_.RevealTimeLock();
+            
+            // Only the time-related fields will be valid
             GetMeasurementInternal(m);
         }
         
@@ -265,9 +387,9 @@ public:
     
     // This function ignores the fact that other async polling events may be
     // going on.  They do not impact this functionality.
-    uint8_t GetNewMeasurementSynchronous(Measurement   *m,
-                                         uint32_t       timeoutMs,
-                                         uint32_t      *timeUsedMs = NULL)
+    uint8_t GetNewTimeMeasurementSynchronous(Measurement   *m,
+                                             uint32_t       timeoutMs,
+                                             uint32_t      *timeUsedMs = NULL)
     {
         ResetFix();
         
@@ -280,7 +402,7 @@ public:
         {
             OnPoll();
             
-            uint8_t measurementOk = GetMeasurement(m);
+            uint8_t measurementOk = GetTimeMeasurement(m);
 
             uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
             
@@ -307,7 +429,8 @@ public:
         return retVal;
     }
     
-    uint8_t GetGPSLockUnderWatchdog(Measurement *m, uint32_t timeoutMs)
+    
+    uint8_t GetNewTimeMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
     {
         const uint32_t ONE_SECOND_MS = 1000L;
         
@@ -325,7 +448,7 @@ public:
             uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
             
             // Attempt lock
-            retVal = GetNewMeasurementSynchronous(m, timeoutMsGps);
+            retVal = GetNewTimeMeasurementSynchronous(m, timeoutMsGps);
             
             if (retVal)
             {
@@ -344,15 +467,16 @@ public:
         
         return retVal;
     }
+
     
-    uint8_t WaitForNextGPSTwoMinuteMark(Measurement *m)
+    uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(Measurement *m)
     {
         const uint32_t TWO_MINUTES_MS = 2 * 60 * 1000L;
         
         // Initially we want to get a fresh lock since there is no guaranteed
         // prior state.  We don't care about the 2 minute mark yet.  We just
         // want the known current state.
-        uint8_t gpsLockOk = GetGPSLockUnderWatchdog(m, TWO_MINUTES_MS);
+        uint8_t gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, TWO_MINUTES_MS);
         
         if (gpsLockOk)
         {
@@ -488,7 +612,7 @@ public:
                 if (needToTrackToMark)
                 {
                     const uint32_t SYSTEM_CLOCK_FAST_PROTECTION_MS = 100;
-                    gpsLockOk = GetGPSLockUnderWatchdog(m, durationBeforeMarkMs + SYSTEM_CLOCK_FAST_PROTECTION_MS);
+                    gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationBeforeMarkMs + SYSTEM_CLOCK_FAST_PROTECTION_MS);
                     
                     if (gpsLockOk)
                     {
@@ -522,6 +646,118 @@ public:
         
         return gpsLockOk;
     }
+    
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Location-related Locks
+    //
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    
+    
+    
+    // May not return true if the async polling hasn't acquired enough data yet
+    uint8_t GetLocationMeasurement(Measurement *m)
+    {
+        uint8_t retVal = 0;
+        
+        // Check if both necessary sentences have been received
+        if (tgps_.GetLastTimeRMC() != 0 && tgps_.GetLastTimeGGA() != 0)
+        {
+            retVal = 1;
+            
+            GetMeasurementInternal(m);
+        }
+        
+        return retVal;
+    }
+    
+    
+    // This function ignores the fact that other async polling events may be
+    // going on.  They do not impact this functionality.
+    uint8_t GetNewLocationMeasurementSynchronous(Measurement   *m,
+                                                 uint32_t       timeoutMs,
+                                                 uint32_t      *timeUsedMs = NULL)
+    {
+        ResetFix();
+        
+        uint8_t retVal = 0;
+        
+        uint32_t timeStart = PAL.Millis();
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            OnPoll();
+            
+            uint8_t measurementOk = GetLocationMeasurement(m);
+
+            uint32_t timeUsedMsInternal = PAL.Millis() - timeStart;
+            
+            if (timeUsedMs)
+            {
+                *timeUsedMs = timeUsedMsInternal;
+            }
+            
+            if (measurementOk)
+            {
+                retVal = 1;
+                
+                cont = 0;
+            }
+            else
+            {
+                if (timeUsedMsInternal >= timeoutMs)
+                {
+                    cont = 0;
+                }
+            }
+        }
+        
+        return retVal;
+    }
+    
+    
+    uint8_t GetNewLocationMeasurementSynchronousUnderWatchdog(Measurement *m, uint32_t timeoutMs)
+    {
+        const uint32_t ONE_SECOND_MS = 1000L;
+        
+        uint8_t retVal = 0;
+        
+        uint32_t durationRemainingMs = timeoutMs;
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            // Kick the watchdog
+            PAL.WatchdogReset();
+            
+            // Calculate how long to wait for, one second or less each time
+            uint32_t timeoutMsGps = durationRemainingMs > ONE_SECOND_MS ? ONE_SECOND_MS : durationRemainingMs;
+            
+            // Attempt lock
+            retVal = GetNewLocationMeasurementSynchronous(m, timeoutMsGps);
+            
+            if (retVal)
+            {
+                cont = 0;
+            }
+            else
+            {
+                durationRemainingMs -= timeoutMsGps;
+                
+                if (durationRemainingMs == 0)
+                {
+                    cont = 0;
+                }
+            }
+        }
+        
+        return retVal;
+    }
+    
 
 
 private:

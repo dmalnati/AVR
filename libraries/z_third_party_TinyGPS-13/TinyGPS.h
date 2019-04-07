@@ -60,6 +60,7 @@ public:
   // Added 2018-03-04
   void ResetFix()
   {
+    _new_time          = 0;
     _last_time_fix     = GPS_INVALID_FIX_TIME;
     _last_position_fix = GPS_INVALID_FIX_TIME;
     
@@ -71,6 +72,9 @@ public:
   // added 2018-04-16
   uint32_t GetLastTimeRMC() { return _last_rmc_time; }
   uint32_t GetLastTimeGGA() { return _last_gga_time; }
+  uint8_t  HasTimeLock()    { return _new_time != 0; }  // doesn't cover date
+  void     RevealTimeLock() { _time = _new_time;     }  // doesn't cover date
+  
 
   // lat/long in MILLIONTHs of a degree and age of fix in milliseconds
   // (note: versions 12 and earlier gave lat/long in 100,000ths of a degree.
@@ -118,7 +122,7 @@ private:
   enum {_GPS_SENTENCE_GPGGA, _GPS_SENTENCE_GPRMC, _GPS_SENTENCE_OTHER};
 
   // properties
-  unsigned long _time, _new_time;
+  unsigned long _time, _new_time = 0;
   unsigned long _date, _new_date;
   long _latitude, _new_latitude;
   long _longitude, _new_longitude;

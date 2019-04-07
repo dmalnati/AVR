@@ -15,7 +15,7 @@ static const uint8_t GPS_SS_TX = 24;
 static Evm::Instance<10,10,10> evm;
 static SensorGPSUblox gps(GPS_SS_RX, GPS_SS_TX);
 static SensorGPSUblox::Measurement m;
-static SerialAsyncConsoleEnhanced<10,100>  console;
+static SerialAsyncConsoleEnhanced<20,100>  console;
 
 
 void Print()
@@ -54,98 +54,32 @@ void setup()
     LogStart(9600);
     Log("Started");
 
-    // Set up GPS
-    gps.Init();
+    ////////////////////////////////////////////////////////////////
+    //
+    // Power and Initialization
+    //
+    ////////////////////////////////////////////////////////////////
 
+    console.RegisterCommand("on", [](char *){
+        Log(P("Turning GPS on"));
+        
+        console.Exec("pin set 14 1");
+        console.Exec("sen out");
+    });
+
+    console.RegisterCommand("off", [](char *){
+        Log(P("Turning GPS off"));
+        
+        console.Exec("pin set 14 0");
+        console.Exec("sdis out");
+    });
     
-
-    console.RegisterCommand("get", [](char *){
-        Log("GetMeasurement(&m)");
-
-        uint8_t gpsLockOk = gps.GetMeasurement(&m);
-
-        if (gpsLockOk)
-        {
-            Log("Locked");
-        }
-        else
-        {
-            Log("NOT Locked");
-        }
+    console.RegisterCommand("init", [](char *){
+        Log(P("gps.Init()"));
+        gps.Init();
     });
-
-    console.RegisterCommand("getw", [](char *cmdStr){
-        Str str(cmdStr);
-        
-        if (str.TokenCount(' ') == 2)
-        {
-            const char *p = str.TokenAtIdx(1, ' ');
-
-            uint32_t timeoutMs = atol(p);
-
-            Log("GetGPSLockUnderWatchdog(&m, ", timeoutMs, ")");
-
-            uint8_t gpsLockOk = gps.GetGPSLockUnderWatchdog(&m, timeoutMs);
-
-            if (gpsLockOk)
-            {
-                Log("Locked");
-            }
-            else
-            {
-                Log("NOT Locked");
-            }
-        }
-    });
-
-    console.RegisterCommand("get2", [](char *){
-        Log("WaitForNextGPSTwoMinuteMark(&m)");
-
-        uint8_t gpsLockOk = gps.WaitForNextGPSTwoMinuteMark(&m);
-
-        if (gpsLockOk)
-        {
-            Log("Locked");
-            Print();
-        }
-        else
-        {
-            Log("NOT Locked");
-        }
-    });
-
-    // gets <ms> - Get new measurement, synchronously, ms timeout
-    console.RegisterCommand("gets", [](char *cmdStr){
-        Str str(cmdStr);
-        
-        if (str.TokenCount(' ') == 2)
-        {
-            const char *p = str.TokenAtIdx(1, ' ');
-
-            uint32_t timeoutMs = atol(p);
-
-            Log("GetNewMeasurementSynchronous(&m, ", timeoutMs, ", &usedMs)");
-
-            uint32_t usedMs = 0;
-
-            uint8_t gpsLockOk = gps.GetNewMeasurementSynchronous(&m, timeoutMs, &usedMs);
-
-            if (gpsLockOk)
-            {
-                Log("Locked, usedMs: ", usedMs);
-            }
-            else
-            {
-                Log("NOT Locked, usedMs: ", usedMs);
-            }
-        }
-    });
-
-    console.RegisterCommand("show", [](char *){
-        Print();
-    });
-
-    console.RegisterCommand("enable", [](char *cmdStr){
+    
+    console.RegisterCommand("sen", [](char *cmdStr){
         Str str(cmdStr);
         
         if (str.TokenCount(' ') == 2)
@@ -154,18 +88,18 @@ void setup()
 
             if (!strcmp(p, "in"))
             {
-                Log("EnableSerialInput");
+                Log(P("EnableSerialInput"));
                 gps.EnableSerialInput();
             }
             else if (!strcmp(p, "out"))
             {
-                Log("EnableSerialOutput");
+                Log(P("EnableSerialOutput"));
                 gps.EnableSerialOutput();
             }
         }
     });
     
-    console.RegisterCommand("disable", [](char *cmdStr){
+    console.RegisterCommand("sdis", [](char *cmdStr){
         Str str(cmdStr);
         
         if (str.TokenCount(' ') == 2)
@@ -174,15 +108,26 @@ void setup()
 
             if (!strcmp(p, "in"))
             {
-                Log("DisableSerialInput");
+                Log(P("DisableSerialInput"));
                 gps.DisableSerialInput();
             }
             else if (!strcmp(p, "out"))
             {
-                Log("DisableSerialOutput");
+                Log(P("DisableSerialOutput"));
                 gps.DisableSerialOutput();
             }
         }
+    });
+
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // Displaying Data
+    //
+    ////////////////////////////////////////////////////////////////
+
+    console.RegisterCommand("show", [](char *){
+        Print();
     });
 
     // grid <latFloat> <lngFloat>
@@ -197,21 +142,279 @@ void setup()
             uint32_t latMillionths = latFloat * 1000000UL;
             uint32_t lngMillionths = lngFloat * 1000000UL;
 
-            Log("Converting:");
-            Log("  lat: ", latFloat, " -> ", latMillionths);
-            Log("  lng: ", lngFloat, " -> ", lngMillionths);
+            Log(P("Converting:"));
+            Log(P("  lat: "), latFloat, P(" -> "), latMillionths);
+            Log(P("  lng: "), lngFloat, P(" -> "), lngMillionths);
 
             SensorGPSUblox::Measurement mTmp;
 
             gps.ConvertToMaidenheadGrid(latMillionths, lngMillionths, mTmp.maidenheadGrid);
 
-            Log("  grd: ", mTmp.maidenheadGrid);
+            Log(P("  grd: "), mTmp.maidenheadGrid);
         }
     });
 
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // Lock Breaking
+    //
+    ////////////////////////////////////////////////////////////////
+
+    console.RegisterCommand("rfix", [](char *){
+        Log(P("gps.ResetFix()"));
+        gps.ResetFix();
+    });
+    
+    console.RegisterCommand("rmod", [](char *){
+        Log(P("ResetModule()"));
+        gps.ResetModule();
+    });
     
 
+    ////////////////////////////////////////////////////////////////
+    //
+    // Time-related Locks
+    //
+    ////////////////////////////////////////////////////////////////
+
+    /*
+on
+init
+rfix
+gettime
+show
+off
+
+     */
+    console.RegisterCommand("gettime", [](char *){
+        Log(P("GetTimeMeasurement(&m)"));
+
+        uint8_t gpsLockOk = gps.GetTimeMeasurement(&m);
+
+        if (gpsLockOk)
+        {
+            Log(P("Time Locked"));
+        }
+        else
+        {
+            Log(P("Time NOT Locked"));
+        }
+    });
+    
+    /*
+on
+init
+rmod
+gettimesync 5000
+show
+off
+
+     */
+    console.RegisterCommand("gettimesync", [](char *cmdStr){
+        Str str(cmdStr);
+
+        uint32_t timeoutMs  = 5000;
+        uint32_t timeUsedMs = 0;
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *p = str.TokenAtIdx(1, ' ');
+
+            timeoutMs = atol(p);
+        }
+
+        Log(P("GetNewTimeMeasurementSynchronous(&m, "), timeoutMs, ')');
+
+        uint8_t gpsLockOk = gps.GetNewTimeMeasurementSynchronous(&m, timeoutMs, &timeUsedMs);
+
+        if (gpsLockOk)
+        {
+            Log(P("Time Locked, ms: "), timeUsedMs);
+        }
+        else
+        {
+            Log(P("Time NOT Locked, ms: "), timeUsedMs);
+        }
+    });
+    
+    /*
+on
+init
+rmod
+gettimesyncwdt 5000
+show
+off
+
+     */
+    console.RegisterCommand("gettimesyncwdt", [](char *cmdStr){
+        Str str(cmdStr);
+
+        uint32_t timeoutMs  = 5000;
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *p = str.TokenAtIdx(1, ' ');
+
+            timeoutMs = atol(p);
+        }
+
+        Log(P("GetNewTimeMeasurementSynchronousUnderWatchdog(&m, "), timeoutMs, ')');
+        
+        PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_2000_MS);
+        uint8_t gpsLockOk = gps.GetNewTimeMeasurementSynchronousUnderWatchdog(&m, timeoutMs);
+        PAL.WatchdogDisable();
+        
+        if (gpsLockOk)
+        {
+            Log(P("Time Locked"));
+        }
+        else
+        {
+            Log(P("Time NOT Locked"));
+        }
+    });
+    
+    /*
+on
+init
+rmod
+gettimesyncwdt2
+show
+off
+
+     */
+    console.RegisterCommand("gettimesyncwdt2", [](char *){
+        Log(P("GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(&m)"));
+
+        PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_2000_MS);
+        uint8_t gpsLockOk = gps.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(&m);
+        PAL.WatchdogDisable();
+
+        if (gpsLockOk)
+        {
+            Log(P("Time Locked"));
+        }
+        else
+        {
+            Log(P("Time NOT Locked"));
+        }
+    });
+
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // Location Lock
+    //
+    ////////////////////////////////////////////////////////////////
+    
+    /*
+on
+init
+rfix
+getloc
+show
+off
+
+     */
+    console.RegisterCommand("getloc", [](char *){
+        Log(P("GetLocationMeasurement(&m)"));
+
+        uint8_t gpsLockOk = gps.GetLocationMeasurement(&m);
+
+        if (gpsLockOk)
+        {
+            Log(P("Location Locked"));
+        }
+        else
+        {
+            Log(P("Location NOT Locked"));
+        }
+    });
+    
+    /*
+on
+init
+rmod
+getlocsync 5000
+show
+off
+
+     */
+    console.RegisterCommand("getlocsync", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        uint32_t timeoutMs  = 5000;
+        uint32_t timeUsedMs = 0;
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *p = str.TokenAtIdx(1, ' ');
+
+            timeoutMs = atol(p);
+        }
+
+        Log(P("GetNewLocationMeasurementSynchronous(&m, "), timeoutMs, ')');
+
+        uint8_t gpsLockOk = gps.GetNewLocationMeasurementSynchronous(&m, timeoutMs, &timeUsedMs);
+
+        if (gpsLockOk)
+        {
+            Log(P("Location Locked, ms: "), timeUsedMs);
+        }
+        else
+        {
+            Log(P("Location NOT Locked, ms: "), timeUsedMs);
+        }
+    });
+    
+    /*
+on
+init
+rmod
+getlocsyncwdt 5000
+show
+off
+
+     */
+    console.RegisterCommand("getlocsyncwdt", [](char *cmdStr){
+        Str str(cmdStr);
+
+        uint32_t timeoutMs  = 5000;
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *p = str.TokenAtIdx(1, ' ');
+
+            timeoutMs = atol(p);
+        }
+
+        Log(P("GetNewLocationMeasurementSynchronousUnderWatchdog(&m, "), timeoutMs, ')');
+        
+        PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_2000_MS);
+        uint8_t gpsLockOk = gps.GetNewLocationMeasurementSynchronousUnderWatchdog(&m, timeoutMs);
+        PAL.WatchdogDisable();
+        
+        if (gpsLockOk)
+        {
+            Log(P("Location Locked"));
+        }
+        else
+        {
+            Log(P("Location NOT Locked"));
+        }
+    });
+
+
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // Startup
+    //
+    ////////////////////////////////////////////////////////////////
+
     console.Start();
+    console.Exec("off");
     
     // handle events
     evm.MainLoop();
