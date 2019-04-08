@@ -181,10 +181,6 @@ private:
                 gps_.GetGPSLockUnderWatchdog(&gpsLocationMeasurement_,
                                              userConfig_.gpsLockTimeoutMs);
         
-            // Stop GPS
-            Log(P("GPS OFF"));
-            StopGPS();
-
             if (gpsLocationLockOk_)
             {
                 solarState_ = SolarState::NEED_TO_TRANSMIT;
@@ -193,7 +189,14 @@ private:
             {
                 // Hmm, go to sleep and try again later?
                 // Sleep for how long?
+                
+                // Reset the underlying module?  Probably this.
+                gps_.ResetModule();
             }
+            
+            // Stop GPS
+            Log(P("GPS OFF"));
+            StopGPS();
         }
         
         // Sync to 2 minute mark if GPS location acquired
