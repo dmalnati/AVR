@@ -30,6 +30,8 @@ public:
     
     struct Measurement
     {
+        uint32_t clockTimeAtMeasurement;
+        
         uint32_t msSinceLastFix;
         
         uint32_t date;
@@ -402,6 +404,267 @@ public:
         return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewTimeMeasurementSynchronous, m, timeoutMs, timeUsedMs);
     }
     
+    
+    
+    
+    
+    
+    void LockOn(function<void(void)> &fnBeforeAttempt,
+                function<void(void)> &fnAfterAttempt,
+                function<uint8_t(void)> &fnOkToContinue,
+                uint32_t durationForInitialLock,
+                uint32_t durationEachAttemptMs = 5000)
+    {
+        uint8_t retVal = 0;
+        
+        #if 0
+        // This should be the durationForInitialLock, which calling code can decide,
+        // but for the tracker probably say the the giveup time associated with the
+        // regular GPS location lock.
+        
+        // This is the amount of time available to get an initial lock.
+        // The total time it could take for this function to return is this time
+        // plus two minutes (as if we got a GPS time lock at the very end of the
+        // initial two minutes, and discovered we had to wait nearly two
+        // minutes for the next mark.
+        const uint32_t TWO_MINUTES_PLUS_MARGIN_MS = (2 * 60 * 1000L) + (durationEachAttemptMs * 2);
+        #endif
+        
+        Measurement m;
+        
+        if (Lock(&m, durationEachAttemptMs, durationForInitialLock))
+        {
+            retVal = 1;
+            
+            // Now we're able to know how long before the two min mark by looking at the GPS data.
+            // Instead of running the GPS constantly, sleep off enough time that
+            // we can take one final shot at a fresh lock right beforehand.
+            uint32_t durationTargetBeforeTwoMinMarkToWakeMs = (durationEachAttemptMs + 2000);
+            uint32_t durationActualBeforeTwoMinMark         = SleepToCloseToTwoMinMark(&m, durationTargetBeforeTwoMinMarkToWakeMs);
+            
+            // We now know we have actual duration remaining before the two min mark.
+            
+            if (durationActualBeforeTwoMinMark >= durationEachAttemptMs)
+            {
+                Measurement mTmp;
+                
+                if (Lock(&mTmp, durationEachAttemptMs, durationForInitialLock))
+                {
+                    // Better time lock now available, copy to main measurement
+                    
+                    m = mTmp;
+                }
+                
+                SleepToCloseToTwoMinMark(&m, 0);
+            }
+            
+            // Need to check the return value to know what to return yourself.
+            //   Second call could return false due to voltage too low.
+            
+            if (fnOkToContinue())
+            {
+                
+                retVal = Lock();
+            }
+        }
+        
+        
+        
+        
+        
+        
+        
+        return retVal;
+    }
+    
+    
+    
+    
+    uint8_t Lock(Measurement *m, uint32_t durationEachAttemptMs, uint32_t durationAvailableToLockMs)
+    {
+        uint8_t retVal = 0;
+        
+        uint32_t timeStart = PAL.Millis();
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            fnBeforeAttempt();  // power up
+            
+            gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
+            
+            if (gpsLockOk)
+            {
+                cont = 0;
+            }
+            else
+            {
+                // Try again.
+                
+                // Reset the module in this case though, as we've exceeded
+                // expectations about lock time, so maybe there's a fault.
+                ResetModule();
+                
+                // Delay for a bit and let the module reset if you have time
+                uint32_t timeNow = PAL.Millis();
+                const uint16_t SLEEP_DURATION_MS = 1000;
+                if (timeNow - timeStart + SLEEP_DURATION_MS < durationAvailableToLockMs)
+                {
+                    PAL.Delay(SLEEP_DURATION_MS);
+                }
+                
+                cont = fnOkToContinue() && (PAL.Millis() - timeStart < durationAvailableToLockMs);
+            }
+            
+            fnAfterAttempt();   // power down
+        }
+        
+        return retVal;
+    }
+    
+    // Return the duration remaining before the two min mark.
+    // Ideally this would match the durationTargetBeforeTwoMinMarkToWakeMs, but several
+    // factors make it very possible that we're not able to achieve this.
+    //
+    // If the two min mark is now or in the past, return 0.
+    uint32_t SleepToCloseToTwoMinMark(Measurement *m, uint32_t durationTargetBeforeTwoMinMarkToWakeMs)
+    {
+        uint32_t retVal = 0;
+        
+        // Give this a convenient name
+        uint32_t timeGpsLock = m->clockTimeAtMeasurement;
+        
+        // Determine how long after the GPS lock the time will be at the
+        // 2 min mark.
+        uint32_t durationBeforeMarkMs = CalculateDurationMsToNextTwoMinuteMark(m);
+        
+        // Consider whether you have any time to burn by sleeping to get to the
+        // desired time before the mark.
+        if (durationTargetBeforeTwoMinMarkToWakeMs >= durationBeforeMarkMs)
+        {
+            // Already at or within, and that's not even considering the fact
+            // that timeNow is later than the time the lock occurred.
+            
+            // Calculate time remaining before the mark as the return value.
+            uint32_t timeNow = PAL.Millis();
+            uint32_t timeDiff = timeNow - timeGpsLock;
+            
+            if (timeDiff <= durationBeforeMarkMs)
+            {
+                retVal = durationBeforeMarkMs - timeDiff;
+            }
+            else
+            {
+                retVal = 0;
+            }
+        }
+        else
+        {
+            // At the time of the lock, we were earlier than the duration before the
+            // mark that we were aiming for.
+            
+            // We know we can sleep for this long because we know the duration
+            // remaining to the mark is greater than how much before the mark
+            // we're supposed to wake.
+            //
+            // Notably we're doing this calculation based on the time the lock
+            // was actually acquired, not the current time.
+            uint32_t durationToSleepMs = durationBeforeMarkMs - durationTargetBeforeTwoMinMarkToWakeMs;
+            
+            // Now account for the actual time possibly having eaten up part or
+            // all of the sleep duration.
+            uint32_t timeNow = PAL.Millis();
+            uint32_t timeDiff = timeNow - timeGpsLock;
+            
+            if (timeDiff < durationToSleepMs)
+            {
+                // Ok, difference still small enough that we should sleep.
+                // Remove the time skew from lock to now though so we actually
+                // wake at the correct time.
+                
+                durationToSleepMs -= timeDiff;
+                
+                PAL.Delay(durationToSleepMs);
+                
+                retVal = durationTargetBeforeTwoMinMarkToWakeMs;
+            }
+            else
+            {
+                // Oops, enough time has passed since the gps lock that we're
+                // at or within the window before the mark we're supposed to
+                // wake at.
+                uint32_t timeDiffTargetVsLock = durationBeforeMarkMs - durationTargetBeforeTwoMinMarkToWakeMs;
+                
+                if (timeDiff - timeDiffTargetVsLock < durationTargetBeforeTwoMinMarkToWakeMs)
+                {
+                    retVal = durationTargetBeforeTwoMinMarkToWakeMs - (timeDiff - timeDiffTargetVsLock);
+                }
+                else
+                {
+                    retVal = 0;
+                }
+            }
+        }
+        
+        return retVal;
+    }
+    
+    
+    
+    uint32_t CalculateDurationMsToNextTwoMinuteMark(Measurement *m)
+    {
+        // Determine the digits on the clock of the next 2-minute mark
+        // We know the seconds on the clock will be :00
+        // The minute is going to be even.
+        // So, if the current minute is:
+        // - odd,  that means we're at most  60 sec away from the mark
+        // - even, that means we're at most 120 sec away from the mark
+        //
+        // Later we deal with the case where we're already exactly at a
+        // two-minute mark.
+        uint8_t currentMinIsOdd = m->minute & 0x01;
+        uint8_t maximumMinutesBeforeMark = currentMinIsOdd ? 1 : 2;
+        
+        uint8_t markMin = (m->minute + maximumMinutesBeforeMark) % 60;
+        
+        // Determine how far into the future the mark time is.
+        if (((m->minute + 1) % 60) == markMin)
+        {
+            // We're at most 1 minute away.
+            maximumMinutesBeforeMark = 1;
+        }
+        else // (((m->minute + 2) % 60) == markMin)
+        {
+            // We're at most 2 minutes away.
+            maximumMinutesBeforeMark = 2;
+        }
+        
+        // Calculate how long until the mark.
+        // Take into consideration the seconds and milliseconds on the
+        // clock currently.
+        //
+        // eg if we're at 01:27.250
+        // then
+        // - markMin = 2
+        // - maximumMinutesBeforeMark = 1
+        // - durationBeforeMarkMs = 
+        //     (60 *  1 * 1000) -     // 60,000
+        //     (     27 * 1000) -     // 27,000
+        //     (           250)       //    250
+        // - durationBeforeMarkMs  = 32,750 // 32 sec, 750ms, correct
+        // 
+        uint32_t durationBeforeMarkMs =
+            (60L * maximumMinutesBeforeMark * 1000L) -
+            (m->second * 1000L) -
+            (m->millisecond);
+        
+        return durationBeforeMarkMs;
+    }
+    
+    
+    
+    
+    
     uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(Measurement *m)
     {
         const uint32_t TWO_MINUTES_MS = 2 * 60 * 1000L;
@@ -623,6 +886,9 @@ private:
     void GetMeasurementInternal(Measurement *m)
     {
         constexpr static const double CM_TO_FT = 0.0328084;
+        
+        // Timestamp this moment as being the moment the lock was considered acquired
+        m->clockTimeAtMeasurement = PAL.Millis();
         
         // Ask TinyGPS for decoded data
         tgps_.get_position(&m->latitudeDegreesMillionths,
