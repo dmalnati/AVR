@@ -405,74 +405,71 @@ public:
     }
     
     
-    
-    
-    
-    
-    void LockOn(function<void(void)> &fnBeforeAttempt,
-                function<void(void)> &fnAfterAttempt,
-                function<uint8_t(void)> &fnOkToContinue,
-                uint32_t durationForInitialLock,
-                uint32_t durationEachAttemptMs = 5000)
+
+
+
+
+
+
+
+
+
+
+    uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
+        Measurement             *m,
+        uint32_t                 durationTotalAvailableToLockMs,
+        uint32_t                 durationEachAttemptMs,
+        function<void(void)>    &fnBeforeAttempt,
+        function<void(void)>    &fnAfterAttempt,
+        function<uint8_t(void)> &fnOkToContinue)
     {
         uint8_t retVal = 0;
         
-        #if 0
-        // This should be the durationForInitialLock, which calling code can decide,
-        // but for the tracker probably say the the giveup time associated with the
-        // regular GPS location lock.
-        
-        // This is the amount of time available to get an initial lock.
-        // The total time it could take for this function to return is this time
-        // plus two minutes (as if we got a GPS time lock at the very end of the
-        // initial two minutes, and discovered we had to wait nearly two
-        // minutes for the next mark.
-        const uint32_t TWO_MINUTES_PLUS_MARGIN_MS = (2 * 60 * 1000L) + (durationEachAttemptMs * 2);
-        #endif
-        
-        Measurement m;
-        
-        if (Lock(&m, durationEachAttemptMs, durationForInitialLock))
+        if (Lock(m,
+                 durationTotalAvailableToLockMs,
+                 durationEachAttemptMs,
+                 fnBeforeAttempt,
+                 fnAfterAttempt,
+                 fnOkToContinue))
         {
+            // We have now locked once.  Whether we do again or not, we have
+            // a known target GPS time and we're tracking toward it using our
+            // internal clock.
             retVal = 1;
             
-            // Now we're able to know how long before the two min mark by looking at the GPS data.
+            // Now we're able to know how long we are before the two min mark by
+            // looking at the GPS data.
             // Instead of running the GPS constantly, sleep off enough time that
-            // we can take one final shot at a fresh lock right beforehand.
+            // we can take one final shot at a fresh lock right beforehand and
+            // fine tune our internal clock targeting by using a fresh GPS
+            // time lock.
             uint32_t durationTargetBeforeTwoMinMarkToWakeMs = (durationEachAttemptMs + 2000);
-            uint32_t durationActualBeforeTwoMinMark         = SleepToCloseToTwoMinMark(&m, durationTargetBeforeTwoMinMarkToWakeMs);
+            uint32_t durationActualBeforeTwoMinMark         = SleepToCloseToTwoMinMark(m, durationTargetBeforeTwoMinMarkToWakeMs);
             
-            // We now know we have actual duration remaining before the two min mark.
-            
+            // We now know the actual duration remaining before the two min mark.
+            // Possible we don't have time to try to lock again, due to,
+            // for example, getting a time lock with 1 second remaining before
+            // the two minute mark.  This is ok, we'll skip the second lock
+            // in this case.
             if (durationActualBeforeTwoMinMark >= durationEachAttemptMs)
             {
-                Measurement mTmp;
-                
-                if (Lock(&mTmp, durationEachAttemptMs, durationForInitialLock))
-                {
-                    // Better time lock now available, copy to main measurement
-                    
-                    m = mTmp;
-                }
-                
-                SleepToCloseToTwoMinMark(&m, 0);
+                // Allow for only a single attempt's worth of time, total, to
+                // get a new lock.
+                Lock(m,
+                     durationEachAttemptMs,
+                     durationEachAttemptMs,
+                     fnBeforeAttempt,
+                     fnAfterAttempt,
+                     fnOkToContinue);
             }
             
-            // Need to check the return value to know what to return yourself.
-            //   Second call could return false due to voltage too low.
-            
-            if (fnOkToContinue())
-            {
-                
-                retVal = Lock();
-            }
+            // We want to now burn off remaining time (probably seconds)
+            // right up to the two minute mark.
+            // If we succeeded at the last lock attempt, we'll be using
+            // that time as the reference.  Otherwise we're using the
+            // original lock time as reference.
+            SleepToCloseToTwoMinMark(m, 0);
         }
-        
-        
-        
-        
-        
-        
         
         return retVal;
     }
@@ -480,7 +477,12 @@ public:
     
     
     
-    uint8_t Lock(Measurement *m, uint32_t durationEachAttemptMs, uint32_t durationAvailableToLockMs)
+    uint8_t Lock(Measurement             *m,
+                 uint32_t                 durationTotalAvailableToLockMs,
+                 uint32_t                 durationEachAttemptMs,
+                 function<void(void)>    &fnBeforeAttempt,
+                 function<void(void)>    &fnAfterAttempt,
+                 function<uint8_t(void)> &fnOkToContinue)
     {
         uint8_t retVal = 0;
         
@@ -491,10 +493,12 @@ public:
         {
             fnBeforeAttempt();  // power up
             
-            gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
+            uint8_t gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
             
             if (gpsLockOk)
             {
+                retVal = 1;
+                
                 cont = 0;
             }
             else
@@ -508,12 +512,12 @@ public:
                 // Delay for a bit and let the module reset if you have time
                 uint32_t timeNow = PAL.Millis();
                 const uint16_t SLEEP_DURATION_MS = 1000;
-                if (timeNow - timeStart + SLEEP_DURATION_MS < durationAvailableToLockMs)
+                if (timeNow - timeStart + SLEEP_DURATION_MS < durationTotalAvailableToLockMs)
                 {
                     PAL.Delay(SLEEP_DURATION_MS);
                 }
                 
-                cont = fnOkToContinue() && (PAL.Millis() - timeStart < durationAvailableToLockMs);
+                cont = fnOkToContinue() && (PAL.Millis() - timeStart + durationEachAttemptMs < durationTotalAvailableToLockMs);
             }
             
             fnAfterAttempt();   // power down
@@ -540,7 +544,7 @@ public:
         
         // Consider whether you have any time to burn by sleeping to get to the
         // desired time before the mark.
-        if (durationTargetBeforeTwoMinMarkToWakeMs >= durationBeforeMarkMs)
+        if (durationBeforeMarkMs <= durationTargetBeforeTwoMinMarkToWakeMs)
         {
             // Already at or within, and that's not even considering the fact
             // that timeNow is later than the time the lock occurred.
@@ -665,7 +669,7 @@ public:
     
     
     
-    uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(Measurement *m)
+    uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdogOld(Measurement *m)
     {
         const uint32_t TWO_MINUTES_MS = 2 * 60 * 1000L;
         
