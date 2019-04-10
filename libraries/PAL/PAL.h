@@ -362,6 +362,24 @@ public:
         delay(ms);
     }
     
+    static void DelayUnderWatchdog(uint32_t ms, uint32_t kickEveryMs = 1000)
+    {
+        uint32_t msRemaining = ms;
+        
+        WatchdogReset();
+        
+        while (msRemaining)
+        {
+            uint32_t delayMs = msRemaining > kickEveryMs ? kickEveryMs : msRemaining;
+            
+            Delay(delayMs);
+            
+            WatchdogReset();
+            
+            msRemaining -= delayMs;
+        }
+    }
+    
     static uint32_t Millis()
     {
         return millis();
