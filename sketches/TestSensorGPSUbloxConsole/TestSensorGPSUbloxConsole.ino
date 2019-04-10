@@ -302,16 +302,14 @@ off
         const uint32_t TWO_MINUTES_PLUS_MARGIN_MS = (2 * 60 * 1000L) + (DURATION_MAX_GPS_TIME_LOCK_WAIT_MS * 2);
         
         function<void(void)> fnBeforeAttempt = [](){
-            // gps on
+            console.Exec("on");
         };
         
         function<void(void)> fnAfterAttempt = [](){
-            // gps off
+            console.Exec("off");
         };
         
         function<uint8_t(void)> fnOkToContinue = [](){
-            // check voltage
-            
             return 1;
         };
         
