@@ -414,8 +414,6 @@ public:
     {
         uint8_t retVal = 0;
         
-        Log(P("Lock First Before"));
-        
         if (GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
                 m,
                 durationTotalAvailableToLockMs,
@@ -438,8 +436,6 @@ public:
             uint32_t durationTargetBeforeTwoMinMarkToWakeMs = (durationEachAttemptMs + 2000);
             uint32_t durationActualBeforeTwoMinMark         = SleepToCloseToTwoMinMark(m, durationTargetBeforeTwoMinMarkToWakeMs);
             
-            Log(P("durationActualBeforeTwoMinMark: "), durationActualBeforeTwoMinMark);
-            
             // We now know the actual duration remaining before the two min mark.
             // Possible we don't have time to try to lock again, due to,
             // for example, getting a time lock with 1 second remaining before
@@ -447,8 +443,6 @@ public:
             // in this case.
             if (durationActualBeforeTwoMinMark >= durationEachAttemptMs)
             {
-                Log(P("Lock Second Before"));
-                
                 // Allow for only a single attempt's worth of time, total, to
                 // get a new lock.
                 GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
@@ -722,6 +716,7 @@ public:
     }
     
 private:
+public: // for testing
 
     // This function ignores the fact that other async polling events may be
     // going on.  They do not impact this functionality.
@@ -816,7 +811,6 @@ private:
         return retVal;
     }
     
-    
     uint8_t GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
         Measurement             *m,
         uint32_t                 durationTotalAvailableToLockMs,
@@ -832,11 +826,9 @@ private:
         uint8_t cont = 1;
         while (cont)
         {
-            fnBeforeAttempt();  // power up
+            fnBeforeAttempt();
             
-            Log(P("LockBefore"));
             uint8_t gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
-            Log(("LockAfter: "), gpsLockOk);
             
             if (gpsLockOk)
             {
@@ -866,10 +858,8 @@ private:
                 cont = fnOkToContinue() && (PAL.Millis() - timeStart + durationEachAttemptMs < durationTotalAvailableToLockMs);
             }
             
-            fnAfterAttempt();   // power down
+            fnAfterAttempt();
         }
-        
-        Log(P("Lock retVal: "), retVal);
         
         return retVal;
     }
@@ -881,8 +871,6 @@ private:
     // If the two min mark is now or in the past, return 0.
     uint32_t SleepToCloseToTwoMinMark(Measurement *m, uint32_t durationTargetBeforeTwoMinMarkToWakeMs)
     {
-        Log(P("Sleeping"));
-        
         uint32_t retVal = 0;
         
         // Give this a convenient name
@@ -891,8 +879,6 @@ private:
         // Determine how long after the GPS lock the time will be at the
         // 2 min mark.
         uint32_t durationBeforeMarkMs = CalculateDurationMsToNextTwoMinuteMark(m);
-        
-        Log(P("durationBeforeMarkMs: "), durationBeforeMarkMs);
         
         // Consider whether you have any time to burn by sleeping to get to the
         // desired time before the mark.
@@ -937,7 +923,6 @@ private:
                 // Ok, difference still small enough that we should sleep.
                 // Remove the time skew from lock to now though so we actually
                 // wake at the correct time.
-                
                 durationToSleepMs -= timeDiff;
                 
                 PAL.DelayUnderWatchdog(durationToSleepMs);

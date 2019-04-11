@@ -12,10 +12,158 @@
 static const uint8_t GPS_SS_RX = 23;
 static const uint8_t GPS_SS_TX = 24;
 
-static Evm::Instance<10,10,10> evm;
+static Evm::Instance<0,5,0> evm;
 static SensorGPSUblox gps(GPS_SS_RX, GPS_SS_TX);
 static SensorGPSUblox::Measurement m;
-static SerialAsyncConsoleEnhanced<20,100>  console;
+static SerialAsyncConsoleEnhanced<20,20>  console;
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////
+//
+// Unit Tests
+//
+////////////////////////////////////////////////////////////////
+
+
+// A number of time-lock functions use only a subset of the Measurement fields.
+// We mock them up for test scenarios.
+
+struct TimeTestScenario
+{
+    uint32_t clockTimeAtMeasurement;
+    uint8_t  minute;
+    uint8_t  second;
+    uint16_t millisecond;
+    
+    uint32_t expectedResult;
+};
+
+SensorGPSUblox::Measurement GetMeasurementFromTimeTestScenario(TimeTestScenario scenario)
+{
+    SensorGPSUblox::Measurement m;
+    
+    m.clockTimeAtMeasurement = scenario.clockTimeAtMeasurement;
+    m.minute                 = scenario.minute;
+    m.second                 = scenario.second;
+    m.millisecond            = scenario.millisecond;
+    
+    return m;
+}
+
+void TestCalculateDurationMsToNextTwoMinuteMark()
+{
+    // Testing SleepToCloseToTwoMinMark
+    //
+    // Pass in:
+    // - a GPS time lock object
+    //   - so the time fields set, and the clockTimeAtMeasurement set
+    // - a desired duration to wake up before the 2 min mark of that lock
+    //
+    // It returns:
+    // - the duration of time between the time of measurement and the next
+    //   two minute mark.
+    
+    uint32_t timeNow = PAL.Millis();
+    
+    TimeTestScenario scenarioList[] =
+    {
+        { timeNow, 0, 1, 400, 118600 }, // 00:01.400 = 118600
+        { timeNow, 1, 1, 400,  58600 }, // 01:01.400 =  58600
+    };
+    
+    Log(P("TestCalculateDurationMsToNextTwoMinuteMark"));
+    
+    for ( auto &scenario : scenarioList )
+    {
+        SensorGPSUblox::Measurement m = GetMeasurementFromTimeTestScenario(scenario);
+
+        uint32_t result = gps.CalculateDurationMsToNextTwoMinuteMark(&m);
+        
+        printf("%02i:%02i.%03i - ", m.minute, m.second, m.millisecond);
+        if (result == scenario.expectedResult)
+        {
+            Log(P("OK"));
+        }
+        else
+        {
+            Log(P("NOT OK"));
+        }
+    }
+}
+
+void TestSleepToCloseToTwoMinMark()
+{
+    // Testing SleepToCloseToTwoMinMark
+    //
+    // Pass in:
+    // - Time measurement
+    // - how long should be remaining, in real clock time, before the 2 min mark
+    //   when the function returns.
+    //
+    // It returns:
+    // - the actual duration of time remaining before the 2 min mark
+    
+    // Assume we want to wake up 5000ms before mark
+    const uint32_t DURATION_TARGET_BEFORE_TWO_MIN_MARK_TO_WAKE_MS = 5000;
+    TimeTestScenario scenarioList[] =
+    {
+        {    0, 1, 55, 0, 5000 },    //  5 sec before mark, shouldn't sleep, should return 5000
+        { 1000, 1, 55, 0, 4000 },    //  5 sec before mark, shouldn't sleep, perceives delay by 1 sec, should return 4000
+        { 6000, 1, 55, 0,    0 },    //  5 sec before mark, shouldn't sleep, perceives delay by 6 sec, should return 0
+        {    0, 1, 56, 0, 4000 },    //  4 sec before mark, shouldn't sleep, should return 4000
+        {    0, 1, 53, 0, 5000 },    //  7 sec before mark, should sleep 2, should return 5000
+        { 3000, 1, 53, 0, 4000 },    //  7 sec before mark, should sleep 2, but perceives delay by 3000, should return 4000
+        { 8000, 1, 53, 0,    0 },    //  7 sec before mark, should sleep 2, but perceives delay by 8000, should return 0
+    };
+    
+    Log(P("TestSleepToCloseToTwoMinMark"));
+    
+    uint8_t count = 1;
+    for (auto &scenario : scenarioList)
+    {
+        Log(P("Test "), count);
+        ++count;
+        
+        SensorGPSUblox::Measurement m = GetMeasurementFromTimeTestScenario(scenario);
+
+        // pretend the measurement was taken right now, or purposefully delay,
+        // but tight control is necessary since clock drift is
+        // an important part of this code
+        uint32_t purposefulDelayInClock = m.clockTimeAtMeasurement;
+        m.clockTimeAtMeasurement = PAL.Millis();
+        PAL.Delay(purposefulDelayInClock);
+        
+        uint32_t result = gps.SleepToCloseToTwoMinMark(&m, DURATION_TARGET_BEFORE_TWO_MIN_MARK_TO_WAKE_MS);
+        
+        printf("%02i:%02i.%03i - ", m.minute, m.second, m.millisecond);
+        LogNNL("e(", scenario.expectedResult, P(") ~= a("), result, P(")? - "));
+        if (abs(result - scenario.expectedResult) <= 3)
+        {
+            Log(P("OK"));
+        }
+        else
+        {
+            Log(P("NOT OK"));
+        }
+    }
+}
+
+
+////////////////////////////////////////////////////////////////
+//
+// Helper functions
+//
+////////////////////////////////////////////////////////////////
 
 
 void Print()
@@ -47,6 +195,31 @@ void Print()
     
     LogNL();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////
+//
+// Main code
+//
+////////////////////////////////////////////////////////////////
+
+
 
 
 void setup()
@@ -440,7 +613,18 @@ off
     });
 
 
+    ////////////////////////////////////////////////////////////////
+    //
+    // Unit Testing
+    //
+    ////////////////////////////////////////////////////////////////
 
+    console.RegisterCommand("utest", [](char *){
+        TestCalculateDurationMsToNextTwoMinuteMark();
+        TestSleepToCloseToTwoMinMark();
+    });
+    
+    
     ////////////////////////////////////////////////////////////////
     //
     // Startup
@@ -454,6 +638,45 @@ off
     evm.MainLoop();
 }
 
+
 void loop() {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
