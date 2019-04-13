@@ -38,6 +38,8 @@ void Start()
 
             --countRemaining;
         }
+
+        Log(P("Complete"));
     }
     else if (mode == Mode::ASYNC)
     {
@@ -53,6 +55,8 @@ void Start()
             {
                 ted.DeRegisterForTimedEvent();
                 evm.EndMainLoop();
+
+                Log(P("Complete"));
             }
         });
 
@@ -62,10 +66,20 @@ void Start()
     }
 }
 
+void PrintMenu()
+{
+    Log(P("AVR Clock Calibration Tool"));
+    Log(P("--------------------------"));
+    LogNL();
+    Log(P("start <durationMs> <count> - create <count> square pulses <durationMs> long each"));
+    Log(P("offset <offsetMs>          - adjust internal clock by <offsetMs> in a way that affects 'start'"));
+    Log(P("help                       - this menu"));
+    LogNL();
+}
+
 void setup()
 {
     LogStart(9600);
-    Log("Starting");
 
     console.RegisterCommand("mode", [](char *cmdStr){
         Str str(cmdStr);
@@ -127,9 +141,15 @@ void setup()
     console.RegisterCommand("stop", [](char *){
         Log("Stopping");
     });
-
     
+    console.RegisterCommand("help", [](char *){
+        PrintMenu();
+    });
+
+    console.SetVerbose(0);
     console.Start();
+
+    console.Exec("help");
     
     evm.MainLoop();
 }
