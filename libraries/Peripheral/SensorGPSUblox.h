@@ -403,10 +403,9 @@ public:
     {
         return GetNewAbstractMeasurementSynchronousUnderWatchdog(&SensorGPSUblox::GetNewTimeMeasurementSynchronous, m, timeoutMs, timeUsedMs);
     }
-
+    
     uint8_t GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
         Measurement             *m,
-        uint32_t                 durationTotalAvailableToLockMs,
         uint32_t                 durationEachAttemptMs,
         function<void(void)>    &fnBeforeAttempt,
         function<void(void)>    &fnAfterAttempt,
@@ -414,19 +413,15 @@ public:
     {
         uint8_t retVal = 0;
         
-        if (GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
-                m,
-                durationTotalAvailableToLockMs,
-                durationEachAttemptMs,
-                fnBeforeAttempt,
-                fnAfterAttempt,
-                fnOkToContinue))
+        fnBeforeAttempt();
+        uint8_t gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
+        fnAfterAttempt();
+        
+        // Sleep until next GPS lock time or two min mark, whichever is
+        // appropriate.
+        uint32_t durationActualBeforeTwoMinMark = 0;
+        if (gpsLockOk && fnOkToContinue())
         {
-            // We have now locked once.  Whether we do again or not, we have
-            // a known target GPS time and we're tracking toward it using our
-            // internal clock.
-            retVal = 1;
-            
             // Now we're able to know how long we are before the two min mark by
             // looking at the GPS data.
             // Instead of running the GPS constantly, sleep off enough time that
@@ -434,8 +429,12 @@ public:
             // fine tune our internal clock targeting by using a fresh GPS
             // time lock.
             uint32_t durationTargetBeforeTwoMinMarkToWakeMs = (durationEachAttemptMs + 2000);
-            uint32_t durationActualBeforeTwoMinMark         = SleepToCloseToTwoMinMark(m, durationTargetBeforeTwoMinMarkToWakeMs);
-            
+            durationActualBeforeTwoMinMark                  = SleepToCloseToTwoMinMark(m, durationTargetBeforeTwoMinMarkToWakeMs);
+        }
+        
+        // If time available to get another GPS lock, do it.
+        if (gpsLockOk && fnOkToContinue())
+        {
             // We now know the actual duration remaining before the two min mark.
             // Possible we don't have time to try to lock again, due to,
             // for example, getting a time lock with 1 second remaining before
@@ -443,16 +442,26 @@ public:
             // in this case.
             if (durationActualBeforeTwoMinMark >= durationEachAttemptMs)
             {
-                // Allow for only a single attempt's worth of time, total, to
-                // get a new lock.
-                GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
-                    m,
-                    durationEachAttemptMs,
-                    durationEachAttemptMs,
-                    fnBeforeAttempt,
-                    fnAfterAttempt,
-                    fnOkToContinue);
+                // We don't record the success of this lock, because whether it
+                // did or didn't, we have a valid lock from previously that
+                // we're going to use for the final sleep
+                fnBeforeAttempt();
+                GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
+                fnAfterAttempt();
             }
+        }
+        
+        // Sleep until two min mark.  Either because we got a new more precise
+        // time lock, or because we are burning off the remaining time from
+        // the original lock.
+        if (gpsLockOk && fnOkToContinue())
+        {
+            // We have now locked once, and we're about to sleep off any
+            // remaining time before the two min mark.
+            // Whether we got two locks or one, this code should execute in
+            // order to do our best to lock to the two min mark.  Therefore this
+            // is a success.
+            retVal = 1;
             
             // We want to now burn off remaining time (probably seconds)
             // right up to the two minute mark.
@@ -464,7 +473,7 @@ public:
         
         return retVal;
     }
-
+    
     
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -806,59 +815,6 @@ public: // for testing
         if (timeUsedMs)
         {
             *timeUsedMs = PAL.Millis() - timeStart;
-        }
-        
-        return retVal;
-    }
-    
-    uint8_t GetNewTimeMeasurementSynchronousUnderWatchdogSpecial(
-        Measurement             *m,
-        uint32_t                 durationTotalAvailableToLockMs,
-        uint32_t                 durationEachAttemptMs,
-        function<void(void)>    &fnBeforeAttempt,
-        function<void(void)>    &fnAfterAttempt,
-        function<uint8_t(void)> &fnOkToContinue)
-    {
-        uint8_t retVal = 0;
-        
-        uint32_t timeStart = PAL.Millis();
-        
-        uint8_t cont = 1;
-        while (cont)
-        {
-            fnBeforeAttempt();
-            
-            uint8_t gpsLockOk = GetNewTimeMeasurementSynchronousUnderWatchdog(m, durationEachAttemptMs);
-            
-            if (gpsLockOk)
-            {
-                retVal = 1;
-                
-                cont = 0;
-            }
-            else
-            {
-                // Try again.
-                
-                // Reset the module in this case though, as we've exceeded
-                // expectations about lock time, so maybe there's a fault.
-                ResetModule();
-                
-                // Update watchdog
-                PAL.WatchdogReset();
-                
-                // Delay for a bit and let the module reset if you have time
-                uint32_t timeNow = PAL.Millis();
-                const uint16_t SLEEP_DURATION_MS = 1000;
-                if (timeNow - timeStart + SLEEP_DURATION_MS < durationTotalAvailableToLockMs)
-                {
-                    PAL.Delay(SLEEP_DURATION_MS);
-                }
-                
-                cont = fnOkToContinue() && (PAL.Millis() - timeStart + durationEachAttemptMs < durationTotalAvailableToLockMs);
-            }
-            
-            fnAfterAttempt();
         }
         
         return retVal;

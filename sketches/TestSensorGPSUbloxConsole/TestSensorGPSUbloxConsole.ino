@@ -467,13 +467,6 @@ off
         // but for the tracker probably say the the giveup time associated with the
         // regular GPS location lock.
         
-        // This is the amount of time available to get an initial lock.
-        // The total time it could take for this function to return is this time
-        // plus two minutes (as if we got a GPS time lock at the very end of the
-        // initial two minutes, and discovered we had to wait nearly two
-        // minutes for the next mark.
-        const uint32_t TWO_MINUTES_PLUS_MARGIN_MS = (2 * 60 * 1000L) + (DURATION_MAX_GPS_TIME_LOCK_WAIT_MS * 2);
-        
         function<void(void)> fnBeforeAttempt = [](){
             console.Exec("on");
         };
@@ -490,7 +483,6 @@ off
         uint8_t gpsLockOk =
             gps.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
                 &m,
-                 TWO_MINUTES_PLUS_MARGIN_MS,
                  DURATION_MAX_GPS_TIME_LOCK_WAIT_MS,
                  fnBeforeAttempt,
                  fnAfterAttempt,

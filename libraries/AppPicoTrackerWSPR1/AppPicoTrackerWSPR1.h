@@ -187,10 +187,17 @@ private:
             }
             else
             {
-                // Hmm, go to sleep and try again later?
-                // Sleep for how long?
-                
-                // Reset the underlying module?  Probably this.
+                // Underlying lock code relies on the fact that the GPS should
+                // get a relatively quick (seconds) time lock due to the GPS
+                // having previously got a location lock, seeding the GPS with
+                // enough information to time lock quickly.
+                //
+                // If we're unable to lock, something is wrong with that
+                // assumption.
+                //
+                // Reset and discard location lock, then sleep.
+                // Re-obtain location lock and attempt to sync again, thereby
+                // restoring the assumed state while executing this code.
                 gps_.ResetModule();
             }
             
@@ -198,6 +205,22 @@ private:
             Log(P("GPS OFF"));
             StopGPS();
         }
+        
+        
+        // Check if gps location, which could be from a prior run, is recent
+        // enough to try to get a fast time lock from.
+        // This duration is based on observations during testing.
+        // We choose 2 hours old
+        if (gpsLocationLockOk_)
+        {
+            const uint32_t MAX_AGE_LOCATION_LOCK_MS = 2UL * 60UL * 60UL * 1000UL;
+            if (PAL.Millis() - m->clockTimeAtMeasurement > MAX_AGE_LOCATION_LOCK_MS)
+            {
+                solarState_ = SolarState::NEED_GPS_DATA;
+                gpsLocationLockOk_ = 0;
+            }
+        }
+        
         
         // Sync to 2 minute mark if GPS location acquired
         // Consider available power if solar.
@@ -209,12 +232,21 @@ private:
             Log(P("Warming transmitter"));
             //PreSendMessage();
             
-            // Lock onto two-minute mark on GPS time
-            Log(P("GPS ON"));
-            StartGPS();
-
             Log(P("GPS locking to next 2 minute mark"));
-            uint8_t gpsTimeLockOk = gps_.WaitForNextGPSTwoMinuteMark(&gpsLocationMeasurement_);
+            
+            const uint32_t DURATION_MAX_GPS_TIME_LOCK_WAIT_MS = 5000;
+            auto fnBeforeAttempt = [this](){ StartGPS(); };
+            auto fnAfterAttempt  = [this](){ StopGPS(); };
+            auto fnOkToContinue  = [this](){ return InputVoltageSufficient(userConfig_.minMilliVoltTransmit); };
+            
+            uint8_t gpsTimeLockOk =
+                gps_.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
+                    &gpsTimeMeasurement_,
+                    DURATION_MAX_GPS_TIME_LOCK_WAIT_MS,
+                    fnBeforeAttempt,
+                    fnAfterAttempt,
+                    fnOkToContinue
+                );
 
             // The GPS may have locked at an even minute and :00 seconds.
             // We're going to transmit at the :01 second mark.
@@ -231,41 +263,51 @@ private:
             
             Log(P("GPS Time Lock "), gpsTimeLockOk ? P("OK") : P("NOT OK"));
             
-            // Unconditionally turn off GPS, we have what we need one way or another
-            Log(P("GPS OFF"));
-            StopGPS();
-            
-            // If time locked, prepare to transmit.
-            // Consider available power if solar.
-            if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit) &&
-                gpsTimeLockOk)
+            if (gpsTimeLockOk)
             {
-                PreSendMessage();
-                
-                // Pack message now that we know where we are
-                uint8_t messageOk = FillOutStandardWSPRMessage();
-                
-                // Test message before sending (but send regardless)
-                Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
-                
-                // Figure out how long we've been operating since the mark
-                uint32_t timeDiff = PAL.Millis() - timeAtMark;
-                
-                // Wait for the :01 second mark after even minute, accounting for 
-                // time which has elapsed since the even minute
-                const uint32_t ONE_SECOND = 1000UL;
-                if (timeDiff < ONE_SECOND)
+                // If time locked, prepare to transmit.
+                // Consider available power if solar.
+                if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit)
                 {
-                    PAL.Delay(ONE_SECOND - timeDiff);
+                        PreSendMessage();
+                        
+                        // Pack message now that we know where we are
+                        uint8_t messageOk = FillOutStandardWSPRMessage();
+                        
+                        // Test message before sending (but send regardless)
+                        Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
+                        
+                        // Figure out how long we've been operating since the mark
+                        uint32_t timeDiff = PAL.Millis() - timeAtMark;
+                        
+                        // Wait for the :01 second mark after even minute, accounting for 
+                        // time which has elapsed since the even minute
+                        const uint32_t ONE_SECOND = 1000UL;
+                        if (timeDiff < ONE_SECOND)
+                        {
+                            PAL.Delay(ONE_SECOND - timeDiff);
+                        }
+                        
+                        // Send WSPR message
+                        Log(P("TX"));
+                        
+                        SendMessage();
+                        
+                        PostSendMessage();
+                        
+                        // Change solar state and declare gps lock no longer good
+                        solarState_ = SolarState::NEED_GPS_DATA;
+                        gpsLocationLockOk_ = 0;
                 }
-                
-                // Send WSPR message
-                Log(P("TX"));
-                SendMessage();
-                
-                PostSendMessage();
-                
-                // Change solar state and declare gps lock no longer good
+            }
+            else
+            {
+                // Assumption is this time lock should work if the location lock
+                // was any good from recently enough.
+                // Clearly we didn't lock, and so we need to get back to the
+                // assumed state of having a good recent location lock.
+                //
+                // Therefore we throw away the location lock.
                 solarState_ = SolarState::NEED_GPS_DATA;
                 gpsLocationLockOk_ = 0;
             }
@@ -675,6 +717,8 @@ private:
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsLocationMeasurement_;
     uint8_t                      gpsLocationLockOk_;
+    SensorGPSUblox::Measurement  gpsTimeMeasurement_;
+
     
     WSPRMessage             wsprMessage_;
     WSPRMessageTransmitter  wsprMessageTransmitter_;
