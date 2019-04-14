@@ -4,7 +4,7 @@
 
 #include "PAL.h"
 #include "Function.h"
-#include "si5351.h"
+#include "si5351.wspr.h"
 #include "WSPRMessage.h"
 #include "WSPREncoder.h"
 
