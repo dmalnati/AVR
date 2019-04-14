@@ -63,6 +63,9 @@ public:
                     0,
                     calibration_.crystalCorrectionFactor);
         
+        // Tune to default freq
+        radio_.set_freq(WSPR_DEFAULT_FREQ * 100, SI5351_CLK0);
+
         // Configure to drive at max power
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
         
