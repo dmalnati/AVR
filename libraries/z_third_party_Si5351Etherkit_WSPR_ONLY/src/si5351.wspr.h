@@ -310,13 +310,13 @@ public:
     .LOS = 0, .REVID = 0};
 	struct Si5351IntStatus dev_int_status = {.SYS_INIT_STKY = 0, .LOL_B_STKY = 0,
     .LOL_A_STKY = 0, .LOS_STKY = 0};
-	enum si5351_pll pll_assignment[8];
-	uint64_t clk_freq[8];
+	enum si5351_pll pll_assignment[1];
+	uint64_t clk_freq[1];
 	uint64_t plla_freq;
 	uint64_t pllb_freq;
   enum si5351_pll_input plla_ref_osc;
   enum si5351_pll_input pllb_ref_osc;
-	uint32_t xtal_freq[2];
+	uint32_t xtal_freq[1];
 private:
 	uint64_t pll_calc(enum si5351_pll, uint64_t, struct Si5351RegSet *, int32_t, uint8_t);
 	uint64_t multisynth_calc(uint64_t, uint64_t, struct Si5351RegSet *);
@@ -326,10 +326,10 @@ private:
 	void ms_div(enum si5351_clock, uint8_t, uint8_t);
 	uint8_t select_r_div(uint64_t *);
 	uint8_t select_r_div_ms67(uint64_t *);
-	int32_t ref_correction[2];
+	int32_t ref_correction[1];
   uint8_t clkin_div;
   uint8_t i2c_bus_addr;
-  bool clk_first_set[8];
+  bool clk_first_set[1];
 };
 
 #endif /* SI5351_H_ */
