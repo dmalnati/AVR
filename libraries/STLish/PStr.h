@@ -29,6 +29,9 @@
 // Just use P.
 
 
+#define P(str) (PStr{PSTR(str)})
+
+
 //
 // Meant to work with
 // https://www.nongnu.org/avr-libc/user-manual/group__avr__pgmspace.html
@@ -36,6 +39,12 @@
 class PStr
 {
 public:
+    PStr()
+    : PStr(GetDefaultValue())
+    {
+        // Nothing to do
+    }
+
     PStr(const char *p)
     : p_(p)
     {
@@ -54,10 +63,16 @@ public:
 
 private:
     const char *p_;
+    
+    static const char *GetDefaultValue()
+    {
+        static PStr pStr = P("");
+        
+        return (const char *)pStr;
+    }
 };
 
 
-#define P(str) (PStr{PSTR(str)})
 
 
 #endif  // __PSTR_H__
