@@ -4,7 +4,6 @@
 
 #include "PAL.h"
 #include "Log.h"
-#include "Eeprom.h"
 #include "Evm.h"
 #include "SensorGPSUblox.h"
 #include "WSPRMessageTransmitter.h"
@@ -75,6 +74,7 @@ public:
         // Init serial and announce startup
         LogStart(9600);
         Log(P("Starting"));
+        
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
             Log(P("WDTR"));
@@ -178,8 +178,9 @@ private:
             
             // Attempt to get lock, but time out if taking too long
             gpsLocationLockOk_ =
-                gps_.GetGPSLockUnderWatchdog(&gpsLocationMeasurement_,
-                                             userConfig_.gpsLockTimeoutMs);
+                gps_.GetNewLocationMeasurementSynchronousUnderWatchdog(
+                    &gpsLocationMeasurement_,
+                     userConfig_.gpsLockTimeoutMs);
         
             if (gpsLocationLockOk_)
             {
@@ -214,7 +215,7 @@ private:
         if (gpsLocationLockOk_)
         {
             const uint32_t MAX_AGE_LOCATION_LOCK_MS = 2UL * 60UL * 60UL * 1000UL;
-            if (PAL.Millis() - m->clockTimeAtMeasurement > MAX_AGE_LOCATION_LOCK_MS)
+            if (PAL.Millis() - gpsLocationMeasurement_.clockTimeAtMeasurement > MAX_AGE_LOCATION_LOCK_MS)
             {
                 solarState_ = SolarState::NEED_GPS_DATA;
                 gpsLocationLockOk_ = 0;
@@ -235,9 +236,10 @@ private:
             Log(P("GPS locking to next 2 minute mark"));
             
             const uint32_t DURATION_MAX_GPS_TIME_LOCK_WAIT_MS = 5000;
-            auto fnBeforeAttempt = [this](){ StartGPS(); };
-            auto fnAfterAttempt  = [this](){ StopGPS(); };
-            auto fnOkToContinue  = [this](){ return InputVoltageSufficient(userConfig_.minMilliVoltTransmit); };
+
+            function<void(void)>    fnBeforeAttempt = [this]() { StartGPS(); };
+            function<void(void)>    fnAfterAttempt  = [this]() { StopGPS(); };
+            function<uint8_t(void)> fnOkToContinue  = [this]() { return InputVoltageSufficient(userConfig_.minMilliVoltTransmit); };
             
             uint8_t gpsTimeLockOk =
                 gps_.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
@@ -267,37 +269,37 @@ private:
             {
                 // If time locked, prepare to transmit.
                 // Consider available power if solar.
-                if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit)
+                if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit))
                 {
-                        PreSendMessage();
-                        
-                        // Pack message now that we know where we are
-                        uint8_t messageOk = FillOutStandardWSPRMessage();
-                        
-                        // Test message before sending (but send regardless)
-                        Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
-                        
-                        // Figure out how long we've been operating since the mark
-                        uint32_t timeDiff = PAL.Millis() - timeAtMark;
-                        
-                        // Wait for the :01 second mark after even minute, accounting for 
-                        // time which has elapsed since the even minute
-                        const uint32_t ONE_SECOND = 1000UL;
-                        if (timeDiff < ONE_SECOND)
-                        {
-                            PAL.Delay(ONE_SECOND - timeDiff);
-                        }
-                        
-                        // Send WSPR message
-                        Log(P("TX"));
-                        
-                        SendMessage();
-                        
-                        PostSendMessage();
-                        
-                        // Change solar state and declare gps lock no longer good
-                        solarState_ = SolarState::NEED_GPS_DATA;
-                        gpsLocationLockOk_ = 0;
+                    PreSendMessage();
+                    
+                    // Pack message now that we know where we are
+                    uint8_t messageOk = FillOutStandardWSPRMessage();
+                    
+                    // Test message before sending (but send regardless)
+                    Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
+                    
+                    // Figure out how long we've been operating since the mark
+                    uint32_t timeDiff = PAL.Millis() - timeAtMark;
+                    
+                    // Wait for the :01 second mark after even minute, accounting for 
+                    // time which has elapsed since the even minute
+                    const uint32_t ONE_SECOND = 1000UL;
+                    if (timeDiff < ONE_SECOND)
+                    {
+                        PAL.Delay(ONE_SECOND - timeDiff);
+                    }
+                    
+                    // Send WSPR message
+                    Log(P("TX"));
+                    
+                    SendMessage();
+                    
+                    PostSendMessage();
+                    
+                    // Change solar state and declare gps lock no longer good
+                    solarState_ = SolarState::NEED_GPS_DATA;
+                    gpsLocationLockOk_ = 0;
                 }
             }
             else
@@ -401,14 +403,7 @@ private:
     
     void StartSubsystemWSPR()
     {
-        const uint32_t DURATION_START_MS  = 150;
-        const uint32_t DURATION_ON_OFF_US = 250;
-
-        // Prevent inrush current from sagging VCC by slowly enabling GPS.
-        SlowStart(cfg_.pinWsprTxEnable, DURATION_START_MS, DURATION_ON_OFF_US);
-        
-        // Give device time to start up.  Value found empirically.
-        PAL.Delay(50);
+        PAL.DigitalWrite(cfg_.pinWsprTxEnable, HIGH);
     }
     
     void StopSubsystemWSPR()
@@ -546,13 +541,9 @@ private:
     
     void StartSubsystemGPS()
     {
-        const uint32_t DURATION_START_MS  = 50;
-        const uint32_t DURATION_ON_OFF_US = 60;
-
         gps_.EnableSerialInput();
         
-        // Prevent inrush current from sagging VCC by slowly enabling GPS.
-        SlowStart(cfg_.pinGpsEnable, DURATION_START_MS, DURATION_ON_OFF_US);
+        PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
         
         gps_.EnableSerialOutput();
     }
@@ -599,33 +590,6 @@ private:
 
         // Disable subsystem
         StopSubsystemGPS();
-    }
-    
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // Power Control
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    // Values for duration, as well as high/low durations found
-    // emprically.
-    static void SlowStart(uint8_t pin, uint32_t durationMs, uint32_t onOffUs)
-    {
-        uint32_t timeNow = PAL.Millis();
-        
-        while (PAL.Millis() - timeNow < durationMs)
-        {
-            PAL.DigitalWrite(pin, HIGH);
-            PAL.DelayMicroseconds(onOffUs);
-            
-            PAL.DigitalWrite(pin, LOW);
-            PAL.DelayMicroseconds(onOffUs);
-            
-            PAL.WatchdogReset();
-        }
-        
-        PAL.DigitalWrite(pin, HIGH);
     }
     
     
@@ -718,7 +682,6 @@ private:
     SensorGPSUblox::Measurement  gpsLocationMeasurement_;
     uint8_t                      gpsLocationLockOk_;
     SensorGPSUblox::Measurement  gpsTimeMeasurement_;
-
     
     WSPRMessage             wsprMessage_;
     WSPRMessageTransmitter  wsprMessageTransmitter_;
