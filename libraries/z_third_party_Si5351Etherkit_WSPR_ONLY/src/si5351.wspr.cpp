@@ -152,102 +152,14 @@ void Si5351::reset(void)
 uint8_t Si5351::set_freq(uint64_t freq, enum si5351_clock clk)
 {
 	struct Si5351RegSet ms_reg;
-	uint64_t pll_freq;
 	uint8_t int_mode = 0;
 	uint8_t div_by_4 = 0;
 	uint8_t r_div = 0;
 
-	// Check which Multisynth is being set
-	if((uint8_t)clk <= (uint8_t)SI5351_CLK5)
-	{
 		// MS0 through MS5 logic
 		// ---------------------
 
-		// Lower bounds check
-		if(freq > 0 && freq < SI5351_CLKOUT_MIN_FREQ * SI5351_FREQ_MULT)
-		{
-			freq = SI5351_CLKOUT_MIN_FREQ * SI5351_FREQ_MULT;
-		}
 
-		// Upper bounds check
-		if(freq > SI5351_MULTISYNTH_MAX_FREQ * SI5351_FREQ_MULT)
-		{
-			freq = SI5351_MULTISYNTH_MAX_FREQ * SI5351_FREQ_MULT;
-		}
-
-		// If requested freq >100 MHz and no other outputs are already >100 MHz,
-		// we need to recalculate PLLA and then recalculate all other CLK outputs
-		// on same PLL
-		if(freq > (SI5351_MULTISYNTH_SHARE_MAX * SI5351_FREQ_MULT))
-		{
-			// Check other clocks on same PLL
-			uint8_t i;
-			for(i = 0; i < 6; i++)
-			{
-				if(clk_freq[i] > (SI5351_MULTISYNTH_SHARE_MAX * SI5351_FREQ_MULT))
-				{
-					if(i != (uint8_t)clk && pll_assignment[i] == pll_assignment[clk])
-					{
-						return 1; // won't set if any other clks already >100 MHz
-					}
-				}
-			}
-
-			// Enable the output on first set_freq only
-			if(clk_first_set[(uint8_t)clk] == false)
-			{
-				output_enable(clk, 1);
-				clk_first_set[(uint8_t)clk] = true;
-			}
-
-			// Set the freq in memory
-			clk_freq[(uint8_t)clk] = freq;
-
-			// Calculate the proper PLL frequency
-			pll_freq = multisynth_calc(freq, 0, &ms_reg);
-
-			// Set PLL
-			set_pll(pll_freq, pll_assignment[clk]);
-
-			// Recalculate params for other synths on same PLL
-			for(i = 0; i < 6; i++)
-			{
-				if(clk_freq[i] != 0)
-				{
-					if(pll_assignment[i] == pll_assignment[clk])
-					{
-						struct Si5351RegSet temp_reg;
-						uint64_t temp_freq;
-
-						// Select the proper R div value
-						temp_freq = clk_freq[i];
-						r_div = select_r_div(&temp_freq);
-
-						multisynth_calc(temp_freq, pll_freq, &temp_reg);
-
-						// If freq > 150 MHz, we need to use DIVBY4 and integer mode
-						if(temp_freq >= SI5351_MULTISYNTH_DIVBY4_FREQ * SI5351_FREQ_MULT)
-						{
-							div_by_4 = 1;
-							int_mode = 1;
-						}
-						else
-						{
-							div_by_4 = 0;
-							int_mode = 0;
-						}
-
-						// Set multisynth registers
-						set_ms((enum si5351_clock)i, temp_reg, int_mode, r_div, div_by_4);
-					}
-				}
-			}
-
-			// Reset the PLL
-			pll_reset(pll_assignment[clk]);
-		}
-		else
-		{
 			clk_freq[(uint8_t)clk] = freq;
 
 			// Enable the output on first set_freq only
@@ -261,139 +173,15 @@ uint8_t Si5351::set_freq(uint64_t freq, enum si5351_clock clk)
 			r_div = select_r_div(&freq);
 
 			// Calculate the synth parameters
-			if(pll_assignment[clk] == SI5351_PLLA)
-			{
 				multisynth_calc(freq, plla_freq, &ms_reg);
-			}
-			else
-			{
-				multisynth_calc(freq, pllb_freq, &ms_reg);
-			}
 
 			// Set multisynth registers
 			set_ms(clk, ms_reg, int_mode, r_div, div_by_4);
 
 			// Reset the PLL
 			//pll_reset(pll_assignment[clk]);
-		}
 
 		return 0;
-	}
-	else
-	{
-		// MS6 and MS7 logic
-		// -----------------
-
-		// Lower bounds check
-		if(freq > 0 && freq < SI5351_CLKOUT67_MIN_FREQ * SI5351_FREQ_MULT)
-		{
-			freq = SI5351_CLKOUT_MIN_FREQ * SI5351_FREQ_MULT;
-		}
-
-		// Upper bounds check
-		if(freq >= SI5351_MULTISYNTH_DIVBY4_FREQ * SI5351_FREQ_MULT)
-		{
-			freq = SI5351_MULTISYNTH_DIVBY4_FREQ * SI5351_FREQ_MULT - 1;
-		}
-
-		// If one of CLK6 or CLK7 is already set when trying to set the other,
-		// we have to ensure that it will also have an integer division ratio
-		// with the same PLL, otherwise do not set it.
-		if(clk == SI5351_CLK6)
-		{
-			if(clk_freq[7] != 0)
-			{
-				if(pllb_freq % freq == 0)
-				{
-					if((pllb_freq / freq) % 2 != 0)
-					{
-						// Not an even divide ratio, no bueno
-						return 1;
-					}
-					else
-					{
-						// Set the freq in memory
-						clk_freq[(uint8_t)clk] = freq;
-
-						// Select the proper R div value
-						r_div = select_r_div_ms67(&freq);
-
-						multisynth67_calc(freq, pllb_freq, &ms_reg);
-					}
-				}
-				else
-				{
-					// Not an integer divide ratio, no good
-					return 1;
-				}
-			}
-			else
-			{
-				// No previous assignment, so set PLLB based on CLK6
-
-				// Set the freq in memory
-				clk_freq[(uint8_t)clk] = freq;
-
-				// Select the proper R div value
-				r_div = select_r_div_ms67(&freq);
-
-				pll_freq = multisynth67_calc(freq, 0, &ms_reg);
-				//pllb_freq = pll_freq;
-				set_pll(pll_freq, SI5351_PLLB);
-			}
-		}
-		else
-		{
-			if(clk_freq[6] != 0)
-			{
-				if(pllb_freq % freq == 0)
-				{
-					if((pllb_freq / freq) % 2 != 0)
-					{
-						// Not an even divide ratio, no bueno
-						return 1;
-					}
-					else
-					{
-						// Set the freq in memory
-						clk_freq[(uint8_t)clk] = freq;
-
-						// Select the proper R div value
-						r_div = select_r_div_ms67(&freq);
-
-						multisynth67_calc(freq, pllb_freq, &ms_reg);
-					}
-				}
-				else
-				{
-					// Not an integer divide ratio, no good
-					return 1;
-				}
-			}
-			else
-			{
-				// No previous assignment, so set PLLB based on CLK7
-
-				// Set the freq in memory
-				clk_freq[(uint8_t)clk] = freq;
-
-				// Select the proper R div value
-				r_div = select_r_div_ms67(&freq);
-
-				pll_freq = multisynth67_calc(freq, 0, &ms_reg);
-				//pllb_freq = pll_freq;
-				set_pll(pll_freq, pll_assignment[clk]);
-			}
-		}
-
-		div_by_4 = 0;
-		int_mode = 0;
-
-		// Set multisynth registers (MS must be set before PLL)
-		set_ms(clk, ms_reg, int_mode, r_div, div_by_4);
-
-		return 0;
-	}
 }
 
 /*
