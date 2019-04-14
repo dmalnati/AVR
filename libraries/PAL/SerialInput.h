@@ -562,6 +562,390 @@ private:
 };
 
 
+
+
+template <uint8_t PARAM_COUNT, uint8_t CMD_COUNT, uint8_t MAX_LINE_LEN = 40>
+class SerialAsyncConsoleMenu
+{
+private:
+
+    enum ParamType
+    {
+        STR,
+        U32,
+        U16,
+        U8,
+        I32,
+        I16,
+        I8,
+    };
+    
+    struct Param
+    {
+        Param()
+        {
+        }
+        
+        Param(PStr paramNameInput, ParamType paramTypeInput, void *paramPtrInput, uint8_t paramDataInput)
+        : paramName(paramNameInput)
+        , paramType(paramTypeInput)
+        , paramPtr(paramPtrInput)
+        , paramData(paramDataInput)
+        {
+            // Nothing to do
+        }
+        
+        PStr       paramName;
+        ParamType  paramType;
+        void      *paramPtr;
+        uint8_t    paramData;
+    };
+    
+    struct Command
+    {
+        Command()
+        {
+        }
+        
+        Command(PStr cmdInput, function<void(void)> &fnCmdInput)
+        : cmd(cmdInput)
+        , fnCmd(fnCmdInput)
+        {
+            // Nothing to do
+        }
+        
+        PStr                  cmd;
+        function<void(void)>  fnCmd;
+    };
+    
+    
+public:
+    
+    // assumes there's a null beyond the strLen bytes
+    uint8_t RegisterParamSTR(PStr paramName, const char *paramPtr, uint8_t strLen)
+    {
+        return RegisterParam({ paramName, ParamType::STR, (void *)paramPtr, strLen });
+    }
+    
+    uint8_t RegisterParamU32(PStr paramName, uint32_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::U32, (void *)paramPtr, 0 });
+    }
+    
+    uint8_t RegisterParamU16(PStr paramName, uint16_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::U16, (void *)paramPtr, 0 });
+    }
+    
+    uint8_t RegisterParamU8(PStr paramName, uint8_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::U8, (void *)paramPtr, 0 });
+    }
+
+    uint8_t RegisterParamI32(PStr paramName, int32_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::I32, (void *)paramPtr, 0 });
+    }
+    
+    uint8_t RegisterParamI16(PStr paramName, int16_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::I16, (void *)paramPtr, 0 });
+    }
+    
+    uint8_t RegisterParamI8(PStr paramName, int8_t *paramPtr)
+    {
+        return RegisterParam({ paramName, ParamType::I8, (void *)paramPtr, 0 });
+    }
+
+    void SetOnSetCallback(function<void(void)> cbFnOnSet)
+    {
+        cbFnOnSet_ = cbFnOnSet;
+    }
+    
+    uint8_t RegisterCommand(PStr cmd, function<void(void)> fnCmd)
+    {
+        uint8_t retVal = 0;
+        
+        if (commandListIdx_ < CMD_COUNT)
+        {
+            retVal = 1;
+            
+            commandList_[commandListIdx_] = { cmd, fnCmd };
+            ++commandListIdx_;
+        }
+        
+        return retVal;
+    }
+    
+    void Start()
+    {
+        // We're using the error handler as a catch-all, we'll dissect the
+        // typed string ourselves.
+        console_.RegisterErrorHandler([this](char *cmdStr){
+            OnInput(cmdStr);
+        });
+        
+        console_.SetVerbose(0);
+        console_.Start();
+    }
+    
+    void ShowParams()
+    {
+        Log(P("Parameters:"));
+        for (uint8_t i = 0; i < paramListIdx_; ++i)
+        {
+            Param &param = paramList_[i];
+            
+            if (param.paramType != ParamType::STR)
+            {
+                LogNNL(param.paramName, ": ");
+            }
+            
+                 if (param.paramType == ParamType::STR) { LogParamSTR(param); }
+            else if (param.paramType == ParamType::U32) { LogParamU32(param); }
+            else if (param.paramType == ParamType::U16) { LogParamU16(param); }
+            else if (param.paramType == ParamType::U8)  { LogParamU8(param);  }
+            else if (param.paramType == ParamType::I32) { LogParamI32(param); }
+            else if (param.paramType == ParamType::I16) { LogParamI16(param); }
+            else if (param.paramType == ParamType::I8)  { LogParamI8(param);  }
+        }
+    }
+    
+    void ShowCommands()
+    {
+        Log(P("Commands:"));
+        for (uint8_t i = 0; i < commandListIdx_; ++i)
+        {
+            Log(commandList_[i].cmd);
+        }
+    }
+    
+    void ShowAll()
+    {
+        ShowCommands();
+        LogNL();
+        ShowParams();
+        LogNL(2);
+    }
+    
+    
+private:
+
+    uint8_t RegisterParam(Param param)
+    {
+        uint8_t retVal = 0;
+        if (paramListIdx_ < PARAM_COUNT)
+        {
+            retVal = 1;
+            
+            paramList_[paramListIdx_] = param;
+            ++paramListIdx_;
+        }
+        
+        return retVal;
+    }
+    
+    void OnInput(char *cmdStr)
+    {
+        Str str(cmdStr);
+        
+        uint8_t     tokenCount = str.TokenCount(' ');
+        const char *command    = str.TokenAtIdx(0, ' ');
+        const char *name       = str.TokenAtIdx(1, ' ');
+        
+        uint8_t commandNotFound = 0;
+        
+        if (tokenCount == 3)
+        {
+            if (!strcmp(command, "set"))
+            {
+                const char *value = str.TokenAtIdx(2, ' ');
+                
+                uint8_t found = 0;
+                for (uint8_t i = 0; i < paramListIdx_ && !found; ++i)
+                {
+                    Param &param = paramList_[i];
+
+                    if (!strcmp_P(name, param.paramName))
+                    {
+                        found = 1;
+                        
+                        Log(P("Setting "), name, P(" to "), value);
+                        
+                             if (param.paramType == ParamType::STR) { SetParamSTR(param, value); }
+                        else if (param.paramType == ParamType::U32) { SetParamU32(param, value); }
+                        else if (param.paramType == ParamType::U16) { SetParamU16(param, value); }
+                        else if (param.paramType == ParamType::U8)  { SetParamU8(param, value);  }
+                        else if (param.paramType == ParamType::I32) { SetParamI32(param, value); }
+                        else if (param.paramType == ParamType::I16) { SetParamI16(param, value); }
+                        else if (param.paramType == ParamType::I8)  { SetParamI8(param, value);  }
+                        
+                        cbFnOnSet_();
+                    }
+                }
+                
+                if (!found)
+                {
+                    Log(P("ERR: <param> "), name, P(" not found"));
+                }
+            }
+            else
+            {
+                commandNotFound = 1;
+            }
+        }
+        else if (tokenCount == 1)
+        {
+            uint8_t found = 0;
+            for (uint8_t i = 0; i < commandListIdx_ && !found; ++i)
+            {
+                Command &cmd = commandList_[i];
+
+                if (!strcmp_P(command, cmd.cmd))
+                {
+                    found = 1;
+                    
+                    cmd.fnCmd();
+                }
+            }
+            
+            if (!found)
+            {
+                if (!strcmp(command, "?") || !strcmp(command, "help"))
+                {
+                    found = 1;
+                    
+                    LogNL();
+                    ShowAll();
+                }
+            }
+            
+            commandNotFound = !found;
+        }
+        else
+        {
+            commandNotFound = 1;
+        }
+        
+        if (commandNotFound)
+        {
+            Log(P("ERR: <command> "), command, P(" not found"));
+        }
+        
+        LogNL();
+    }
+    
+    void SetParamSTR(Param &param, const char *value)
+    {
+        const char *paramBuf = (const char *)param.paramPtr;
+        uint8_t strLen       = param.paramData;
+        
+        memset((void *)paramBuf, '\0', strLen);
+        strncpy((char *)paramBuf, value, strLen);
+    }
+    
+    void SetParamU32(Param &param, const char *value)
+    {
+        *(uint32_t *)param.paramPtr = atol(value);
+    }
+    void SetParamU16(Param &param, const char *value)
+    {
+        *(uint16_t *)param.paramPtr = atol(value);
+    }
+    void SetParamU8(Param &param, const char *value)
+    {
+        *(uint8_t *)param.paramPtr = atol(value);
+    }
+    
+    void SetParamI32(Param &param, const char *value)
+    {
+        *(int32_t *)param.paramPtr = atol(value);
+    }
+    void SetParamI16(Param &param, const char *value)
+    {
+        *(int16_t *)param.paramPtr = atol(value);
+    }
+    void SetParamI8(Param &param, const char *value)
+    {
+        *(int8_t *)param.paramPtr = atoi(value);
+    }
+    
+    void LogParamSTR(Param &param)
+    {
+        Log(param.paramName, '[', param.paramData, "]: ", (const char *)param.paramPtr);
+    }
+    void LogParamU32(Param &param)
+    {
+        Log(*(uint32_t *)param.paramPtr);
+    }
+    void LogParamU16(Param &param)
+    {
+        Log(*(uint16_t *)param.paramPtr);
+    }
+    void LogParamU8(Param &param)
+    {
+        Log(*(uint8_t *)param.paramPtr);
+    }
+    void LogParamI32(Param &param)
+    {
+        Log(*(int32_t *)param.paramPtr);
+    }
+    void LogParamI16(Param &param)
+    {
+        Log(*(int16_t *)param.paramPtr);
+    }
+    void LogParamI8(Param &param)
+    {
+        Log(*(int8_t *)param.paramPtr);
+    }
+
+    
+private:
+
+    SerialAsyncConsole<0, MAX_LINE_LEN>  console_;
+
+    Param paramList_[PARAM_COUNT];
+    uint8_t paramListIdx_ = 0;
+    
+    Command commandList_[CMD_COUNT];
+    uint8_t commandListIdx_ = 0;
+    
+    function<void(void)> cbFnOnSet_;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #endif  // __SERIAL_INPUT_H__
 
 
