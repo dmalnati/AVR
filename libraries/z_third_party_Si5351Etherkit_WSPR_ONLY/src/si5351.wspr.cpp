@@ -109,46 +109,17 @@ void Si5351::reset(void)
 	// Initialize the CLK outputs according to flowchart in datasheet
 	// First, turn them off
 	si5351_write(16, 0x80);
-	si5351_write(17, 0x80);
-	si5351_write(18, 0x80);
-	si5351_write(19, 0x80);
-	si5351_write(20, 0x80);
-	si5351_write(21, 0x80);
-	si5351_write(22, 0x80);
-	si5351_write(23, 0x80);
 
 	// Turn the clocks back on...
 	si5351_write(16, 0x0c);
-	si5351_write(17, 0x0c);
-	si5351_write(18, 0x0c);
-	si5351_write(19, 0x0c);
-	si5351_write(20, 0x0c);
-	si5351_write(21, 0x0c);
-	si5351_write(22, 0x0c);
-	si5351_write(23, 0x0c);
 
 	// Set PLLA and PLLB to 800 MHz for automatic tuning
 	set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
-	set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
 
 	// Make PLL to CLK assignments for automatic tuning
 	pll_assignment[0] = SI5351_PLLA;
-	pll_assignment[1] = SI5351_PLLA;
-	pll_assignment[2] = SI5351_PLLA;
-	pll_assignment[3] = SI5351_PLLA;
-	pll_assignment[4] = SI5351_PLLA;
-	pll_assignment[5] = SI5351_PLLA;
-	pll_assignment[6] = SI5351_PLLB;
-	pll_assignment[7] = SI5351_PLLB;
 
 	set_ms_source(SI5351_CLK0, SI5351_PLLA);
-	set_ms_source(SI5351_CLK1, SI5351_PLLA);
-	set_ms_source(SI5351_CLK2, SI5351_PLLA);
-	set_ms_source(SI5351_CLK3, SI5351_PLLA);
-	set_ms_source(SI5351_CLK4, SI5351_PLLA);
-	set_ms_source(SI5351_CLK5, SI5351_PLLA);
-	set_ms_source(SI5351_CLK6, SI5351_PLLB);
-	set_ms_source(SI5351_CLK7, SI5351_PLLB);
 
 	// Reset the VCXO param
 	si5351_write(SI5351_VXCO_PARAMETERS_LOW, 0);
@@ -157,11 +128,10 @@ void Si5351::reset(void)
 
 	// Then reset the PLLs
 	pll_reset(SI5351_PLLA);
-	pll_reset(SI5351_PLLB);
 
 	// Set initial frequencies
 	uint8_t i;
-	for(i = 0; i < 8; i++)
+	for(i = 0; i < 1; i++)
 	{
 		clk_freq[i] = 0;
 		output_enable((enum si5351_clock)i, 0);
@@ -497,7 +467,7 @@ uint8_t Si5351::set_freq_manual(uint64_t freq, uint64_t pll_freq, enum si5351_cl
  * target_pll - Which PLL to set
  *     (use the si5351_pll enum)
  */
-void Si5351::set_pll(uint64_t pll_freq, enum si5351_pll target_pll)
+void Si5351::set_pll(uint64_t pll_freq, enum si5351_pll /*target_pll*/)
 {
   struct Si5351RegSet pll_reg;
 
@@ -814,16 +784,9 @@ int32_t Si5351::get_correction(enum si5351_pll_input ref_osc)
  *
  * Apply a reset to the indicated PLL.
  */
-void Si5351::pll_reset(enum si5351_pll target_pll)
+void Si5351::pll_reset(enum si5351_pll /*target_pll*/)
 {
-	if(target_pll == SI5351_PLLA)
- 	{
-    	si5351_write(SI5351_PLL_RESET, SI5351_PLL_RESET_A);
-	}
-	else if(target_pll == SI5351_PLLB)
-	{
-	    si5351_write(SI5351_PLL_RESET, SI5351_PLL_RESET_B);
-	}
+    si5351_write(SI5351_PLL_RESET, SI5351_PLL_RESET_A);
 }
 
 /*
@@ -842,14 +805,7 @@ void Si5351::set_ms_source(enum si5351_clock clk, enum si5351_pll pll)
 
 	reg_val = si5351_read(SI5351_CLK0_CTRL + (uint8_t)clk);
 
-	if(pll == SI5351_PLLA)
-	{
-		reg_val &= ~(SI5351_CLK_PLL_SELECT);
-	}
-	else if(pll == SI5351_PLLB)
-	{
-		reg_val |= SI5351_CLK_PLL_SELECT;
-	}
+    reg_val &= ~(SI5351_CLK_PLL_SELECT);
 
 	si5351_write(SI5351_CLK0_CTRL + (uint8_t)clk, reg_val);
 
