@@ -114,8 +114,20 @@ public:
         Blink(cfg_.pinLedRed,   100);
         Blink(cfg_.pinLedGreen, 100);
 
-        // Get user config
-        if (AppPicoTrackerWSPR1UserConfigManager::GetUserConfig(cfg_.pinConfigure, userConfig_))
+        
+        uint8_t userConfigOk = 0;
+        
+        // Keep the sizable manager out of memory indefinitely by only creating
+        // a temporary instance.
+        //
+        // At this point during startup, there is no other competition for ram.
+        {
+            AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure);
+            
+            userConfigOk = mgr.GetUserConfig(userConfig_);
+        }
+        
+        if (userConfigOk)
         {
             // Blink to indicate good configuration
             for (uint8_t i = 0; i < 3; ++i)
@@ -229,11 +241,7 @@ private:
             InputVoltageSufficient(userConfig_.minMilliVoltGpsTimeLock) &&
             gpsLocationLockOk_)
         {
-            // Warm up transmitter
-            Log(P("Warming transmitter"));
-            //PreSendMessage();
-            
-            Log(P("GPS locking to next 2 minute mark"));
+            Log(P("GPS locking 2 min"));
             
             const uint32_t DURATION_MAX_GPS_TIME_LOCK_WAIT_MS = 5000;
 
@@ -263,7 +271,7 @@ private:
             uint32_t timeAtMark =
                 PAL.Millis() - SensorGPSUblox::MIN_DELAY_NEW_TIME_LOCK_MS;
             
-            Log(P("GPS Time Lock "), gpsTimeLockOk ? P("OK") : P("NOT OK"));
+            Log(gpsTimeLockOk ? P("OK") : P("NOT OK"));
             
             if (gpsTimeLockOk)
             {

@@ -27,26 +27,33 @@ public:
         // WSPR Stuff
         static const uint8_t CALLSIGN_LEN = 6;
         
-        char *callsign[CALLSIGN_LEN + 1] = { 0 };
+        char callsign[CALLSIGN_LEN + 1] = { 0 };
         
         WSPRMessageTransmitter::Calibration mtCalibration;
     };
+
     
-    static uint8_t GetUserConfig(uint8_t pinConfigure, UserConfig &userConfig)
+public:
+
+    AppPicoTrackerWSPR1UserConfigManager(uint8_t pinConfigure)
+    : pinConfigure_(pinConfigure)
+    {
+        // Nothing to do
+    }
+    
+    uint8_t GetUserConfig(UserConfig &userConfig)
     {
         uint8_t retVal = 1;
         
-        EepromAccessor<UserConfig> ea;
-
-        if (DetectSerialInput(pinConfigure))
+        if (DetectUserWantsToConfigure())
         {
-            retVal = GetUserConfigBySerial(userConfig, ea);
+            retVal = InteractivelyConfigure(userConfig);
         }
         else
         {
             LogNNL(P("No configure signal -- "));
             
-            retVal = ea.Read(userConfig);
+            retVal = ea_.Read(userConfig);
             
             if (retVal)
             {
@@ -61,7 +68,7 @@ public:
         return retVal;
     }
     
-    static uint8_t DetectSerialInput(uint8_t pinConfigure)
+    uint8_t DetectUserWantsToConfigure()
     {
         uint8_t retVal = 0;
         
@@ -69,28 +76,35 @@ public:
         // The only way this pin could be low would be if something was pulling
         // it low.
         // That is our signal.
-        PAL.PinMode(pinConfigure, INPUT_PULLUP);
+        PAL.PinMode(pinConfigure_, INPUT_PULLUP);
         
         Log(P("Ground to configure"));
-        PAL.Delay(5000);
         
-        if (PAL.DigitalRead(pinConfigure) == 0)
+        uint32_t timeNow = PAL.Millis();
+        
+        uint8_t cont = 1;
+        while (cont)
         {
-            retVal = 1;
-            
-            Log(P("OK: un-ground to continue\n"));
-            
-            while (PAL.DigitalRead(pinConfigure) == 0) {}
+            if (PAL.DigitalRead(pinConfigure_) == 0)
+            {
+                retVal = 1;
+                
+                cont = 0;
+            }
+            else if (PAL.Millis() - timeNow >= 5000)
+            {
+                cont = 0;
+            }
         }
         
         return retVal;
     }
     
-    static uint8_t GetUserConfigBySerial(UserConfig &userConfig, EepromAccessor<UserConfig> &ea)
+    uint8_t InteractivelyConfigure(UserConfig &userConfig)
     {
         uint8_t retVal = 0;
         
-        uint8_t userConfigAcquired = ea.Read(userConfig);
+        uint8_t userConfigAcquired = ea_.Read(userConfig);
         
         if (userConfigAcquired)
         {
@@ -101,72 +115,55 @@ public:
             Log(P("No prior config, defaulting"));
         }
         
-        SerialAsyncConsole<5,20>  console;
+        SerialAsyncConsoleMenu<8, 1> menu;
         
-        console.RegisterCommand("set", [](char *cmdStr){
-            Str str(cmdStr);
-            
-            uint8_t handled = 1;
-            
-            uint8_t tokenCount = str.TokenCount(' ');
-            if (tokenCount >= 2)
-            {
-                const char *p = str.TokenAtIdx(1, ' ');
-                
-                if (tokenCount == 3)
-                {
-                    if (!strcmp(p, "minMilliVoltGpsLocationLock"))
-                    {
-                    }
-                    else if (!strcmp(p, "minMilliVoltGpsTimeLock"))
-                    {
-                    }
-                    else if (!strcmp(p, "minMilliVoltTransmit"))
-                    {
-                    }
-                    else if (!strcmp(p, "gpsLockTimeoutMs"))
-                    {
-                    }
-                    else if (!strcmp(p, "callsign"))
-                    {
-                    }
-                    else if (!strcmp(p, "crystalCorrectionFactor "))
-                    {
-                    }
-                    else if (!strcmp(p, "systemClockOffsetMs "))
-                    {
-                    }
-                    else
-                    {
-                        handled = 0;
-                    }
-                }
-                else if (tokenCount == 2)
-                {
-                    if (!strcmp(p, "run"))
-                    {
-                        Evm::GetInstance().EndMainLoop();
-                    }
-                    else
-                    {
-                        handled = 0;
-                    }
-                }
-            }
-            
-            if (handled)
-            {
-                // store updated config in EEPROM
-            }
+        menu.RegisterParamU8(P("solarMode"),                    &userConfig.solarMode);
+        menu.RegisterParamU16(P("minMilliVoltGpsLocationLock"), &userConfig.minMilliVoltGpsLocationLock);
+        menu.RegisterParamU16(P("minMilliVoltGpsTimeLock"),     &userConfig.minMilliVoltGpsTimeLock);
+        menu.RegisterParamU16(P("minMilliVoltTransmit"),        &userConfig.minMilliVoltTransmit);
+        menu.RegisterParamU32(P("gpsLockTimeoutMs"),            &userConfig.gpsLockTimeoutMs);
+        menu.RegisterParamSTR(P("callsign"),                     userConfig.callsign, UserConfig::CALLSIGN_LEN);
+        menu.RegisterParamI32(P("crystalCorrectionFactor"),     &userConfig.mtCalibration.crystalCorrectionFactor);
+        menu.RegisterParamI32(P("systemClockOffsetMs"),         &userConfig.mtCalibration.systemClockOffsetMs);
+        
+        menu.RegisterCommand(P("run"), [](){
+            Evm::GetInstance().EndMainLoop();
         });
         
-        console.Start();
+        menu.SetOnSetCallback([this, &menu, &userConfig](){
+            Log(P("Saving"));
+            
+            ea_.Write(userConfig);
+            
+            menu.ShowParams();
+        });
+        
+        menu.ShowAll();
+        menu.Start();
         Evm::GetInstance().HoldStackDangerously();
         
         return retVal;
     }
+    
+private:
+
+    uint8_t pinConfigure_;
+    
+    EepromAccessor<UserConfig> ea_;
 
 };
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #endif  // __APP_PICO_TRACKER_WSPR_1_USER_CONFIG_MANAGER_H__
