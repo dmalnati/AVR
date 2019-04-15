@@ -26,32 +26,32 @@ extern "C" {
   #include "utility/twi.h"
 }
 
-#include "Wire.h"
+#include "ThinWire.h"
 
 // Initialize Class Variables //////////////////////////////////////////////////
 
-uint8_t TwoWire::rxBuffer[BUFFER_LENGTH];
-uint8_t TwoWire::rxBufferIndex = 0;
-uint8_t TwoWire::rxBufferLength = 0;
+uint8_t ThinTwoWire::rxBuffer[BUFFER_LENGTH];
+uint8_t ThinTwoWire::rxBufferIndex = 0;
+uint8_t ThinTwoWire::rxBufferLength = 0;
 
-uint8_t TwoWire::txAddress = 0;
-uint8_t TwoWire::txBuffer[BUFFER_LENGTH];
-uint8_t TwoWire::txBufferIndex = 0;
-uint8_t TwoWire::txBufferLength = 0;
+uint8_t ThinTwoWire::txAddress = 0;
+uint8_t ThinTwoWire::txBuffer[BUFFER_LENGTH];
+uint8_t ThinTwoWire::txBufferIndex = 0;
+uint8_t ThinTwoWire::txBufferLength = 0;
 
-uint8_t TwoWire::transmitting = 0;
-void (*TwoWire::user_onRequest)(void);
-void (*TwoWire::user_onReceive)(int);
+uint8_t ThinTwoWire::transmitting = 0;
+void (*ThinTwoWire::user_onRequest)(void);
+void (*ThinTwoWire::user_onReceive)(int);
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-TwoWire::TwoWire()
+ThinTwoWire::ThinTwoWire()
 {
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void TwoWire::begin(void)
+void ThinTwoWire::begin(void)
 {
   rxBufferIndex = 0;
   rxBufferLength = 0;
@@ -62,7 +62,7 @@ void TwoWire::begin(void)
   twi_init();
 }
 
-void TwoWire::begin(uint8_t address)
+void ThinTwoWire::begin(uint8_t address)
 {
   twi_setAddress(address);
   twi_attachSlaveTxEvent(onRequestService);
@@ -70,22 +70,22 @@ void TwoWire::begin(uint8_t address)
   begin();
 }
 
-void TwoWire::begin(int address)
+void ThinTwoWire::begin(int address)
 {
   begin((uint8_t)address);
 }
 
-void TwoWire::end(void)
+void ThinTwoWire::end(void)
 {
   twi_disable();
 }
 
-void TwoWire::setClock(uint32_t clock)
+void ThinTwoWire::setClock(uint32_t clock)
 {
   twi_setFrequency(clock);
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize, uint8_t sendStop)
+uint8_t ThinTwoWire::requestFrom(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize, uint8_t sendStop)
 {
   if (isize > 0) {
   // send internal address; this mode allows sending a repeated start to access
@@ -118,26 +118,26 @@ uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint32_t iaddres
   return read;
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop) {
+uint8_t ThinTwoWire::requestFrom(uint8_t address, uint8_t quantity, uint8_t sendStop) {
 	return requestFrom((uint8_t)address, (uint8_t)quantity, (uint32_t)0, (uint8_t)0, (uint8_t)sendStop);
 }
 
-uint8_t TwoWire::requestFrom(uint8_t address, uint8_t quantity)
+uint8_t ThinTwoWire::requestFrom(uint8_t address, uint8_t quantity)
 {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity)
+uint8_t ThinTwoWire::requestFrom(int address, int quantity)
 {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)true);
 }
 
-uint8_t TwoWire::requestFrom(int address, int quantity, int sendStop)
+uint8_t ThinTwoWire::requestFrom(int address, int quantity, int sendStop)
 {
   return requestFrom((uint8_t)address, (uint8_t)quantity, (uint8_t)sendStop);
 }
 
-void TwoWire::beginTransmission(uint8_t address)
+void ThinTwoWire::beginTransmission(uint8_t address)
 {
   // indicate that we are transmitting
   transmitting = 1;
@@ -148,7 +148,7 @@ void TwoWire::beginTransmission(uint8_t address)
   txBufferLength = 0;
 }
 
-void TwoWire::beginTransmission(int address)
+void ThinTwoWire::beginTransmission(int address)
 {
   beginTransmission((uint8_t)address);
 }
@@ -166,7 +166,7 @@ void TwoWire::beginTransmission(int address)
 //	no call to endTransmission(true) is made. Some I2C
 //	devices will behave oddly if they do not see a STOP.
 //
-uint8_t TwoWire::endTransmission(uint8_t sendStop)
+uint8_t ThinTwoWire::endTransmission(uint8_t sendStop)
 {
   // transmit buffer (blocking)
   uint8_t ret = twi_writeTo(txAddress, txBuffer, txBufferLength, 1, sendStop);
@@ -181,7 +181,7 @@ uint8_t TwoWire::endTransmission(uint8_t sendStop)
 //	This provides backwards compatibility with the original
 //	definition, and expected behaviour, of endTransmission
 //
-uint8_t TwoWire::endTransmission(void)
+uint8_t ThinTwoWire::endTransmission(void)
 {
   return endTransmission(true);
 }
@@ -189,13 +189,12 @@ uint8_t TwoWire::endTransmission(void)
 // must be called in:
 // slave tx event callback
 // or after beginTransmission(address)
-size_t TwoWire::write(uint8_t data)
+size_t ThinTwoWire::write(uint8_t data)
 {
   if(transmitting){
   // in master transmitter mode
     // don't bother if buffer is full
     if(txBufferLength >= BUFFER_LENGTH){
-      setWriteError();
       return 0;
     }
     // put byte in tx buffer
@@ -214,7 +213,7 @@ size_t TwoWire::write(uint8_t data)
 // must be called in:
 // slave tx event callback
 // or after beginTransmission(address)
-size_t TwoWire::write(const uint8_t *data, size_t quantity)
+size_t ThinTwoWire::write(const uint8_t *data, size_t quantity)
 {
   if(transmitting){
   // in master transmitter mode
@@ -232,7 +231,7 @@ size_t TwoWire::write(const uint8_t *data, size_t quantity)
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::available(void)
+int ThinTwoWire::available(void)
 {
   return rxBufferLength - rxBufferIndex;
 }
@@ -240,7 +239,7 @@ int TwoWire::available(void)
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::read(void)
+int ThinTwoWire::read(void)
 {
   int value = -1;
   
@@ -256,7 +255,7 @@ int TwoWire::read(void)
 // must be called in:
 // slave rx event callback
 // or after requestFrom(address, numBytes)
-int TwoWire::peek(void)
+int ThinTwoWire::peek(void)
 {
   int value = -1;
   
@@ -267,13 +266,13 @@ int TwoWire::peek(void)
   return value;
 }
 
-void TwoWire::flush(void)
+void ThinTwoWire::flush(void)
 {
   // XXX: to be implemented.
 }
 
 // behind the scenes function that is called when data is received
-void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
+void ThinTwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
 {
   // don't bother if user hasn't registered a callback
   if(!user_onReceive){
@@ -298,7 +297,7 @@ void TwoWire::onReceiveService(uint8_t* inBytes, int numBytes)
 }
 
 // behind the scenes function that is called when data is requested
-void TwoWire::onRequestService(void)
+void ThinTwoWire::onRequestService(void)
 {
   // don't bother if user hasn't registered a callback
   if(!user_onRequest){
@@ -313,18 +312,18 @@ void TwoWire::onRequestService(void)
 }
 
 // sets function called on slave write
-void TwoWire::onReceive( void (*function)(int) )
+void ThinTwoWire::onReceive( void (*function)(int) )
 {
   user_onReceive = function;
 }
 
 // sets function called on slave read
-void TwoWire::onRequest( void (*function)(void) )
+void ThinTwoWire::onRequest( void (*function)(void) )
 {
   user_onRequest = function;
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
-TwoWire Wire = TwoWire();
+ThinTwoWire ThinWire = ThinTwoWire();
 
