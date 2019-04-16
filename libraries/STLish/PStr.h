@@ -66,9 +66,7 @@ private:
     
     static const char *GetDefaultValue()
     {
-        static PStr pStr = P("");
-        
-        return (const char *)pStr;
+        return P("");
     }
 };
 
