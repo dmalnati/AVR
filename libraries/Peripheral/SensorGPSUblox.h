@@ -4,7 +4,7 @@
 
 #include <math.h>
 
-#include "SoftwareSerial.h"
+#include "ThinSoftwareSerial.h"
 
 #include "PAL.h"
 #include "TimedEventHandler.h"
@@ -123,7 +123,7 @@ public:
     }
     
     // Debug
-    SoftwareSerial &DebugGetSS()
+    ThinSoftwareSerial &DebugGetSS()
     {
         return ss_;
     }
@@ -962,7 +962,8 @@ private:
     uint8_t pinRx_;
     uint8_t pinTx_;
     
-    SoftwareSerial ss_;
+    ThinSoftwareSerial ss_;
+    
     TinyGPS        tgps_;
     
     UbxMessage<MAX_UBX_MESSAGE_SIZE> ubxMessage_;
