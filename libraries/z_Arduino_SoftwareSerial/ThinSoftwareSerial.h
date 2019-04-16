@@ -29,8 +29,8 @@ The latest version of this library can always be found at
 http://arduiniana.org.
 */
 
-#ifndef SoftwareSerial_h
-#define SoftwareSerial_h
+#ifndef ThinSoftwareSerial_h
+#define ThinSoftwareSerial_h
 
 #include <inttypes.h>
 #include <Stream.h>
@@ -47,7 +47,7 @@ http://arduiniana.org.
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #endif
 
-class SoftwareSerial : public Stream
+class ThinSoftwareSerial
 {
 private:
   // per object data
@@ -72,7 +72,7 @@ private:
   static uint8_t _receive_buffer[_SS_MAX_RX_BUFF]; 
   static volatile uint8_t _receive_buffer_tail;
   static volatile uint8_t _receive_buffer_head;
-  static SoftwareSerial *active_object;
+  static ThinSoftwareSerial *active_object;
 
   // private methods
   inline void recv() __attribute__((__always_inline__));
@@ -89,8 +89,8 @@ private:
 
 public:
   // public methods
-  SoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic = false);
-  ~SoftwareSerial();
+  ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic = false);
+  ~ThinSoftwareSerial();
   void begin(long speed);
   bool listen();
   void end();
@@ -99,14 +99,13 @@ public:
   bool overflow() { bool ret = _buffer_overflow; if (ret) _buffer_overflow = false; return ret; }
   int peek();
 
-  virtual size_t write(uint8_t byte);
-  virtual int read();
-  virtual int available();
-  virtual void flush();
+  size_t write(uint8_t byte);
+  size_t write(const uint8_t *buffer, size_t size);
+  int read();
+  int available();
+  void flush();
   operator bool() { return true; }
   
-  using Print::write;
-
   // public only for easy access by interrupt handlers
   static inline void handle_interrupt() __attribute__((__always_inline__));
 };
