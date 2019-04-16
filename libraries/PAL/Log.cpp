@@ -146,6 +146,20 @@ void Log(char val)
     LogNL();
 }
 
+void LogXNNL(char val, uint8_t count)
+{
+    for (uint8_t i = 0; i < count; ++i)
+    {
+        LogNNL(val);
+    }
+}
+
+void LogX(char val, uint8_t count)
+{
+    LogNNL(val, count);
+    LogNL();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //

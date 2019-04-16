@@ -66,6 +66,9 @@ extern void Log(PStr val);
 
 extern void LogNNL(char val);
 extern void Log(char val);
+extern void LogXNNL(char val, uint8_t count);
+extern void LogX(char val, uint8_t count);
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
