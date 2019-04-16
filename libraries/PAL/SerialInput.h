@@ -691,15 +691,46 @@ public:
     
     void ShowParams()
     {
-        Log(P("Parameters:"));
+        // determine the max len of any param
+        uint8_t maxLen = 0;
         for (uint8_t i = 0; i < paramListIdx_; ++i)
         {
             Param &param = paramList_[i];
             
-            if (param.paramType != ParamType::STR)
+            uint8_t len = strlen_P(param.paramName);
+            
+            if (param.paramType == ParamType::STR)
             {
-                LogNNL(param.paramName, ": ");
+                len += 2;                             // for the square brackets
+                len += param.paramData < 10 ? 1 : 2;  // for the char count
             }
+            
+            if (len > maxLen)
+            {
+                maxLen = len;
+            }
+        }
+        
+        Log(P("Parameters: (set <param> <val>)"));
+        for (uint8_t i = 0; i < paramListIdx_; ++i)
+        {
+            Param &param = paramList_[i];
+            
+            uint8_t len = strlen_P(param.paramName);
+            
+            LogNNL(param.paramName);
+            if (param.paramType == ParamType::STR)
+            {
+                len += 2;                             // for the square brackets
+                len += param.paramData < 10 ? 1 : 2;  // for the char count
+                
+                LogNNL('[', param.paramData, "]");
+            }
+
+            uint8_t pad = maxLen - len;
+            LogXNNL(' ', pad);
+            
+            LogNNL(P(" : "));
             
                  if (param.paramType == ParamType::STR) { LogParamSTR(param); }
             else if (param.paramType == ParamType::U32) { LogParamU32(param); }
@@ -872,7 +903,7 @@ private:
     
     void LogParamSTR(Param &param)
     {
-        Log(param.paramName, '[', param.paramData, "]: ", (const char *)param.paramPtr);
+        Log((const char *)param.paramPtr);
     }
     void LogParamU32(Param &param)
     {
