@@ -182,7 +182,7 @@ private:
         // Get GPS location lock if one isn't already available from a prior run.
         // Consider available power if solar.
         if (DoThisStep(Step::GPS_LOCATION_LOCK) &&
-            InputVoltageSufficient(userConfig_.minMilliVoltGpsLocationLock))
+            InputVoltageSufficient(userConfig_.power.minMilliVoltGpsLocationLock))
         {
             // Start GPS
             Log(P("GPS ON"));
@@ -192,7 +192,7 @@ private:
             gpsLocationLockOk_ =
                 gps_.GetNewLocationMeasurementSynchronousUnderWatchdog(
                     &gpsLocationMeasurement_,
-                     userConfig_.gpsLockTimeoutMs);
+                     userConfig_.gps.gpsLockTimeoutMs);
         
             if (gpsLocationLockOk_)
             {
@@ -238,7 +238,7 @@ private:
         // Sync to 2 minute mark if GPS location acquired
         // Consider available power if solar.
         if (DoThisStep(Step::GPS_TIME_LOCK_AND_SEND) &&
-            InputVoltageSufficient(userConfig_.minMilliVoltGpsTimeLock) &&
+            InputVoltageSufficient(userConfig_.power.minMilliVoltGpsTimeLock) &&
             gpsLocationLockOk_)
         {
             Log(P("GPS locking 2 min"));
@@ -247,7 +247,7 @@ private:
 
             function<void(void)>    fnBeforeAttempt = [this]() { StartGPS(); };
             function<void(void)>    fnAfterAttempt  = [this]() { StopGPS(); };
-            function<uint8_t(void)> fnOkToContinue  = [this]() { return InputVoltageSufficient(userConfig_.minMilliVoltTransmit); };
+            function<uint8_t(void)> fnOkToContinue  = [this]() { return InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit); };
             
             uint8_t gpsTimeLockOk =
                 gps_.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
@@ -277,7 +277,7 @@ private:
             {
                 // If time locked, prepare to transmit.
                 // Consider available power if solar.
-                if (InputVoltageSufficient(userConfig_.minMilliVoltTransmit))
+                if (InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit))
                 {
                     PreSendMessage();
                     
@@ -359,7 +359,7 @@ private:
     {
         uint8_t retVal = 0;
         
-        if (userConfig_.solarMode)
+        if (userConfig_.power.solarMode)
         {
             if (step == Step::GPS_LOCATION_LOCK)
             {
@@ -384,7 +384,7 @@ private:
     {
         uint8_t retVal = 0;
         
-        if (userConfig_.solarMode)
+        if (userConfig_.power.solarMode)
         {
             // Circuit has a voltage divider halve the input voltage.
             uint16_t inputMilliVolt = PAL.AnalogRead(cfg_.pinInputVoltage) * 2;
@@ -426,9 +426,9 @@ private:
         
         // Configure transmitter with calibration details
         // Debug
-        userConfig_.mtCalibration.crystalCorrectionFactor = 0;
-        userConfig_.mtCalibration.systemClockOffsetMs     = 8;
-        wsprMessageTransmitter_.SetCalibration(userConfig_.mtCalibration);
+        userConfig_.radio.mtCalibration.crystalCorrectionFactor = 0;
+        userConfig_.radio.mtCalibration.systemClockOffsetMs     = 8;
+        wsprMessageTransmitter_.SetCalibration(userConfig_.radio.mtCalibration);
         
         // Set up the transmitter to kick the watchdog when sending data later
         wsprMessageTransmitter_.SetCallbackOnBitChange([](){
