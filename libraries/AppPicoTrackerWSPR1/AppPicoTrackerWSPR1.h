@@ -689,8 +689,8 @@ private:
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
     AppPicoTrackerWSPR1Config &cfg_;
-    
-    AppPicoTrackerWSPR1UserConfigManager::UserConfig userConfig_;
+
+    AppPicoTrackerWSPR1UserConfig userConfig_;
     
     SolarState  solarState_;
     
