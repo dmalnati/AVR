@@ -30,7 +30,7 @@
 #define SI5351_H_
 
 #include "Arduino.h"
-#include "Wire.h"
+#include "ThinWire.h"
 #include <stdint.h>
 
 /* Define definitions */

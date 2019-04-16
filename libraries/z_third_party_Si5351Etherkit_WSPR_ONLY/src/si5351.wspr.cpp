@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #include "Arduino.h"
-#include "Wire.h"
+#include "ThinWire.h"
 #include "si5351.wspr.h"
 
 
@@ -63,12 +63,12 @@ Si5351::Si5351(uint8_t i2c_addr):
 bool Si5351::init(uint8_t xtal_load_c, uint32_t /*xo_freq*/, int32_t corr)
 {
 	// Start I2C comms
-	Wire.begin();
+	ThinWire.begin();
 
 	// Check for a device on the bus, bail out if it is not there
-	Wire.beginTransmission(i2c_bus_addr);
+	ThinWire.beginTransmission(i2c_bus_addr);
 	uint8_t reg_val;
-  reg_val = Wire.endTransmission();
+  reg_val = ThinWire.endTransmission();
 
 	if(reg_val == 0)
 	{
@@ -793,37 +793,37 @@ void Si5351::set_ref_freq(uint32_t ref_freq, enum si5351_pll_input ref_osc)
 
 uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
+	ThinWire.beginTransmission(i2c_bus_addr);
+	ThinWire.write(addr);
 	for(int i = 0; i < bytes; i++)
 	{
-		Wire.write(data[i]);
+		ThinWire.write(data[i]);
 	}
-	return Wire.endTransmission();
+	return ThinWire.endTransmission();
 
 }
 
 uint8_t Si5351::si5351_write(uint8_t addr, uint8_t data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.write(data);
-	return Wire.endTransmission();
+	ThinWire.beginTransmission(i2c_bus_addr);
+	ThinWire.write(addr);
+	ThinWire.write(data);
+	return ThinWire.endTransmission();
 }
 
 uint8_t Si5351::si5351_read(uint8_t addr)
 {
 	uint8_t reg_val = 0;
 
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.endTransmission();
+	ThinWire.beginTransmission(i2c_bus_addr);
+	ThinWire.write(addr);
+	ThinWire.endTransmission();
 
-	Wire.requestFrom(i2c_bus_addr, (uint8_t)1, (uint8_t)false);
+	ThinWire.requestFrom(i2c_bus_addr, (uint8_t)1, (uint8_t)false);
 
-	while(Wire.available())
+	while(ThinWire.available())
 	{
-		reg_val = Wire.read();
+		reg_val = ThinWire.read();
 	}
 
 	return reg_val;
