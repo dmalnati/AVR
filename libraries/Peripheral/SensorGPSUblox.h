@@ -513,28 +513,32 @@ public:
 
 
 private:
+
     
     void GetMeasurementInternal(Measurement *m)
     {
         constexpr static const double CM_TO_FT = 0.0328084;
         
+        // temporary variables for some values we don't care to retain
+        uint32_t fixAge     = 0;
+        uint8_t  hundredths = 0;
+        
         // Timestamp this moment as being the moment the lock was considered acquired
         m->clockTimeAtMeasurement = PAL.Millis();
         
         // Ask TinyGPS for decoded data
-        tgps_.get_position(&m->latitudeDegreesMillionths,
-                           &m->longitudeDegreesMillionths,
-                           &m->msSinceLastFix);
-        tgps_.get_datetime(&m->date, &m->time, NULL);
-        uint8_t hundredths;
-        tgps_.crack_datetime(&m->year,
-                             &m->month,
-                             &m->day,
-                             &m->hour,
-                             &m->minute,
-                             &m->second,
-                             &hundredths,
-                             &m->fixAge);
+        tgps_.get_position(m->latitudeDegreesMillionths,
+                           m->longitudeDegreesMillionths,
+                           m->msSinceLastFix);
+        tgps_.get_datetime(m->date, m->time, fixAge);
+        tgps_.crack_datetime(m->year,
+                             m->month,
+                             m->day,
+                             m->hour,
+                             m->minute,
+                             m->second,
+                             hundredths,
+                             m->fixAge);
         m->millisecond = hundredths * 10;
  
         m->courseDegrees = tgps_.course() / 100;    // convert from 100ths of a degree

@@ -38,7 +38,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define _GPS_KMPH_PER_KNOT 1.852
 #define _GPS_MILES_PER_METER 0.00062137112
 #define _GPS_KM_PER_METER 0.001
-// #define _GPS_NO_STATS
 
 class TinyGPS
 {
@@ -78,10 +77,10 @@ public:
 
   // lat/long in MILLIONTHs of a degree and age of fix in milliseconds
   // (note: versions 12 and earlier gave lat/long in 100,000ths of a degree.
-  void get_position(long *latitude, long *longitude, unsigned long *fix_age = 0);
+  void get_position(long &latitude, long &longitude, unsigned long &fix_age);
 
   // date as ddmmyy, time as hhmmsscc, and age in milliseconds
-  void get_datetime(unsigned long *date, unsigned long *time, unsigned long *age = 0);
+  void get_datetime(unsigned long &date, unsigned long &time, unsigned long &age);
 
   // signed altitude in centimeters (from GPGGA sentence)
   inline long altitude() { return _altitude; }
@@ -98,25 +97,9 @@ public:
   // horizontal dilution of precision in 100ths
   inline unsigned long hdop() { return _hdop; }
 
-  void f_get_position(float *latitude, float *longitude, unsigned long *fix_age = 0);
-  void crack_datetime(int *year, byte *month, byte *day, 
-    byte *hour, byte *minute, byte *second, byte *hundredths = 0, unsigned long *fix_age = 0);
-  float f_altitude();
-  float f_course();
-  float f_speed_knots();
-  float f_speed_mph();
-  float f_speed_mps();
-  float f_speed_kmph();
+  void crack_datetime(int &year, byte &month, byte &day, 
+    byte &hour, byte &minute, byte &second, byte &hundredths, unsigned long &fix_age);
 
-  static int library_version() { return _GPS_VERSION; }
-
-  static float distance_between (float lat1, float long1, float lat2, float long2);
-  static float course_to (float lat1, float long1, float lat2, float long2);
-  static const char *cardinal(float course);
-
-#ifndef _GPS_NO_STATS
-  void stats(unsigned long *chars, unsigned short *good_sentences, unsigned short *failed_cs);
-#endif
 
 private:
   enum {_GPS_SENTENCE_GPGGA, _GPS_SENTENCE_GPRMC, _GPS_SENTENCE_OTHER};
@@ -150,13 +133,6 @@ private:
   byte _term_offset;
   bool _gps_data_good;
 
-#ifndef _GPS_NO_STATS
-  // statistics
-  unsigned long _encoded_characters;
-  unsigned short _good_sentences;
-  unsigned short _failed_checksum;
-  unsigned short _passed_checksum;
-#endif
 
   // internal utilities
   int from_hex(char a);
