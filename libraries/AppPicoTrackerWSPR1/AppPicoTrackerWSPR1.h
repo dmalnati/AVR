@@ -73,6 +73,7 @@ public:
     {
         // Init serial and announce startup
         LogStart(9600);
+        LogNL();
         Log(P("Starting"));
         
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
@@ -122,9 +123,9 @@ public:
         //
         // At this point during startup, there is no other competition for ram.
         {
-            AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure);
+            AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
-            userConfigOk = mgr.GetUserConfig(userConfig_);
+            userConfigOk = mgr.GetUserConfig();
         }
         
         if (userConfigOk)
@@ -152,6 +153,8 @@ public:
         }
         else
         {
+            Log(P("Bad Configuration"));
+            
             // Blink to indicate bad configuration
             while (1)
             {
@@ -659,6 +662,13 @@ private:
                 No information persists across reboots
                 
         
+        
+        
+        sticky only applies in battery mode?
+        
+        voltages only apply in solar mode
+        
+        high/low alt applies generally
         
 */
         

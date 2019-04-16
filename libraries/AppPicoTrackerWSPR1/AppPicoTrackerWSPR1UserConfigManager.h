@@ -70,29 +70,36 @@ public:
     
 public:
 
-    AppPicoTrackerWSPR1UserConfigManager(uint8_t pinConfigure)
+    AppPicoTrackerWSPR1UserConfigManager(uint8_t pinConfigure, UserConfig &userConfig)
     : pinConfigure_(pinConfigure)
+    , userConfig_(userConfig)
+    , saved_(0)
     {
         // Nothing to do
     }
     
-    uint8_t GetUserConfig(UserConfig &userConfig)
+    uint8_t GetUserConfig()
     {
         uint8_t retVal = 1;
         
+        SetupMenu();
+        
         if (DetectUserWantsToConfigure())
         {
-            retVal = InteractivelyConfigure(userConfig);
+            retVal = InteractivelyConfigure();
         }
         else
         {
             LogNNL(P("No configure signal -- "));
             
-            retVal = ea_.Read(userConfig);
+            retVal = ea_.Read(userConfig_);
             
             if (retVal)
             {
                 Log(P("OK: prior config found"));
+                
+                menu_.ShowParams();
+                LogNL();
             }
             else
             {
@@ -103,6 +110,9 @@ public:
         return retVal;
     }
     
+    
+private:
+
     uint8_t DetectUserWantsToConfigure()
     {
         uint8_t retVal = 0;
@@ -113,33 +123,44 @@ public:
         // That is our signal.
         PAL.PinMode(pinConfigure_, INPUT_PULLUP);
         
-        Log(P("Ground to configure"));
+        LogNNL(P("Ground to configure "));
         
-        uint32_t timeNow = PAL.Millis();
+        uint32_t timeStart   = PAL.Millis();
+        uint32_t timeLastDot = timeStart;
         
         uint8_t cont = 1;
         while (cont)
         {
+            uint32_t timeNow = PAL.Millis();
+            
+            if (timeNow - timeLastDot >= 1000)
+            {
+                timeLastDot = timeLastDot + 1000;
+                
+                LogNNL('.');
+            }
+            
             if (PAL.DigitalRead(pinConfigure_) == 0)
             {
                 retVal = 1;
                 
                 cont = 0;
             }
-            else if (PAL.Millis() - timeNow >= 5000)
+            else if (timeNow - timeStart >= 5000)
             {
                 cont = 0;
             }
         }
+        LogNL();
         
         return retVal;
     }
     
-    uint8_t InteractivelyConfigure(UserConfig &userConfig)
+    uint8_t InteractivelyConfigure()
     {
         uint8_t retVal = 0;
         
-        uint8_t userConfigAcquired = ea_.Read(userConfig);
+        uint8_t userConfigAcquired = ea_.Read(userConfig_);
         
         if (userConfigAcquired)
         {
@@ -151,52 +172,66 @@ public:
         }
         LogNL();
         
-        SerialAsyncConsoleMenu<13, 1> menu;
+        saved_ = 0;
         
-        menu.RegisterParamSTR(P("id"),                           userConfig.device.id, UserConfig::ID_LEN);
+        menu_.ShowAll();
+        menu_.Start();
+        Evm::GetInstance().HoldStackDangerously();
         
-        menu.RegisterParamSTR(P("callsign"),                     userConfig.wspr.callsign, UserConfig::CALLSIGN_LEN);
+        retVal = saved_;
         
-        menu.RegisterParamU8(P("solarMode"),                    &userConfig.power.solarMode);
-        menu.RegisterParamU16(P("minMilliVoltGpsLocationLock"), &userConfig.power.minMilliVoltGpsLocationLock);
-        menu.RegisterParamU16(P("minMilliVoltGpsTimeLock"),     &userConfig.power.minMilliVoltGpsTimeLock);
-        menu.RegisterParamU16(P("minMilliVoltTransmit"),        &userConfig.power.minMilliVoltTransmit);
+        return retVal;
+    }
+    
+    void SetupMenu()
+    {
+        menu_.RegisterParamSTR(P("id"),                           userConfig_.device.id, UserConfig::ID_LEN);
         
-        menu.RegisterParamU32(P("gpsLockTimeoutMs"),            &userConfig.gps.gpsLockTimeoutMs);
+        menu_.RegisterParamSTR(P("callsign"),                     userConfig_.wspr.callsign, UserConfig::CALLSIGN_LEN);
         
-        menu.RegisterParamU32(P("lhAltFtThreshold"),            &userConfig.geo.lowHighAltitudeFtThreshold);
-        menu.RegisterParamU32(P("hAlt.wakeAndEvaluateMs"),      &userConfig.geo.highAltitude.wakeAndEvaluateMs);
-        menu.RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &userConfig.geo.lowAltitude.wakeAndEvaluateMs);
-        menu.RegisterParamU32(P("lAlt.stickyMs"),               &userConfig.geo.lowAltitude.stickyMs);
+        menu_.RegisterParamU8(P("solarMode"),                    &userConfig_.power.solarMode);
+        menu_.RegisterParamU16(P("minMilliVoltGpsLocationLock"), &userConfig_.power.minMilliVoltGpsLocationLock);
+        menu_.RegisterParamU16(P("minMilliVoltGpsTimeLock"),     &userConfig_.power.minMilliVoltGpsTimeLock);
+        menu_.RegisterParamU16(P("minMilliVoltTransmit"),        &userConfig_.power.minMilliVoltTransmit);
         
-        menu.RegisterParamI32(P("crystalCorrectionFactor"),     &userConfig.radio.mtCalibration.crystalCorrectionFactor);
-        menu.RegisterParamI32(P("systemClockOffsetMs"),         &userConfig.radio.mtCalibration.systemClockOffsetMs);
+        menu_.RegisterParamU32(P("gpsLockTimeoutMs"),            &userConfig_.gps.gpsLockTimeoutMs);
         
-        menu.RegisterCommand(P("run"), [](){
+        menu_.RegisterParamU32(P("lhAltFtThreshold"),            &userConfig_.geo.lowHighAltitudeFtThreshold);
+        menu_.RegisterParamU32(P("hAlt.wakeAndEvaluateMs"),      &userConfig_.geo.highAltitude.wakeAndEvaluateMs);
+        menu_.RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &userConfig_.geo.lowAltitude.wakeAndEvaluateMs);
+        menu_.RegisterParamU32(P("lAlt.stickyMs"),               &userConfig_.geo.lowAltitude.stickyMs);
+        
+        menu_.RegisterParamI32(P("crystalCorrectionFactor"),     &userConfig_.radio.mtCalibration.crystalCorrectionFactor);
+        menu_.RegisterParamI32(P("systemClockOffsetMs"),         &userConfig_.radio.mtCalibration.systemClockOffsetMs);
+        
+        menu_.RegisterCommand(P("run"), [](){
             Evm::GetInstance().EndMainLoop();
         });
         
-        menu.SetOnSetCallback([this, &menu, &userConfig](){
+        menu_.SetOnSetCallback([this](){
+            LogNL();
             Log(P("Saving"));
+            LogNL();
             
-            ea_.Write(userConfig);
-            ea_.Read(userConfig);
+            ea_.Write(userConfig_);
+            ea_.Read(userConfig_);
             
-            menu.ShowParams();
+            saved_ = 1;
+            
+            menu_.ShowParams();
         });
-        
-        menu.ShowAll();
-        menu.Start();
-        Evm::GetInstance().HoldStackDangerously();
-        
-        return retVal;
     }
     
 private:
 
     uint8_t pinConfigure_;
     
+    UserConfig &userConfig_;
+    
     EepromAccessor<UserConfig> ea_;
+    
+    SerialAsyncConsoleMenu<13, 1> menu_;
+    uint8_t saved_;
 
 };
 
