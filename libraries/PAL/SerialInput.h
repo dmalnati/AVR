@@ -946,6 +946,185 @@ private:
 
 
 
+#include "Eeprom.h"
+
+// Inherit from this.
+// Provide the type you want to be able to set values on.
+// Then decide the number of parameters you intend to expose.
+// If you want any commands, indicate those as well.
+template <typename T, uint8_t PARAM_COUNT, uint8_t CMD_COUNT = 0>
+class PersistantConfigManager
+{
+public:
+
+    PersistantConfigManager(uint8_t pinConfigure, T &config)
+    : pinConfigure_(pinConfigure)
+    , config_(config)
+    , saved_(0)
+    {
+        // Nothing to do
+    }
+    
+    uint8_t GetUserConfig()
+    {
+        uint8_t retVal = 1;
+        
+        if (DetectUserWantsToConfigure())
+        {
+            retVal = InteractivelyConfigure();
+        }
+        else
+        {
+            LogNNL(P("No configure signal -- "));
+            
+            retVal = ea_.Read(Config());
+            
+            if (retVal)
+            {
+                Log(P("OK: prior config found"));
+                LogNL();
+                
+                SetupMenu();
+                menu_.ShowParams();
+                LogNL();
+            }
+            else
+            {
+                Log(P("ERR: no prior config found"));
+            }
+        }
+        
+        return retVal;
+    }
+    
+    
+private:
+
+    uint8_t DetectUserWantsToConfigure()
+    {
+        uint8_t retVal = 0;
+        
+        // Force pin into a known high state.
+        // The only way this pin could be low would be if something was pulling
+        // it low.
+        // That is our signal.
+        PAL.PinMode(pinConfigure_, INPUT_PULLUP);
+        
+        LogNNL(P("Ground to configure "));
+        
+        uint32_t timeStart   = PAL.Millis();
+        uint32_t timeLastDot = timeStart;
+        
+        uint8_t cont = 1;
+        while (cont)
+        {
+            uint32_t timeNow = PAL.Millis();
+            
+            if (timeNow - timeLastDot >= 1000)
+            {
+                timeLastDot = timeLastDot + 1000;
+                
+                LogNNL('.');
+            }
+            
+            if (PAL.DigitalRead(pinConfigure_) == 0)
+            {
+                retVal = 1;
+                
+                cont = 0;
+            }
+            else if (timeNow - timeStart >= 5000)
+            {
+                cont = 0;
+            }
+        }
+        LogNL();
+        
+        return retVal;
+    }
+    
+    uint8_t InteractivelyConfigure()
+    {
+        uint8_t retVal = 0;
+        
+        uint8_t userConfigAcquired = ea_.Read(Config());
+        
+        if (userConfigAcquired)
+        {
+            Log(P("Prior config loaded"));
+        }
+        else
+        {
+            Log(P("No prior config, defaulting"));
+        }
+        LogNL();
+        
+        saved_ = 0;
+        
+        // Add our own command 
+        Menu().RegisterCommand(P("end"), [](){
+            Evm::GetInstance().EndMainLoop();
+        });
+        
+        // Save on change
+        Menu().SetOnSetCallback([this](){
+            LogNL();
+            Log(P("Saving"));
+            LogNL();
+            
+            ea_.Write(Config());
+            ea_.Read(Config());
+            
+            saved_ = 1;
+            
+            Menu().ShowParams();
+        });
+        
+        // Allow inheriting object to set up its interfaces
+        SetupMenu();
+        
+        // Display and let user interaction drive
+        Menu().ShowAll();
+        Menu().Start();
+        Evm::GetInstance().HoldStackDangerously();
+        
+        retVal = saved_;
+        
+        return retVal;
+    }
+    
+    // No implementation, inheriting class needs to implement
+    virtual void SetupMenu() = 0;
+    
+    
+protected:
+
+    using MenuType = SerialAsyncConsoleMenu<PARAM_COUNT, CMD_COUNT + 1>;
+    
+    MenuType &Menu()
+    {
+        return menu_;
+    }
+    
+    T &Config()
+    {
+        return config_;
+    }
+    
+    
+private:
+
+    uint8_t pinConfigure_;
+    
+    T &config_;
+    
+    EepromAccessor<T> ea_;
+    
+    MenuType menu_;
+    
+    uint8_t saved_;
+
+};
 
 
 
