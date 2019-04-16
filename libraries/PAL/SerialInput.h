@@ -965,7 +965,7 @@ public:
         // Nothing to do
     }
     
-    uint8_t GetUserConfig()
+    uint8_t GetConfig()
     {
         uint8_t retVal = 1;
         
