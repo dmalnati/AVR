@@ -1062,22 +1062,14 @@ private:
         saved_ = 0;
         
         // Add our own command 
-        Menu().RegisterCommand(P("end"), [](){
+        Menu().RegisterCommand(P("done"), [this](){
+            Save();
             Evm::GetInstance().EndMainLoop();
         });
         
         // Save on change
         Menu().SetOnSetCallback([this](){
-            LogNL();
-            Log(P("Saving"));
-            LogNL();
-            
-            ea_.Write(Config());
-            ea_.Read(Config());
-            
-            saved_ = 1;
-            
-            Menu().ShowParams();
+            Save();
         });
         
         // Allow inheriting object to set up its interfaces
@@ -1113,6 +1105,20 @@ protected:
     
     
 private:
+
+    void Save()
+    {
+            LogNL();
+            Log(P("Saving"));
+            LogNL();
+            
+            ea_.Write(Config());
+            ea_.Read(Config());
+            
+            saved_ = 1;
+            
+            Menu().ShowParams();
+    }
 
     uint8_t pinConfigure_;
     
