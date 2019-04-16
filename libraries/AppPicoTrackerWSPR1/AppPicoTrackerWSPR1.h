@@ -125,7 +125,7 @@ public:
         {
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
-            userConfigOk = mgr.GetUserConfig();
+            userConfigOk = mgr.GetConfig();
         }
         
         if (userConfigOk)
