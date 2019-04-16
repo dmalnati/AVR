@@ -54,6 +54,8 @@ public:
 
     void RadioOn()
     {
+        RadioOff();
+        
         // Apply calibration values
         // - param 1 - assuming 10pF load capacitence
             // notably didn't see difference at 10MHz testing between 8 and 10pF
@@ -70,6 +72,7 @@ public:
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
         
         // Enable the clock
+        radio_.set_clock_pwr(SI5351_CLK0, 1);
         radio_.output_enable(SI5351_CLK0, 1);
     }
     
@@ -121,8 +124,16 @@ public:
 
     void RadioOff()
     {
-        // Disable the clock
+        // Disable the clock and cut power for all 3 channels
+        
+        radio_.set_clock_pwr(SI5351_CLK0, 0);
         radio_.output_enable(SI5351_CLK0, 0);
+        
+        radio_.output_enable(SI5351_CLK1, 0);
+        radio_.set_clock_pwr(SI5351_CLK1, 0);
+        
+        radio_.output_enable(SI5351_CLK2, 0);
+        radio_.set_clock_pwr(SI5351_CLK2, 0);
     }
     
     
