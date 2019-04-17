@@ -138,7 +138,7 @@ void twi_setFrequency(uint32_t frequency)
 
 
 
-static const uint32_t TIMEOUT_DURATION = 100; 
+static const uint32_t TIMEOUT_DURATION = 10; 
 
 
 /* 
