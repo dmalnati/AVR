@@ -966,13 +966,13 @@ public:
         // Nothing to do
     }
     
-    uint8_t GetConfig()
+    uint8_t GetConfig(uint8_t letDefaultApplyAutomatically = 0)
     {
-        uint8_t retVal = 1;
+        uint8_t retVal = 0;
         
-        if (DetectUserWantsToConfigure())
+        if (DetectUserWantsToConfigure() || letDefaultApplyAutomatically)
         {
-            retVal = InteractivelyConfigure();
+            retVal = InteractivelyConfigure(letDefaultApplyAutomatically);
         }
         else
         {
@@ -1044,7 +1044,7 @@ private:
         return retVal;
     }
     
-    uint8_t InteractivelyConfigure()
+    uint8_t InteractivelyConfigure(uint8_t letDefaultApplyAutomatically)
     {
         uint8_t retVal = 0;
         
@@ -1078,8 +1078,16 @@ private:
         
         // Display and let user interaction drive
         Menu().ShowAll();
-        Menu().Start();
-        Evm::GetInstance().HoldStackDangerously();
+        
+        if (letDefaultApplyAutomatically)
+        {
+            Save();
+        }
+        else
+        {
+            Menu().Start();
+            Evm::GetInstance().HoldStackDangerously();
+        }
         
         retVal = saved_;
         
@@ -1109,16 +1117,16 @@ private:
 
     void Save()
     {
-            LogNL();
-            Log(P("Saving"));
-            LogNL();
-            
-            ea_.Write(Config());
-            ea_.Read(Config());
-            
-            saved_ = 1;
-            
-            Menu().ShowParams();
+        LogNL();
+        Log(P("Saving"));
+        LogNL();
+        
+        ea_.Write(Config());
+        ea_.Read(Config());
+        
+        saved_ = 1;
+        
+        Menu().ShowParams();
     }
 
     uint8_t pinConfigure_;
