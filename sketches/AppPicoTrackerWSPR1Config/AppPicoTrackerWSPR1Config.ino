@@ -16,6 +16,12 @@ static AppPicoTrackerWSPR1Config cfg =
     .pinGpsEnable   = 14,
     .pinGpsSerialRx = 23,
     .pinGpsSerialTx = 24,
+    // I choose 2 hours old as a cutoff, despite having seen much longer
+    // durations go by with accurate time on starup.
+    .gpsMaxAgeLocationLockMs = 2UL * 60UL * 60UL * 1000UL,
+    // I choose 5 seconds as a cutoff as I have seen in practice this
+    // works well.
+    .gpsMaxDurationTimeLockWaitMs = 5000,
 
     // WSPR TX
     .pinWsprTxEnable = 15,

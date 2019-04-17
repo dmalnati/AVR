@@ -13,7 +13,8 @@ struct AppPicoTrackerWSPR1UserConfig
     
     struct
     {
-        char id[ID_LEN + 1] = { 0 };
+        //char id[ID_LEN + 1] = { 0 };
+        char id[ID_LEN + 1] = "DM01";
     } device;
     
     // Solar vs battery related
@@ -29,13 +30,14 @@ struct AppPicoTrackerWSPR1UserConfig
     // GPS stuff
     struct
     {
-        uint32_t gpsLockTimeoutMs = 70000;
+        uint32_t gpsLockTimeoutMs = 150000; // 85th percentile cold start success
     } gps;
     
     // WSPR Stuff
     struct
     {
-        char callsign[CALLSIGN_LEN + 1] = { 0 };
+        //char callsign[CALLSIGN_LEN + 1] = { 0 };
+        char callsign[CALLSIGN_LEN + 1] = "KD2KDD";
     } wspr;
     
     // Tracker stuff

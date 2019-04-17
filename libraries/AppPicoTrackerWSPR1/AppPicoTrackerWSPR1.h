@@ -26,6 +26,9 @@ struct AppPicoTrackerWSPR1Config
     uint8_t pinGpsSerialRx; // receive GPS data from this pin
     uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
+    uint32_t gpsMaxAgeLocationLockMs;
+    uint32_t gpsMaxDurationTimeLockWaitMs;
+    
     // WSPR TX
     uint8_t pinWsprTxEnable;
     
@@ -125,7 +128,9 @@ public:
         {
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
-            userConfigOk = mgr.GetConfig();
+            // For use in testing out different configurations
+            uint8_t letDefaultApplyAutomatically = 1;
+            userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
         
         if (userConfigOk)
@@ -199,21 +204,16 @@ private:
         
             if (gpsLocationLockOk_)
             {
+                Log(P("OK"));
+                
                 solarState_ = SolarState::NEED_TO_TRANSMIT;
             }
             else
             {
-                // Underlying lock code relies on the fact that the GPS should
-                // get a relatively quick (seconds) time lock due to the GPS
-                // having previously got a location lock, seeding the GPS with
-                // enough information to time lock quickly.
-                //
-                // If we're unable to lock, something is wrong with that
-                // assumption.
-                //
-                // Reset and discard location lock, then sleep.
-                // Re-obtain location lock and attempt to sync again, thereby
-                // restoring the assumed state while executing this code.
+                Log(P("TIMEOUT: "), cfg_.gpsMaxAgeLocationLockMs);
+                
+                // Duration of time to reasonably location lock exceeded.
+                // Reset the module and try again later.
                 gps_.ResetModule();
             }
             
@@ -222,21 +222,28 @@ private:
             StopGPS();
         }
         
-        
         // Check if gps location, which could be from a prior run, is recent
         // enough to try to get a fast time lock from.
+        //
         // This duration is based on observations during testing.
-        // We choose 2 hours old
+        //
+        // Basically the initial GPS time values are wrong by seconds when the
+        // GPS module itself has (I believe) stale data from having sat around
+        // for a long time.
+        //
+        // Under expected conditions, we will be location locking frequently
+        // and therefore the 2 hours won't be an issue hit.
+        //
         if (gpsLocationLockOk_)
         {
-            const uint32_t MAX_AGE_LOCATION_LOCK_MS = 2UL * 60UL * 60UL * 1000UL;
-            if (PAL.Millis() - gpsLocationMeasurement_.clockTimeAtMeasurement > MAX_AGE_LOCATION_LOCK_MS)
+            if (PAL.Millis() - gpsLocationMeasurement_.clockTimeAtMeasurement > cfg_.gpsMaxAgeLocationLockMs)
             {
+                Log(P("Loc Lock aged out: "), cfg_.gpsMaxAgeLocationLockMs);
+                
                 solarState_ = SolarState::NEED_GPS_DATA;
                 gpsLocationLockOk_ = 0;
             }
         }
-        
         
         // Sync to 2 minute mark if GPS location acquired
         // Consider available power if solar.
@@ -244,10 +251,8 @@ private:
             InputVoltageSufficient(userConfig_.power.minMilliVoltGpsTimeLock) &&
             gpsLocationLockOk_)
         {
-            Log(P("GPS locking 2 min"));
+            Log(P("GPS locking on 2 min"));
             
-            const uint32_t DURATION_MAX_GPS_TIME_LOCK_WAIT_MS = 5000;
-
             function<void(void)>    fnBeforeAttempt = [this]() { StartGPS(); };
             function<void(void)>    fnAfterAttempt  = [this]() { StopGPS(); };
             function<uint8_t(void)> fnOkToContinue  = [this]() { return InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit); };
@@ -255,12 +260,12 @@ private:
             uint8_t gpsTimeLockOk =
                 gps_.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
                     &gpsTimeMeasurement_,
-                    DURATION_MAX_GPS_TIME_LOCK_WAIT_MS,
+                    cfg_.gpsMaxDurationTimeLockWaitMs,
                     fnBeforeAttempt,
                     fnAfterAttempt,
                     fnOkToContinue
                 );
-
+            
             // The GPS may have locked at an even minute and :00 seconds.
             // We're going to transmit at the :01 second mark.
             //
@@ -282,8 +287,10 @@ private:
                 // Consider available power if solar.
                 if (InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit))
                 {
+                    Log('1');
                     PreSendMessage();
                     
+                    Log('2');
                     // Pack message now that we know where we are
                     uint8_t messageOk = FillOutStandardWSPRMessage();
                     
@@ -292,6 +299,8 @@ private:
                     
                     // Figure out how long we've been operating since the mark
                     uint32_t timeDiff = PAL.Millis() - timeAtMark;
+                    
+                    Log(timeDiff);
                     
                     // Wait for the :01 second mark after even minute, accounting for 
                     // time which has elapsed since the even minute
@@ -315,12 +324,18 @@ private:
             }
             else
             {
-                // Assumption is this time lock should work if the location lock
-                // was any good from recently enough.
-                // Clearly we didn't lock, and so we need to get back to the
-                // assumed state of having a good recent location lock.
+                // Underlying lock code relies on the fact that the GPS should
+                // get a relatively quick (seconds) time lock due to the GPS
+                // having previously got a location lock, seeding the GPS with
+                // enough information to accurately time lock quickly.
                 //
-                // Therefore we throw away the location lock.
+                // If we're unable to lock, something is wrong with that
+                // assumption.
+                //
+                // Reset and discard location lock, then sleep.
+                // This will lead to re-obtaining the location lock and attempt
+                // our subsequent attempt to time sync again will be again under
+                // the assumed state while executing this code.
                 solarState_ = SolarState::NEED_GPS_DATA;
                 gpsLocationLockOk_ = 0;
             }
@@ -335,12 +350,92 @@ private:
         RegulatorPowerSaveEnable();
         
         // Schedule next wakeup
-        uint32_t wakeAndEvaluateDelayMs = 0;
+        uint32_t wakeAndEvaluateDelayMs = CalculateWakeup();
         tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
         
         Log(P("Sleep "), wakeAndEvaluateDelayMs);
     }
     
+    uint32_t CalculateWakeup()
+    {
+        return 0;
+        
+        #if 0
+        // 
+        // if I'm solar, I want to
+        // - try again as soon as possible
+        //   - therefore, the only question is how often do I wake up to check?
+        //     - is this a human param?  or configuration?
+        //       - probably configuration
+        //         - let's say every minute?
+        // 
+        // if I'm battery, I want to either:
+        // - wake up on schedule, if I succeeded at last go
+        //   - therefore sleep for whatever duration the geo stuff says
+        // - recover from an error as quickly as possible
+        //   - therefore no sleep duration
+
+        if (userConfig_.power.solarMode)
+        {
+        }
+        else
+        {
+            if (didTransmitSuccessfully)
+            {
+                // so consider whether still in the initial launch period where the
+                // rate is sticky to low altitude configuration
+                if (inLowAltitudeStickyPeriod_)
+                {
+                    if (PAL.Millis() < userConfig_.geo.lowAltitude.stickyMs)
+                    {
+                        // nothing to do, this remains true
+                    }
+                    else
+                    {
+                        // been too long, shut off and never re-activate
+                        // (prevents re-activation at time wraparound)
+                        inLowAltitudeStickyPeriod_ = 0;
+                    }
+                }
+                
+                // Apply geofence and sticky parameters
+                if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
+                    inLowAltitudeStickyPeriod_)
+                {
+                    // At low altitude, or for a duration after takeoff, 
+                    // we send messages and wake up at low altitude
+                    // intervals regardless of being in a dead zone or not
+                    sendMessage = 1;
+                    
+                    // Wake again at the interval configured for low altitude
+                    wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
+                }
+                else
+                {
+                    if (locationDetails.deadZone)
+                    {
+                        // At high altitude, we don't send messages in dead zones
+                        sendMessage = 0;
+                        
+                        // Wake again at the interval configured for high altitude dead zones
+                        wakeAndEvaluateMs = userConfig_.geo.deadZone.wakeAndEvaluateMs;
+                    }
+                    else
+                    {
+                        // At high altitude, we do send messages in active zones
+                        sendMessage = 1;
+                        
+                        // Wake again at the interval configured for high altitude active zones
+                        wakeAndEvaluateMs = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
+                    }
+                }
+            }
+            else
+            {
+            }
+        }
+        #endif
+    }
     
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -428,9 +523,6 @@ private:
         StartSubsystemWSPR();
         
         // Configure transmitter with calibration details
-        // Debug
-        userConfig_.radio.mtCalibration.crystalCorrectionFactor = 0;
-        userConfig_.radio.mtCalibration.systemClockOffsetMs     = 8;
         wsprMessageTransmitter_.SetCalibration(userConfig_.radio.mtCalibration);
         
         // Set up the transmitter to kick the watchdog when sending data later
@@ -515,12 +607,8 @@ private:
         }
         
         // Fill out actual message
-        //wsprMessage_.SetCallsign((const char *)userConfig_.callsign);
-        // temporary workaround while waiting to implement this
-        wsprMessage_.SetCallsign("KD2KDD");
+        wsprMessage_.SetCallsign((const char *)userConfig_.wspr.callsign);
         wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
-        // debug
-        //wsprMessage_.SetGrid("AB12");
         wsprMessage_.SetPower(powerDbm);
         
         return wsprMessageTransmitter_.Test(&wsprMessage_);
@@ -669,6 +757,10 @@ private:
         voltages only apply in solar mode
         
         high/low alt applies generally
+        
+        
+        
+        test the ADC correctness after deep sleep
         
 */
         
