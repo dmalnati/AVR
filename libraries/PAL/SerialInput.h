@@ -2,6 +2,7 @@
 #define __SERIAL_INPUT_H__
 
 
+#include "Evm.h"
 #include "Serial.h"
 #include "Log.h"
 #include "Function.h"
