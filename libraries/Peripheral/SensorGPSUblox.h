@@ -21,12 +21,12 @@ public:
     static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 0;
     
-    // Account for the minimum of 2 NMEA sentences which have to be consumed
-    // in order to get a fresh synchronous lock.
-    // This is ~140 bytes at 9600 baud.
+    // Account for the minimum of 1 NMEA sentences which have to be consumed
+    // in order to get a fresh synchronous time lock.
+    // This is ~70 bytes at 9600 baud.
     // Each byte is a bit under 1ms with 8N1 encoding, so we'll leave
-    // it calculated as 135ms.
-    static const uint32_t MIN_DELAY_NEW_TIME_LOCK_MS = 135;
+    // it calculated as 70ms.
+    static const uint32_t MIN_DELAY_NEW_TIME_LOCK_MS = 70;
     
     struct Measurement
     {
