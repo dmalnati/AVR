@@ -175,120 +175,121 @@ private:
         // Keep track of when GPS started so you can track duration waiting
         gpsLockWaitStart_ = PAL.Millis();
         
-        // Start async waiting for GPS to lock
-        tedWaitForGpsLock_.SetCallback([this](){ OnCheckForGpsLock(); });
-        tedWaitForGpsLock_.RegisterForTimedEventInterval(0);
+        // Get a synchronous GPS lock, under watchdog, but give up after a while
+        uint8_t gpsLockOk =
+            gps_.GetNewLocationMeasurementSynchronousUnderWatchdog(&gpsMeasurement_,
+                                                                   userConfig_.gps.lockTimeoutMs);
         
         // Kick the watchdog
         PAL.WatchdogReset();
-    }
-    
-    void OnCheckForGpsLock()
-    {
-        // Kick the watchdog
-        PAL.WatchdogReset();
         
-        // Check if GPS is locked on, saving the result in the process
-        if (gps_.GetMeasurement(&gpsMeasurement_))
+        // If GPS failed to lock, reset it now before you turn it off
+        if (!gpsLockOk)
         {
-            // Cancel task to check for GPS lock
-            tedWaitForGpsLock_.DeRegisterForTimedEvent();
-            
-            // Notify that lock acquired
-            OnGpsLock();
+            gps_.ResetModule();
         }
-    }
-    
-    void OnGpsLock()
-    {
-        // Kick the watchdog
-        PAL.WatchdogReset();
 
-        // Keep track of GPS counters
-        StatsIncrGpsLockWaitSecs((PAL.Millis() - gpsLockWaitStart_) / 1000);
-        
         // Turn off GPS
         Log("GPS OFF");
         StopGPS();
         
-        // Consult with Geofence to determine details about where we are
-        GeofenceAPRS::LocationDetails locationDetails = 
-            geofence_.GetLocationDetails(gpsMeasurement_.latitudeDegreesMillionths,
-                                         gpsMeasurement_.longitudeDegreesMillionths);
-        
-        // Decide whether to send a message and how long to sleep for based on
-        // geofence data.
-        uint8_t  sendMessage       = 1;
+        // Start considering wakeup time, even though GPS lock success will change
+        // the default value.
         uint32_t wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
-        
-        // Also consider whether still in the initial launch period where the
-        // rate is sticky to low altitude configuration
-        if (inLowAltitudeStickyPeriod_)
+
+        // Decide what to do if you do/don't get a lock
+        if (gpsLockOk)
         {
-            if (PAL.Millis() < userConfig_.geo.lowAltitude.stickyMs)
-            {
-                // nothing to do, this remains true
-            }
-            else
-            {
-                // been too long, shut off and never re-activate
-                // (prevents re-activation at time wraparound)
-                inLowAltitudeStickyPeriod_ = 0;
-            }
-        }
-        
-        // Apply geofence and sticky parameters
-        if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
-            inLowAltitudeStickyPeriod_)
-        {
-            // At low altitude, or for a duration after takeoff, 
-            // we send messages and wake up at low altitude
-            // intervals regardless of being in a dead zone or not
-            sendMessage = 1;
+            Log(P("GPS Lock good"));
             
-            // Wake again at the interval configured for low altitude
-            wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
-        }
-        else
-        {
-            if (locationDetails.deadZone)
+            // Keep track of GPS counters
+            StatsIncrGpsLockWaitSecs((PAL.Millis() - gpsLockWaitStart_) / 1000);
+            
+            // Consult with Geofence to determine details about where we are
+            GeofenceAPRS::LocationDetails locationDetails = 
+                geofence_.GetLocationDetails(gpsMeasurement_.latitudeDegreesMillionths,
+                                             gpsMeasurement_.longitudeDegreesMillionths);
+            
+            // Decide whether to send a message and how long to sleep for based on
+            // geofence data.
+            uint8_t sendMessage = 1;
+            
+            // Also consider whether still in the initial launch period where the
+            // rate is sticky to low altitude configuration
+            if (inLowAltitudeStickyPeriod_)
             {
-                // At high altitude, we don't send messages in dead zones
-                sendMessage = 0;
-                
-                // Wake again at the interval configured for high altitude dead zones
-                wakeAndEvaluateMs = userConfig_.geo.deadZone.wakeAndEvaluateMs;
+                if (PAL.Millis() < userConfig_.geo.lowAltitude.stickyMs)
+                {
+                    // nothing to do, this remains true
+                }
+                else
+                {
+                    // been too long, shut off and never re-activate
+                    // (prevents re-activation at time wraparound)
+                    inLowAltitudeStickyPeriod_ = 0;
+                }
             }
-            else
+            
+            // Apply geofence and sticky parameters
+            if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
+                inLowAltitudeStickyPeriod_)
             {
-                // At high altitude, we do send messages in active zones
+                // At low altitude, or for a duration after takeoff, 
+                // we send messages and wake up at low altitude
+                // intervals regardless of being in a dead zone or not
                 sendMessage = 1;
                 
-                // Wake again at the interval configured for high altitude active zones
-                wakeAndEvaluateMs = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
+                // Wake again at the interval configured for low altitude
+                wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
             }
-        }
-        
-        // Send message if appropriate
-        if (sendMessage)
-        {
-            // We're going to send a message, so tune radio to the frequency to
-            // be used in this region.
-            radio_.SetFrequency(locationDetails.freqAprs);
+            else
+            {
+                if (locationDetails.deadZone)
+                {
+                    // At high altitude, we don't send messages in dead zones
+                    sendMessage = 0;
+                    
+                    // Wake again at the interval configured for high altitude dead zones
+                    wakeAndEvaluateMs = userConfig_.geo.deadZone.wakeAndEvaluateMs;
+                }
+                else
+                {
+                    // At high altitude, we do send messages in active zones
+                    sendMessage = 1;
+                    
+                    // Wake again at the interval configured for high altitude active zones
+                    wakeAndEvaluateMs = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
+                }
+            }
             
-            // Log
-            Log("TX");
-            
-            // Send message
-            SendMessage();
-            
-            // Log
-            Log("TXEND");
+            // Send message if appropriate
+            if (sendMessage)
+            {
+                // We're going to send a message, so tune radio to the frequency to
+                // be used in this region.
+                radio_.SetFrequency(locationDetails.freqAprs);
+                
+                // Log
+                Log("TX");
+                
+                // Send message
+                SendMessage();
+                
+                // Log
+                Log("TXEND");
+            }
+            else
+            {
+                // Increment counters to indicate that we didn't send a message
+                StatsIncrNumMsgsNotSent();
+            }
         }
         else
         {
-            // Increment counters to indicate that we didn't send a message
-            StatsIncrNumMsgsNotSent();
+            Log(P("GPS Lock failed after "), userConfig_.gps.lockTimeoutMs, " ms");
+
+            // Do nothing except prepare to try again.
+            wakeAndEvaluateMs = userConfig_.gps.retryAfterMs;
         }
         
         // Schedule next wakeup
@@ -320,7 +321,7 @@ private:
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
         msg.SetDstAddress("APZ001", 0);
-        msg.SetSrcAddress(userConfig_.aprs.callsign, 11);
+        msg.SetSrcAddress(userConfig_.aprs.callsign, userConfig_.aprs.ssid);
         msg.AddRepeaterAddress("WIDE1", 1);
 
         // Add APRS data
@@ -342,11 +343,11 @@ private:
             aprm.SetLatitude(gpsMeasurement_.latitudeDegrees,
                              gpsMeasurement_.latitudeMinutes,
                              gpsMeasurement_.latitudeSeconds);
-            aprm.SetSymbolTableID('/');
+            aprm.SetSymbolTableID(userConfig_.aprs.symbolTableAndCode[0]);
             aprm.SetLongitude(gpsMeasurement_.longitudeDegrees,
                               gpsMeasurement_.longitudeMinutes,
                               gpsMeasurement_.longitudeSeconds);
-            aprm.SetSymbolCode('O');
+            aprm.SetSymbolCode(userConfig_.aprs.symbolTableAndCode[1]);
             
             
             // Fill out extended standard APRS fields
@@ -489,7 +490,6 @@ private:
     AppPicoTracker1UserConfigManager::UserConfig userConfig_;
     
     TimedEventHandlerDelegate tedWakeAndEvaluateTimeout_;
-    TimedEventHandlerDelegate tedWaitForGpsLock_;
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsMeasurement_;

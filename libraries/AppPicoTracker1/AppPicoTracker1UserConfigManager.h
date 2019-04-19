@@ -19,6 +19,7 @@ public:
     {
         static const uint8_t DEVICE_ID_LEN = 4;
         static const uint8_t CALLSIGN_LEN  = 6;
+        static const uint8_t SYMBOL_TABLE_AND_CODE_LEN = 2;
         
         UserConfig()
         {
@@ -33,8 +34,16 @@ public:
         
         struct
         {
-            char callsign[CALLSIGN_LEN + 1];
+            char    callsign[CALLSIGN_LEN + 1];
+            uint8_t ssid = 11;
+            char    symbolTableAndCode[SYMBOL_TABLE_AND_CODE_LEN + 1] = "/O";
         } aprs;
+        
+        struct
+        {
+            uint32_t lockTimeoutMs = 150000;    // 85th percentile
+            uint32_t retryAfterMs  = 10000;
+        } gps;
         
         struct
         {
@@ -161,7 +170,11 @@ public:
             
             auto strDeviceId                         = P("id");
             auto strAprsCallsign                     = P("callsign");
+            auto strSsid                             = P("ssid");
+            auto strSymbolTableAndCode               = P("symbolTableAndCode");
             auto strRadioTransmitCount               = P("transmitCount");
+            auto strGpsLockTimeoutMs                 = P("gpsLockTimeoutMs");
+            auto strGpsRetryAfterMs                  = P("gpsRetryAfterMs");
             auto strRadioDelayMsBetweenTransmits     = P("msBetweenTransmits");
             auto strGeoLowHighAltitudeFtThreshold    = P("lhAltFtThreshold");
             auto strGeoHighAltitudeWakeAndEvaluateMs = P("hAlt.wakeAndEvaluateMs");
@@ -172,7 +185,7 @@ public:
             uint8_t strLen = 0;
             if (!firstTime)
             {
-                strLen = SerialReadLine(buf, BUF_SIZE);
+                strLen = SerialReadLineClass::SerialReadLine(buf, BUF_SIZE);
             }
             
             if (strLen || firstTime)
@@ -243,9 +256,41 @@ public:
                         understood = 1;
                         updated    = 1;
                     }
+                    else if (!strcmp_P(name, strSsid))
+                    {
+                        userConfig.aprs.ssid = atoi(str.TokenAtIdx(1, ' '));
+                        
+                        understood = 1;
+                        updated    = 1;
+                    }
+                    else if (!strcmp_P(name, strSymbolTableAndCode))
+                    {
+                        const char *val = str.TokenAtIdx(1, ' ');
+                        
+                        memset((void *)userConfig.aprs.symbolTableAndCode, '\0', UserConfig::SYMBOL_TABLE_AND_CODE_LEN + 1);
+                        strncpy(userConfig.aprs.symbolTableAndCode, val, UserConfig::SYMBOL_TABLE_AND_CODE_LEN + 1);
+                        userConfig.aprs.symbolTableAndCode[UserConfig::SYMBOL_TABLE_AND_CODE_LEN] = '\0';
+
+                        understood = 1;
+                        updated    = 1;
+                    }
                     else if (!strcmp_P(name, strRadioTransmitCount))
                     {
                         userConfig.radio.transmitCount = atoi(str.TokenAtIdx(1, ' '));
+                        
+                        understood = 1;
+                        updated    = 1;
+                    }
+                    else if (!strcmp_P(name, strGpsLockTimeoutMs))
+                    {
+                        userConfig.gps.lockTimeoutMs = atoi(str.TokenAtIdx(1, ' '));
+                        
+                        understood = 1;
+                        updated    = 1;
+                    }
+                    else if (!strcmp_P(name, strGpsRetryAfterMs))
+                    {
+                        userConfig.gps.retryAfterMs = atoi(str.TokenAtIdx(1, ' '));
                         
                         understood = 1;
                         updated    = 1;
@@ -313,6 +358,10 @@ public:
                 {
                     Log(strDeviceId, '[', UserConfig::DEVICE_ID_LEN, "] = ", userConfig.device.id);
                     Log(strAprsCallsign, '[', UserConfig::CALLSIGN_LEN, "] = ", userConfig.aprs.callsign);
+                    Log(strSsid, " = ", userConfig.aprs.ssid);
+                    Log(strSymbolTableAndCode, '[', UserConfig::SYMBOL_TABLE_AND_CODE_LEN, "] = ", userConfig.aprs.symbolTableAndCode);
+                    PrintNameAndMs(strGpsLockTimeoutMs, userConfig.gps.lockTimeoutMs);
+                    PrintNameAndMs(strGpsRetryAfterMs, userConfig.gps.retryAfterMs);
                     Log(strRadioTransmitCount, " = ", userConfig.radio.transmitCount);
                     PrintNameAndMs(strRadioDelayMsBetweenTransmits, userConfig.radio.delayMsBetweenTransmits);
                     Log(strGeoLowHighAltitudeFtThreshold, " = ", userConfig.geo.lowHighAltitudeFtThreshold);
