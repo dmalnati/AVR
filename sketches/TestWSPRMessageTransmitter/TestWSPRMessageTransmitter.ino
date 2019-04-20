@@ -6,11 +6,12 @@
 
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
-static SerialAsyncConsoleEnhanced<10>  console;
+static SerialAsyncConsoleEnhanced<15>  console;
 
 static WSPRMessage                          m;
 static WSPRMessageTransmitter               mt;
 static WSPRMessageTransmitter::Calibration  mtc;
+static uint32_t freq = WSPRMessageTransmitter::WSPR_DEFAULT_FREQ;
 
 static uint8_t onOff = 0;
 
@@ -25,6 +26,7 @@ void PrintCurrentValues()
     
     Log(P("Current Values"));
     Log(P("--------------"));
+    Log(P("freq                   : "), freq);
     Log(P("callsign               : "), callsign);
     Log(P("grid                   : "), grid);
     Log(P("powerDbm               : "), powerDbm);
@@ -38,7 +40,7 @@ void PrintMenu()
     Log(P("WSPR Message Transmitter"));
     Log(P("------------------------"));
     LogNL();
-    Log(P("Tuned to 14.095600 MHz"));
+    Log(P("Tuned to "), freq);
     LogNL();
     Log(P("c <callsign> - set callsign"));
     Log(P("g <grid> - set grid"));
@@ -116,7 +118,29 @@ void setup()
 
         mt.RadioOn();
 
+        mt.SetFreqHundredths(freq * 100);
+
         onOff = 1;
+    });
+
+    console.RegisterCommand("freq", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atol(str.TokenAtIdx(1, ' '));
+
+            freq = val;
+            
+            Log("Setting freq to \"", freq, '"');
+
+            if (onOff)
+            {
+                mt.SetFreqHundredths(freq * 100);
+            }
+
+            PrintCurrentValues();
+        }
     });
     
     console.RegisterCommand("send", [](char *){
@@ -190,6 +214,7 @@ void setup()
 
     console.SetVerbose(0);
     console.Start();
+    console.Exec("pin set 15 1");
     console.Exec("help");
     
     evm.MainLoop();
