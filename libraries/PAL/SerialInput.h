@@ -426,6 +426,8 @@ private:
 
 class SerialReadLineClass
 {
+public:
+
     static uint8_t SerialReadLine(char *buf, uint8_t bufSize)
     {
         uint8_t retVal = 0;
@@ -970,7 +972,7 @@ public:
     {
         uint8_t retVal = 0;
         
-        if (DetectUserWantsToConfigure() || letDefaultApplyAutomatically)
+        if (letDefaultApplyAutomatically || DetectUserWantsToConfigure())
         {
             retVal = InteractivelyConfigure(letDefaultApplyAutomatically);
         }
