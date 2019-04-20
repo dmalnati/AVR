@@ -13,9 +13,13 @@ class WSPRMessageTransmitter
 {
 public:
 
-    static const uint32_t WSPR_DEFAULT_FREQ = 14097200UL;
+    static const uint32_t WSPR_DEFAULT_DIAL_FREQ               = 14095600UL;  // 20 meter band
+    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 17;          // center channel, 34 total
+    static const uint16_t WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ   = 1400;        // leads to 200 Hz area where transmissions are valid
+    static const uint16_t WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ = 586;         // 5.8592 Hz
+    
     static const uint8_t  WSPR_SYMBOL_COUNT = 162;
-    static const uint16_t WSPR_TONE_SPACING = 146;  // ~1.46 Hz
+    static const uint16_t WSPR_TONE_SPACING = 146;  // 1.4648 Hz
     static const uint16_t WSPR_DELAY_MS     = 683;
     
     
@@ -30,6 +34,13 @@ public:
     void SetCalibration(Calibration calibration)
     {
         calibration_ = calibration;
+    }
+    
+    uint32_t GetCalculatedFreqHundredths()
+    {
+        return (WSPR_DEFAULT_DIAL_FREQ * 100) +
+               WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ +
+               (WSPR_DEFAULT_CHANNEL * WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
     }
     
     void SetFreqHundredths(uint32_t freq)
@@ -74,7 +85,7 @@ public:
                     calibration_.crystalCorrectionFactor);
         
         // Tune to default freq
-        SetFreqHundredths(WSPR_DEFAULT_FREQ * 100);
+        SetFreqHundredths(GetCalculatedFreqHundredths());
 
         // Configure to drive at max power
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
@@ -111,7 +122,7 @@ public:
             
             // Change bit
             uint32_t freqInHundrethds = 
-                (WSPR_DEFAULT_FREQ * 100) + 
+                GetCalculatedFreqHundredths() + 
                 (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING);
             
             SetFreqHundredths(freqInHundrethds);
@@ -153,6 +164,7 @@ private:
     Calibration calibration_;
     
     function<void()> fnOnBitChange_;
+
 };
 
 
