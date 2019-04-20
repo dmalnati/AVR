@@ -21,7 +21,7 @@ static AppPicoTrackerWSPR1Config cfg =
     .gpsMaxAgeLocationLockMs = 2UL * 60UL * 60UL * 1000UL,
     // I choose 5 seconds as a cutoff as I have seen in practice this
     // works well.
-    .gpsMaxDurationTimeLockWaitMs = 5000,
+    .gpsMaxDurationTimeLockWaitMs = 10000,
 
     // WSPR TX
     .pinWsprTxEnable = 15,
