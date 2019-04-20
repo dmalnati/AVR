@@ -8,20 +8,18 @@
 #include "WSPRMessage.h"
 #include "WSPREncoder.h"
 
-
 class WSPRMessageTransmitter
 {
 public:
 
     static const uint32_t WSPR_DEFAULT_DIAL_FREQ               = 14095600UL;  // 20 meter band
-    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 17;          // center channel, 34 total
+    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 7;          // center channel, 34 total
     static const uint16_t WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ   = 1400;        // leads to 200 Hz area where transmissions are valid
     static const uint16_t WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ = 586;         // 5.8592 Hz
     
-    static const uint8_t  WSPR_SYMBOL_COUNT = 162;
-    static const uint16_t WSPR_TONE_SPACING = 146;  // 1.4648 Hz
-    static const uint16_t WSPR_DELAY_MS     = 683;
-    
+    static const uint8_t  WSPR_SYMBOL_COUNT               = 162;
+    static const uint16_t WSPR_TONE_SPACING_HUNDREDTHS_HZ = 146;  // 1.4648 Hz
+    static const uint16_t WSPR_DELAY_MS                   = 683;
     
 public:
 
@@ -38,8 +36,8 @@ public:
     
     uint32_t GetCalculatedFreqHundredths()
     {
-        return (WSPR_DEFAULT_DIAL_FREQ * 100) +
-               WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ +
+        return (WSPR_DEFAULT_DIAL_FREQ * 100UL) +
+               (WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ * 100UL) +
                (WSPR_DEFAULT_CHANNEL * WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
     }
     
@@ -123,7 +121,7 @@ public:
             // Change bit
             uint32_t freqInHundrethds = 
                 GetCalculatedFreqHundredths() + 
-                (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING);
+                (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING_HUNDREDTHS_HZ);
             
             SetFreqHundredths(freqInHundrethds);
 
