@@ -156,7 +156,7 @@ void LogXNNL(char val, uint8_t count)
 
 void LogX(char val, uint8_t count)
 {
-    LogNNL(val, count);
+    LogXNNL(val, count);
     LogNL();
 }
 
