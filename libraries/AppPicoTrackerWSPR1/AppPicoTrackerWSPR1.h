@@ -27,7 +27,7 @@ struct AppPicoTrackerWSPR1Config
     uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
     uint32_t gpsMaxAgeLocationLockMs;
-    uint32_t gpsMaxDurationTimeLockWaitMs;
+    uint32_t gpsMaxDurationTimeLockWaitMs;  // make this userConfig
     
     // WSPR TX
     uint8_t pinWsprTxEnable;
@@ -129,7 +129,7 @@ public:
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 1;
+            uint8_t letDefaultApplyAutomatically = 0;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
         
@@ -184,9 +184,19 @@ private:
         // which has a lower efficiency at higher current draw.
         RegulatorPowerSaveDisable();
         
+        
+        
+        // PreSendMessage();
+        // PAL.Delay(1000);
+        // PostSendMessage();
+
+        
+        
+        
+        
         // Protect against hangs, which has happened
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
-        
+
         // Get GPS location lock if one isn't already available from a prior run.
         // Consider available power if solar.
         if (DoThisStep(Step::GPS_LOCATION_LOCK) &&
@@ -212,14 +222,32 @@ private:
             {
                 Log(P("TIMEOUT: "), cfg_.gpsMaxAgeLocationLockMs);
                 
+                // for (uint8_t i = 0; i < 3; ++i)
+                // {
+                    // PreSendMessage();
+                    // PAL.Delay(1000);
+                    // PostSendMessage();
+                    // PAL.Delay(1000);
+                // }
+                
                 // Duration of time to reasonably location lock exceeded.
                 // Reset the module and try again later.
                 gps_.ResetModule();
             }
             
             // Stop GPS
-            Log(P("GPS OFF"));
-            StopGPS();
+            
+            // Seen that one GPS module really doesn't come back with a good
+            // time lock particularly quickly after being shut off.
+            //
+            // Weave in some logic to keep the GPS on if you're going to use
+            // it for time.
+            // 
+            // Definitely can't just leave it on and expect the time sync to
+            // turn it off, the time sync is conditional.
+            
+            //Log(P("GPS OFF"));
+            //StopGPS();
         }
         
         // Check if gps location, which could be from a prior run, is recent
@@ -352,6 +380,17 @@ private:
         // Schedule next wakeup
         uint32_t wakeAndEvaluateDelayMs = CalculateWakeup();
         tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
+        
+        // PAL.Delay(2000);
+        // for (uint8_t i = 0; i < 2; ++i)
+        // {
+            // PreSendMessage();
+            // PAL.Delay(1000);
+            // PostSendMessage();
+            // PAL.Delay(1000);
+        // }
+        // PAL.Delay(2000);
+
         
         Log(P("Sleep "), wakeAndEvaluateDelayMs);
     }
