@@ -28,7 +28,7 @@ void Start()
 {
     if (mode == Mode::SYNC)
     {
-        uint32_t msDelay        = ms + msOffset;
+        uint32_t msDelay        = ms - msOffset;
         uint16_t countRemaining = count * 2;
 
         while (countRemaining)
@@ -43,7 +43,7 @@ void Start()
     }
     else if (mode == Mode::ASYNC)
     {
-        uint32_t msDelay        = ms + msOffset;
+        uint32_t msDelay        = ms - msOffset;
         uint16_t countRemaining = count * 2;
         
         ted.SetCallback([&](){

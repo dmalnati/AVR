@@ -111,7 +111,7 @@ public:
         
         // Allow calibration to compensate for system clock not being accurate
         // enough to hit precise bit duration
-        uint32_t msBitDuration = WSPR_DELAY_MS + calibration_.systemClockOffsetMs;
+        uint32_t msBitDuration = WSPR_DELAY_MS - calibration_.systemClockOffsetMs;
         
         // Clock out the bits
         for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT; i++)

@@ -6,7 +6,9 @@
 
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
-static SerialAsyncConsoleEnhanced<15>  console;
+static SerialAsyncConsoleEnhanced<20>  console;
+
+static const uint8_t pinB = 25;
 
 static WSPRMessage                          m;
 static WSPRMessageTransmitter               mt;
@@ -37,24 +39,32 @@ void PrintCurrentValues()
 void PrintMenu()
 {
     LogNL(4);
-    Log(P("WSPR Message Transmitter"));
-    Log(P("------------------------"));
+    Log(P("WSPR Calibrator"));
+    Log(P("---------------"));
     LogNL();
-    Log(P("Tuned to "), freqInHundredths / 100.0);
+    Log(P("Time Related"));
+    LogX('-', 12);
+    Log(P("timeCalibrate             - run time calibration"));
+    Log(P("systemClockOffsetMs <val> - apply time calibration"));
     LogNL();
-    Log(P("c <callsign> - set callsign"));
-    Log(P("g <grid> - set grid"));
-    Log(P("p <power> - set power"));
+    //Log(P("Data Related"));
+    //LogX('-', 20);
+    //Log(P("c <callsign> - set callsign"));
+    //Log(P("g <grid> - set grid"));
+    //Log(P("p <power> - set power"));
+    //LogNL();
+    Log(P("Frequency Related"));
+    LogX('-', 17);
+    Log(P("chan <num>                    - change WSPR frequency channel"));
+    Log(P("crystalCorrectionFactor <val> - apply frequency calibration"));
     LogNL();
-    Log(P("crystalCorrectionFactor - "));
-    Log(P("systemClockOffsetMs - apply time calibration"));
-    LogNL();
-    Log(P("on - Turn on radio"));
+    Log(P("on  - Turn on radio"));
     Log(P("off - Turn off radio"));
     LogNL();
-    Log(P("test - test the configuration of the message to be sent"));
+    Log(P("Other"));
+    LogX('-', 5);
+    //Log(P("test - test the configuration of the message to be sent"));
     Log(P("send - send message whose contents were configured"));
-    LogNL();
     Log(P("help - this menu"));
     LogNL();
     LogNL();
@@ -223,6 +233,27 @@ void setup()
 
             PrintCurrentValues();
         }
+    });
+
+    console.RegisterCommand("timeCalibrate", [](char *){
+        PAL.PinMode(pinB, OUTPUT);
+
+        Log(P("Testing system clock"));
+        Log(P("Current systemClockOffsetMs = "), mtc.systemClockOffsetMs);
+        Log(P("Measure with scope, get pulse widths to "), WSPRMessageTransmitter::WSPR_DELAY_MS, P(" ms"));
+        Log(P("Positive adjustments make pulses smaller"));
+        Log(P("negative adjustments make pulses larger"));
+        Log(P("Starting test"));
+
+        for (uint8_t i = 0; i < 3; ++i)
+        {
+            PAL.DigitalWrite(pinB, HIGH);
+            PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc.systemClockOffsetMs);
+            PAL.DigitalWrite(pinB, LOW);
+            PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc.systemClockOffsetMs);
+        }
+
+        Log("Done");
     });
     
     console.RegisterCommand("help", [](char *){
