@@ -11,7 +11,7 @@ static SerialAsyncConsoleEnhanced<15>  console;
 static WSPRMessage                          m;
 static WSPRMessageTransmitter               mt;
 static WSPRMessageTransmitter::Calibration  mtc;
-static uint32_t freq = WSPRMessageTransmitter::WSPR_DEFAULT_FREQ;
+static uint32_t freqInHundredths = mt.GetCalculatedFreqHundredths();
 
 static uint8_t onOff = 0;
 
@@ -26,7 +26,7 @@ void PrintCurrentValues()
     
     Log(P("Current Values"));
     Log(P("--------------"));
-    Log(P("freq                   : "), freq);
+    Log(P("freq                   : "), freqInHundredths / 100.0);
     Log(P("callsign               : "), callsign);
     Log(P("grid                   : "), grid);
     Log(P("powerDbm               : "), powerDbm);
@@ -40,7 +40,7 @@ void PrintMenu()
     Log(P("WSPR Message Transmitter"));
     Log(P("------------------------"));
     LogNL();
-    Log(P("Tuned to "), freq);
+    Log(P("Tuned to "), freqInHundredths / 100.0);
     LogNL();
     Log(P("c <callsign> - set callsign"));
     Log(P("g <grid> - set grid"));
@@ -118,7 +118,7 @@ void setup()
 
         mt.RadioOn();
 
-        mt.SetFreqHundredths(freq * 100);
+        mt.SetFreqHundredths(freqInHundredths);
 
         onOff = 1;
     });
@@ -130,13 +130,36 @@ void setup()
         {
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
 
-            freq = val;
+            freqInHundredths = val * 100;
             
-            Log("Setting freq to \"", freq, '"');
+            Log("Setting freq to \"", freqInHundredths / 100.0, '"');
 
             if (onOff)
             {
-                mt.SetFreqHundredths(freq * 100);
+                mt.SetFreqHundredths(freqInHundredths);
+            }
+
+            PrintCurrentValues();
+        }
+    });
+    
+    console.RegisterCommand("chan", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t chan = atol(str.TokenAtIdx(1, ' '));
+
+            freqInHundredths =
+                (WSPRMessageTransmitter::WSPR_DEFAULT_DIAL_FREQ * 100UL) +
+                (WSPRMessageTransmitter::WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ * 100UL) +
+                (chan * WSPRMessageTransmitter::WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
+
+            Log("Setting channel to ", chan, ", freq now ", freqInHundredths / 100.0);
+
+            if (onOff)
+            {
+                mt.SetFreqHundredths(freqInHundredths);
             }
 
             PrintCurrentValues();
