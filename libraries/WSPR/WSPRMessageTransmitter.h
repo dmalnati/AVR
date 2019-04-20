@@ -11,10 +11,13 @@
 
 class WSPRMessageTransmitter
 {
+public:
+
     static const uint32_t WSPR_DEFAULT_FREQ = 14097200UL;
     static const uint8_t  WSPR_SYMBOL_COUNT = 162;
     static const uint16_t WSPR_TONE_SPACING = 146;  // ~1.46 Hz
     static const uint16_t WSPR_DELAY_MS     = 683;
+    
     
 public:
 
@@ -27,6 +30,11 @@ public:
     void SetCalibration(Calibration calibration)
     {
         calibration_ = calibration;
+    }
+    
+    void SetFreqHundredths(uint32_t freq)
+    {
+        radio_.set_freq(freq, SI5351_CLK0);
     }
     
     void SetCallbackOnBitChange(function<void()> fnOnBitChange)
@@ -66,7 +74,7 @@ public:
                     calibration_.crystalCorrectionFactor);
         
         // Tune to default freq
-        radio_.set_freq(WSPR_DEFAULT_FREQ * 100, SI5351_CLK0);
+        SetFreqHundredths(WSPR_DEFAULT_FREQ * 100);
 
         // Configure to drive at max power
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
@@ -96,7 +104,6 @@ public:
         // enough to hit precise bit duration
         uint32_t msBitDuration = WSPR_DELAY_MS + calibration_.systemClockOffsetMs;
         
-        
         // Clock out the bits
         for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT; i++)
         {
@@ -107,7 +114,7 @@ public:
                 (WSPR_DEFAULT_FREQ * 100) + 
                 (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING);
             
-            radio_.set_freq(freqInHundrethds, SI5351_CLK0);
+            SetFreqHundredths(freqInHundrethds);
 
             // Allow calling code to do something here
             fnOnBitChange_();
