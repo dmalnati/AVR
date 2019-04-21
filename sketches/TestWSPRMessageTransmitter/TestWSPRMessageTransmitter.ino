@@ -179,6 +179,11 @@ void setup()
     console.RegisterCommand("send", [](char *){
         Log("Sending");
 
+        if (!onOff)
+        {
+            console.Exec("on");
+        }
+
         PrintCurrentValues();
         
         mt.Send(&m);
@@ -232,6 +237,11 @@ void setup()
             Log("Setting systemClockOffsetMs to ", mtc.systemClockOffsetMs);
 
             PrintCurrentValues();
+
+            if (onOff)
+            {
+                console.Exec("on");
+            }
         }
     });
 
@@ -265,6 +275,12 @@ void setup()
     m.SetCallsign("KD2KDD");
     m.SetGrid("AB12");
     m.SetPower(27);
+
+    // Toggle pinB whenever a bit changes
+    mt.SetCallbackOnBitChange([](){
+        PAL.PinMode(pinB, OUTPUT);
+        PAL.DigitalToggle(pinB);
+    });
 
     console.SetVerbose(0);
     console.Start();

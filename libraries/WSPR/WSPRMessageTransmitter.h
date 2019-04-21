@@ -104,40 +104,54 @@ public:
         
         msg->GetData(callsign, grid, powerDbm);
         
-        
         // Encode
         retVal = wsprEncoder_.Encode(callsign, grid, powerDbm);
-        
         
         // Allow calibration to compensate for system clock not being accurate
         // enough to hit precise bit duration
         uint32_t msBitDuration = WSPR_DELAY_MS - calibration_.systemClockOffsetMs;
         
+        // Keep state allowing more accurate timing for bit periods
+        uint8_t  firstBit     = 1;
+        uint32_t timeBitStart = 0;
+        
         // Clock out the bits
         for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT; i++)
         {
-            uint32_t timeStart = PAL.Millis();
-            
-            // Change bit
+            // Determine which bit to send next
             uint32_t freqInHundrethds = 
                 GetCalculatedFreqHundredths() + 
                 (wsprEncoder_.GetToneValForSymbol(i) * WSPR_TONE_SPACING_HUNDREDTHS_HZ);
             
+            // We want to send the first bit immediately.
+            // We want to send subsequent bits at one bit-duration later
+            if (!firstBit)
+            {
+                // Calculate how long to wait before beginning the next bit
+                uint32_t timeNow          = PAL.Millis();
+                uint32_t timeDiff         = timeNow - timeBitStart;
+                uint32_t msSleepRemaining = (msBitDuration - timeDiff);
+                
+                PAL.Delay(msSleepRemaining);
+            }
+            else
+            {
+                firstBit = 0;
+            }
+            
+            // Keep track of when this bit started transmitting
+            timeBitStart = PAL.Millis();
+            
+            // Actually change the frequency to indicate the bit value
             SetFreqHundredths(freqInHundrethds);
-
+            
             // Allow calling code to do something here
             fnOnBitChange_();
-            
-            // Calculate time of next bit transition from where we are now
-            uint32_t timeEnd          = PAL.Millis();
-            uint32_t msSleepRemaining = (msBitDuration - (timeEnd - timeStart));
-            
-            PAL.Delay(msSleepRemaining);
         }
         
         return retVal;
     }
-
+    
     void RadioOff()
     {
         // Disable the clock and cut power for all 3 channels
