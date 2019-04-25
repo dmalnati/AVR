@@ -25,6 +25,19 @@ public:
 
     struct Calibration
     {
+        Calibration()
+        : Calibration(0, 0)
+        {
+            // Nothing to do
+        }
+        
+        Calibration(int32_t crystalCorrectionFactorInput, int32_t systemClockOffsetMsInput)
+        : crystalCorrectionFactor(crystalCorrectionFactorInput)
+        , systemClockOffsetMs(systemClockOffsetMsInput)
+        {
+            // Nothing to do
+        }
+        
         int32_t crystalCorrectionFactor = 0;
         int32_t systemClockOffsetMs     = 0;
     };
