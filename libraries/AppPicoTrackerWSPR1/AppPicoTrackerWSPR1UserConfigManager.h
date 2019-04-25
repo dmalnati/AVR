@@ -60,7 +60,13 @@ struct AppPicoTrackerWSPR1UserConfig
     struct
     {
         WSPRMessageTransmitter::Calibration mtCalibration;
-    } radio;
+    } radio = {
+        .mtCalibration = (WSPRMessageTransmitter::Calibration){
+            //.crystalCorrectionFactor = -9300,
+            //.systemClockOffsetMs     = -2,
+            -9300, -2,
+        }
+    };
 };
 
 

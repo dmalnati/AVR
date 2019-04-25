@@ -95,6 +95,9 @@ public:
             PAL.SoftReset();
         }
         
+        // Ensure fuse bits demand longest startup time (external clock)
+        // Actually... necessary?  Should be internal RC...
+        
         // Set up control over regulator power save mode.
         PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
         RegulatorPowerSaveDisable();
@@ -129,7 +132,7 @@ public:
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 0;
+            uint8_t letDefaultApplyAutomatically = 1;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
         
