@@ -60,6 +60,8 @@ public:
     {
         uint8_t retVal = 0;
         
+        bitVal = 0;
+        
         uint8_t byteIdx;
         uint8_t bitInByte;
         
@@ -77,6 +79,8 @@ public:
     uint8_t GetBitRangeAt(uint16_t bitIdx, T &bitList, uint8_t bitCount) const
     {
         uint8_t retVal = 0;
+        
+        bitList = 0;
         
         uint8_t bitOffset = 0;
         for (int8_t bitInByte = bitCount - 1; bitInByte >= 0; --bitInByte)
