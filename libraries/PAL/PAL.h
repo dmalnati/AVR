@@ -161,10 +161,36 @@ public:
         return retVal;
     }
 
-    
+    // Return a unit-less 10-bit value represesnting measured voltage against
+    // the AVcc reference.
+    //
+    // Unit-less because AVcc isn't known at any given time.
     static inline uint16_t AnalogRead(Pin pin)
     {
         return AnalogReadInternal(pin.adcChannelBits_);
+    }
+    
+    // Return a 10-bit value represesnting measured voltage against
+    // the 1.1V internal reference.
+    //
+    // The step size is known in advance due to it being 10-bit resolution from
+    // 0V-1.1V.
+    //
+    // Nothing is done with that information here.
+    static inline uint16_t AnalogRead1V1(Pin pin)
+    {
+        // I know AnalogReadInternal is going to set REFS0 to 1, which if no
+        // other changes, will reference AVcc.
+        //
+        // However, I want to use the internal 1.1V reference, which
+        // conveniently requires only that REFS1 is set also.
+        //
+        // Since I also know that AnalogReadInternal logically ORs the passed-in
+        // value with REFS0, I know I can piggy-back the REFS1 into this
+        // parameter and cause the 1.1V reference to be selected, unbeknownst to
+        // AnalogReadInternal.
+        
+        return AnalogReadInternal(_BV(REFS1) | pin.adcChannelBits_);
     }
     
 private:
