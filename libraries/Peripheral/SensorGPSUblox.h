@@ -9,8 +9,6 @@
 #include "PAL.h"
 #include "TimedEventHandler.h"
 
-#include "UbxMessage.h"
-
 #include "TinyGPS.h"
 
 
@@ -88,7 +86,6 @@ private:
     static const uint32_t BAUD                  = 9600;
     static const uint32_t POLL_PERIOD_MS        = 25;
     static const uint16_t GPS_WARMUP_TIME_MS    = 200;
-    static const uint8_t  MAX_UBX_MESSAGE_SIZE  = 44;
     
     using FnGetAbstractMeasurement               = uint8_t (SensorGPSUblox::*)(Measurement *);
     using FnGetNewAbstractMeasurementSynchronous = uint8_t (SensorGPSUblox::*)(Measurement *, uint32_t, uint32_t *);
@@ -191,106 +188,31 @@ public:
 
     void SetHighAltitudeMode()
     {
-        ubxMessage_.Reset();
-        
-        // Create CFG-NAV5 msg
-        // Set altitude mode to Airborne < 1g
-        // Indicate this is the only parameter changing via bitmap
-        ubxMessage_.SetClass(0x06);
-        ubxMessage_.SetId(0x24);
-        
-        ubxMessage_.AddFieldX2(0x0001); // mask     = dynModel change only
-        ubxMessage_.AddFieldU1(6);      // dynModel = airborne < 1g
-        ubxMessage_.AddFieldU1(0);      // fixMode
-        ubxMessage_.AddFieldI4(0);      // fixedAlt
-        ubxMessage_.AddFieldU4(0);      // fixedAltVar
-        ubxMessage_.AddFieldI1(0);      // minElev
-        ubxMessage_.AddFieldU1(0);      // drLimit
-        ubxMessage_.AddFieldU2(0);      // pDop
-        ubxMessage_.AddFieldU2(0);      // tDop
-        ubxMessage_.AddFieldU2(0);      // pAcc
-        ubxMessage_.AddFieldU2(0);      // tAcc
-        ubxMessage_.AddFieldU1(0);      // staticHoldThresh
-        ubxMessage_.AddFieldU1(0);      // dgpsTimeOut
-        ubxMessage_.AddFieldU4(0);      // reserved2
-        ubxMessage_.AddFieldU4(0);      // reserved3
-        ubxMessage_.AddFieldU4(0);      // reserved4
-        
-        uint8_t *buf;
-        uint8_t  bufLen;
-        ubxMessage_.GetBuf(&buf, &bufLen);
-        
-        ss_.write(buf, bufLen);
-        
-        // Sync-wait for all bytes to be written.
-        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
-        PAL.Delay(bufLen);
-    }
-
-    void SetMessageInterval(uint16_t intervalMs)
-    {
-        ubxMessage_.Reset();
-        
-        // Create CFG-RATE msg
-        ubxMessage_.SetClass(0x06);
-        ubxMessage_.SetId(0x08);
-        
-        ubxMessage_.AddFieldU2(intervalMs); // measRate
-        ubxMessage_.AddFieldU2(1);          // navRate
-        ubxMessage_.AddFieldU2(1);          // timeRef
-        
-        uint8_t *buf;
-        uint8_t  bufLen;
-        ubxMessage_.GetBuf(&buf, &bufLen);
-        
-        ss_.write(buf, bufLen);
-        
-        // Sync-wait for all bytes to be written.
-        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
-        PAL.Delay(bufLen);
-    }
-    
-    void EnableOnlyGGAAndRMC()
-    {
-        // These are the messages broadcast by default.
-        // Specifically enable and disable to be certain.
-        uint8_t ubxClassUbxIdRateList[] = {
-            0xF0, 0x00, 1,  // GGA
-            0xF0, 0x01, 0,  // GLL
-            0xF0, 0x02, 0,  // GSA
-            0xF0, 0x03, 0,  // GSV
-            0xF0, 0x04, 1,  // RMC
-            0xF0, 0x05, 0   // VTG
+        uint8_t bufLen = 44;
+        uint8_t buf[] = {
+            0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0x01, 0x00,
+            0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x55, 0xB4,
         };
         
-        uint8_t ubxClassUbxIdRateListLen = sizeof(ubxClassUbxIdRateList);
+        ss_.write(buf, bufLen);
         
-        for (uint8_t i = 0; i < ubxClassUbxIdRateListLen; i += 3)
-        {
-            uint8_t ubxClass = ubxClassUbxIdRateList[i + 0];
-            uint8_t ubxId    = ubxClassUbxIdRateList[i + 1];
-            uint8_t rate     = ubxClassUbxIdRateList[i + 2];
-            
-            SetMessageRate(ubxClass, ubxId, rate);
-        }
+        // Sync-wait for all bytes to be written.
+        // At 9600 baud, each byte is just under 1ms, safe to delay by bufLen.
+        PAL.Delay(bufLen);
     }
-    
+
     void SaveConfiguration()
     {
-        ubxMessage_.Reset();
-
-        // CFG-CFG (0x06 0x09)
-        ubxMessage_.SetClass(0x06);
-        ubxMessage_.SetId(0x09);
-
-        ubxMessage_.AddFieldX4(0);           // clearMask  - clear nothing
-        ubxMessage_.AddFieldX4(0x0000FFFF);  // saveMask   - save everything
-        ubxMessage_.AddFieldX4(0);           // loadMask   - load nothing
-        ubxMessage_.AddFieldX1(1);           // deviceMask - save to batter-backed ram (internal to chip)
-
-        uint8_t *buf;
-        uint8_t  bufLen;
-        ubxMessage_.GetBuf(&buf, &bufLen);
+        uint8_t bufLen = 21;
+        uint8_t buf[] = {
+            0xB5, 0x62, 0x06, 0x09, 0x0D, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x01, 0x1B, 0xA9,
+        };
 
         ss_.write(buf, bufLen);
         
@@ -299,23 +221,14 @@ public:
         PAL.Delay(bufLen);
     }
     
-    // Default to the hardest reset possible, complete expunging of all data
-    void ResetModule(ResetType resetType = ResetType::COLD,
-                     ResetMode resetMode = ResetMode::HW)
+    // COLD HW reset
+    void ResetModule()
     {
-        ubxMessage_.Reset();
-
-        // CFG-RST (0x06 0x04)
-        ubxMessage_.SetClass(0x06);
-        ubxMessage_.SetId(0x04);
-
-        ubxMessage_.AddFieldX2((uint16_t)resetType);
-        ubxMessage_.AddFieldU1((uint8_t)resetMode);
-        ubxMessage_.AddFieldU1(0);   // reserved
-
-        uint8_t *buf;
-        uint8_t  bufLen;
-        ubxMessage_.GetBuf(&buf, &bufLen);
+        uint8_t bufLen = 12;
+        uint8_t buf[] = {
+            0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0xFF, 0xFF,
+            0x00, 0x00, 0x0C, 0x5D,
+        };
 
         ss_.write(buf, bufLen);
         
@@ -578,25 +491,6 @@ private:
             
             tgps_.encode(b);
         }
-    }
-    
-    void SetMessageRate(uint8_t ubxClass, uint8_t ubxId, uint8_t rate)
-    {
-        ubxMessage_.Reset();
-        
-        // Create CFG-MSG msg
-        ubxMessage_.SetClass(0x06);
-        ubxMessage_.SetId(0x01);
-        
-        ubxMessage_.AddFieldU1(ubxClass);   // msgClass
-        ubxMessage_.AddFieldU1(ubxId);      // msgID
-        ubxMessage_.AddFieldU1(rate);       // rate
-        
-        uint8_t *buf;
-        uint8_t  bufLen;
-        ubxMessage_.GetBuf(&buf, &bufLen);
-        
-        ss_.write(buf, bufLen);
     }
     
     
@@ -969,8 +863,6 @@ private:
     ThinSoftwareSerial ss_;
     
     TinyGPS        tgps_;
-    
-    UbxMessage<MAX_UBX_MESSAGE_SIZE> ubxMessage_;
     
     TimedEventHandlerDelegate timer_;
 };
