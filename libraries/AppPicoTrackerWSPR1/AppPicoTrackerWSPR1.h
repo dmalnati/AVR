@@ -21,13 +21,18 @@ struct AppPicoTrackerWSPR1Config
     // Regulator control
     uint8_t pinRegPowerSaveEnable;
     
+    // Solar configuration
+    uint32_t intervalSolarWakeupMs;
+    
     // GPS
+    uint8_t pinGpsBackupPower;
     uint8_t pinGpsEnable;
     uint8_t pinGpsSerialRx; // receive GPS data from this pin
     uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
     uint32_t gpsMaxAgeLocationLockMs;
-    uint32_t gpsMaxDurationTimeLockWaitMs;  // make this userConfig
+    uint32_t gpsMaxDurationTimeLockWaitMs;
+    uint32_t gpsDurationWaitPostResetMs;
     
     // WSPR TX
     uint8_t pinWsprTxEnable;
@@ -56,7 +61,8 @@ private:
 
     
 public:
-    AppPicoTrackerWSPR1(AppPicoTrackerWSPR1Config &cfg)
+
+    AppPicoTrackerWSPR1(const AppPicoTrackerWSPR1Config &cfg)
     : cfg_(cfg)
     , solarState_(SolarState::NEED_GPS_DATA)
     , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
@@ -64,7 +70,6 @@ public:
     {
         // Nothing to do
     }
-    
     
     ///////////////////////////////////////////////////////////////////////////
     //
@@ -95,9 +100,6 @@ public:
             PAL.SoftReset();
         }
         
-        // Ensure fuse bits demand longest startup time (external clock)
-        // Actually... necessary?  Should be internal RC...
-        
         // Set up control over regulator power save mode.
         PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
         RegulatorPowerSaveDisable();
@@ -107,6 +109,8 @@ public:
         // cause unintentional operation
         
         // GPS Subsystem
+        PAL.PinMode(cfg_.pinGpsBackupPower, OUTPUT);
+        PAL.DigitalWrite(cfg_.pinGpsBackupPower, HIGH);
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
         StopSubsystemGPS();
         
@@ -132,8 +136,42 @@ public:
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 1;
+            uint8_t letDefaultApplyAutomatically = 0;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
+        }
+        
+        // handle scenario where tcxo in use
+        if (userConfigOk)
+        {
+            #if 0
+            if (tcxo)
+            {
+                // Ensure fuse bits demand longest startup time (external clock)
+                // Actually... necessary?  Should be internal RC...
+        
+
+                
+                // Make sure fuse for external clock set
+                // Adjust clock divider
+                    // assuming 16MHz external clock for now
+            }
+            else
+            {
+                // Don't need to check fuses, code is running, therefore the
+                // internal RC is selected.
+                //
+                // Don't need to adjust clock divider, it's defaulted already to
+                // 8MHz, which is what we want
+            }
+            
+            // Add correct fuse settings to testing / build docs.
+            // Consider startup time to be maxed out.
+            //
+            // But... since you can set clock divide in fuses, why not just do
+            // it there and skip all this code?
+            
+            
+            #endif
         }
         
         if (userConfigOk)
@@ -181,6 +219,8 @@ private:
     
     void OnWake()
     {
+        uint8_t gpsHadError = 0;
+        
         Log(P("\nWake"));
         
         // We're about to use a lot of power, so turn off power-saving mode,
@@ -223,7 +263,9 @@ private:
             }
             else
             {
-                Log(P("TIMEOUT: "), cfg_.gpsMaxAgeLocationLockMs);
+                gpsHadError = 1;
+                
+                Log(P("TIMEOUT: "), userConfig_.gps.gpsLockTimeoutMs);
                 
                 // for (uint8_t i = 0; i < 3; ++i)
                 // {
@@ -235,7 +277,7 @@ private:
                 
                 // Duration of time to reasonably location lock exceeded.
                 // Reset the module and try again later.
-                gps_.ResetModule();
+                ResetAndCutBatteryBackupSubsystemGPS();
             }
             
             // Stop GPS
@@ -355,6 +397,8 @@ private:
             }
             else
             {
+                gpsHadError = 1;
+                
                 // Underlying lock code relies on the fact that the GPS should
                 // get a relatively quick (seconds) time lock due to the GPS
                 // having previously got a location lock, seeding the GPS with
@@ -367,22 +411,21 @@ private:
                 // This will lead to re-obtaining the location lock and attempt
                 // our subsequent attempt to time sync again will be again under
                 // the assumed state while executing this code.
+                ResetAndCutBatteryBackupSubsystemGPS();
+                
                 solarState_ = SolarState::NEED_GPS_DATA;
                 gpsLocationLockOk_ = 0;
             }
         }
         
+        // Schedule next wakeup
+        uint32_t wakeAndEvaluateDelayMs = CalculateWakeup(gpsHadError);
+        tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
+        
+        Log(P("Sleep "), wakeAndEvaluateDelayMs);
+        
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
-        
-        // We're about to sleep and use very little power, so turn on
-        // power-saving mode, which has a higher efficiency at lower current
-        // draw.
-        RegulatorPowerSaveEnable();
-        
-        // Schedule next wakeup
-        uint32_t wakeAndEvaluateDelayMs = CalculateWakeup();
-        tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
         
         // PAL.Delay(2000);
         // for (uint8_t i = 0; i < 2; ++i)
@@ -393,38 +436,41 @@ private:
             // PAL.Delay(1000);
         // }
         // PAL.Delay(2000);
-
         
-        Log(P("Sleep "), wakeAndEvaluateDelayMs);
+        // We're about to sleep and use very little power, so turn on
+        // power-saving mode, which has a higher efficiency at lower current
+        // draw.
+        RegulatorPowerSaveEnable();
     }
     
-    uint32_t CalculateWakeup()
+    uint32_t CalculateWakeup(uint8_t gpsHadError)
     {
-        return 0;
+        uint32_t retVal = 0;
         
-        #if 0
-        // 
-        // if I'm solar, I want to
-        // - try again as soon as possible
-        //   - therefore, the only question is how often do I wake up to check?
-        //     - is this a human param?  or configuration?
-        //       - probably configuration
-        //         - let's say every minute?
-        // 
-        // if I'm battery, I want to either:
-        // - wake up on schedule, if I succeeded at last go
-        //   - therefore sleep for whatever duration the geo stuff says
-        // - recover from an error as quickly as possible
-        //   - therefore no sleep duration
-
-        if (userConfig_.power.solarMode)
+        /*
+         * If there was an error, it was the GPS, and we've reset it, so we
+         * want to give it a bit of time to recover itself.
+         *   This is a configured duration
+         * 
+         * If no error
+         *   Solar has its own wakeup interval, use that.
+         *   Battery has altitude-sensitive configuration, apply that.
+         * 
+         */
+        
+        if (gpsHadError)
         {
+            retVal = cfg_.gpsDurationWaitPostResetMs;
         }
         else
         {
-            if (didTransmitSuccessfully)
+            if (userConfig_.power.solarMode)
             {
-                // so consider whether still in the initial launch period where the
+                retVal = cfg_.intervalSolarWakeupMs;
+            }
+            else    // battery
+            {
+                // consider whether still in the initial launch period where the
                 // rate is sticky to low altitude configuration
                 if (inLowAltitudeStickyPeriod_)
                 {
@@ -440,43 +486,22 @@ private:
                     }
                 }
                 
-                // Apply geofence and sticky parameters
-                if (gpsMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
+                // Apply altitude and sticky parameters
+                if (gpsLocationMeasurement_.altitudeFt < userConfig_.geo.lowHighAltitudeFtThreshold ||
                     inLowAltitudeStickyPeriod_)
                 {
-                    // At low altitude, or for a duration after takeoff, 
-                    // we send messages and wake up at low altitude
-                    // intervals regardless of being in a dead zone or not
-                    sendMessage = 1;
-                    
                     // Wake again at the interval configured for low altitude
-                    wakeAndEvaluateMs = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
+                    retVal = userConfig_.geo.lowAltitude.wakeAndEvaluateMs;
                 }
-                else
+                else    // high altitude
                 {
-                    if (locationDetails.deadZone)
-                    {
-                        // At high altitude, we don't send messages in dead zones
-                        sendMessage = 0;
-                        
-                        // Wake again at the interval configured for high altitude dead zones
-                        wakeAndEvaluateMs = userConfig_.geo.deadZone.wakeAndEvaluateMs;
-                    }
-                    else
-                    {
-                        // At high altitude, we do send messages in active zones
-                        sendMessage = 1;
-                        
-                        // Wake again at the interval configured for high altitude active zones
-                        wakeAndEvaluateMs = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
-                    }
+                    // Wake again at the interval configured for high altitude active zones
+                    retVal = userConfig_.geo.highAltitude.wakeAndEvaluateMs;
                 }
-            }
-            else
-            {
             }
         }
-        #endif
+        
+        return retVal;
     }
     
     ///////////////////////////////////////////////////////////////////////////
@@ -552,6 +577,9 @@ private:
     void StartSubsystemWSPR()
     {
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, HIGH);
+        
+        const uint32_t WSPR_TCXO_STARTUP_TIME_MAX_MS = 10;
+        PAL.Delay(WSPR_TCXO_STARTUP_TIME_MAX_MS);
     }
     
     void StopSubsystemWSPR()
@@ -684,9 +712,26 @@ private:
     {
         gps_.EnableSerialInput();
         
+        PAL.DigitalWrite(cfg_.pinGpsBackupPower, HIGH);
         PAL.DigitalWrite(cfg_.pinGpsEnable, HIGH);
         
         gps_.EnableSerialOutput();
+    }
+    
+    void ResetAndCutBatteryBackupSubsystemGPS()
+    {
+        gps_.ResetModule();
+        
+        // Cut the backup power, starving out any retained GPS state.
+        //
+        // The method to start the GPS subsystem start will re-enable
+        // this backup power.  Notably the subsystem stop will not
+        // disable it.  So, asymetric, on purpose.
+        //
+        // This leads to the backup power to the GPS being disabled for
+        // the duration of time the tracker sleeps for before trying
+        // again.
+        PAL.DigitalWrite(cfg_.pinGpsBackupPower, LOW);
     }
     
     void StopSubsystemGPS()
@@ -713,9 +758,6 @@ private:
         
         // assert this is a high-altitude mode
         gps_.SetHighAltitudeMode();
-        
-        // Only care about two messages, indicate so
-        gps_.EnableOnlyGGAAndRMC();
     }
 
     void StopGPS()
@@ -763,44 +805,10 @@ private:
         
 /*
         
-        // control whether regulator is in power save mode or not
-        
         // design around testing board and application
         
         // bring in design observations from prior boards
                 
-        // how to handle clock speed of device differing between chips?
-            // calibration interface?
-            
-        // which counters to keep?
-        
-        // print out time when locked on
-        
-        
-        
-        No BOD lower voltage allowed
-        
-        Change pin signalling configuration away from being serial in
-        
-        
-                
-        GPS giveup timeout
-        GPS time sync decoupled from lock
-        Care about voltage levels of input for operating certain events
-        Solar vs battery support
-            Tracker can be in different states depending whether GPS locked last run
-                No information persists across reboots
-                
-        
-        
-        
-        sticky only applies in battery mode?
-        
-        voltages only apply in solar mode
-        
-        high/low alt applies generally
-        
-        
         
         test the ADC correctness after deep sleep
         
@@ -822,11 +830,13 @@ private:
     
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
-    AppPicoTrackerWSPR1Config &cfg_;
+    const AppPicoTrackerWSPR1Config &cfg_;
 
     AppPicoTrackerWSPR1UserConfig userConfig_;
     
     SolarState  solarState_;
+    
+    uint8_t inLowAltitudeStickyPeriod_ = 1;
     
     TimedEventHandlerDelegate tedWake_;
     

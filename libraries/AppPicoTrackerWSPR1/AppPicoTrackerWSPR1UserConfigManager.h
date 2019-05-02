@@ -30,7 +30,7 @@ struct AppPicoTrackerWSPR1UserConfig
     // GPS stuff
     struct
     {
-        uint32_t gpsLockTimeoutMs = 150000; // 85th percentile cold start success
+        uint32_t gpsLockTimeoutMs = 150000UL; // 2m30 - 85th percentile cold start success
     } gps;
     
     // WSPR Stuff
@@ -59,19 +59,23 @@ struct AppPicoTrackerWSPR1UserConfig
     
     struct
     {
+        uint8_t tcxoMode = 0;
+    } clock;
+    
+    struct
+    {
         WSPRMessageTransmitter::Calibration mtCalibration;
     } radio = {
         .mtCalibration = (WSPRMessageTransmitter::Calibration){
-            //.crystalCorrectionFactor = -9300,
-            //.systemClockOffsetMs     = -2,
-            -9300, -2,
+            -3652,
+            3,
         }
     };
 };
 
 
 class AppPicoTrackerWSPR1UserConfigManager
-: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 13>
+: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 14>
 {
 public:
 
@@ -101,8 +105,10 @@ private:
         Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs);
         Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs);
         
-        Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
+        Menu().RegisterParamU8(P("tcxoMode"),                     &Config().clock.tcxoMode);
         Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
+        
+        Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
     }
 };
 
