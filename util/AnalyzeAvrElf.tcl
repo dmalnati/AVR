@@ -19,6 +19,13 @@ proc GetMostRecentBuildDir { } {
     return [lindex $contentList end]
 }
 
+proc GetElfFileInPwd { } {
+    set name "AppPicoTrackerWSPR1Config.ino.elf"
+    set name [exec -- ls -rt | grep .elf]
+
+    return $name
+}
+
 
 proc GetReadElfOutput { } {
     global AVR_BIN_DIR
@@ -31,7 +38,7 @@ proc GetReadElfOutput { } {
 
     append cmd "$AVR_BIN_DIR/avr-readelf.exe "
     append cmd "-a -A -W "
-    append cmd "*.elf"
+    append cmd [GetElfFileInPwd]
 
     if { $VERBOSE } {
         puts ""
@@ -118,7 +125,7 @@ proc GetAvrNmOutput { } {
 
     append cmd "$AVR_BIN_DIR/avr-nm.exe "
     append cmd "-C --size-sort --print-size -td "
-    append cmd "*.elf"
+    append cmd [GetElfFileInPwd]
 
     if { $VERBOSE } {
         puts ""
