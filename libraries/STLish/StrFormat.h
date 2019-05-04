@@ -40,6 +40,62 @@ void U32ToStrPadLeft(char *bufTarget, uint32_t val, uint8_t width, char pad)
 }
 
 
+// buf has to be:
+// HHH:MM:SS.mmm = 14 bytes = 13 chars + 1 byte terminator
+void DurationMsToHHMMSSmmm(uint32_t durationMs, char *buf)
+{
+    constexpr int32_t ONE_HOUR_IN_MS = 60UL * 60UL * 1000UL; // 3,600,000
+    constexpr int32_t ONE_MIN_IN_MS  =        60UL * 1000UL; //    60,000
+    constexpr int32_t ONE_SEC_IN_MS  =               1000UL; //     1,000
+
+    // Working with signed integers because thats what the ldiv function works with.
+    // We pass around unsigned uint32_t typically, but we'll move it to
+    // be an int32_t.
+    //
+    // That cuts its max value in half.
+    //
+    // Max value is now 2^31-1 = 2,147,483,647
+    // Max number of values is 2^31
+    //
+    // Max number of hours-of-ms that can fit in that:
+    // 2,147,483,648 / 3,600,000 = 596 (truncated)
+
+    // convert unsigned to signed, good luck everybody
+    int32_t msRemaining = (int32_t)durationMs;
+
+    ldiv_t qrLong;
+
+    // Calculate number of hours
+    qrLong = ldiv(msRemaining, ONE_HOUR_IN_MS);
+    uint32_t hours = qrLong.quot;
+    msRemaining = qrLong.rem;
+
+    // Calculate number of minutes
+    qrLong = ldiv(msRemaining, ONE_MIN_IN_MS);
+    uint32_t minutes = qrLong.quot;
+    msRemaining = qrLong.rem;
+
+    // Calculate number of seconds
+    qrLong = ldiv(msRemaining, ONE_SEC_IN_MS);
+    uint32_t seconds = qrLong.quot;
+    msRemaining = qrLong.rem;
+
+    // Actually format it as a duration string
+    U32ToStrPadLeft(&buf[0], hours, 3, ' ');
+    buf[3] = ':';
+    U32ToStrPadLeft(&buf[4], minutes, 2, '0');
+    buf[6] = ':';
+    U32ToStrPadLeft(&buf[7], seconds, 2, '0');
+    buf[9] = '.';
+    U32ToStrPadLeft(&buf[10], msRemaining, 3, '0');
+    buf[13] = '\0';
+}
+
+
+
+
+
+
 #endif  // __STR_FORMAT_H__
 
 
