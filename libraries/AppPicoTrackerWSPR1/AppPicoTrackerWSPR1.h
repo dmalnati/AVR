@@ -227,19 +227,21 @@ private:
         // which has a lower efficiency at higher current draw.
         RegulatorPowerSaveDisable();
         
-        
-        
         // PreSendMessage();
         // PAL.Delay(1000);
         // PostSendMessage();
-
-        
-        
-        
         
         // Protect against hangs, which has happened
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
-
+        
+        
+        /////////////////////////////////////////
+        //
+        // Get GPS Location Lock
+        //     (if needed)
+        //
+        /////////////////////////////////////////
+        
         // Get GPS location lock if one isn't already available from a prior run.
         // Consider available power if solar.
         if (DoThisStep(Step::GPS_LOCATION_LOCK) &&
@@ -280,20 +282,15 @@ private:
                 ResetAndCutBatteryBackupSubsystemGPS();
             }
             
-            // Stop GPS
-            
-            // Seen that one GPS module really doesn't come back with a good
-            // time lock particularly quickly after being shut off.
-            //
-            // Weave in some logic to keep the GPS on if you're going to use
-            // it for time.
-            // 
-            // Definitely can't just leave it on and expect the time sync to
-            // turn it off, the time sync is conditional.
-            
-            //Log(P("GPS OFF"));
-            //StopGPS();
+            // StopGPS() moved, see optimization below
         }
+        
+        /////////////////////////////////////////
+        //
+        // Expire old location locks if not used
+        // for a long time.
+        //
+        /////////////////////////////////////////
         
         // Check if gps location, which could be from a prior run, is recent
         // enough to try to get a fast time lock from.
@@ -318,11 +315,56 @@ private:
             }
         }
         
+        
+        /////////////////////////////////////////
+        //
+        // Keep GPS on if we're about to use it
+        // right away.
+        //
+        /////////////////////////////////////////
+
+        // Now decide if we turn off the GPS.
+        // (it might not even be on if we skipped the step above)
+        //
+        // Normally we would have done so in the step above.
+        //
+        // However, we know we're about to try for a time lock.
+        //
+        // There are some GPS modules which don't produce good time locks until
+        // 10-15 seconds after even a brief stoppage even though some do in
+        // only a second.
+        //
+        // So this represents an optimization.  Deal with the worst modules.
+        //
+        // So, if we look ahead and know we're going to do the time lock step,
+        // we choose to not turn off the GPS as part of the end of the prior
+        // step.
+        
+        uint8_t doTimeLockStep = 
+            DoThisStep(Step::GPS_TIME_LOCK_AND_SEND) &&
+            InputVoltageSufficient(userConfig_.power.minMilliVoltGpsTimeLock) &&
+            gpsLocationLockOk_;
+        
+        if (doTimeLockStep)
+        {
+            Log(P("GPS keep ON"));
+        }
+        else
+        {
+            Log(P("GPS OFF"));
+            StopGPS();
+        }
+        
+        
+        /////////////////////////////////////////
+        //
+        // Get a Time lock if we want to send
+        //
+        /////////////////////////////////////////
+        
         // Sync to 2 minute mark if GPS location acquired
         // Consider available power if solar.
-        if (DoThisStep(Step::GPS_TIME_LOCK_AND_SEND) &&
-            InputVoltageSufficient(userConfig_.power.minMilliVoltGpsTimeLock) &&
-            gpsLocationLockOk_)
+        if (doTimeLockStep)
         {
             Log(P("GPS locking on 2 min"));
             
@@ -354,6 +396,13 @@ private:
             
             Log(gpsTimeLockOk ? P("OK") : P("NOT OK"));
             
+            
+            /////////////////////////////////////////
+            //
+            // Send WSPR message
+            //
+            /////////////////////////////////////////
+
             if (gpsTimeLockOk)
             {
                 // If time locked, prepare to transmit.
@@ -418,6 +467,13 @@ private:
             }
         }
         
+        
+        /////////////////////////////////////////
+        //
+        // Sleep for however long
+        //
+        /////////////////////////////////////////
+
         // Schedule next wakeup
         uint32_t wakeAndEvaluateDelayMs = CalculateWakeup(gpsHadError);
         tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
