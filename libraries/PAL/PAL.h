@@ -512,6 +512,43 @@ public:
         return htonl(val);
     }
     
+    enum class CpuPrescaler : uint8_t
+    {
+        DIV_BY_1 = 0,
+        DIV_BY_2,
+        DIV_BY_4,
+        DIV_BY_8,
+        DIV_BY_16,
+        DIV_BY_32,
+        DIV_BY_64,
+        DIV_BY_128,
+        DIV_BY_256,
+    };
+    
+    static void SetCpuPrescaler(CpuPrescaler cpuPrescaler)
+    {
+        //
+        // From the spec:
+        //
+        // To avoid unintentional changes of clock frequency, a special write
+        // procedure must befollowed to change the CLKPS bits:
+        //
+        // 1. Write the Clock Prescaler Change Enable (CLKPCE) bit to one and
+        //    all other bits in CLKPR to zero.
+        //
+        // 2. Within four cycles, write the desired value to CLKPS while writing
+        //    a zero to CLKPCE.
+        //
+        // Interrupts must be disabled when changing prescaler setting to make sure the write procedure is
+        // not interrupted.
+        //
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            CLKPR = 0b10000000;
+            CLKPR = (uint8_t)cpuPrescaler;
+        }
+    }
+    
     static uint8_t GetCpuPrescalerValue()
     {
         return (uint8_t)(1 << (uint8_t)(CLKPR & 0x0F));
@@ -796,6 +833,13 @@ public:
         else if (bodLevel == 0b100) { retVal = 4300; }
         
         return retVal;
+    }
+    
+    static uint8_t GetFuseExternalClockConfigured()
+    {
+        // An external clock is configured when CKSEL3:0 are all 0, and those
+        // are the low 4 bits of this fuse.
+        return (GetFuseLow() & 0b00001111) == 0;
     }
     
     
