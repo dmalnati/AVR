@@ -4,6 +4,7 @@
 
 #include "SerialInput.h"
 #include "WSPRMessageTransmitter.h"
+#include "StrFormat.h"
 
 
 struct AppPicoTrackerWSPR1UserConfig
@@ -75,14 +76,22 @@ struct AppPicoTrackerWSPR1UserConfig
 
 
 class AppPicoTrackerWSPR1UserConfigManager
-: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 14>
+: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 14, 0, 1>
 {
 public:
 
     AppPicoTrackerWSPR1UserConfigManager(uint8_t pinConfigure, AppPicoTrackerWSPR1UserConfig &config)
     : PersistantConfigManager(pinConfigure, config)
     {
-        // Nothing to do
+        // Register formatter for uint32_t types which represent durations in ms
+        idxFormatter_ = Menu().RegisterFormatter([](MenuType::Param &param){
+            const char BUF_SIZE = 14;
+            char buf[BUF_SIZE] = { 0 };
+            
+            DurationMsToHHMMSSmmm(*(uint32_t *)param.paramPtr, buf);
+            
+            LogNNL(buf);
+        });
     }
     
 private:
@@ -98,18 +107,20 @@ private:
         Menu().RegisterParamU16(P("minMilliVoltGpsTimeLock"),     &Config().power.minMilliVoltGpsTimeLock);
         Menu().RegisterParamU16(P("minMilliVoltTransmit"),        &Config().power.minMilliVoltTransmit);
         
-        Menu().RegisterParamU32(P("gpsLockTimeoutMs"),            &Config().gps.gpsLockTimeoutMs);
+        Menu().RegisterParamU32(P("gpsLockTimeoutMs"),            &Config().gps.gpsLockTimeoutMs, idxFormatter_);
         
         Menu().RegisterParamU32(P("lhAltFtThreshold"),            &Config().geo.lowHighAltitudeFtThreshold);
-        Menu().RegisterParamU32(P("hAlt.wakeAndEvaluateMs"),      &Config().geo.highAltitude.wakeAndEvaluateMs);
-        Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs);
-        Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs);
+        Menu().RegisterParamU32(P("hAlt.wakeAndEvaluateMs"),      &Config().geo.highAltitude.wakeAndEvaluateMs, idxFormatter_);
+        Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs, idxFormatter_);
+        Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs, idxFormatter_);
         
         Menu().RegisterParamU8(P("tcxoMode"),                     &Config().clock.tcxoMode);
         Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
         
         Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
     }
+    
+    int8_t idxFormatter_ = -1;
 };
 
 
