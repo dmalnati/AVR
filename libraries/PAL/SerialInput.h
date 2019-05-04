@@ -15,7 +15,7 @@
 
 class SerialAsyncReadLine
 {
-    static const uint32_t DEFAULT_POLL_PERIOD_MS = 50;
+    static const uint32_t DEFAULT_POLL_PERIOD_MS = 25;
     static const uint8_t  MAX_READS_PER_POLL     = 80;
     
 public:
