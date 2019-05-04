@@ -567,10 +567,10 @@ private:
 
 
 
-template <uint8_t PARAM_COUNT, uint8_t CMD_COUNT, uint8_t MAX_LINE_LEN = 40>
+template <uint8_t PARAM_COUNT, uint8_t CMD_COUNT, uint8_t FORMATTER_COUNT = 0, uint8_t MAX_LINE_LEN = 40>
 class SerialAsyncConsoleMenu
 {
-private:
+public:
 
     enum ParamType
     {
@@ -589,11 +589,16 @@ private:
         {
         }
         
-        Param(PStr paramNameInput, ParamType paramTypeInput, void *paramPtrInput, uint8_t paramDataInput)
+        Param(PStr       paramNameInput,
+              ParamType  paramTypeInput,
+              void      *paramPtrInput,
+              uint8_t    paramDataInput,
+              int8_t     idxFormatterInput = -1)
         : paramName(paramNameInput)
         , paramType(paramTypeInput)
         , paramPtr(paramPtrInput)
         , paramData(paramDataInput)
+        , idxFormatter(idxFormatterInput)
         {
             // Nothing to do
         }
@@ -602,8 +607,11 @@ private:
         ParamType  paramType;
         void      *paramPtr;
         uint8_t    paramData;
+        int8_t     idxFormatter;
     };
     
+    
+private:
     struct Command
     {
         Command()
@@ -623,41 +631,56 @@ private:
     
     
 public:
+
+    int8_t RegisterFormatter(function<void(Param &param)> fnFormatter)
+    {
+        int8_t retVal = -1;
+        
+        if (fnFormatterListIdx_ < FORMATTER_COUNT)
+        {
+            retVal = fnFormatterListIdx_;
+            
+            fnFormatterList_[fnFormatterListIdx_] = fnFormatter;
+            ++fnFormatterListIdx_;
+        }
+        
+        return retVal;
+    }
     
     // assumes there's a null beyond the strLen bytes
-    uint8_t RegisterParamSTR(PStr paramName, const char *paramPtr, uint8_t strLen)
+    uint8_t RegisterParamSTR(PStr paramName, const char *paramPtr, uint8_t strLen, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::STR, (void *)paramPtr, strLen });
+        return RegisterParam({ paramName, ParamType::STR, (void *)paramPtr, strLen, fnFormatterIdx });
     }
     
-    uint8_t RegisterParamU32(PStr paramName, uint32_t *paramPtr)
+    uint8_t RegisterParamU32(PStr paramName, uint32_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::U32, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::U32, (void *)paramPtr, 0, fnFormatterIdx });
     }
     
-    uint8_t RegisterParamU16(PStr paramName, uint16_t *paramPtr)
+    uint8_t RegisterParamU16(PStr paramName, uint16_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::U16, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::U16, (void *)paramPtr, 0, fnFormatterIdx });
     }
     
-    uint8_t RegisterParamU8(PStr paramName, uint8_t *paramPtr)
+    uint8_t RegisterParamU8(PStr paramName, uint8_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::U8, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::U8, (void *)paramPtr, 0, fnFormatterIdx });
     }
 
-    uint8_t RegisterParamI32(PStr paramName, int32_t *paramPtr)
+    uint8_t RegisterParamI32(PStr paramName, int32_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::I32, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::I32, (void *)paramPtr, 0, fnFormatterIdx });
     }
     
-    uint8_t RegisterParamI16(PStr paramName, int16_t *paramPtr)
+    uint8_t RegisterParamI16(PStr paramName, int16_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::I16, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::I16, (void *)paramPtr, 0, fnFormatterIdx });
     }
     
-    uint8_t RegisterParamI8(PStr paramName, int8_t *paramPtr)
+    uint8_t RegisterParamI8(PStr paramName, int8_t *paramPtr, int8_t fnFormatterIdx = -1)
     {
-        return RegisterParam({ paramName, ParamType::I8, (void *)paramPtr, 0 });
+        return RegisterParam({ paramName, ParamType::I8, (void *)paramPtr, 0, fnFormatterIdx });
     }
 
     void SetOnSetCallback(function<void(void)> cbFnOnSet)
@@ -742,6 +765,14 @@ public:
             else if (param.paramType == ParamType::I32) { LogParamI32(param); }
             else if (param.paramType == ParamType::I16) { LogParamI16(param); }
             else if (param.paramType == ParamType::I8)  { LogParamI8(param);  }
+            
+            if (param.idxFormatter >= 0 && param.idxFormatter < fnFormatterListIdx_)
+            {
+                LogNNL('\t');
+                fnFormatterList_[param.idxFormatter](param);
+            }
+            
+            LogNL();
         }
     }
     
@@ -906,31 +937,31 @@ private:
     
     void LogParamSTR(Param &param)
     {
-        Log((const char *)param.paramPtr);
+        LogNNL((const char *)param.paramPtr);
     }
     void LogParamU32(Param &param)
     {
-        Log(*(uint32_t *)param.paramPtr);
+        LogNNL(*(uint32_t *)param.paramPtr);
     }
     void LogParamU16(Param &param)
     {
-        Log(*(uint16_t *)param.paramPtr);
+        LogNNL(*(uint16_t *)param.paramPtr);
     }
     void LogParamU8(Param &param)
     {
-        Log(*(uint8_t *)param.paramPtr);
+        LogNNL(*(uint8_t *)param.paramPtr);
     }
     void LogParamI32(Param &param)
     {
-        Log(*(int32_t *)param.paramPtr);
+        LogNNL(*(int32_t *)param.paramPtr);
     }
     void LogParamI16(Param &param)
     {
-        Log(*(int16_t *)param.paramPtr);
+        LogNNL(*(int16_t *)param.paramPtr);
     }
     void LogParamI8(Param &param)
     {
-        Log(*(int8_t *)param.paramPtr);
+        LogNNL(*(int8_t *)param.paramPtr);
     }
 
     
@@ -945,6 +976,9 @@ private:
     uint8_t commandListIdx_ = 0;
     
     function<void(void)> cbFnOnSet_;
+    
+    function<void(Param &param)> fnFormatterList_[FORMATTER_COUNT];
+    uint8_t fnFormatterListIdx_ = 0;
 };
 
 
@@ -955,7 +989,7 @@ private:
 // Provide the type you want to be able to set values on.
 // Then decide the number of parameters you intend to expose.
 // If you want any commands, indicate those as well.
-template <typename T, uint8_t PARAM_COUNT, uint8_t CMD_COUNT = 0>
+template <typename T, uint8_t PARAM_COUNT, uint8_t CMD_COUNT, uint8_t FORMATTER_COUNT>
 class PersistantConfigManager
 {
 public:
@@ -1102,7 +1136,7 @@ private:
     
 protected:
 
-    using MenuType = SerialAsyncConsoleMenu<PARAM_COUNT, CMD_COUNT + 1>;
+    using MenuType = SerialAsyncConsoleMenu<PARAM_COUNT, CMD_COUNT + 1, FORMATTER_COUNT>;
     
     MenuType &Menu()
     {
