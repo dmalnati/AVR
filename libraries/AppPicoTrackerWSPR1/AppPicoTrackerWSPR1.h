@@ -79,10 +79,24 @@ public:
 
     void Run()
     {
+        uint8_t tcxoInUse = 0;
+        
+        // Handle external clock being configured.
+        if (PAL.GetFuseExternalClockConfigured())
+        {
+            // If fuse indicates external clock, it's a 16 MHz TCXO.
+            // We want to run at 8 MHz.  So prescale by 2.
+            PAL.SetCpuPrescaler(PlatformAbstractionLayer::CpuPrescaler::DIV_BY_2);
+            
+            tcxoInUse = 1;
+        }
+        
         // Init serial and announce startup
         LogStart(9600);
         LogNL();
-        Log(P("Starting"));
+        LogNNL(P("Starting, TCXO "));
+        Log(tcxoInUse ? P("Enabled") : P("Disabled"));
+        
         
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
@@ -139,41 +153,7 @@ public:
             uint8_t letDefaultApplyAutomatically = 0;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
-        
-        // handle scenario where tcxo in use
-        if (userConfigOk)
-        {
-            #if 0
-            if (tcxo)
-            {
-                // Ensure fuse bits demand longest startup time (external clock)
-                // Actually... necessary?  Should be internal RC...
-        
 
-                
-                // Make sure fuse for external clock set
-                // Adjust clock divider
-                    // assuming 16MHz external clock for now
-            }
-            else
-            {
-                // Don't need to check fuses, code is running, therefore the
-                // internal RC is selected.
-                //
-                // Don't need to adjust clock divider, it's defaulted already to
-                // 8MHz, which is what we want
-            }
-            
-            // Add correct fuse settings to testing / build docs.
-            // Consider startup time to be maxed out.
-            //
-            // But... since you can set clock divide in fuses, why not just do
-            // it there and skip all this code?
-            
-            
-            #endif
-        }
-        
         if (userConfigOk)
         {
             // Blink to indicate good configuration

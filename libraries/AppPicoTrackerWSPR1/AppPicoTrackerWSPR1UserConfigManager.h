@@ -60,11 +60,6 @@ struct AppPicoTrackerWSPR1UserConfig
     
     struct
     {
-        uint8_t tcxoMode = 0;
-    } clock;
-    
-    struct
-    {
         WSPRMessageTransmitter::Calibration mtCalibration;
     } radio = {
         .mtCalibration = (WSPRMessageTransmitter::Calibration){
@@ -76,7 +71,7 @@ struct AppPicoTrackerWSPR1UserConfig
 
 
 class AppPicoTrackerWSPR1UserConfigManager
-: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 14, 0, 1>
+: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 13, 0, 1>
 {
 public:
 
@@ -114,9 +109,7 @@ private:
         Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs, idxFormatter_);
         Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs, idxFormatter_);
         
-        Menu().RegisterParamU8(P("tcxoMode"),                     &Config().clock.tcxoMode);
         Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
-        
         Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
     }
     
