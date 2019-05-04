@@ -1,11 +1,12 @@
 #include "Evm.h"
 #include "Log.h"
 #include "SerialInput.h"
+#include "StrFormat.h"
 
 
 static Evm::Instance<10,10,10> evm;
 
-using Menu = SerialAsyncConsoleMenu<8, 3>;
+using Menu = SerialAsyncConsoleMenu<8, 3, 1>;
 Menu menu;
 
 
@@ -42,23 +43,37 @@ void ShowTestStruct(TestStruct &ts)
 
 
 
-
 void setup()
 {
     LogStart(9600);
     Log("Starting");
+
+    int8_t idxFormatter1 = menu.RegisterFormatter([](Menu::Param &param){
+        uint32_t &val = *(uint32_t *)param.paramPtr;
+        
+        const uint8_t BUF_SIZE = 14;
+        char buf[BUF_SIZE] = { 0 };
+    
+        DurationMsToHHMMSSmmm(val, buf);
+    
+        LogNNL(buf);
+    });
+
+    int8_t idxFormatter2 = menu.RegisterFormatter([](Menu::Param &){
+        LogNNL(P("*you'll never see this*"));
+    });
     
     menu.RegisterParamU32(P("u32"), &testStruct.u32);
-    menu.RegisterParamU16(P("u16"), &testStruct.u16);
+    menu.RegisterParamU16(P("u16"), &testStruct.u16, idxFormatter2);
     menu.RegisterParamU8(P("u8"), &testStruct.u8);
     
     menu.RegisterParamSTR(P("str"), testStruct.str, TestStruct::STR_LEN);
     
-    menu.RegisterParamI32(P("i32"), &testStruct.i32);
+    menu.RegisterParamI32(P("i32"), &testStruct.i32, idxFormatter1);
     menu.RegisterParamI16(P("i16"), &testStruct.i16);
     menu.RegisterParamI8(P("i8"), &testStruct.i8);
     
-    menu.RegisterParamU32(P("otherU32"), &otherU32);
+    menu.RegisterParamU32(P("otherU32"), &otherU32, idxFormatter1);
     
     menu.RegisterParamU32(P("wontFit"), &otherU32);
     
@@ -125,20 +140,3 @@ void setup()
 }
 
 void loop() {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
