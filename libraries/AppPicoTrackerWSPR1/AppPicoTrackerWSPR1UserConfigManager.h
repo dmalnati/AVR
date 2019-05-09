@@ -63,8 +63,8 @@ struct AppPicoTrackerWSPR1UserConfig
         WSPRMessageTransmitter::Calibration mtCalibration;
     } radio = {
         .mtCalibration = (WSPRMessageTransmitter::Calibration){
-            -3652,
-            3,
+            -7600,
+            6,
         }
     };
 };
@@ -109,8 +109,8 @@ private:
         Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs, idxFormatter_);
         Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs, idxFormatter_);
         
-        Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
         Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
+        Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
     }
     
     int8_t idxFormatter_ = -1;

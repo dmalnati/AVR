@@ -150,7 +150,7 @@ public:
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 0;
+            uint8_t letDefaultApplyAutomatically = 1;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
 
@@ -456,6 +456,7 @@ private:
 
         // Schedule next wakeup
         uint32_t wakeAndEvaluateDelayMs = CalculateWakeup(gpsHadError);
+        wakeAndEvaluateDelayMs = 0;
         tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
         
         Log(P("Sleep "), wakeAndEvaluateDelayMs);
