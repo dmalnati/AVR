@@ -181,7 +181,7 @@ class SerialAsyncConsole
     struct CmdToFn
     {
         const char                   *cmd;
-        int8_t                        minArgCount;
+        int8_t                        reqArgCount;
         function<void(char *cmdStr)>  fn;
     };
     
@@ -195,7 +195,7 @@ public:
     }
     
     uint8_t RegisterCommand(const char                   *cmd,
-                            uint8_t                       minArgCount,
+                            uint8_t                       reqArgCount,
                             function<void(char *cmdStr)>  fn)
     {
         uint8_t retVal = 0;
@@ -204,7 +204,7 @@ public:
         {
             retVal = 1;
             
-            CmdToFn ctf{ cmd, (int8_t)minArgCount, fn };
+            CmdToFn ctf{ cmd, (int8_t)reqArgCount, fn };
             
             cmdToFnList_[cmdToFnListIdx_] = ctf;
             
@@ -253,11 +253,11 @@ public:
                         
                         // Check if min arguments apply, and if yes, if present
                         uint8_t executeFunction = 1;
-                        if (cmdToFnList_[i].minArgCount != -1)
+                        if (cmdToFnList_[i].reqArgCount != -1)
                         {
                             uint8_t argCount = str.TokenCount(' ') - 1;
                             
-                            if (argCount != cmdToFnList_[i].minArgCount)
+                            if (argCount != cmdToFnList_[i].reqArgCount)
                             {
                                 executeFunction = 0;
                                 
@@ -268,7 +268,7 @@ public:
                                         ' ',
                                         argCount,
                                         '/',
-                                        cmdToFnList_[i].minArgCount,
+                                        cmdToFnList_[i].reqArgCount,
                                         P(" args provided"));
                                 }
                             }
@@ -303,13 +303,13 @@ public:
             Log(P("Commands:"));
             for (uint8_t i = 0; i < cmdToFnListIdx_; ++i)
             {
-                if (cmdToFnList_[i].minArgCount == -1)
+                if (cmdToFnList_[i].reqArgCount == -1)
                 {
                     Log(cmdToFnList_[i].cmd);
                 }
                 else
                 {
-                    Log(cmdToFnList_[i].cmd, '<', cmdToFnList_[i].minArgCount, '>');
+                    Log(cmdToFnList_[i].cmd, '<', cmdToFnList_[i].reqArgCount, '>');
                 }                
             }
             LogNL();
@@ -368,32 +368,29 @@ private:
     {
         // two sub-commands:
         // - pin set <pin> <val>
-        // - pin get <pin>
-        this->RegisterCommand("pin", [](char *cmdStr) {
+        // - pin get <pin> <doPullup>
+        this->RegisterCommand("pin", 3, [](char *cmdStr) {
             Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 4 &&
-                !strcmp_P(str.TokenAtIdx(1, ' '), PSTR("set")))
+            const char *getSetStr =        str.TokenAtIdx(1, ' ');
+            uint8_t     pin       =   atoi(str.TokenAtIdx(2, ' '));
+            uint8_t     val       = !!atoi(str.TokenAtIdx(3, ' '));
+            
+            if (!strcmp_P(getSetStr, P("set")))
             {
-                uint8_t pin = atoi(str.TokenAtIdx(2, ' '));
-                uint8_t val = atoi(str.TokenAtIdx(3, ' '));
-
                 PAL.PinMode(pin, OUTPUT);
                 
                 Log(P("Pin "), pin, P(" -> "), val);
 
                 PAL.DigitalWrite(pin, val);
             }
-            else if (str.TokenCount(' ') == 3 &&
-                !strcmp_P(str.TokenAtIdx(1, ' '), PSTR("get")))
+            else if (!strcmp_P(getSetStr, P("get")))
             {
-                uint8_t pin = atoi(str.TokenAtIdx(2, ' '));
+                PAL.PinMode(pin, val ? INPUT_PULLUP : INPUT);
                 
-                PAL.PinMode(pin, INPUT);
-                
-                uint8_t val = PAL.DigitalRead(pin);
+                uint8_t valRead = PAL.DigitalRead(pin);
 
-                Log(P("Pin "), pin, P(" <- "), val);
+                Log(P("Pin "), pin, P("("), val, P(") <- "), valRead);
             }
         });
         
@@ -406,7 +403,7 @@ private:
 
             uint32_t delayMs = atol(str.TokenAtIdx(1, ' '));
             
-            Log(P("DelayLowPower "), delayMs, " ms");
+            Log(P("DelayLowPower "), delayMs, P(" ms"));
             
             PAL.DelayLowPower(delayMs);
             
