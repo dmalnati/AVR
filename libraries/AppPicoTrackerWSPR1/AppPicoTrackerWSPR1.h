@@ -394,10 +394,10 @@ private:
                     
                     Log('2');
                     // Pack message now that we know where we are
-                    uint8_t messageOk = FillOutStandardWSPRMessage();
+                    FillOutStandardWSPRMessage();
                     
                     // Test message before sending (but send regardless)
-                    Log(P("Message prepared, "), messageOk ? P("OK") : P("NOT OK"));
+                    Log(P("Message prepared"));
                     
                     // Figure out how long we've been operating since the mark
                     uint32_t timeDiff = PAL.Millis() - timeAtMark;
@@ -641,17 +641,13 @@ private:
         wsprMessageTransmitter_.RadioOn();
     }
 
-    uint8_t SendMessage()
+    void SendMessage()
     {
-        uint8_t retVal = 0;
-        
         // Kick the watchdog
         PAL.WatchdogReset();
         
         // Send the message synchronously
-        retVal = wsprMessageTransmitter_.Send(&wsprMessage_);
-        
-        return retVal;
+        wsprMessageTransmitter_.Send(&wsprMessage_);
     }
     
     void PostSendMessage()
@@ -670,11 +666,8 @@ private:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    uint8_t FillOutStandardWSPRMessage()
+    void FillOutStandardWSPRMessage()
     {
-        // Modify the GPS maidenheadGrid to be 4 char instead of 6
-        gpsLocationMeasurement_.maidenheadGrid[4] = '\0';
-        
         // Keep a mapping of altitude to power level as an encoding
         struct
         {
@@ -717,8 +710,6 @@ private:
         wsprMessage_.SetCallsign((const char *)userConfig_.wspr.callsign);
         wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
         wsprMessage_.SetPower(powerDbm);
-        
-        return wsprMessageTransmitter_.Test(&wsprMessage_);
     }
     
     
@@ -848,6 +839,14 @@ private:
                 
         
         test the ADC correctness after deep sleep
+        
+        
+        
+        test different message types and protocol adherence.
+            can grid tolerate all caps?
+                do I care?
+            what about power?  can I use any value and still get packets returned to me?
+            how else can I get extra data into the protocol?
         
 */
         
