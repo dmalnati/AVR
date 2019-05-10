@@ -1,3 +1,7 @@
+#ifndef __NHASH_H__
+#define __NHASH_H__
+
+
 /*
  This file is part of wsprd.
 
@@ -72,7 +76,6 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 
 #include <stdio.h>      /* defines printf for tests */
 #include <time.h>       /* defines time_t for timings in the test */
-#include "nhash.h"
 //#include <sys/param.h>  /* attempt to define endianness */
 //#ifdef linux
 //# include <endian.h>    /* attempt to define endianness */
@@ -455,3 +458,23 @@ uint32_t nhash( const void *key, size_t length, uint32_t initval) {
 uint32_t nhash_( const void * key, size_t const * length, uint32_t const * initval) {
     return nhash (key, *length, *initval);
 }
+
+
+#endif  // __NHASH_H__
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
