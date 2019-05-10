@@ -104,6 +104,21 @@ public:
         return bufSize_ * 8;
     }
     
+    uint8_t GetBuf(uint8_t *&buf, uint8_t &bufSize)
+    {
+        uint8_t retVal = 0;
+        
+        if (buf_)
+        {
+            retVal = 1;
+            
+            buf     = buf_;
+            bufSize = bufSize_;
+        }
+        
+        return retVal;
+    }
+    
 
 private:
 
@@ -130,6 +145,23 @@ private:
     uint8_t  bufSize_;
 };
 
+
+template <uint8_t BIT_COUNT>
+class BitFieldOwned
+: public BitField
+{
+    static const uint8_t BUF_SIZE = (BIT_COUNT / 8) + ((BIT_COUNT % 8) ? 1 : 0);
+public:
+
+    BitFieldOwned()
+    : BitField(buf_, BUF_SIZE)
+    {
+        // Nothing to do
+    }
+
+private:
+    uint8_t buf_[BUF_SIZE] = { 0 };
+};
 
 
 #endif  // __BITMAP_H__
