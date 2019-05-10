@@ -176,8 +176,16 @@ void setup()
         }
     });
     
-    console.RegisterCommand("send", [](char *){
-        Log("Sending");
+    console.RegisterCommand("send", [](char *cmdStr){
+        Str str(cmdStr);
+
+        uint8_t type = 1;
+        if (str.TokenCount(' ') == 2)
+        {
+            type = atol(str.TokenAtIdx(1, ' '));
+        }
+        
+        Log("Sending type ", type);
 
         if (!onOff)
         {
@@ -186,7 +194,7 @@ void setup()
 
         PrintCurrentValues();
         
-        mt.Send(&m);
+        mt.Send(&m, type);
 
         Log(P("Send complete"));
     });
@@ -197,16 +205,6 @@ void setup()
         mt.RadioOff();
 
         onOff = 0;
-    });
-
-    console.RegisterCommand("test", [](char *){
-        LogNNL("Testing settings - ");
-
-        PrintCurrentValues();
-
-        uint8_t retVal = mt.Test(&m);
-
-        Log(retVal ? "OK" : "ERR");
     });
 
     console.RegisterCommand("crystalCorrectionFactor", [](char *cmdStr){
@@ -273,7 +271,7 @@ void setup()
 
     // Set some defaults
     m.SetCallsign("KD2KDD");
-    m.SetGrid("AB12");
+    m.SetGrid("FN20XR");
     m.SetPower(27);
 
     // Toggle pinB whenever a bit changes
@@ -286,11 +284,8 @@ void setup()
     console.Start();
     console.Exec("pin set 15 1");
     console.Exec("help");
-    
+
     evm.MainLoop();
 }
 
 void loop() {}
-
-
-

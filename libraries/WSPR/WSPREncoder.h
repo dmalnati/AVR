@@ -12,37 +12,17 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-//#include "UtlLogBlob.h"
 
 #include "CString.h"
 #include "PAL.h"
 #include "BitField.h"
+#include "nhash.h"
 
 
 /*
  * This library is mixing the simplicity of the genwspr code with my own
  * memory elimination techniques, as well as applying a generation approach to
  * the distribution from JTEncode.
- *
- * Original memory usage of raw genwspr lib
- * - prog 15688
- * - sram 1105
- * 
- * (after getting rid of sync bits)
- * - prog 15624
- * - sram 966
- * 
- * (after getting rid of msg)
- * - prog 16076
- * - sram 848
- * 
- * (after getting rid of rdx)
- * - prog 16180
- * - sram 686
- * 
- * total change
- * - prog +492
- * - sram -419
  *
  */
 
@@ -51,137 +31,47 @@ class WSPREncoder
     static const uint8_t CALLSIGN_LEN = 6;
     static const uint8_t GRID_LEN     = 4;
     
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Type 1 Messages
+//
+////////////////////////////////////////////////////////////////////////////////
+
 public:
 
-static uint8_t Encode(const char *callsignInput,
-                      const char *gridInput,
-                      uint8_t     powerDbmInput,
-                      uint8_t     testOnly = 0)
+static void
+EncodeType1(const char *callsignInput,
+            const char *gridInput,
+            uint8_t     powerDbmInput)
 {
-    uint8_t retVal = 1;
-    
-    // Do validation and correction before handing off to unsafe genmsg
-    
-    // Work with local buffers to modify data
-    char    callsign[CALLSIGN_LEN + 1] = { 0 };
-    char    grid[GRID_LEN + 1]         = { 0 };
-    uint8_t powerDbm                   = powerDbmInput;
-    
-    CString csCallsign(callsign, CALLSIGN_LEN + 1);
-    CString csGrid(grid, GRID_LEN + 1);
-    
-    csCallsign.Copy(callsignInput);
-    csGrid.Copy(gridInput);
-    
-    // Check if we've truncated strings
-    if (strlen(callsignInput) != csCallsign.Length() ||
-        strlen(gridInput)     != csGrid.Length())
-    {
-        retVal = 0;
-    }
-    
-    // Make sure all are upper case
-    if (retVal)
-    {
-        csCallsign.ToUpper();
-        csGrid.ToUpper();
-    }
-    
-    // Validate callsign format
-    //
-    // From G4JNT's analysis:
-    // The third character is forced to be always a number.
-    // To cope with callsigns that start letter followed by a number,
-    // a space is appended to the front if necessary. 
-    if (retVal)
-    {
-        if (csCallsign.Length() >= 3)
-        {
-            if (isdigit(csCallsign[2]))
-            {
-                // it's ok
-            }
-            else
-            {
-                // pad left with a space
-                uint8_t shiftWorked = csCallsign.Prepend(' ');
-                
-                retVal = shiftWorked;
-                
-                // this might not have fixed it.  more shifting wouldn't either
-                // however, because validation later says 2nd char can't be a
-                // space.
-            }
-        }
-        else
-        {
-            retVal = 0;
-        }
-    }
-    
-    // Short callsigns are then further padded out to six characters by
-    // appending spaces to the end 
-    if (retVal)
-    {
-        csCallsign.PadRight(' ');
-    }
-    
-    // N1 = [Ch 1]                 The first character can take on any of the 37 values including [sp],
-    // N2 = N1 * 36 + [Ch 2]       but the second character cannot then be a space so can have 36 values
-    // N3 = N2 * 10 + [Ch 3]       The third character must always be a number, so only 10 values are possible.
-    // N4 = 27 * N3 + [Ch 4] – 10]
-    // N5 = 27 * N4 + [Ch 5] – 10] Characters at the end cannot be numbers,
-    // N6 = 27 * N5 + [Ch 6] – 10] so only 27 values are possible.
-    if (retVal)
-    {
-        if (!isalnum(csCallsign[0]) && csCallsign[0] != ' ') { retVal = 0; }
-        if (!isalnum(csCallsign[1])                        ) { retVal = 0; }
-        if (!isdigit(csCallsign[2])                        ) { retVal = 0; }
-        if (!isalpha(csCallsign[3]) && csCallsign[3] != ' ') { retVal = 0; }
-        if (!isalpha(csCallsign[4]) && csCallsign[4] != ' ') { retVal = 0; }
-        if (!isalpha(csCallsign[5]) && csCallsign[5] != ' ') { retVal = 0; }
-    }
-    
-    // Validate grid is the right format
-    //
-    // Designating the four locator characters as [Loc 1] to [Loc 4], the first two can each take
-    // on the 18 values ‘A’ to ‘R’ only so are allocated numbers from 0 – 17. The second pair
-    // can take only the values 0 – 9. 
-    if (retVal)
-    {
-        if (!isalpha(csGrid[0]) || csGrid[0] < 'A' || csGrid[0] > 'R') { retVal = 0; }
-        if (!isalpha(csGrid[1]) || csGrid[1] < 'A' || csGrid[1] > 'R') { retVal = 0; }
-        if (!isdigit(csGrid[2])                                      ) { retVal = 0; }
-        if (!isdigit(csGrid[3])                                      ) { retVal = 0; }
-    }
-    
-    // Cap power if above 60
-    if (powerDbm > 60)
-    {
-        powerDbm = 60;
-    }
-    
-    // Encode
-    if (retVal && !testOnly)
-    {
-        genmsg(callsign, grid, powerDbm);
-    }
-    
-    return retVal;
+    genmsg_type1(callsignInput, gridInput, powerDbmInput);
 }
 
-static uint8_t GetToneValForSymbol(uint8_t idx)
+static void
+genmsg_type1(const char *call, const char *grid, const int power)
 {
-    uint16_t bitIdx = idx * 2;
+    uint32_t c = encodecallsign(call) ; // 28 bits
+    uint32_t g = encodegrid(grid) ;     // 15 bits
+    uint32_t p = encodepower(power) ;   //  7 bits
     
-    uint8_t val;
-    bfToneNumList_.GetBitRangeAt(bitIdx, val, 2);
+    // Convert the useful bits above into a bitfield for further processing
+    BitFieldOwned<50> bf;
+    uint8_t idx = 0;
     
-    return val;
+    bf.SetBitRangeAt(idx, c, 28);
+    idx += 28;
+    
+    bf.SetBitRangeAt(idx, g, 15);
+    idx += 15;
+    
+    bf.SetBitRangeAt(idx, p, 7);
+    
+    EncodeTones(bf);
 }
-
 
 private:
+
 
 static int 
 chval1(int ch)
@@ -201,7 +91,6 @@ chval2(int ch)
     
     return 0;
 }
-
 
 static uint32_t
 encodecallsign(const char *callsign)
@@ -231,9 +120,6 @@ encodecallsign(const char *callsign)
     rc += chval2(call[4]) ; rc *= 27 ;
     rc += chval2(call[5]) ;
     
-    // LogNNL("Callsign: "); Log(rc);
-    // LogBlob(Serial, (uint8_t *)&rc, 4, 1, 1);
-
     return rc ;
 }
 
@@ -254,6 +140,216 @@ encodepower(int p)
     return p + 64 ;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Type 3 Messages
+//
+////////////////////////////////////////////////////////////////////////////////
+
+public:
+
+static void
+EncodeType3(const char *callsignInput,
+            const char *gridInput,
+            uint8_t     powerDbmInput)
+{
+    genmsg_type3(callsignInput, gridInput, powerDbmInput);
+}
+
+/*
+    Taken and modified from:
+    https://github.com/TomasTT7/TT7F-Float-Tracker/blob/master/Software/ARM_WSPR.c
+
+
+	Encodes the extended WSPR message: <OK7DMT> JN99bl 30
+	Based on: https://github.com/Guenael/airspy-wsprd/blob/master/wsprsim_utils.c
+    
+    Relies on:
+    https://github.com/Guenael/airspy-wsprd/blob/master/nhash.c
+    
+    
+    call = 6 char callsign
+    grid = 6 char grid
+*/
+static void
+genmsg_type3(const char *call, const char *grid, const int power)
+{
+    // computes the HASH of the callsign
+	uint32_t ihash = nhash(call, 6, 146);
+	
+    // LOCATOR is shifted by one byte
+	uint8_t locator6[6];
+	locator6[0] = grid[1];
+	locator6[1] = grid[2];
+	locator6[2] = grid[3];
+	locator6[3] = grid[4];
+	locator6[4] = grid[5];
+	locator6[5] = grid[0];
+	
+    uint32_t N = WSPR_encode_callsign_extended(locator6);									// 6-digit LOCATOR is encoded as CALLSIGN
+    
+    // CALLSIGN HASH is encoded with POWER
+	uint32_t M = ihash * 128 - (power + 1) + 64;
+
+	// Build up the 50 contiguous bits of actual Message
+    const uint8_t BUF_SIZE = 7;
+    uint8_t WSPRbits[BUF_SIZE];
+	WSPRbits[0] = (N & 0x0FF00000) >> 20;
+	WSPRbits[1] = (N & 0x000FF000) >> 12;
+	WSPRbits[2] = (N & 0x00000FF0) >> 4;
+	WSPRbits[3] = ((N & 0x0000000F) << 4) | ((M & 0x003C0000) >> 18);
+	WSPRbits[4] = (M & 0x0003FC00) >> 10;
+	WSPRbits[5] = (M & 0x000003FC) >> 2;
+	WSPRbits[6] = (M & 0x00000003) << 6;
+	
+    // Send the 50 bits off to be turned into the final tone values for TX
+    BitField bf;
+    bf.Attach(WSPRbits, BUF_SIZE);
+    
+    EncodeTones(bf);
+}
+
+private:
+
+
+/*
+	Encodes the 6-digit LOCATOR which was already byte shifted in place of the CALLSIGN. 
+	JN99bl -> N99blJ
+    
+    Taken directly from:
+    https://github.com/TomasTT7/TT7F-Float-Tracker/blob/master/Software/ARM_WSPR.c
+*/
+static uint32_t
+WSPR_encode_callsign_extended(uint8_t * call)
+{
+	//uint8_t i = 0;
+	uint32_t result = 0;
+	
+	result = call[0] - 55;
+	result = result * 36 + (call[1] - 48);
+	result = result * 10 + (call[2] - 48);
+	result = result * 27 + (call[3] - 55) - 10;
+	result = result * 27 + (call[4] - 55) - 10;
+	result = result * 27 + (call[5] - 55) - 10;
+
+	return result;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Tone Extraction
+//
+////////////////////////////////////////////////////////////////////////////////
+
+public:
+
+static uint8_t GetToneValForSymbol(uint8_t idx)
+{
+    uint16_t bitIdx = idx * 2;
+    
+    uint8_t val;
+    bfToneNumList_.GetBitRangeAt(bitIdx, val, 2);
+    
+    return val;
+}
+
+private:
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Tone Generation
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// Should have 50 bits of data in the buffer.
+// This function will encode them into the final transmittable tone value form.
+//
+// We are replicating the encoding scheme seen in the genmsg function originally.
+//
+// eg
+//    uint32_t c = encodecallsign(call) ;
+//     ...
+//    for (i=27; i>=0; i--) /* encode the callsign, 28 bits */
+//    {
+//	      acc <<= 1 ;
+//	      if (c & (1L<<i)) acc |= 1 ;
+//    
+//        IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
+//        IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
+//    }
+//
+// 
+// Seeing that we're striping left-to-right and extracting bits from the input.
+// When that bit is set, we set the right-most bit on the accumulator.
+//   The accumulator is always shifting left.
+//
+// So basically the bits in the accumulator are a mirror-image of the incoming
+// bit-stream within a rolling 32-bit window.
+//
+static void
+EncodeTones(BitField &bitFieldOf50Bits)
+{
+    uint32_t acc     = 0;
+    uint8_t  idxTone = 0;
+    
+    // Lay down the initial tone values from synchronization bits
+    for (uint8_t i = 0; i < 162; ++i)
+    {
+        uint8_t val;
+        bfSync_.GetBitAt(i, val);
+        
+        SetToneVal(i, val);
+    }
+    
+    // Generate the first 100 tone values from the input 50 bits
+    for (uint8_t i = 0; i < 50; ++i)
+    {
+        acc <<= 1;
+        
+        uint8_t bitVal;
+        bitFieldOf50Bits.GetBitAt(i, bitVal);
+        
+        if (bitVal)
+        {
+            acc |= 1;
+        }
+        
+        IncrToneVal(GetRdx(idxTone++), 2 * parity(acc & 0xf2d05351L));
+        IncrToneVal(GetRdx(idxTone++), 2 * parity(acc & 0xe4613c47L));
+    }
+    
+    // Generate the remaining 62 tone values from zeroes
+    for (uint8_t i = 0; i < 31; ++i)
+    {
+        acc <<= 1;
+        
+        IncrToneVal(GetRdx(idxTone++), 2 * parity(acc & 0xf2d05351L));
+        IncrToneVal(GetRdx(idxTone++), 2 * parity(acc & 0xe4613c47L));
+    }
+}
+
+static void SetToneVal(uint8_t idx, uint8_t val)
+{
+    uint16_t bitIdx = idx * 2;
+    
+    bfToneNumList_.SetBitRangeAt(bitIdx, val, 2);
+}
+
+static void IncrToneVal(uint8_t idx, uint8_t val)
+{
+    uint16_t bitIdx = idx * 2;
+    
+    uint8_t valCurr;
+    bfToneNumList_.GetBitRangeAt(bitIdx, valCurr, 2);
+    
+    valCurr += val;
+    
+    bfToneNumList_.SetBitRangeAt(bitIdx, valCurr, 2);
+}
+
 static int32_t
 parity(uint32_t x)
 {
@@ -263,60 +359,6 @@ parity(uint32_t x)
 	x = x & (x - 1) ;
     }
     return even ;
-}
-
-
-
-static void
-genmsg(const char *call, const char *grid, const int power)
-{
-    uint32_t c = encodecallsign(call) ;
-    uint32_t g = encodegrid(grid) ;
-    uint32_t p = encodepower(power) ;
-    int32_t i, mp = 0 ;
-    uint32_t acc = 0;
-    
-    // uint32_t M = (g * 128) + p;
-    // LogNNL("M: "); Log(M);
-    // LogBlob(Serial, (uint8_t *)&M, 4, 1, 1);
-
-    for (uint8_t i=0; i<162; i++)
-    {
-        uint8_t val;
-        bfSync_.GetBitAt(i, val);
-        
-        SetToneVal(i, val);
-    }
-
-    for (i=27; i>=0; i--) {		/* encode the callsign, 28 bits */
-	acc <<= 1 ;
-	if (c & (1L<<i)) acc |= 1 ;
-    
-    // LogBlob(Serial, (uint8_t *)&acc, 4, 1, 1);
-    
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
-    }
-
-    for (i=14; i>=0; i--) {		/* encode the grid, 15 bits */
-	acc <<= 1 ;
-	if (g & (1L<<i)) acc |= 1 ;
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
-    }
-
-    for (i=6; i>=0; i--) {		/* encode the power, 7 bits */
-	acc <<= 1 ;
-	if (p & (1L<<i)) acc |= 1 ;
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
-    }
-
-    for (i=30; i>=0; i--) {		/* pad with 31 zero bits */
-	acc <<= 1 ;
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xf2d05351L));
-    IncrToneVal(GetRdx(mp++), 2*parity(acc & 0xe4613c47L));
-    }
 }
 
 // this (modified) function taken from JTEncode
@@ -361,24 +403,9 @@ static uint8_t GetRdx(uint8_t idx)
 
 
 
-static void SetToneVal(uint8_t idx, uint8_t val)
-{
-    uint16_t bitIdx = idx * 2;
-    
-    bfToneNumList_.SetBitRangeAt(bitIdx, val, 2);
-}
 
-static void IncrToneVal(uint8_t idx, uint8_t val)
-{
-    uint16_t bitIdx = idx * 2;
-    
-    uint8_t valCurr;
-    bfToneNumList_.GetBitRangeAt(bitIdx, valCurr, 2);
-    
-    valCurr += val;
-    
-    bfToneNumList_.SetBitRangeAt(bitIdx, valCurr, 2);
-}
+
+private:
 
 static const uint8_t syncBitList_[21];
 static const BitField bfSync_;

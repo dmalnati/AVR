@@ -41,7 +41,7 @@ public:
         int32_t crystalCorrectionFactor = 0;
         int32_t systemClockOffsetMs     = 0;
     };
-
+    
     void SetCalibration(Calibration calibration)
     {
         calibration_ = calibration;
@@ -64,24 +64,6 @@ public:
         fnOnBitChange_ = fnOnBitChange;
     }
     
-    uint8_t Test(WSPRMessage *msg)
-    {
-        uint8_t retVal = 0;
-        
-        // Get access to data in message
-        const char *callsign = NULL;
-        const char *grid     = NULL;
-        uint8_t     powerDbm = 0;
-        
-        msg->GetData(callsign, grid, powerDbm);
-        
-        // Test
-        uint8_t testOnly = 1;
-        retVal = wsprEncoder_.Encode(callsign, grid, powerDbm, testOnly);
-        
-        return retVal;
-    }
-
     void RadioOn()
     {
         RadioOff();
@@ -106,19 +88,23 @@ public:
         radio_.output_enable(SI5351_CLK0, 1);
     }
     
-    uint8_t Send(WSPRMessage *msg)
+    void Send(WSPRMessage *msg, uint8_t type = 1)
     {
-        uint8_t retVal = 0;
-        
         // Get access to data in message
         const char *callsign = NULL;
         const char *grid     = NULL;
         uint8_t     powerDbm = 0;
-        
+
         msg->GetData(callsign, grid, powerDbm);
         
-        // Encode
-        retVal = wsprEncoder_.Encode(callsign, grid, powerDbm);
+        if (type == 1)
+        {
+            wsprEncoder_.EncodeType1(callsign, grid, powerDbm);
+        }
+        else if (type == 3)
+        {
+            wsprEncoder_.EncodeType3(callsign, grid, powerDbm);
+        }
         
         // Allow calibration to compensate for system clock not being accurate
         // enough to hit precise bit duration
@@ -161,8 +147,6 @@ public:
             // Allow calling code to do something here
             fnOnBitChange_();
         }
-        
-        return retVal;
     }
     
     void RadioOff()
