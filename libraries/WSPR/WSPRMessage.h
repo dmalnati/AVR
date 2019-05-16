@@ -12,31 +12,19 @@ class WSPRMessage
     
 public:
 
-    uint8_t SetCallsign(const char *callsign)
+    void SetCallsign(const char *callsign)
     {
-        uint8_t retVal = 0;
-        
         strncpy(callsign_, callsign, CALLSIGN_LEN);
-        
-        return retVal;
     }
     
-    uint8_t SetGrid(const char *grid)
+    void SetGrid(const char *grid)
     {
-        uint8_t retVal = 0;
-        
         strncpy(grid_, grid, GRID_LEN);
-        
-        return retVal;
     }
     
-    uint8_t SetPower(uint8_t powerDbm)
+    void SetPower(uint8_t powerDbm)
     {
-        uint8_t retVal = 0;
-        
         powerDbm_ = powerDbm;
-        
-        return retVal;
     }
     
     void GetData(const char * &callsign, const char * &grid, uint8_t &powerDbm)

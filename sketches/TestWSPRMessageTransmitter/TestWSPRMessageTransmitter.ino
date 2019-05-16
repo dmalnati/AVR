@@ -2,15 +2,16 @@
 #include "Log.h"
 #include "SerialInput.h"
 #include "WSPRMessageTransmitter.h"
-
+#include "WSPRMessagePicoTrackerWSPR1.h"
 
 static Evm::Instance<10,10,10> evm;
 static TimedEventHandlerDelegate ted;
-static SerialAsyncConsoleEnhanced<20>  console;
+static SerialAsyncConsoleEnhanced<25>  console;
 
 static const uint8_t pinB = 25;
 
-static WSPRMessage                          m;
+static WSPRMessage                          mOld;
+static WSPRMessagePicoTrackerWSPR1          m;
 static WSPRMessageTransmitter               mt;
 static WSPRMessageTransmitter::Calibration  mtc;
 static uint32_t freqInHundredths = mt.GetCalculatedFreqHundredths();
@@ -49,9 +50,9 @@ void PrintMenu()
     LogNL();
     //Log(P("Data Related"));
     //LogX('-', 20);
-    //Log(P("c <callsign> - set callsign"));
-    //Log(P("g <grid> - set grid"));
-    //Log(P("p <power> - set power"));
+    //Log(P("callsign <callsign> - set callsign"));
+    //Log(P("grid <grid> - set grid"));
+    //Log(P("power <power> - set power"));
     //LogNL();
     Log(P("Frequency Related"));
     LogX('-', 17);
@@ -75,15 +76,21 @@ void PrintMenu()
 void setup()
 {
     LogStart(9600);
+    
+    //////////////////////////////////////////////////////////////
+    //
+    // Traditional WSPR message settings
+    //
+    //////////////////////////////////////////////////////////////
 
-    console.RegisterCommand("c", [](char *cmdStr){
+    console.RegisterCommand("callsign", [](char *cmdStr){
         Str str(cmdStr);
         
         if (str.TokenCount(' ') == 2)
         {
             const char *p = str.TokenAtIdx(1, ' ');
             
-            Log("Setting callsign to \"", p, '"');
+            Log(P("Setting callsign to \""), p, '"');
 
             m.SetCallsign((char *)p);
 
@@ -91,14 +98,14 @@ void setup()
         }
     });
 
-    console.RegisterCommand("g", [](char *cmdStr){
+    console.RegisterCommand("grid", [](char *cmdStr){
         Str str(cmdStr);
         
         if (str.TokenCount(' ') == 2)
         {
             const char *p = str.TokenAtIdx(1, ' ');
             
-            Log("Setting grid to \"", p, '"');
+            Log(P("Setting grid to \""), p, '"');
 
             m.SetGrid((char *)p);
 
@@ -106,23 +113,113 @@ void setup()
         }
     });
     
-    console.RegisterCommand("p", [](char *cmdStr){
+    console.RegisterCommand("power", [](char *cmdStr){
         Str str(cmdStr);
         
         if (str.TokenCount(' ') == 2)
         {
             uint8_t val = atoi(str.TokenAtIdx(1, ' '));
             
-            Log("Setting power to \"", val, '"');
+            Log(P("Setting power to \""), val, '"');
 
             m.SetPower(val);
 
             PrintCurrentValues();
         }
     });
+    
+    //////////////////////////////////////////////////////////////
+    //
+    // Encoded WSPR message settings
+    //
+    //////////////////////////////////////////////////////////////
+
+    console.RegisterCommand("id", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *p = str.TokenAtIdx(1, ' ');
+            
+            Log(P("Setting ID to \""), p, '"');
+
+            m.SetId((char *)p);
+
+            PrintCurrentValues();
+        }
+    });
+
+    console.RegisterCommand("altitude", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atol(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Setting AltitudeFt to \""), val, '"');
+
+            m.SetAltitudeFt(val);
+
+            PrintCurrentValues();
+        }
+    });
+
+    console.RegisterCommand("speed", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Setting SpeedMPH to \""), val, '"');
+
+            m.SetSpeedMph(val);
+
+            PrintCurrentValues();
+        }
+    });
+
+    console.RegisterCommand("temp", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            int8_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Setting TemperatureC to \""), val, '"');
+
+            m.SetTemperatureC(val);
+
+            PrintCurrentValues();
+        }
+    });
+
+    #if 1
+    console.RegisterCommand("mvolt", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint16_t val = atol(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Setting MilliVolt to \""), val, '"');
+
+            m.SetMilliVoltage(val);
+
+            PrintCurrentValues();
+        }
+    });
+    #endif
+    
+    
+    //////////////////////////////////////////////////////////////
+    //
+    // Radio controls
+    //
+    //////////////////////////////////////////////////////////////
 
     console.RegisterCommand("on", [](char *){
-        Log("Radio On");
+        Log(P("Radio On"));
 
         mt.SetCalibration(mtc);
 
@@ -142,7 +239,7 @@ void setup()
 
             freqInHundredths = val * 100;
             
-            Log("Setting freq to \"", freqInHundredths / 100.0, '"');
+            Log(P("Setting freq to \""), freqInHundredths / 100.0, '"');
 
             if (onOff)
             {
@@ -165,7 +262,7 @@ void setup()
                 (WSPRMessageTransmitter::WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ * 100UL) +
                 (chan * WSPRMessageTransmitter::WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
 
-            Log("Setting channel to ", chan, ", freq now ", freqInHundredths / 100.0);
+            Log(P("Setting channel to "), chan, P(", freq now "), freqInHundredths / 100.0);
 
             if (onOff)
             {
@@ -185,7 +282,7 @@ void setup()
             type = atol(str.TokenAtIdx(1, ' '));
         }
         
-        Log("Sending type ", type);
+        Log(P("Sending type "), type);
 
         if (!onOff)
         {
@@ -200,12 +297,19 @@ void setup()
     });
     
     console.RegisterCommand("off", [](char *){
-        Log("Radio Off");
+        Log(P("Radio Off"));
 
         mt.RadioOff();
 
         onOff = 0;
     });
+
+    
+    //////////////////////////////////////////////////////////////
+    //
+    // Tuning
+    //
+    //////////////////////////////////////////////////////////////
 
     console.RegisterCommand("crystalCorrectionFactor", [](char *cmdStr){
         Str str(cmdStr);
@@ -214,7 +318,7 @@ void setup()
         {
             mtc.crystalCorrectionFactor = atol(str.TokenAtIdx(1, ' '));
             
-            Log("Setting crystalCorrectionFactor to ", mtc.crystalCorrectionFactor);
+            Log(P("Setting crystalCorrectionFactor to "), mtc.crystalCorrectionFactor);
 
             PrintCurrentValues();
 
@@ -232,7 +336,7 @@ void setup()
         {
             mtc.systemClockOffsetMs = atol(str.TokenAtIdx(1, ' '));
             
-            Log("Setting systemClockOffsetMs to ", mtc.systemClockOffsetMs);
+            Log(P("Setting systemClockOffsetMs to "), mtc.systemClockOffsetMs);
 
             PrintCurrentValues();
 
@@ -261,7 +365,7 @@ void setup()
             PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc.systemClockOffsetMs);
         }
 
-        Log("Done");
+        Log(P("Done"));
     });
     
     console.RegisterCommand("help", [](char *){
@@ -270,9 +374,14 @@ void setup()
 
 
     // Set some defaults
-    m.SetCallsign("KD2KDD");
+    //m.SetCallsign("KD2KDD");
+    //m.SetPower(27);
+    m.SetId("Q1");
     m.SetGrid("FN20XR");
-    m.SetPower(27);
+    m.SetAltitudeFt(13500);
+    m.SetSpeedMph(88);
+    m.SetTemperatureC(-30);
+    m.SetMilliVoltage(3100);
 
     // Toggle pinB whenever a bit changes
     mt.SetCallbackOnBitChange([](){
