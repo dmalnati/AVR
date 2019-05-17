@@ -92,6 +92,10 @@ chval2(int ch)
     return 0;
 }
 
+//
+// http://hojoham.blogspot.com/2016/09/hojo-and-case-of-garbled-wspr-packet.html
+// fix applied
+//
 static uint32_t
 encodecallsign(const char *callsign)
 {
@@ -101,16 +105,21 @@ encodecallsign(const char *callsign)
 
     for (i=0; i<6; i++) call[i] = ' ' ;
 
-    if (isdigit(callsign[1])) {
-	/* 1x callsigns... */
-	for (i=0; i<strlen(callsign); i++)
-	   call[1+i] = callsign[i] ;
-    } else if (isdigit(callsign[2])) {
-	/* 2x callsigns... */
-	for (i=0; i<strlen(callsign); i++)
-	   call[i] = callsign[i] ;
-    } else {
-	return 0 ;
+    if (isdigit(callsign[1]) && !isdigit(callsign[2]))
+    {
+        /* 1x callsigns... */
+        for (i=0; i<strlen(callsign); i++)
+           call[1+i] = callsign[i] ;
+    }
+    else if (isdigit(callsign[2]))
+    {
+        /* 2x callsigns... */
+        for (i=0; i<strlen(callsign); i++)
+           call[i] = callsign[i] ;
+    }
+    else
+    {
+        return 0 ;
     }
 
     rc  = chval1(call[0]) ; rc *= 36 ; 
