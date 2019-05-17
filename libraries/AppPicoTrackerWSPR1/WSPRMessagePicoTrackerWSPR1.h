@@ -211,22 +211,22 @@ private:
         // 0b0101 = 2k * 1 + 1k * 0 + 500 * 1 = 2500 ft
         // ...
         // 
-        // The total supported range is 0 ft - 39,500 ft
-        // That is 80 possible values (39,500 / 500 = 79; + 1 for 0ft)
-        // That is a max index of 79
+        // The total supported range is 0 ft - 37,500 ft
+        // That is 76 possible values (37,500 / 500 = 75; + 1 for 0ft)
+        // That is a max index of 75
         // 
-        // 79 in binary is:
-        // 0b01001111
+        // 75 in binary is:
+        // 0b01001011
         //
         // Decomposed, that is:
-        // 010011 (19 * 2k    increments = 38,000 ft)
+        // 010010 (18 * 2k    increments = 36,000 ft)
         //      1 ( 1 * 1k    increment  =  1,000 ft)
         //      1 ( 1 * 500ft increment  =    500 ft)
         //
-        // That adds up to 39,500, which matches our expected max value.
+        // That adds up to 37,500, which matches our expected max value.
         
         // Calculate it
-        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(altitudeFt, 80, 500);
+        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(altitudeFt, 76, 500);
         
         // The number of 500 ft increments is the last bit, and shift out
         ftIncr500 = idxLastAtOrAbove & 0x01;
@@ -241,7 +241,7 @@ private:
         power = count2k__power[count2kIncrements];
     }
     
-    static uint8_t CalculateTemperatureCValue(uint8_t temperatureC)
+    static uint8_t CalculateTemperatureCValue(int8_t temperatureC)
     {
         // The temperature is in the range of -50 to 20 C
         // It is in increments of 10C.
@@ -252,7 +252,7 @@ private:
         return idxLastAtOrAbove;
     }
 
-    static uint8_t CalculateMilliVoltValue(uint8_t milliVolt)
+    static uint8_t CalculateMilliVoltValue(uint16_t milliVolt)
     {
         // The milliVolt is in the range of 1500 - 4500
         // It is in increments of 1500
@@ -326,7 +326,7 @@ private:
         // Callsign 5 is a straight copy of the 6th grid char
         callsign[4] = grid_[5];
         
-        // Callsign 6 is temperature and power
+        // Callsign 6 is temperature and voltage
         uint8_t cs6Val = 0;
         cs6Val = Pack(cs6Val, temperatureCValue, 8);
         cs6Val = Pack(cs6Val, milliVoltValue,    3);
