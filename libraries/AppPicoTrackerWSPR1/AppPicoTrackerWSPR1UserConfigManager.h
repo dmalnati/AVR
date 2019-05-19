@@ -9,8 +9,8 @@
 
 struct AppPicoTrackerWSPR1UserConfig
 {
-    static const uint8_t ID_LEN       = 4;
-    static const uint8_t CALLSIGN_LEN = 6;
+    static const uint8_t ID_LEN          = 4;
+    static const uint8_t CALLSIGN_ID_LEN = 2;
     
     struct
     {
@@ -37,8 +37,8 @@ struct AppPicoTrackerWSPR1UserConfig
     // WSPR Stuff
     struct
     {
-        //char callsign[CALLSIGN_LEN + 1] = { 0 };
-        char callsign[CALLSIGN_LEN + 1] = "KD2KDD";
+        //char callsign[CALLSIGN_ID_LEN + 1] = { 0 };
+        char callsignId[CALLSIGN_ID_LEN + 1] = "00";
     } wspr;
     
     // Tracker stuff
@@ -63,8 +63,8 @@ struct AppPicoTrackerWSPR1UserConfig
         WSPRMessageTransmitter::Calibration mtCalibration;
     } radio = {
         .mtCalibration = (WSPRMessageTransmitter::Calibration){
-            -7600,
-            6,
+            -4500,
+            7,
         }
     };
 };
@@ -95,7 +95,7 @@ private:
     {
         Menu().RegisterParamSTR(P("id"),                           Config().device.id, AppPicoTrackerWSPR1UserConfig::ID_LEN);
         
-        Menu().RegisterParamSTR(P("callsign"),                     Config().wspr.callsign, AppPicoTrackerWSPR1UserConfig::CALLSIGN_LEN);
+        Menu().RegisterParamSTR(P("callsignId"),                   Config().wspr.callsignId, AppPicoTrackerWSPR1UserConfig::CALLSIGN_ID_LEN);
         
         Menu().RegisterParamU8(P("solarMode"),                    &Config().power.solarMode);
         Menu().RegisterParamU16(P("minMilliVoltGpsLocationLock"), &Config().power.minMilliVoltGpsLocationLock);

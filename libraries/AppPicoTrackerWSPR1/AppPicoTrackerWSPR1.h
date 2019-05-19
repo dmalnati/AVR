@@ -8,6 +8,7 @@
 #include "SensorGPSUblox.h"
 #include "WSPRMessageTransmitter.h"
 #include "AppPicoTrackerWSPR1UserConfigManager.h"
+#include "WSPRMessagePicoTrackerWSPR1.h"
 
 
 struct AppPicoTrackerWSPR1Config
@@ -37,6 +38,10 @@ struct AppPicoTrackerWSPR1Config
     // WSPR TX
     uint8_t pinWsprTxEnable;
     
+    // Temperature sensor
+    uint8_t pinTempSensorEnable;
+    uint8_t pinTempSensorVoltageSense;
+
     // Status LEDs
     uint8_t pinLedRed;
     uint8_t pinLedGreen;
@@ -131,6 +136,11 @@ public:
         // WSPR Subsystem
         PAL.PinMode(cfg_.pinWsprTxEnable, OUTPUT);
         StopSubsystemWSPR();
+        
+        // Temperature
+        PAL.PinMode(cfg_.pinTempSensorEnable, OUTPUT);
+        PAL.PinMode(cfg_.pinTempSensorVoltageSense, INPUT);
+        GetTemperature();
         
         // Set up LEDs and blink to indicate power up
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
@@ -668,48 +678,13 @@ private:
     
     void FillOutStandardWSPRMessage()
     {
-        // Keep a mapping of altitude to power level as an encoding
-        struct
-        {
-            uint32_t altitudeFt;
-            uint8_t  powerDbm;
-        } altitudeToPowerList[] = {
-            {     0,   0 },
-            {  2222,   3 },
-            {  4444,   7 },
-            {  6667,  10 },
-            {  8889,  13 },
-            { 11111,  17 },
-            { 13333,  20 },
-            { 15556,  23 },
-            { 17778,  27 },
-            { 20000,  30 },
-            { 22222,  33 },
-            { 24444,  37 },
-            { 26667,  40 },
-            { 28889,  43 },
-            { 31111,  47 },
-            { 33333,  50 },
-            { 35556,  53 },
-            { 37778,  57 },
-            { 40000,  60 },
-        };
-        
-        // Default to lowest altitude, and progressively look for altitudes that
-        // we are gte to.
-        uint8_t powerDbm = altitudeToPowerList[0].powerDbm;
-        for (auto altToPwr : altitudeToPowerList)
-        {
-            if (gpsLocationMeasurement_.altitudeFt >= altToPwr.altitudeFt)
-            {
-                powerDbm = altToPwr.powerDbm;
-            }
-        }
-        
         // Fill out actual message
-        wsprMessage_.SetCallsign((const char *)userConfig_.wspr.callsign);
+        wsprMessage_.SetId(userConfig_.wspr.callsignId);
         wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
-        wsprMessage_.SetPower(powerDbm);
+        wsprMessage_.SetAltitudeFt(gpsLocationMeasurement_.altitudeFt);
+        wsprMessage_.SetSpeedMph(gpsLocationMeasurement_.speedKnots);   // hold on, fix this, you have knots but specified mph, change spec
+        wsprMessage_.SetTemperatureC(-30);
+        wsprMessage_.SetMilliVoltage(3100);
     }
     
     
@@ -806,6 +781,23 @@ private:
     
     ///////////////////////////////////////////////////////////////////////////
     //
+    // Temperature
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    int8_t GetTemperature()
+    {
+        PAL.DigitalWrite(cfg_.pinTempSensorEnable, HIGH);
+        uint16_t val = PAL.AnalogRead1V1(cfg_.pinTempSensorVoltageSense);
+        PAL.DigitalWrite(cfg_.pinTempSensorEnable, LOW);
+        
+        uint8_t degC = 40 + val;
+        
+        return degC;
+    }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    //
     // Misc
     //
     ///////////////////////////////////////////////////////////////////////////
@@ -881,8 +873,8 @@ private:
     uint8_t                      gpsLocationLockOk_;
     SensorGPSUblox::Measurement  gpsTimeMeasurement_;
     
-    WSPRMessage             wsprMessage_;
-    WSPRMessageTransmitter  wsprMessageTransmitter_;
+    WSPRMessagePicoTrackerWSPR1 wsprMessage_;
+    WSPRMessageTransmitter      wsprMessageTransmitter_;
 };
 
 

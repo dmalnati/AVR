@@ -4,9 +4,7 @@
 static AppPicoTrackerWSPR1Config cfg =
 {
     // Human interfacing
-    // 25 for Rev3
-    //  4 for Rev4
-    .pinConfigure = 25,
+    .pinConfigure = 16, // pin A
     
     // Pre-regulator power sensing
     .pinInputVoltage = 26,
@@ -32,6 +30,10 @@ static AppPicoTrackerWSPR1Config cfg =
 
     // WSPR TX
     .pinWsprTxEnable = 15,
+
+    // Temperature sensor
+    .pinTempSensorEnable = 11,
+    .pinTempSensorVoltageSense = 25,
 
     // Status LEDs
     .pinLedRed   = 12,
