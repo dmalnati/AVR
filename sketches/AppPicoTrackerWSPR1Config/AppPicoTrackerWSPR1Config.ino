@@ -1,4 +1,5 @@
 #include "AppPicoTrackerWSPR1.h"
+#include "AppPicoTrackerWSPR1Test.h"
 
 
 static AppPicoTrackerWSPR1Config cfg =
@@ -40,8 +41,11 @@ static AppPicoTrackerWSPR1Config cfg =
     .pinLedGreen = 13,
 };
 
+#if 0
 static AppPicoTrackerWSPR1 app(cfg);
-
+#else
+static AppPicoTrackerWSPR1Test app(cfg);
+#endif
 
 void setup()
 {
