@@ -46,16 +46,22 @@ private:
 
     void SetupCommands()
     {
-        //////////////////////////////////////////////////////////////
-        //
-        // Traditional WSPR message settings
-        //
-        //////////////////////////////////////////////////////////////
-
-        console_.RegisterCommand("callsign", [this](char *cmdStr){
+        
+        // override error handler, too much memory used for individual
+        // vtables for individual lambda functions.
+        
+        console_.RegisterErrorHandler([this](char *cmdStr){
             Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            uint8_t tokenCount = str.TokenCount(' ');
+            
+            //////////////////////////////////////////////////////////////
+            //
+            // Traditional WSPR message settings
+            //
+            //////////////////////////////////////////////////////////////
+            
+            if (!strcmp_P(cmdStr, P("callsign")) && tokenCount == 2)
             {
                 const char *p = str.TokenAtIdx(1, ' ');
                 
@@ -65,12 +71,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-
-        console_.RegisterCommand("grid", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("grid")) && tokenCount == 2)
             {
                 const char *p = str.TokenAtIdx(1, ' ');
                 
@@ -80,12 +82,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-        
-        console_.RegisterCommand("power", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("power")) && tokenCount == 2)
             {
                 uint8_t val = atoi(str.TokenAtIdx(1, ' '));
                 
@@ -95,18 +93,15 @@ private:
 
                 PrintCurrentValues();
             }
-        });
         
-        //////////////////////////////////////////////////////////////
-        //
-        // Encoded WSPR message settings
-        //
-        //////////////////////////////////////////////////////////////
+        
+            //////////////////////////////////////////////////////////////
+            //
+            // Encoded WSPR message settings
+            //
+            //////////////////////////////////////////////////////////////
 
-        console_.RegisterCommand("id", [this](char *cmdStr){
-            Str str(cmdStr);
-            
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("id")) && tokenCount == 2)
             {
                 const char *p = str.TokenAtIdx(1, ' ');
                 
@@ -116,12 +111,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-
-        console_.RegisterCommand("altitude", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("altitude")) && tokenCount == 2)
             {
                 uint32_t val = atol(str.TokenAtIdx(1, ' '));
                 
@@ -131,12 +122,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-
-        console_.RegisterCommand("speed", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("speed")) && tokenCount == 2)
             {
                 uint8_t val = atoi(str.TokenAtIdx(1, ' '));
                 
@@ -146,12 +133,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-
-        console_.RegisterCommand("temp", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("temp")) && tokenCount == 2)
             {
                 int8_t val = atoi(str.TokenAtIdx(1, ' '));
                 
@@ -161,12 +144,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-
-        console_.RegisterCommand("mvolt", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("mvolt")) && tokenCount == 2)
             {
                 uint16_t val = atol(str.TokenAtIdx(1, ' '));
                 
@@ -176,31 +155,28 @@ private:
 
                 PrintCurrentValues();
             }
-        });
         
         
-        //////////////////////////////////////////////////////////////
-        //
-        // Radio controls
-        //
-        //////////////////////////////////////////////////////////////
+            //////////////////////////////////////////////////////////////
+            //
+            // Radio controls
+            //
+            //////////////////////////////////////////////////////////////
+        
+            if (!strcmp_P(cmdStr, P("on")))
+            {
+                Log(P("Radio On"));
 
-        console_.RegisterCommand("on", [this](char *){
-            Log(P("Radio On"));
+                wsprMessageTransmitter_.SetCalibration(mtc_);
 
-            wsprMessageTransmitter_.SetCalibration(mtc_);
+                wsprMessageTransmitter_.RadioOn();
 
-            wsprMessageTransmitter_.RadioOn();
+                wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
 
-            wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
-
-            onOff_ = 1;
-        });
-
-        console_.RegisterCommand("freq", [this](char *cmdStr){
-            Str str(cmdStr);
+                onOff_ = 1;
+            }
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("freq")) && tokenCount == 2)
             {
                 uint32_t val = atol(str.TokenAtIdx(1, ' '));
 
@@ -215,12 +191,8 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-        
-        console_.RegisterCommand("chan", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("chan")) && tokenCount == 2)
             {
                 uint32_t chan = atol(str.TokenAtIdx(1, ' '));
 
@@ -238,65 +210,58 @@ private:
 
                 PrintCurrentValues();
             }
-        });
-        
-        console_.RegisterCommand("send", [this](char *cmdStr){
-            Str str(cmdStr);
-
-            uint8_t type = 1;
-            if (str.TokenCount(' ') == 2)
+            
+            if (!strcmp_P(cmdStr, P("send")))
             {
-                type = atol(str.TokenAtIdx(1, ' '));
+                uint8_t type = 1;
+                if (tokenCount == 2)
+                {
+                    type = atol(str.TokenAtIdx(1, ' '));
+                }
+                
+                Log(P("Sending type "), type);
+
+                if (!onOff_)
+                {
+                    console_.Exec("on");
+                }
+
+                PrintCurrentValues();
+                
+                wsprMessageTransmitter_.Send(&wsprMessage_, type);
+
+                Log(P("Send complete"));
             }
             
-            Log(P("Sending type "), type);
-
-            if (!onOff_)
+            if (!strcmp_P(cmdStr, P("off")))
             {
-                console_.Exec("on");
+                Log(P("Radio Off"));
+
+                wsprMessageTransmitter_.RadioOff();
+
+                onOff_ = 0;
             }
 
-            PrintCurrentValues();
-            
-            wsprMessageTransmitter_.Send(&wsprMessage_, type);
-
-            Log(P("Send complete"));
-        });
         
-        console_.RegisterCommand("off", [this](char *){
-            Log(P("Radio Off"));
+            //////////////////////////////////////////////////////////////
+            //
+            // Temperature
+            //
+            //////////////////////////////////////////////////////////////
 
-            wsprMessageTransmitter_.RadioOff();
-
-            onOff_ = 0;
-        });
-
-        
-        //////////////////////////////////////////////////////////////
-        //
-        // Temperature
-        //
-        //////////////////////////////////////////////////////////////
-
-        console_.RegisterCommand("temp", [this](char *){
-            Log(P("Radio Off"));
-
-            wsprMessageTransmitter_.RadioOff();
-
-            onOff_ = 0;
-        });
+            if (!strcmp_P(cmdStr, P("temp")))
+            {
+                
+            }
         
 
-        //////////////////////////////////////////////////////////////
-        //
-        // Tuning
-        //
-        //////////////////////////////////////////////////////////////
+            //////////////////////////////////////////////////////////////
+            //
+            // Tuning
+            //
+            //////////////////////////////////////////////////////////////
 
-        console_.RegisterCommand("crystalCorrectionFactor", [this](char *cmdStr){
-            Str str(cmdStr);
-            
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("crystalCorrectionFactor")) && tokenCount == 2)
             {
                 mtc_.crystalCorrectionFactor = atol(str.TokenAtIdx(1, ' '));
                 
@@ -309,12 +274,8 @@ private:
                     console_.Exec("on");
                 }
             }
-        });
-        
-        console_.RegisterCommand("systemClockOffsetMs", [this](char *cmdStr){
-            Str str(cmdStr);
             
-            if (str.TokenCount(' ') == 2)
+            if (!strcmp_P(cmdStr, P("systemClockOffsetMs")) && tokenCount == 2)
             {
                 mtc_.systemClockOffsetMs = atol(str.TokenAtIdx(1, ' '));
                 
@@ -327,31 +288,39 @@ private:
                     console_.Exec("on");
                 }
             }
-        });
-
-        console_.RegisterCommand("timeCalibrate", [this](char *){
-            PAL.PinMode(cfg_.pinConfigure, OUTPUT);
-
-            Log(P("Testing system clock"));
-            Log(P("Current systemClockOffsetMs = "), mtc_.systemClockOffsetMs);
-            Log(P("Measure with scope, get pulse widths to "), WSPRMessageTransmitter::WSPR_DELAY_MS, P(" ms"));
-            Log(P("Positive adjustments make pulses smaller"));
-            Log(P("negative adjustments make pulses larger"));
-            Log(P("Starting test"));
-
-            for (uint8_t i = 0; i < 3; ++i)
+            
+            if (!strcmp_P(cmdStr, P("timeCalibrate")))
             {
-                PAL.DigitalWrite(cfg_.pinConfigure, HIGH);
-                PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
-                PAL.DigitalWrite(cfg_.pinConfigure, LOW);
-                PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
-            }
+                PAL.PinMode(cfg_.pinConfigure, OUTPUT);
 
-            Log(P("Done"));
-        });
-        
-        console_.RegisterCommand("help", [this](char *){
-            PrintMenu();
+                Log(P("Testing system clock"));
+                Log(P("Current systemClockOffsetMs = "), mtc_.systemClockOffsetMs);
+                Log(P("Measure with scope, get pulse widths to "), WSPRMessageTransmitter::WSPR_DELAY_MS, P(" ms"));
+                Log(P("Positive adjustments make pulses smaller"));
+                Log(P("negative adjustments make pulses larger"));
+                Log(P("Starting test"));
+
+                for (uint8_t i = 0; i < 3; ++i)
+                {
+                    PAL.DigitalWrite(cfg_.pinConfigure, HIGH);
+                    PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
+                    PAL.DigitalWrite(cfg_.pinConfigure, LOW);
+                    PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
+                }
+
+                Log(P("Done"));
+            }
+            
+            //////////////////////////////////////////////////////////////
+            //
+            // Misc
+            //
+            //////////////////////////////////////////////////////////////
+            
+            if (!strcmp_P(cmdStr, P("help")))
+            {
+                PrintMenu();
+            }
         });
     }
     
@@ -442,7 +411,7 @@ private:
     
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
-    SerialAsyncConsoleEnhanced<25>  console_;
+    SerialAsyncConsoleEnhanced<0>  console_;
     
     WSPRMessageTransmitter::Calibration &mtc_;
     
