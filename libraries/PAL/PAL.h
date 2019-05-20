@@ -169,9 +169,23 @@ public:
     // the AVcc reference.
     //
     // Unit-less because AVcc isn't known at any given time.
-    static inline uint16_t AnalogRead(Pin pin)
+    static inline uint16_t AnalogRead(Pin pin, uint8_t do8xAvg = 0)
     {
-        return AnalogReadInternal(pin.adcChannelBits_);
+        uint16_t adcVal = AnalogReadInternal(pin.adcChannelBits_);
+        
+        if (do8xAvg)
+        {
+            const uint8_t SAMPLE_COUNT = 8;
+            
+            for (uint8_t i = 1; i < SAMPLE_COUNT; ++i)
+            {
+                adcVal += AnalogReadInternal(pin.adcChannelBits_);
+            }
+            
+            adcVal /= SAMPLE_COUNT;
+        }
+        
+        return adcVal;
     }
     
     // Return a 10-bit value represesnting measured voltage against
@@ -181,7 +195,7 @@ public:
     // 0V-1.1V.
     //
     // Nothing is done with that information here.
-    static inline uint16_t AnalogRead1V1(Pin pin)
+    static inline uint16_t AnalogRead1V1(Pin pin, uint8_t do8xAvg = 0)
     {
         // I know AnalogReadInternal is going to set REFS0 to 1, which if no
         // other changes, will reference AVcc.
@@ -194,7 +208,21 @@ public:
         // parameter and cause the 1.1V reference to be selected, unbeknownst to
         // AnalogReadInternal.
         
-        return AnalogReadInternal(_BV(REFS1) | pin.adcChannelBits_);
+        uint16_t adcVal = AnalogReadInternal(_BV(REFS1) | pin.adcChannelBits_);
+        
+        if (do8xAvg)
+        {
+            const uint8_t SAMPLE_COUNT = 8;
+            
+            for (uint8_t i = 1; i < SAMPLE_COUNT; ++i)
+            {
+                adcVal += AnalogReadInternal(_BV(REFS1) | pin.adcChannelBits_);
+            }
+            
+            adcVal /= SAMPLE_COUNT;
+        }
+        
+        return adcVal;
     }
     
 private:
