@@ -66,12 +66,18 @@ void LogNL(uint8_t count)
 
 void LogNNL(const char *str)
 {
-    S0.Write((uint8_t *)str, strlen(str));
+    if (str)
+    {
+        S0.Write((uint8_t *)str, strlen(str));
+    }
 }
 
 void Log(const char *str)
 {
-    LogNNL(str);
+    if (str)
+    {
+        LogNNL(str);
+    }
     LogNL();
 }
 
