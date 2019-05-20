@@ -76,7 +76,7 @@ public:
         
         // Init serial and announce startup
         LogStart(9600);
-        LogNL();
+        LogX('\n', 10);
         LogNNL(P("Starting, TCXO "));
         Log(tcxoInUse ? P("Enabled") : P("Disabled"));
         
@@ -117,8 +117,7 @@ public:
         
         // Temperature
         PAL.PinMode(cfg_.pinTempSensorEnable, OUTPUT);
-        PAL.PinMode(cfg_.pinTempSensorVoltageSense, INPUT);
-        GetTemperature();
+        GetTemperatureC();
         
         // Set up LEDs and blink to indicate power up
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
@@ -194,8 +193,8 @@ public:
         wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
         wsprMessage_.SetAltitudeFt(gpsLocationMeasurement_.altitudeFt);
         wsprMessage_.SetSpeedMph(gpsLocationMeasurement_.speedKnots);   // hold on, fix this, you have knots but specified mph, change spec
-        wsprMessage_.SetTemperatureC(-30);
-        wsprMessage_.SetMilliVoltage(3100);
+        wsprMessage_.SetTemperatureC(GetTemperatureC());
+        wsprMessage_.SetMilliVoltage(GetInputMilliVoltage());
     }
     
     
@@ -296,17 +295,52 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    int8_t GetTemperature()
+    int8_t GetTemperatureC()
     {
+        // Put voltage across voltage divider
         PAL.DigitalWrite(cfg_.pinTempSensorEnable, HIGH);
-        uint16_t val = PAL.AnalogRead1V1(cfg_.pinTempSensorVoltageSense);
+        
+        // Take 8 samples and average them to reduce transients
+        uint16_t adcVal = PAL.AnalogRead1V1(cfg_.pinTempSensorVoltageSense, 1);
+        
+        // Cut power
         PAL.DigitalWrite(cfg_.pinTempSensorEnable, LOW);
         
-        uint8_t degC = 40 + val;
+        // Calculate actual millivolts sensed
+        constexpr double MV_STEP = 1.07421875;
+        uint16_t mvSensed = adcVal * MV_STEP;
         
-        return degC;
-    }    
+        // Apply formula calculated in spreadsheet.
+        // This is, at -50C, we expect to see ~42mV.
+        // From there, we expect to see a 1mV change for every 5C temperature
+        // change in the range of temperatures from -50 C to 20 C.
+        int8_t tempC =  -50 + ((mvSensed - 42) * 5);
+        
+        return tempC;
+    }
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Input Voltage
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    uint16_t GetInputMilliVoltage()
+    {
+        // Circuit has a voltage divider halve the input voltage.
+        // Use the 8x sample option.
+        uint16_t adcVal = PAL.AnalogRead(cfg_.pinInputVoltage, 1);
+        
+        // Scale to account for input divider, also scale to input millivolts
+        constexpr double FACTOR = (2.0 * 3300.0 / 1024.0);
+        uint16_t inputMilliVolt = adcVal * FACTOR;
+        
+        return inputMilliVolt;
+    }
+    
+    
+    
+public:
     
     const AppPicoTrackerWSPR1Config &cfg_;
 

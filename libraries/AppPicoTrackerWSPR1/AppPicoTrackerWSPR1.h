@@ -499,7 +499,7 @@ private:
         if (userConfig_.power.solarMode)
         {
             // Circuit has a voltage divider halve the input voltage.
-            uint16_t inputMilliVolt = PAL.AnalogRead(cfg_.pinInputVoltage) * 2;
+            uint16_t inputMilliVolt = GetInputMilliVoltage();
             
             if (inputMilliVolt >= solarMilliVoltMinimum)
             {
