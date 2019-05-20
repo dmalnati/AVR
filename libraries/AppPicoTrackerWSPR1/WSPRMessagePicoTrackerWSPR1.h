@@ -19,6 +19,11 @@ public:
 
         Recalculate();
     }
+    
+    const char *GetId()
+    {
+        return id_;
+    }
 
     // hides base-class SetGrid
     void SetGrid(const char *grid)
@@ -28,11 +33,21 @@ public:
         Recalculate();
     }
     
+    const char *GetGrid()
+    {
+        return grid_;
+    }
+    
     void SetAltitudeFt(uint32_t altitudeFt)
     {
         altitudeFt_ = altitudeFt;
         
         Recalculate();
+    }
+    
+    uint32_t GetAltitudeFt()
+    {
+        return altitudeFt_;
     }
     
     void SetSpeedMph(uint8_t speedMph)
@@ -42,6 +57,11 @@ public:
         Recalculate();
     }
     
+    uint8_t GetSpeedMph()
+    {
+        return speedMph_;
+    }
+    
     void SetTemperatureC(int8_t temperatureC)
     {
         temperatureC_ = temperatureC;
@@ -49,11 +69,21 @@ public:
         Recalculate();
     }
     
+    int8_t GetTemperatureC()
+    {
+        return temperatureC_;
+    }
+    
     void SetMilliVoltage(uint16_t milliVolt)
     {
         milliVolt_ = milliVolt;
         
         Recalculate();
+    }
+    
+    uint16_t GetMilliVoltage()
+    {
+        return milliVolt_;
     }
 
 private:
