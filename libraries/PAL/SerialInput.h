@@ -366,15 +366,17 @@ private:
 
     void Init(uint8_t enableDefaultErrorHandler)
     {
-        // two sub-commands:
+        // sub-commands:
         // - pin set <pin> <val>
         // - pin get <pin> <doPullup>
+        // - pin aget <pin> <aref/1.1> // analog
         this->RegisterCommand("pin", 3, [](char *cmdStr) {
             Str str(cmdStr);
             
             const char *getSetStr =        str.TokenAtIdx(1, ' ');
             uint8_t     pin       =   atoi(str.TokenAtIdx(2, ' '));
             uint8_t     val       = !!atoi(str.TokenAtIdx(3, ' '));
+            const char *p3       =         str.TokenAtIdx(3, ' ');
             
             if (!strcmp_P(getSetStr, P("set")))
             {
@@ -389,6 +391,21 @@ private:
                 PAL.PinMode(pin, val ? INPUT_PULLUP : INPUT);
                 
                 uint8_t valRead = PAL.DigitalRead(pin);
+
+                Log(P("Pin "), pin, P("("), val, P(") <- "), valRead);
+            }
+            else if (!strcmp_P(getSetStr, P("aget")))
+            {
+                uint16_t valRead = 0;
+                
+                if (!strcmp_P(p3, P("aref")))
+                {
+                    valRead = PAL.AnalogRead(pin);
+                }
+                else if (!strcmp_P(p3, P("1.1")))
+                {
+                    valRead = PAL.AnalogRead1V1(pin);
+                }
 
                 Log(P("Pin "), pin, P("("), val, P(") <- "), valRead);
             }
