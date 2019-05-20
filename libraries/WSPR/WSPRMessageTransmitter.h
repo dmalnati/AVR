@@ -88,7 +88,7 @@ public:
         radio_.output_enable(SI5351_CLK0, 1);
     }
     
-    void Send(WSPRMessage *msg, uint8_t type = 1)
+    void Send(WSPRMessage *msg)
     {
         // Get access to data in message
         const char *callsign = NULL;
@@ -97,14 +97,7 @@ public:
 
         msg->GetData(callsign, grid, powerDbm);
         
-        if (type == 1)
-        {
-            wsprEncoder_.EncodeType1(callsign, grid, powerDbm);
-        }
-        else if (type == 3)
-        {
-            wsprEncoder_.EncodeType3(callsign, grid, powerDbm);
-        }
+        wsprEncoder_.EncodeType1(callsign, grid, powerDbm);
         
         // Allow calibration to compensate for system clock not being accurate
         // enough to hit precise bit duration

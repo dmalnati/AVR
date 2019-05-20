@@ -8,7 +8,7 @@
 class WSPRMessage
 {
     static const uint8_t CALLSIGN_LEN = 6;
-    static const uint8_t GRID_LEN     = 6;
+    static const uint8_t GRID_LEN     = 4;
     
 public:
 
