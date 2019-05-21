@@ -5,6 +5,7 @@
 #include "PAL.h"
 #include "Evm.h"
 #include "Log.h"
+#include "TerminalControl.h"
 #include "SensorGPSUblox.h"
 #include "WSPRMessageTransmitter.h"
 #include "WSPRMessagePicoTrackerWSPR1.h"
@@ -77,6 +78,9 @@ public:
         // Init serial and announce startup
         LogStart(9600);
         LogX('\n', 10);
+        
+        TerminalControl::ChangeColor(colorOutput_);
+        
         LogNNL(P("Starting, TCXO "));
         Log(tcxoInUse ? P("Enabled") : P("Disabled"));
         
@@ -357,6 +361,10 @@ public:
     
     WSPRMessagePicoTrackerWSPR1 wsprMessage_;
     WSPRMessageTransmitter      wsprMessageTransmitter_;
+    
+    
+    const TerminalControl::Color colorOutput_ = TerminalControl::Color::YELLOW;
+
 };
 
 

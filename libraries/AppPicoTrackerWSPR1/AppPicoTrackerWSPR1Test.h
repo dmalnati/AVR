@@ -35,17 +35,42 @@ public:
         
         
         console_.Start();
-        console_.Exec("help");
-    
+        PrintMenu();
+        
+        TerminalControl::ChangeColor(colorInput_);
+
         evm_.MainLoop();
     }
     
     
 private:
 
+    void TestRadioOn()
+    {
+        Log(P("Radio On"));
+
+        // Combine the real application's two-step operation to a single
+        // operation here.
+        StartSubsystemWSPR();
+        PreSendMessage();
+        
+        // Override real application's PreSendMessage functionality, so
+        // instead of calling watchdog at periods, we see output on
+        // the interface pin.
+        ExposeBitTransitions();
+        
+        // Add extra control over initial frequency
+        wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
+
+        // Keep our own state as to whether radio on or off
+        onOff_ = 1;
+    }
+
     void SetupCommands()
     {
         console_.RegisterErrorHandler([this](char *cmdStr){
+            TerminalControl::ChangeColor(colorOutput_);
+            
             Str str(cmdStr);
             
             uint8_t tokenCount = str.TokenCount(' ');
@@ -59,16 +84,13 @@ private:
             strncpy(p2, str.TokenAtIdx(1, ' '), BUF_SIZE);
             strncpy(p3, str.TokenAtIdx(2, ' '), BUF_SIZE);
             
-            Log("tc: ", tokenCount);
-            Log("p1: ", p1);
-            Log("p2: ", p2);
-            Log("p3: ", p3);
-            
             //////////////////////////////////////////////////////////////
             //
             // Basic Testing Commands
             //
             //////////////////////////////////////////////////////////////
+            
+            uint8_t printCurrentValues = 0;
 
             if (!strcmp_P(p1, P("test")))
             {
@@ -153,11 +175,11 @@ private:
                     
                     Log(P("Setting systemClockOffsetMs to "), mtc_.systemClockOffsetMs);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
 
                     if (onOff_)
                     {
-                        console_.Exec("on");
+                        TestRadioOn();
                     }
                 }
             }
@@ -174,23 +196,7 @@ private:
                 {
                     if (!strcmp_P(p3, P("on")))
                     {
-                        Log(P("Radio On"));
-
-                        // Combine the real application's two-step operation to a single
-                        // operation here.
-                        StartSubsystemWSPR();
-                        PreSendMessage();
-                        
-                        // Override real application's PreSendMessage functionality, so
-                        // instead of calling watchdog at periods, we see output on
-                        // the interface pin.
-                        ExposeBitTransitions();
-                        
-                        // Add extra control over initial frequency
-                        wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
-
-                        // Keep our own state as to whether radio on or off
-                        onOff_ = 1;
+                        TestRadioOn();
                     }
                     else if (!strcmp_P(p3, P("off")))
                     {
@@ -218,7 +224,7 @@ private:
                         wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
                     }
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
                 else if (!strcmp_P(p2, P("freq")) && tokenCount == 3)
                 {
@@ -233,7 +239,7 @@ private:
                         wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
                     }
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
             }
             
@@ -245,11 +251,11 @@ private:
                     
                     Log(P("Setting crystalCorrectionFactor to "), mtc_.crystalCorrectionFactor);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
 
                     if (onOff_)
                     {
-                        console_.Exec("test radio on");
+                        TestRadioOn();
                     }
                 }
             }
@@ -271,9 +277,9 @@ private:
 
                     wsprMessage_.SetId((char *)p);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p1, P("alt")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("altitudeFt")) && tokenCount == 3)
                 {
                     uint32_t val = atol(p3);
                     
@@ -281,9 +287,9 @@ private:
 
                     wsprMessage_.SetAltitudeFt(val);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p1, P("speed")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("speedMph")) && tokenCount == 3)
                 {
                     uint8_t val = atoi(p3);
                     
@@ -291,9 +297,9 @@ private:
 
                     wsprMessage_.SetSpeedMph(val);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p1, P("temp")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("temperatureC")) && tokenCount == 3)
                 {
                     int8_t val = atoi(p3);
                     
@@ -301,17 +307,17 @@ private:
 
                     wsprMessage_.SetTemperatureC(val);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p1, P("mvolt")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("milliVolts")) && tokenCount == 3)
                 {
                     uint16_t val = atol(p3);
                     
-                    Log(P("Setting MilliVolt to \""), val, '"');
+                    Log(P("Setting MilliVolts to \""), val, '"');
 
                     wsprMessage_.SetMilliVoltage(val);
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                 }
             }
 
@@ -323,10 +329,10 @@ private:
 
                     if (!onOff_)
                     {
-                        console_.Exec("on");
+                        TestRadioOn();
                     }
 
-                    PrintCurrentValues();
+                    printCurrentValues = 1;
                     
                     // Invoke the application's SendMessage function
                     SendMessage();
@@ -346,8 +352,15 @@ private:
                 PrintMenu();
             }
             
+            if (printCurrentValues)
+            {
+                LogNL();
+                PrintCurrentValues();
+            }
             
             LogNL(2);
+            
+            TerminalControl::ChangeColor(colorInput_);
         });
     }
     
@@ -379,43 +392,23 @@ private:
     
     
     
-    // Color control character strings
     
-    // Green
-    const char *G()
-    {
-        return "\u001b[32m";
-    }
-
-    // White
-    const char *W()
-    {
-        return "\u001b[37m";
-    }
-
-    // Red
-    const char *R()
-    {
-        return "\u001b[31m";
-    }
-    
-    void PrintHeading(PStr        pStr,
-                      const char *colorStart = nullptr,
-                      const char *colorEnd   = nullptr)
+    void PrintHeading(PStr pStr, TerminalControl::Color c)
     {
         uint8_t len = strlen_P(pStr);
         
-        LogNNL(colorStart);
+        TerminalControl::ChangeColor(c);
+        
         Log(pStr);
         LogX('-', len);
-        LogNNL(colorEnd);
     }
     
     void PrintMenu()
     {
         LogNL(4);
 
-        PrintHeading(P("Basic Testing Commands"), G(), W());
+        PrintHeading(P("Basic Testing Commands"), colorHeaderCommands_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("test leds    - blink red/green LEDs"));
         Log(P("test temp    - get temperature reading"));
         Log(P("test inputmv - get voltage reading"));
@@ -423,28 +416,32 @@ private:
         Log(P("test gps off - turn GPS off"));
         LogNL();
         
-        PrintHeading(P("Time Testing/Calibration Commands"), G(), W());
+        PrintHeading(P("Time Testing/Calibration Commands"), colorHeaderCommands_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("test systemClockOffsetMs"));
         Log(P("set  systemClockOffsetMs"));
         LogNL();
         
-        PrintHeading(P("Frequency Testing/Calibration Commands"), G(), W());
+        PrintHeading(P("Frequency Testing/Calibration Commands"), colorHeaderCommands_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("test radio on"));
         Log(P("test chan 0"));
         Log(P("test radio off"));
         Log(P("set crystalCorrectionFactor"));
         LogNL();
         
-        PrintHeading(P("WPSR Send Commands"), G(), W());
-        Log(P("set id    - set id"));
-        Log(P("set alt   - set altitudeFt"));
-        Log(P("set speed - set speedMph"));
-        Log(P("set temp  - set temperatureC"));
-        Log(P("set mvolt - set milliVolts"));
+        PrintHeading(P("WPSR Send Commands"), colorHeaderCommands_);
+        TerminalControl::ChangeColor(colorItems_);
+        Log(P("set id"));
+        Log(P("set altitudeFt"));
+        Log(P("set speedMph"));
+        Log(P("set temperatureC"));
+        Log(P("set milliVolts"));
         Log(P("test send"));
         LogNL();
 
-        PrintHeading(P("Misc Commands"), G(), W());
+        PrintHeading(P("Misc Commands"), colorHeaderCommands_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("help  - this menu"));
         Log(P("reset - reboot and start over"));
         LogNL();
@@ -464,7 +461,8 @@ private:
         
         wsprMessage_.GetData(callsign, grid, powerDbm);
         
-        PrintHeading(P("WSPR Encoded Values"), R(), W());
+        PrintHeading(P("WSPR Encoded Values"), colorHeaderValues_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("id        : "), wsprMessage_.GetId());
         Log(P("grid      : "), wsprMessage_.GetGrid());
         Log(P("altitudeFt: "), wsprMessage_.GetAltitudeFt());
@@ -473,14 +471,16 @@ private:
         Log(P("milliVolts: "), wsprMessage_.GetMilliVoltage());
         LogNL();
         
-        PrintHeading(P("WSPR Transmit Values"), R(), W());
+        PrintHeading(P("WSPR Transmit Values"), colorHeaderValues_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("freq    : "), freqInHundredths_ / 100.0);
         Log(P("callsign: "), callsign);
         Log(P("grid    : "), grid);
         Log(P("powerDbm: "), powerDbm);
         LogNL();
         
-        PrintHeading(P("System Config Values"), R(), W());
+        PrintHeading(P("System Tunable Values"), colorHeaderValues_);
+        TerminalControl::ChangeColor(colorItems_);
         Log(P("crystalCorrectionFactor: "), mtc_.crystalCorrectionFactor);
         Log(P("systemClockOffsetMs    : "), mtc_.systemClockOffsetMs);
     }
@@ -503,6 +503,13 @@ private:
     uint32_t freqInHundredths_;
 
     uint8_t onOff_;
+    
+    
+    const TerminalControl::Color colorHeaderCommands_ = TerminalControl::Color::GREEN;
+    const TerminalControl::Color colorHeaderValues_   = TerminalControl::Color::CYAN;
+    const TerminalControl::Color colorItems_          = TerminalControl::Color::MAGENTA;
+    const TerminalControl::Color colorInput_          = TerminalControl::Color::WHITE;
+
 };
 
 
