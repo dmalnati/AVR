@@ -106,17 +106,17 @@ private:
                     PAL.Delay(500);
                     PAL.DigitalWrite(cfg_.pinLedGreen, LOW);
                 }
-                else if (!strcmp_P(p2, P("temp")))
+                else if (!strcmp_P(p2, P("tempC")))
                 {
                     int8_t tempC = GetTemperatureC();
                     
                     Log(P("tempC: "), tempC, ", tempF: ", ((tempC * (9.0 / 5.0)) + 32));
                 }
-                else if (!strcmp_P(p2, P("inputmv")))
+                else if (!strcmp_P(p2, P("milliVolts")))
                 {
                     uint16_t inputMilliVolt = GetInputMilliVoltage();
                     
-                    Log(P("inputMV: "), inputMilliVolt);
+                    Log(P("milliVolts: "), inputMilliVolt);
                 }
                 else if (!strcmp_P(p2, P("gps")))
                 {
@@ -299,11 +299,11 @@ private:
 
                     printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p2, P("temperatureC")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("tempC")) && tokenCount == 3)
                 {
                     int8_t val = atoi(p3);
                     
-                    Log(P("Setting TemperatureC to \""), val, '"');
+                    Log(P("Setting TempC to \""), val, '"');
 
                     wsprMessage_.SetTemperatureC(val);
 
@@ -409,11 +409,11 @@ private:
 
         PrintHeading(P("Basic Testing Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("test leds    - blink red/green LEDs"));
-        Log(P("test temp    - get temperature reading"));
-        Log(P("test inputmv - get voltage reading"));
-        Log(P("test gps on  - turn GPS on"));
-        Log(P("test gps off - turn GPS off"));
+        Log(P("test leds"));
+        Log(P("test tempC"));
+        Log(P("test milliVolts"));
+        Log(P("test gps on"));
+        Log(P("test gps off"));
         LogNL();
         
         PrintHeading(P("Time Testing/Calibration Commands"), colorHeaderCommands_);
@@ -427,16 +427,16 @@ private:
         Log(P("test radio on"));
         Log(P("test chan 0"));
         Log(P("test radio off"));
-        Log(P("set crystalCorrectionFactor"));
+        Log(P("set  crystalCorrectionFactor"));
         LogNL();
         
         PrintHeading(P("WPSR Send Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("set id"));
-        Log(P("set altitudeFt"));
-        Log(P("set speedMph"));
-        Log(P("set temperatureC"));
-        Log(P("set milliVolts"));
+        Log(P("set  id"));
+        Log(P("set  altitudeFt"));
+        Log(P("set  speedMph"));
+        Log(P("set  temperatureC"));
+        Log(P("set  milliVolts"));
         Log(P("test send"));
         LogNL();
 
@@ -445,7 +445,6 @@ private:
         Log(P("help  - this menu"));
         Log(P("reset - reboot and start over"));
         LogNL();
-        
         
         LogNL();
         PrintCurrentValues();
