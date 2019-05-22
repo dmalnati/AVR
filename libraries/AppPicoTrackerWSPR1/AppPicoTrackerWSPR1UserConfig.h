@@ -12,8 +12,7 @@ struct AppPicoTrackerWSPR1UserConfig
     
     struct
     {
-        //char id[ID_LEN + 1] = { 0 };
-        char id[ID_LEN + 1] = "DM01";
+        char id[ID_LEN + 1] = { 0 };
     } device;
     
     // Solar vs battery related
@@ -35,7 +34,6 @@ struct AppPicoTrackerWSPR1UserConfig
     // WSPR Stuff
     struct
     {
-        //char callsign[CALLSIGN_ID_LEN + 1] = { 0 };
         char callsignId[CALLSIGN_ID_LEN + 1] = "00";
     } wspr;
     
@@ -59,12 +57,7 @@ struct AppPicoTrackerWSPR1UserConfig
     struct
     {
         WSPRMessageTransmitter::Calibration mtCalibration;
-    } radio = {
-        .mtCalibration = (WSPRMessageTransmitter::Calibration){
-            -4500,
-            7,
-        }
-    };
+    } radio;
 };
 
 

@@ -60,7 +60,7 @@ public:
             AppPicoTrackerWSPR1UserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 1;
+            uint8_t letDefaultApplyAutomatically = 0;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
 
