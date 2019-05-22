@@ -190,7 +190,7 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void FillOutStandardWSPRMessage()
+    void FillOutWSPRMessage()
     {
         // Fill out actual message
         wsprMessage_.SetId(userConfig_.wspr.callsignId);

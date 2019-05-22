@@ -367,7 +367,7 @@ private:
     void SetupInitialState()
     {
         // Set some defaults
-        FillOutStandardWSPRMessage();
+        FillOutWSPRMessage();
         
         // Override GPS-related due to not having a lock yet
         wsprMessage_.SetGrid("FN20XR");
