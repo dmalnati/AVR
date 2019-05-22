@@ -196,7 +196,7 @@ public:
         wsprMessage_.SetId(userConfig_.wspr.callsignId);
         wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
         wsprMessage_.SetAltitudeFt(gpsLocationMeasurement_.altitudeFt);
-        wsprMessage_.SetSpeedMph(gpsLocationMeasurement_.speedKnots);   // hold on, fix this, you have knots but specified mph, change spec
+        wsprMessage_.SetSpeedKnots(gpsLocationMeasurement_.speedKnots);
         wsprMessage_.SetTemperatureC(GetTemperatureC());
         wsprMessage_.SetMilliVoltage(GetInputMilliVoltage());
     }

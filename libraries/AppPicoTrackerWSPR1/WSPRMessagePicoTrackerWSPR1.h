@@ -50,16 +50,16 @@ public:
         return altitudeFt_;
     }
     
-    void SetSpeedMph(uint8_t speedMph)
+    void SetSpeedKnots(uint8_t speedKnots)
     {
-        speedMph_ = speedMph;
+        speedKnots_ = speedKnots;
         
         Recalculate();
     }
     
-    uint8_t GetSpeedMph()
+    uint8_t GetSpeedKnots()
     {
-        return speedMph_;
+        return speedKnots_;
     }
     
     void SetTemperatureC(int8_t temperatureC)
@@ -200,18 +200,18 @@ private:
         return idxLastAtOrAbove;
     }
     
-    static uint8_t CalculateSpeedValue(uint8_t speedMph)
+    static uint8_t CalculateSpeedValue(uint8_t speedKnots)
     {
-        // Speed is in the range of 0-144 MPH
-        // It is in increments of 18 MPH.
+        // Speed is in the range of 0-128 knots
+        // It is in increments of 16 knots.
         // That makes 9 values.
         //
-        // 0 * 18 =   0 MPH
-        // 1 * 18 =  18 MPH
+        // 0 * 16 =   0 knots
+        // 1 * 16 =  16 knots
         // ...
-        // 8 * 18 = 144 MPH
+        // 8 * 16 = 128 knots
         
-        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(speedMph, 9, 18);
+        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(speedKnots, 9, 16);
         
         return idxLastAtOrAbove;
     }
@@ -319,7 +319,7 @@ private:
         
         // Start by breaking down all provided inputs into the constituents
         // specified above.
-        uint8_t speedMphValue = CalculateSpeedValue(speedMph_);
+        uint8_t speedKnotsValue = CalculateSpeedValue(speedKnots_);
         
         uint8_t power      = 0;
         uint8_t ftIncr1000 = 0;
@@ -340,9 +340,9 @@ private:
         
         // Callsign 2 is Speed, Altitude 1000ft, Altitude 500ft
         uint8_t cs2Val = 0;
-        cs2Val = Pack(cs2Val, speedMphValue, 9);
-        cs2Val = Pack(cs2Val, ftIncr1000,    2);
-        cs2Val = Pack(cs2Val, ftIncr500,     2);
+        cs2Val = Pack(cs2Val, speedKnotsValue, 9);
+        cs2Val = Pack(cs2Val, ftIncr1000,      2);
+        cs2Val = Pack(cs2Val, ftIncr500,       2);
         char cs2Char = MapToAlphaNum(cs2Val);
         
         callsign[1] = cs2Char;
@@ -382,7 +382,7 @@ private:
     char grid_[GRID_LEN + 1] = { 0 };
     
     uint32_t altitudeFt_   = 0;
-    uint8_t  speedMph_     = 0;
+    uint8_t  speedKnots_   = 0;
     int8_t   temperatureC_ = 0;
     uint16_t milliVolt_    = 0;
 };

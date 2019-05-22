@@ -289,13 +289,13 @@ private:
 
                     printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p2, P("speedMph")) && tokenCount == 3)
+                else if (!strcmp_P(p2, P("speedKnots")) && tokenCount == 3)
                 {
                     uint8_t val = atoi(p3);
                     
-                    Log(P("Setting SpeedMPH to \""), val, '"');
+                    Log(P("Setting SpeedKnots to \""), val, '"');
 
-                    wsprMessage_.SetSpeedMph(val);
+                    wsprMessage_.SetSpeedKnots(val);
 
                     printCurrentValues = 1;
                 }
@@ -372,7 +372,7 @@ private:
         // Override GPS-related due to not having a lock yet
         wsprMessage_.SetGrid("FN20XR");
         wsprMessage_.SetAltitudeFt(13500);
-        wsprMessage_.SetSpeedMph(88);
+        wsprMessage_.SetSpeedKnots(76);
         
         // Override temp/voltage for now just for a standard startup value
         wsprMessage_.SetTemperatureC(-30);
@@ -434,7 +434,7 @@ private:
         TerminalControl::ChangeColor(colorItems_);
         Log(P("set  id"));
         Log(P("set  altitudeFt"));
-        Log(P("set  speedMph"));
+        Log(P("set  speedKnots"));
         Log(P("set  temperatureC"));
         Log(P("set  milliVolts"));
         Log(P("test send"));
@@ -465,7 +465,7 @@ private:
         Log(P("id        : "), wsprMessage_.GetId());
         Log(P("grid      : "), wsprMessage_.GetGrid());
         Log(P("altitudeFt: "), wsprMessage_.GetAltitudeFt());
-        Log(P("speedMph  : "), wsprMessage_.GetSpeedMph());
+        Log(P("speedKnots: "), wsprMessage_.GetSpeedKnots());
         Log(P("tempC     : "), wsprMessage_.GetTemperatureC());
         Log(P("milliVolts: "), wsprMessage_.GetMilliVoltage());
         LogNL();
