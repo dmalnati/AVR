@@ -31,7 +31,7 @@ private:
 
     void SetupMenu()
     {
-        Menu().RegisterParamSTR(P("id"),                           Config().device.id, AppPicoTrackerWSPR1UserConfig::ID_LEN);
+        Menu().RegisterParamSTR(P("trackerId"),                    Config().device.id, AppPicoTrackerWSPR1UserConfig::ID_LEN);
         
         Menu().RegisterParamSTR(P("callsignId"),                   Config().wspr.callsignId, AppPicoTrackerWSPR1UserConfig::CALLSIGN_ID_LEN);
         
