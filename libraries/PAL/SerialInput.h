@@ -782,7 +782,7 @@ public:
             
             if (param.idxFormatter >= 0 && param.idxFormatter < fnFormatterListIdx_)
             {
-                LogNNL('\t');
+                LogNNL(P(" \t"));
                 fnFormatterList_[param.idxFormatter](param);
             }
             
