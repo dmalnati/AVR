@@ -117,10 +117,6 @@ private:
         // which has a lower efficiency at higher current draw.
         RegulatorPowerSaveDisable();
         
-        // PreSendMessage();
-        // PAL.Delay(1000);
-        // PostSendMessage();
-        
         // Protect against hangs, which has happened
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
@@ -158,14 +154,6 @@ private:
                 gpsHadError = 1;
                 
                 Log(P("TIMEOUT: "), userConfig_.gps.gpsLockTimeoutMs);
-                
-                // for (uint8_t i = 0; i < 3; ++i)
-                // {
-                    // PreSendMessage();
-                    // PAL.Delay(1000);
-                    // PostSendMessage();
-                    // PAL.Delay(1000);
-                // }
                 
                 // Duration of time to reasonably location lock exceeded.
                 // Reset the module and try again later.
@@ -370,16 +358,6 @@ private:
         // Disable watchdog as the main set of code which can hang is complete
         PAL.WatchdogDisable();
         
-        // PAL.Delay(2000);
-        // for (uint8_t i = 0; i < 2; ++i)
-        // {
-            // PreSendMessage();
-            // PAL.Delay(1000);
-            // PostSendMessage();
-            // PAL.Delay(1000);
-        // }
-        // PAL.Delay(2000);
-        
         // We're about to sleep and use very little power, so turn on
         // power-saving mode, which has a higher efficiency at lower current
         // draw.
@@ -509,8 +487,6 @@ private:
         
         return retVal;
     }
-    
-    
 
     
     ///////////////////////////////////////////////////////////////////////////
@@ -526,45 +502,6 @@ private:
         PAL.DigitalWrite(pin, LOW);
         PAL.Delay(durationMs);
     }
-
-    
-    
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // TODO
-    //
-    ///////////////////////////////////////////////////////////////////////////
-
-    void ToDo()
-    {
-        
-        
-/*
-        
-        // design around testing board and application
-        
-        // bring in design observations from prior boards
-                
-        
-        test the ADC correctness after deep sleep
-        
-        
-        
-        test different message types and protocol adherence.
-            can grid tolerate all caps?
-                do I care?
-            what about power?  can I use any value and still get packets returned to me?
-            how else can I get extra data into the protocol?
-        
-*/
-        
-    }
-    
-    
-    
-    
-    
     
 
 private:
