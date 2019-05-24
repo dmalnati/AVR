@@ -208,7 +208,24 @@ private:
                         onOff_ = 0;
                     }
                 }
-                else if (!strcmp_P(p2, P("chan")) && tokenCount == 3)
+            }
+            
+            if (!strcmp_P(p1, P("set")))
+            {
+                if (!strcmp_P(p2, P("crystalCorrectionFactor")) && tokenCount == 3)
+                {
+                    mtc_.crystalCorrectionFactor = atol(p3);
+                    
+                    Log(P("Setting crystalCorrectionFactor to "), mtc_.crystalCorrectionFactor);
+
+                    printCurrentValues = 1;
+
+                    if (onOff_)
+                    {
+                        TestRadioOn();
+                    }
+                }
+                else if (!strcmp_P(p2, P("wsprChannel")) && tokenCount == 3)
                 {
                     uint8_t channel = atol(p3);
                     
@@ -221,7 +238,7 @@ private:
                     
                     freqInHundredths_ = wsprMessageTransmitter_.GetCalculatedFreqHundredths();
 
-                    Log(P("Setting channel to "), channel, P(", freq now "), freqInHundredths_ / 100);
+                    Log(P("Setting wsprChannel to "), channel, P(", freq now "), freqInHundredths_ / 100);
 
                     printCurrentValues = 1;
                 }
@@ -241,23 +258,6 @@ private:
                     printCurrentValues = 1;
                 }
             }
-            
-            if (!strcmp_P(p1, P("set")))
-            {
-                if (!strcmp_P(p2, P("crystalCorrectionFactor")) && tokenCount == 3)
-                {
-                    mtc_.crystalCorrectionFactor = atol(p3);
-                    
-                    Log(P("Setting crystalCorrectionFactor to "), mtc_.crystalCorrectionFactor);
-
-                    printCurrentValues = 1;
-
-                    if (onOff_)
-                    {
-                        TestRadioOn();
-                    }
-                }
-            }
 
             
             //////////////////////////////////////////////////////////////
@@ -268,13 +268,21 @@ private:
             
             if (!strcmp_P(p1, P("set")))
             {
-                if (!strcmp_P(p2, P("id")) && tokenCount == 3)
+                if (!strcmp_P(p2, P("wsprCallsignId")) && tokenCount == 3)
                 {
                     const char *p = p3;
                     
-                    Log(P("Setting ID to \""), p, '"');
+                    Log(P("Setting WsprCallsignId to \""), p, '"');
 
                     wsprMessage_.SetId((char *)p);
+
+                    printCurrentValues = 1;
+                }
+                else if (!strcmp_P(p2, P("grid")) && tokenCount == 3)
+                {
+                    Log(P("Setting Grid to \""), p3, '"');
+
+                    wsprMessage_.SetGrid(p3);
 
                     printCurrentValues = 1;
                 }
@@ -424,14 +432,15 @@ private:
         PrintHeading(P("Frequency Testing/Calibration Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
         Log(P("test radio on"));
-        Log(P("test chan x"));
-        Log(P("test radio off"));
+        Log(P("set  wsprChannel x"));
         Log(P("set  crystalCorrectionFactor"));
+        Log(P("test radio off"));
         LogNL();
         
         PrintHeading(P("WPSR Send Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("set  id"));
+        Log(P("set  wsprCallsignId"));
+        Log(P("set  grid"));
         Log(P("set  altitudeFt"));
         Log(P("set  speedKnots"));
         Log(P("set  temperatureC"));
@@ -461,21 +470,25 @@ private:
         
         PrintHeading(P("WSPR Encoded Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("id        : "), wsprMessage_.GetId());
-        Log(P("grid      : "), wsprMessage_.GetGrid());
-        Log(P("altitudeFt: "), wsprMessage_.GetAltitudeFt());
-        Log(P("speedKnots: "), wsprMessage_.GetSpeedKnots());
-        Log(P("tempC     : "), wsprMessage_.GetTemperatureC());
-        Log(P("milliVolts: "), wsprMessage_.GetMilliVoltage());
+        Log(P("wsprCallsignId: "), wsprMessage_.GetId());
+        Log(P("grid          : "), wsprMessage_.GetGrid());
+        Log(P("altitudeFt    : "), wsprMessage_.GetAltitudeFt());
+        Log(P("speedKnots    : "), wsprMessage_.GetSpeedKnots());
+        Log(P("tempC         : "), wsprMessage_.GetTemperatureC());
+        Log(P("milliVolts    : "), wsprMessage_.GetMilliVoltage());
         LogNL();
         
         PrintHeading(P("WSPR Transmit Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("freq    : "), freqInHundredths_ / 100);
-        Log(P("chan    : "), wsprMessageTransmitter_.GetChannel());
-        Log(P("callsign: "), callsign);
-        Log(P("grid    : "), grid);
-        Log(P("powerDbm: "), powerDbm);
+        Log(P("callsign   : "), callsign);
+        Log(P("grid       : "), grid);
+        Log(P("powerDbm   : "), powerDbm);
+        LogNL();
+        
+        PrintHeading(P("WSPR Frequency Values"), colorHeaderValues_);
+        TerminalControl::ChangeColor(colorItems_);
+        Log(P("freq       : "), freqInHundredths_ / 100);
+        Log(P("wsprChannel: "), wsprMessageTransmitter_.GetChannel());
         LogNL();
         
         PrintHeading(P("System Tunable Values"), colorHeaderValues_);

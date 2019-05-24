@@ -34,8 +34,8 @@ private:
     {
         Menu().RegisterParamSTR(P("trackerId"),                    Config().device.id, AppPicoTrackerWSPR1UserConfig::ID_LEN);
         
-        Menu().RegisterParamSTR(P("callsignId"),                   Config().wspr.callsignId, AppPicoTrackerWSPR1UserConfig::CALLSIGN_ID_LEN);
-        Menu().RegisterParamU8(P("channel"),                      &Config().wspr.channel);
+        Menu().RegisterParamSTR(P("wsprCallsignId"),               Config().wspr.callsignId, AppPicoTrackerWSPR1UserConfig::CALLSIGN_ID_LEN);
+        Menu().RegisterParamU8(P("wsprChannel"),                  &Config().wspr.channel);
         
         Menu().RegisterParamU8(P("solarMode"),                    &Config().power.solarMode);
         Menu().RegisterParamU16(P("minMilliVoltGpsLocationLock"), &Config().power.minMilliVoltGpsLocationLock);
