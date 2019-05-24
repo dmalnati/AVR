@@ -13,8 +13,8 @@ class WSPRMessageTransmitter
 public:
 
     static const uint32_t WSPR_DEFAULT_DIAL_FREQ               = 14095600UL;  // 20 meter band
-    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 7;          // center channel, 34 total
     static const uint16_t WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ   = 1400;        // leads to 200 Hz area where transmissions are valid
+    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 16;          // 33 total, 0-32
     static const uint16_t WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ = 586;         // 5.8592 Hz
     
     static const uint8_t  WSPR_SYMBOL_COUNT               = 162;
@@ -47,11 +47,21 @@ public:
         calibration_ = calibration;
     }
     
+    void SetChannel(uint8_t channel)
+    {
+        channel_ = channel;
+    }
+    
+    uint8_t GetChannel()
+    {
+        return channel_;
+    }
+    
     uint32_t GetCalculatedFreqHundredths()
     {
         return (WSPR_DEFAULT_DIAL_FREQ * 100UL) +
                (WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ * 100UL) +
-               (WSPR_DEFAULT_CHANNEL * WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
+               ((uint32_t)GetChannel() * WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
     }
     
     void SetFreqHundredths(uint32_t freq)
@@ -164,6 +174,8 @@ private:
     WSPREncoder wsprEncoder_;
     
     Calibration calibration_;
+    
+    uint8_t channel_ = WSPR_DEFAULT_CHANNEL;
     
     function<void()> fnOnBitChange_;
 
