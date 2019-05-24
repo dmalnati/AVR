@@ -156,6 +156,9 @@ public:
         // Configure transmitter with calibration details
         wsprMessageTransmitter_.SetCalibration(userConfig_.radio.mtCalibration);
         
+        // Set channel
+        wsprMessageTransmitter_.SetChannel(userConfig_.wspr.channel);
+        
         // Set up the transmitter to kick the watchdog when sending data later
         wsprMessageTransmitter_.SetCallbackOnBitChange([](){
             PAL.WatchdogReset();

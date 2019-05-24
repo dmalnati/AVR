@@ -45,9 +45,12 @@ public:
     
 private:
 
-    void TestRadioOn()
+    void TestRadioOn(uint8_t verbose = 1)
     {
-        Log(P("Radio On"));
+        if (verbose)
+        {
+            Log(P("Radio On"));
+        }
 
         // Combine the real application's two-step operation to a single
         // operation here.
@@ -59,9 +62,6 @@ private:
         // the interface pin.
         ExposeBitTransitions();
         
-        // Add extra control over initial frequency
-        wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
-
         // Keep our own state as to whether radio on or off
         onOff_ = 1;
     }
@@ -210,19 +210,18 @@ private:
                 }
                 else if (!strcmp_P(p2, P("chan")) && tokenCount == 3)
                 {
-                    uint32_t chan = atol(p3);
-
-                    freqInHundredths_ =
-                        (WSPRMessageTransmitter::WSPR_DEFAULT_DIAL_FREQ * 100UL) +
-                        (WSPRMessageTransmitter::WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ * 100UL) +
-                        (chan * WSPRMessageTransmitter::WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ);
-
-                    Log(P("Setting channel to "), chan, P(", freq now "), freqInHundredths_ / 100.0);
+                    uint8_t channel = atol(p3);
+                    
+                    userConfig_.wspr.channel = channel;
 
                     if (onOff_)
                     {
-                        wsprMessageTransmitter_.SetFreqHundredths(freqInHundredths_);
+                        TestRadioOn(0);
                     }
+                    
+                    freqInHundredths_ = wsprMessageTransmitter_.GetCalculatedFreqHundredths();
+
+                    Log(P("Setting channel to "), channel, P(", freq now "), freqInHundredths_ / 100);
 
                     printCurrentValues = 1;
                 }
@@ -232,7 +231,7 @@ private:
 
                     freqInHundredths_ = val * 100;
                     
-                    Log(P("Setting freq to \""), freqInHundredths_ / 100.0, '"');
+                    Log(P("Setting freq to \""), freqInHundredths_ / 100, '"');
 
                     if (onOff_)
                     {
@@ -425,7 +424,7 @@ private:
         PrintHeading(P("Frequency Testing/Calibration Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
         Log(P("test radio on"));
-        Log(P("test chan 0"));
+        Log(P("test chan x"));
         Log(P("test radio off"));
         Log(P("set  crystalCorrectionFactor"));
         LogNL();
@@ -472,7 +471,8 @@ private:
         
         PrintHeading(P("WSPR Transmit Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("freq    : "), freqInHundredths_ / 100.0);
+        Log(P("freq    : "), freqInHundredths_ / 100);
+        Log(P("chan    : "), wsprMessageTransmitter_.GetChannel());
         Log(P("callsign: "), callsign);
         Log(P("grid    : "), grid);
         Log(P("powerDbm: "), powerDbm);

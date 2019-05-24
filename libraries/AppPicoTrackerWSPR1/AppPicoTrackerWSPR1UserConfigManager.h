@@ -9,7 +9,7 @@
 
 
 class AppPicoTrackerWSPR1UserConfigManager
-: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 13, 0, 1>
+: public PersistantConfigManager<AppPicoTrackerWSPR1UserConfig, 14, 0, 1>
 {
 public:
 
@@ -18,10 +18,11 @@ public:
     {
         // Register formatter for uint32_t types which represent durations in ms
         idxFormatter_ = Menu().RegisterFormatter([](MenuType::Param &param){
-            const char BUF_SIZE = 14;
-            char buf[BUF_SIZE] = { 0 };
+            char buf[StrFormat::HHMMSSMMM_BUF_SIZE_NEEDED] = { 0 };
             
-            DurationMsToHHMMSSmmm(*(uint32_t *)param.paramPtr, buf);
+            StrFormat::DurationMsToHHMMSSMMM(*(uint32_t *)param.paramPtr, buf);
+            StrFormat::TrimMsFromHHMMSSMMM(buf);
+            StrFormat::TrimLeadingPaddingFromHHMMSSMMM(buf);
             
             LogNNL(buf);
         });
@@ -34,6 +35,7 @@ private:
         Menu().RegisterParamSTR(P("trackerId"),                    Config().device.id, AppPicoTrackerWSPR1UserConfig::ID_LEN);
         
         Menu().RegisterParamSTR(P("callsignId"),                   Config().wspr.callsignId, AppPicoTrackerWSPR1UserConfig::CALLSIGN_ID_LEN);
+        Menu().RegisterParamU8(P("channel"),                      &Config().wspr.channel);
         
         Menu().RegisterParamU8(P("solarMode"),                    &Config().power.solarMode);
         Menu().RegisterParamU16(P("minMilliVoltGpsLocationLock"), &Config().power.minMilliVoltGpsLocationLock);
