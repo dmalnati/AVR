@@ -2,86 +2,24 @@
 #define __UTL_H__
 
 
-#include "PAL.h"
-#include "IdleTimeEventHandler.h"
-#include "TimedEventHandler.h"
-#include "IdleTimeHiResTimedEventHandler.h"
+#include <stdlib.h>
 
 
-
-
-extern void PinToggle(uint8_t pin, uint16_t delayMs = 500);
-extern uint32_t GetRandomInRange(uint32_t rangeLow, uint32_t rangeHigh);
-
-
-class TimedPinToggler : public TimedEventHandler
+class Utl
 {
 public:
-    TimedPinToggler(uint8_t pin) : pin_(pin)
+
+    static uint32_t GetRandomInRange(uint32_t rangeLow, uint32_t rangeHigh)
     {
-        PAL.PinMode(pin_, OUTPUT);
+        uint32_t retVal = 0;
+
+        srand(PAL.Micros());
+
+        retVal = rangeLow + (rand() % (rangeHigh - rangeLow + 1));
+
+        return retVal;
     }
-    
-    void OnTimedEvent()
-    {
-        PAL.DigitalWrite(pin_, HIGH);
-        PAL.DigitalWrite(pin_, LOW);
-    }
 
-private:
-    uint8_t pin_;
-};
-
-
-class TimedPinTogglerHiRes
-: public IdleTimeHiResTimedEventHandler
-{
-public:
-    TimedPinTogglerHiRes(uint8_t pin) : pin_(pin)
-    {
-        PAL.PinMode(pin_, OUTPUT);
-    }
-    
-    void OnIdleTimeHiResTimedEvent()
-    {
-        PAL.DigitalWrite(pin_, HIGH);
-        PAL.DigitalWrite(pin_, LOW);
-    }
-    
-private:
-    uint8_t pin_;
-};
-
-
-class IdlePinToggler : public IdleTimeEventHandler
-{
-public:
-    IdlePinToggler(uint8_t pin) : pin_(pin)
-    {
-        PAL.PinMode(pin_, OUTPUT);
-    }
-    
-    virtual void OnIdleTimeEvent()
-    {
-        PAL.DigitalWrite(pin_, HIGH);
-        PAL.DigitalWrite(pin_, LOW);
-    }
-    
-private:
-    uint8_t pin_;
-};
-
-
-
-class DestructorToken
-{
-public:
-    DestructorToken(uint8_t pin) : pin_(pin) { }
-    ~DestructorToken()
-    {
-        PinToggle(pin_);
-    }
-    uint8_t pin_;
 };
 
 
