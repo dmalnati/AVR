@@ -287,13 +287,13 @@ private:
                 // Consider available power if solar.
                 if (InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit))
                 {
-                    PreSendMessage();
+                    uint8_t wsprChannel = PreSendMessage();
                     
                     // Pack message now that we know where we are
                     FillOutWSPRMessage();
                     
                     // Test message before sending (but send regardless)
-                    Log(P("WSPR MSG READY"));
+                    Log(P("WSPR MSG READY, chan "), wsprChannel);
                     
                     // Figure out how long we've been operating since the mark
                     uint32_t timeDiff = PAL.Millis() - timeAtMark;

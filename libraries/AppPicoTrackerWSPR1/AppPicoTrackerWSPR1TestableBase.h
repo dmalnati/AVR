@@ -3,6 +3,7 @@
 
 
 #include "PAL.h"
+#include "Utl.h"
 #include "Evm.h"
 #include "Log.h"
 #include "TerminalControl.h"
@@ -146,9 +147,20 @@ public:
     void StopSubsystemWSPR()
     {
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
+        
+        // put the SDA/SCL pins low so the stupid clockgen doesn't power itself
+        // from them
+        const uint8_t PIN_SCL = 28;
+        const uint8_t PIN_SDA = 27;
+        
+        PAL.PinMode(PIN_SCL, OUTPUT);
+        PAL.PinMode(PIN_SDA, OUTPUT);
+        
+        PAL.DigitalWrite(PIN_SCL, LOW);
+        PAL.DigitalWrite(PIN_SDA, LOW);
     }
     
-    void PreSendMessage()
+    uint8_t PreSendMessage()
     {
         // Enable subsystem
         StartSubsystemWSPR();
@@ -156,8 +168,11 @@ public:
         // Configure transmitter with calibration details
         wsprMessageTransmitter_.SetCalibration(userConfig_.radio.mtCalibration);
         
-        // Set channel
-        wsprMessageTransmitter_.SetChannel(userConfig_.wspr.channel);
+        // Set channel randomly
+        uint8_t channel =
+            Utl::GetRandomInRange(WSPRMessageTransmitter::WSPR_CHANNEL_LOW,
+                                  WSPRMessageTransmitter::WSPR_CHANNEL_HIGH);
+        wsprMessageTransmitter_.SetChannel(channel);
         
         // Set up the transmitter to kick the watchdog when sending data later
         wsprMessageTransmitter_.SetCallbackOnBitChange([](){
@@ -166,6 +181,8 @@ public:
         
         // Prepare system for send, warm up internals
         wsprMessageTransmitter_.RadioOn();
+        
+        return channel;
     }
 
     void SendMessage()

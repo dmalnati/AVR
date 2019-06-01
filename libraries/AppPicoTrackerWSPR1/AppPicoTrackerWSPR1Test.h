@@ -17,6 +17,7 @@ public:
     AppPicoTrackerWSPR1Test(const AppPicoTrackerWSPR1Config &cfg)
     : AppPicoTrackerWSPR1TestableBase(cfg)
     , mtc_(userConfig_.radio.mtCalibration)
+    , wsprChannel_(WSPRMessageTransmitter::WSPR_CHANNEL_DEFAULT)
     , freqInHundredths_(wsprMessageTransmitter_.GetCalculatedFreqHundredths())
     , onOff_(0)
     {
@@ -56,6 +57,10 @@ private:
         // operation here.
         StartSubsystemWSPR();
         PreSendMessage();
+        
+        // Override real application's use of a random number for the
+        // WSPR channel.
+        wsprMessageTransmitter_.SetChannel(wsprChannel_);
         
         // Override real application's PreSendMessage functionality, so
         // instead of calling watchdog at periods, we see output on
@@ -229,7 +234,7 @@ private:
                 {
                     uint8_t channel = atol(p3);
                     
-                    userConfig_.wspr.channel = channel;
+                    wsprChannel_ = channel;
 
                     if (onOff_)
                     {
@@ -238,7 +243,7 @@ private:
                     
                     freqInHundredths_ = wsprMessageTransmitter_.GetCalculatedFreqHundredths();
 
-                    Log(P("Setting wsprChannel to "), channel, P(", freq now "), freqInHundredths_ / 100);
+                    Log(P("Setting wsprChannel to "), wsprChannel_, P(", freq now "), freqInHundredths_ / 100);
 
                     printCurrentValues = 1;
                 }
@@ -511,6 +516,8 @@ private:
     SerialAsyncConsoleEnhanced<0, 50>  console_;
     
     WSPRMessageTransmitter::Calibration &mtc_;
+    
+    uint8_t wsprChannel_;
     
     uint32_t freqInHundredths_;
 

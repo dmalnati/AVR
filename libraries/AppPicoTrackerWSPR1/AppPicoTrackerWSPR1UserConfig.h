@@ -35,8 +35,6 @@ struct AppPicoTrackerWSPR1UserConfig
     struct
     {
         char callsignId[CALLSIGN_ID_LEN + 1] = "00";
-        
-        uint8_t channel = WSPRMessageTransmitter::WSPR_DEFAULT_CHANNEL;
     } wspr;
     
     // Tracker stuff
