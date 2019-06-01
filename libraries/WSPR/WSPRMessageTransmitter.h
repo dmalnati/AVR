@@ -12,9 +12,12 @@ class WSPRMessageTransmitter
 {
 public:
 
+    static const uint8_t WSPR_CHANNEL_LOW     = 0;
+    static const uint8_t WSPR_CHANNEL_DEFAULT = 16;          // 33 total, 0-32
+    static const uint8_t WSPR_CHANNEL_HIGH    = 32;
+
     static const uint32_t WSPR_DEFAULT_DIAL_FREQ               = 14095600UL;  // 20 meter band
     static const uint16_t WSPR_OFFSET_FROM_DIAL_TO_USABLE_HZ   = 1400;        // leads to 200 Hz area where transmissions are valid
-    static const uint8_t  WSPR_DEFAULT_CHANNEL                 = 16;          // 33 total, 0-32
     static const uint16_t WSPR_CHANNEL_BANDWIDTH_HUNDREDTHS_HZ = 586;         // 5.8592 Hz
     
     static const uint8_t  WSPR_SYMBOL_COUNT               = 162;
@@ -175,7 +178,7 @@ private:
     
     Calibration calibration_;
     
-    uint8_t channel_ = WSPR_DEFAULT_CHANNEL;
+    uint8_t channel_ = WSPR_CHANNEL_DEFAULT;
     
     function<void()> fnOnBitChange_;
 
