@@ -13,8 +13,6 @@ public:
     {
         uint32_t retVal = 0;
 
-        srand(PAL.Micros());
-
         retVal = rangeLow + (rand() % (rangeHigh - rangeLow + 1));
 
         return retVal;
