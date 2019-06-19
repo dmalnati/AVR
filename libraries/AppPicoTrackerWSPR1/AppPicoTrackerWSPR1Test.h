@@ -67,6 +67,9 @@ private:
         // the interface pin.
         ExposeBitTransitions();
         
+        // Force the re-application of overridden configuration
+        wsprMessageTransmitter_.RadioOn();
+        
         // Keep our own state as to whether radio on or off
         onOff_ = 1;
     }
@@ -227,7 +230,7 @@ private:
 
                     if (onOff_)
                     {
-                        TestRadioOn();
+                        TestRadioOn(0);
                     }
                 }
                 else if (!strcmp_P(p2, P("wsprChannel")) && tokenCount == 3)
