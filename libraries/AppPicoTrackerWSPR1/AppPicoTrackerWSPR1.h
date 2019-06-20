@@ -350,7 +350,6 @@ private:
 
         // Schedule next wakeup
         uint32_t wakeAndEvaluateDelayMs = CalculateWakeup(gpsHadError);
-        wakeAndEvaluateDelayMs = 0;
         tedWake_.RegisterForTimedEvent(wakeAndEvaluateDelayMs);
         
         Log(P("Sleep "), wakeAndEvaluateDelayMs);
