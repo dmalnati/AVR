@@ -4,10 +4,13 @@ exec tclsh "$0" "$@"
 
 
 
+#set AVR_BIN_DIR \
+#    "/cygdrive/c/Program\\ Files\\ \\(x86\\)/Arduino/hardware/tools/avr/bin"
 set AVR_BIN_DIR \
-    "/cygdrive/c/Program\\ Files\\ \\(x86\\)/Arduino/hardware/tools/avr/bin"
+    "c:/Program\\ Files\\ \\(x86\\)/Arduino/hardware/tools/avr/bin"
 
-set AVR_BUILD_DIR_ROOT "/cygdrive/c/Users/doug/AppData/Local/Temp"
+#set AVR_BUILD_DIR_ROOT "/cygdrive/c/Users/doug/AppData/Local/Temp"
+set AVR_BUILD_DIR_ROOT "c:/Users/doug/AppData/Local/Temp"
 
 
 proc GetMostRecentBuildDir { } {
@@ -20,7 +23,6 @@ proc GetMostRecentBuildDir { } {
 }
 
 proc GetElfFileInPwd { } {
-    set name "AppPicoTrackerWSPR1Config.ino.elf"
     set name [exec -- ls -rt | grep .elf]
 
     return $name
