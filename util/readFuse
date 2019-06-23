@@ -1,0 +1,12 @@
+#!/bin/bash
+
+cd "/c/Program Files (x86)/Arduino/hardware/tools/avr/bin"
+
+./avrdude.exe \
+-C "C:\Program Files (x86)\Arduino\hardware\tools\avr/etc/avrdude.conf" \
+-p atmega328p \
+-c usbasp \
+-U lfuse:r:-:h \
+-U hfuse:r:-:h \
+-U efuse:r:-:h
+
