@@ -15,6 +15,7 @@
                 "_DEBUG",
                 "UNICODE",
                 "_UNICODE",
+                "ARDUINO=100",
                 "__AVR_ATmega328P__"
             ],
             "compilerPath": "C:\\cygwin64\\bin\\gcc.exe",
