@@ -46,10 +46,21 @@ public:
     {
         AppPicoTrackerWSPR1TestableBase::Init();
         
+        // Indicate device is on
         Blink(cfg_.pinLedRed,   100);
         Blink(cfg_.pinLedGreen, 100);
 
-        
+        // Indicate radio working
+        Log(P("Radio Test"));
+        for (uint8_t i = 0; i < 3; ++i)
+        {
+            PreSendMessage();
+            PAL.Delay(1000);
+            StopSubsystemWSPR();
+            PAL.Delay(200);
+        }
+
+        // Interact with user if present
         uint8_t userConfigOk = 0;
         
         // Keep the sizable manager out of memory indefinitely by only creating
