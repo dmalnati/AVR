@@ -76,13 +76,13 @@ public:
             char *p = &(buf_[BUF_LOCATION]);
             
             // Fill out buffer
-            U32ToStrPadLeft(p, hours, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, hours, 2, '0');
             p += 2;
            
-            U32ToStrPadLeft(p, minutes, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, minutes, 2, '0');
             p += 2;
            
-            U32ToStrPadLeft(p, seconds, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, seconds, 2, '0');
             p += 2;
            
             *p = 'h';
@@ -118,16 +118,16 @@ public:
             char *p = &(buf_[BUF_LOCATION]);
            
             // Fill out buffer
-            U32ToStrPadLeft(p, degreesPos, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, degreesPos, 2, '0');
             p += 2;
            
-            U32ToStrPadLeft(p, minutes, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, minutes, 2, '0');
             p += 2;
            
             *p = '.';
             p += 1;
            
-            U32ToStrPadLeft(p, secondsAsHundredths, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, secondsAsHundredths, 2, '0');
             p += 2;
            
             *p = northOrSouth;
@@ -177,16 +177,16 @@ public:
             char *p = &(buf_[BUF_LOCATION]);
            
             // Fill out buffer
-            U32ToStrPadLeft(p, degreesPos, 3, '0');
+            StrFormat::U32ToStrPadLeft(p, degreesPos, 3, '0');
             p += 3;
            
-            U32ToStrPadLeft(p, minutes, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, minutes, 2, '0');
             p += 2;
            
             *p = '.';
             p += 1;
            
-            U32ToStrPadLeft(p, secondsAsHundredths, 2, '0');
+            StrFormat::U32ToStrPadLeft(p, secondsAsHundredths, 2, '0');
             p += 2;
            
             *p = eastOrWest;
@@ -270,7 +270,7 @@ public:
             if (val > limUpper) { val = limUpper; }
             
             // Fill out buffer
-            U32ToStrPadLeft(commentNextByte_, val, width, '0');
+            StrFormat::U32ToStrPadLeft(commentNextByte_, val, width, '0');
             
             commentNextByte_ += width;
         }

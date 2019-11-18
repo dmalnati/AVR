@@ -3,8 +3,8 @@
 #include "ModemBell202.h"
 #include "AX25UIMessage.h"
 #include "Str.h"
-#include "Utl@fix@Serial.h"
-#include "UtlStreamBlob.h"
+#include "Serial.h"
+#include "SerialInput.h"
 
 
 
@@ -71,7 +71,8 @@ void DoMessageTest()
 
     msg.SetDstAddress("DST", 2);
     msg.SetSrcAddress("SRC", 3);
-    msg.AddRepeaterAddress("WIDE1", 1);
+    msg.AddRepeaterAddress("ARISS", 0);
+    msg.AddRepeaterAddress("WIDE2", 1);
 
     const char *info = "Just Some Data";
     uint8_t infoLen = strlen(info);   // 16
@@ -79,7 +80,7 @@ void DoMessageTest()
     
     uint8_t bytesUsed = msg.Finalize();
 
-    @fix@Serial.println("Sending");
+    Log("Sending");
 
     Send(buf, bytesUsed);
 }
@@ -90,9 +91,9 @@ void DoMessageTest()
 
 void setup()
 {
-    @fix@Serial.begin(9600);
-    @fix@Serial.println("Starting");
-    @fix@Serial.println();
+    LogStart(9600);
+    Log("Starting");
+    LogNL();
 
 
     // Set up classes
@@ -132,7 +133,7 @@ void setup()
         {
             uint32_t freq = atol(str.TokenAtIdx(1, ' '));
 
-            @fix@Serial.print(F("Setting freq to ")); @fix@Serial.println(freq);
+            Log(P("Setting freq to "), freq);
 
             rf.SetFrequency(freq, 1);
         }
@@ -147,7 +148,7 @@ void setup()
         {
             uint32_t dev = atol(str.TokenAtIdx(1, ' '));
 
-            @fix@Serial.print(F("Setting dev to ")); @fix@Serial.println(dev);
+            Log(P("Setting dev to "), dev);
 
             rf.SetDeviation(dev, 1);
         }
@@ -193,7 +194,7 @@ void setup()
         {
             uint32_t freq = atol(str.TokenAtIdx(1, ' '));
 
-            @fix@Serial.print(F("Setting freq to ")); @fix@Serial.println(freq);
+            Log(P("Setting freq to "), freq);
 
             ma.SetFrequency(freq);
         }
@@ -221,9 +222,9 @@ void setup()
             // this is the OC2B pin
             const uint8_t MODULATION_PIN = 5;
             
-            uint8_t highLow = atoi(str.TokenAtIdx(1, ' '));
+            uint8_t highLow = atoi(str.TokenAtIdx(1, ' ')); 
 
-            @fix@Serial.print(F("Setting mod pin ")); @fix@Serial.println(highLow ? F("HIGH") : F("LOW"));
+            Log(P("Setting mod pin "), highLow ? P("HIGH") : P("LOW"));
 
             PAL.PinMode(MODULATION_PIN, OUTPUT);
             PAL.DigitalWrite(MODULATION_PIN, highLow ? HIGH : LOW);
@@ -242,17 +243,14 @@ void setup()
 
 
     shell.RegisterErrorHandler([](char *cmdStr) {
-        @fix@Serial.print("ERR: Unrecognized \"");
-        @fix@Serial.print(cmdStr);
-        @fix@Serial.print("\"");
-        @fix@Serial.println();
+        Log("ERR: Unrecognized \"", cmdStr, "\"");
     });
 
 
     // We know we want the modulation pin in a known state.
     // Let's pick low.  Why not.
     modpin((char *)"modpin 0");
-    @fix@Serial.println();
+    LogNL();
     
     
     while (1)
@@ -262,20 +260,3 @@ void setup()
 }
 
 void loop() {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
