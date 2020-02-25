@@ -95,13 +95,6 @@ public:
             Log(P("BODR"));
         }
         
-        // Don't allow being too low of a BOD.
-        if (PAL.GetFuseBODLimMilliVolts() != 2700)
-        {
-            Log(P("BOD WRONG -- Set to 2700"));
-            PAL.SoftReset();
-        }
-        
         // Set up control over regulator power save mode.
         PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
         RegulatorPowerSaveDisable();
