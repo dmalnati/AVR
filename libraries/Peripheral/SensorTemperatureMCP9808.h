@@ -16,27 +16,7 @@ protected:
 
 public:
 
-    SensorTemperatureMCP9808(uint8_t addr = ADDR)
-    : addr_(addr)
-    {
-        // Nothing to do
-    }
-
-    void Init()
-    {
-        
-    }
-
-
-    void Reset()
-    {
-
-    }
-
-    void GetMeasurement()
-    {
-
-    }
+    static const uint32_t MS_MAX_TEMP_SENSE_DURATION = 300;
 
     struct Configuration
     {
@@ -52,39 +32,66 @@ public:
         uint8_t alertMod;
     };
 
-    Configuration GetConfiguration()
+    struct Measurement
     {
+        uint16_t      manufacturerId;
+        uint8_t       deviceId;
+        uint8_t       deviceRevision;
+        Configuration cfg;
+        int8_t        sensorResolution;
+        int8_t        tempF;
+        int8_t        tempC;
+        int8_t        tempAlertUpper;
+        int8_t        tempAlertLower;
+        int8_t        tempCritical;
+    };
+
+
+public:
+
+    SensorTemperatureMCP9808(uint8_t addr = ADDR)
+    : addr_(addr)
+    {
+        // Nothing to do
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Power Control
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    void Sleep()
+    {
+        // Get current configuration
         uint16_t regVal;
         I2C.ReadRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
 
-        Configuration cfg;
-        cfg.tHyst     = (regVal & 0b0000011000000000) >> 9;
-        cfg.shdn      = (regVal & 0b0000000100000000) >> 8;
-        cfg.critLock  = (regVal & 0b0000000010000000) >> 7;
-        cfg.winLock   = (regVal & 0b0000000001000000) >> 6;
-        cfg.intClear  = (regVal & 0b0000000000100000) >> 5;
-        cfg.alertStat = (regVal & 0b0000000000010000) >> 4;
-        cfg.alertCntl = (regVal & 0b0000000000001000) >> 3;
-        cfg.alertSel  = (regVal & 0b0000000000000100) >> 2;
-        cfg.alertPol  = (regVal & 0b0000000000000010) >> 1;
-        cfg.alertMod  = (regVal & 0b0000000000000001) >> 0;
+        // Set the shutdown bit high
+        regVal |= _BV(8);
 
-        return cfg;
+        // Send the updated configuration back
+        I2C.WriteRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
     }
 
-    struct Measurement
+    void Wake()
     {
-        uint16_t manufacturerId;
-        uint8_t deviceId;
-        uint8_t deviceRevision;
-        Configuration cfg;
-        int8_t sensorResolution;
-        int8_t tempF;
-        int8_t tempC;
-        int8_t tempAlertUpper;
-        int8_t tempAlertLower;
-        int8_t tempCritical;
-    };
+        // Get current configuration
+        uint16_t regVal;
+        I2C.ReadRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
+
+        // Set the shutdown bit low
+        regVal &= ~_BV(8);
+
+        // Send the updated configuration back
+        I2C.WriteRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Sensing Control
+    //
+    ///////////////////////////////////////////////////////////////////////////
 
     uint8_t GetMeasurement(Measurement *m)
     {
@@ -115,6 +122,27 @@ public:
 
         return retVal;
     }
+
+    Configuration GetConfiguration()
+    {
+        uint16_t regVal;
+        I2C.ReadRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
+
+        Configuration cfg;
+        cfg.tHyst     = (regVal & 0b0000011000000000) >> 9;
+        cfg.shdn      = (regVal & 0b0000000100000000) >> 8;
+        cfg.critLock  = (regVal & 0b0000000010000000) >> 7;
+        cfg.winLock   = (regVal & 0b0000000001000000) >> 6;
+        cfg.intClear  = (regVal & 0b0000000000100000) >> 5;
+        cfg.alertStat = (regVal & 0b0000000000010000) >> 4;
+        cfg.alertCntl = (regVal & 0b0000000000001000) >> 3;
+        cfg.alertSel  = (regVal & 0b0000000000000100) >> 2;
+        cfg.alertPol  = (regVal & 0b0000000000000010) >> 1;
+        cfg.alertMod  = (regVal & 0b0000000000000001) >> 0;
+
+        return cfg;
+    }
+
     int8_t GetTempC()
     {
         uint16_t regVal = 0;
@@ -187,32 +215,6 @@ public:
     void SetSensorResolution(uint8_t val)
     {
         I2C.WriteRegister(addr_, (uint8_t)RegisterPointer::SENSOR_RESOLUTION, val);
-    }
-
-    void Sleep()
-    {
-        // Get current configuration
-        uint16_t regVal;
-        I2C.ReadRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
-
-        // Set the shutdown bit high
-        regVal |= _BV(8);
-
-        // Send the updated configuration back
-        I2C.WriteRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
-    }
-
-    void Wake()
-    {
-        // Get current configuration
-        uint16_t regVal;
-        I2C.ReadRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
-
-        // Set the shutdown bit low
-        regVal &= ~_BV(8);
-
-        // Send the updated configuration back
-        I2C.WriteRegister16(addr_, (uint8_t)RegisterPointer::CONFIG, regVal);
     }
 
 
