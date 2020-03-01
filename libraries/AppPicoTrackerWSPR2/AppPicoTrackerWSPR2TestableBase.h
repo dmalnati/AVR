@@ -8,6 +8,7 @@
 #include "Log.h"
 #include "TerminalControl.h"
 #include "SensorGPSUblox.h"
+#include "SensorTemperatureMCP9808.h"
 #include "WSPRMessageTransmitter.h"
 #include "WSPRMessagePicoTrackerWSPR2.h"
 #include "AppPicoTrackerWSPR2UserConfig.h"
@@ -18,32 +19,19 @@ struct AppPicoTrackerWSPR2Config
     // Human interfacing
     uint8_t pinConfigure;
     
-    // Pre-regulator power sensing
-    uint8_t pinInputVoltage;
-    
-    // Regulator control
-    uint8_t pinRegPowerSaveEnable;
-    
-    // Solar configuration
-    uint32_t intervalSolarWakeupMs;
-    
     // GPS
     uint8_t pinGpsBackupPower;
     uint8_t pinGpsEnable;
     uint8_t pinGpsSerialRx; // receive GPS data from this pin
     uint8_t pinGpsSerialTx; // send data to the GPS on this pin
     
-    uint32_t gpsMaxAgeLocationLockMs;
+    uint32_t gpsMaxDurationLocationLockWaitMs;
     uint32_t gpsMaxDurationTimeLockWaitMs;
     uint32_t gpsDurationWaitPostResetMs;
     
     // WSPR TX
     uint8_t pinWsprTxEnable;
     
-    // Temperature sensor
-    uint8_t pinTempSensorEnable;
-    uint8_t pinTempSensorVoltageSense;
-
     // Status LEDs
     uint8_t pinLedRed;
     uint8_t pinLedGreen;
@@ -57,34 +45,19 @@ public:
     AppPicoTrackerWSPR2TestableBase(const AppPicoTrackerWSPR2Config &cfg)
     : cfg_(cfg)
     , gps_(cfg_.pinGpsSerialRx, cfg_.pinGpsSerialTx)
-    , gpsLocationLockOk_(0)
     {
         // Nothing to do
     }
     
     void Init()
     {
-        uint8_t tcxoInUse = 0;
-        
-        // Handle external clock being configured.
-        if (PAL.GetFuseExternalClockConfigured())
-        {
-            // If fuse indicates external clock, it's a 16 MHz TCXO.
-            // We want to run at 8 MHz.  So prescale by 2.
-            PAL.SetCpuPrescaler(PlatformAbstractionLayer::CpuPrescaler::DIV_BY_2);
-            
-            tcxoInUse = 1;
-        }
-        
         // Init serial and announce startup
         LogStart(9600);
         LogX('\n', 10);
         
         TerminalControl::ChangeColor(colorOutput_);
         
-        LogNNL(P("Starting, TCXO "));
-        Log(tcxoInUse ? P("Enabled") : P("Disabled"));
-        
+        Log(P("Starting"));
         
         if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
         {
@@ -95,13 +68,12 @@ public:
             Log(P("BODR"));
         }
         
-        // Set up control over regulator power save mode.
-        PAL.PinMode(cfg_.pinRegPowerSaveEnable, OUTPUT);
-        RegulatorPowerSaveDisable();
-        
         // Shut down subsystems
         // Floating pins have been seen to be enough to be high enough to
         // cause unintentional operation
+
+        // Protect against hangs
+        PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         
         // GPS Subsystem
         PAL.PinMode(cfg_.pinGpsBackupPower, OUTPUT);
@@ -112,17 +84,69 @@ public:
         // WSPR Subsystem
         PAL.PinMode(cfg_.pinWsprTxEnable, OUTPUT);
         StopSubsystemWSPR();
+
+        // Temperature Subsystem
+        StopSubsystemTemperature();
+
+        // Bring I2C bus offline since some components behave badly when not
+        // powered but still connected to a live I2C bus
+        StopI2C();
+
+        // Disable watchdog as the main set of code which can hang is complete
+        PAL.WatchdogDisable();
         
-        // Temperature
-        PAL.PinMode(cfg_.pinTempSensorEnable, OUTPUT);
-        GetTemperatureC();
-        
-        // Set up LEDs and blink to indicate power up
+        // Set up LED control
         PAL.PinMode(cfg_.pinLedRed,   OUTPUT);
         PAL.PinMode(cfg_.pinLedGreen, OUTPUT);
     }
     
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // I2C Control
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    
+    //
+    // The I2C bus should be off unless there's a reason to have it on, and
+    // that will be when a particular subsystem needs it.
+    //
+    // Expected use case:
+    // - On system, subsystems will
+    //   - maybe start
+    //   - definitely stop
+    // - Each subsystem will do this entirely before any other subsystem starts
+    //
+    // Instead of subsystems coordinating, this is a
+    // reference-counted control over the I2C bus.
+
+    uint8_t i2cRefCount_ = 0;
+
+    void StartI2C()
+    {
+        if (i2cRefCount_ == 0)
+        {
+            // Transition from off to on
+            I2C.BusOn();
+        }
+
+        ++i2cRefCount_;
+    }
+
+    void StopI2C()
+    {
+        if (i2cRefCount_ == 1)
+        {
+            // Transition from on to off
+            I2C.BusOff();
+        }
+
+        if (i2cRefCount_ != 0)
+        {
+            --i2cRefCount_;
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     //
     // WSPR Transmitter Control
@@ -131,6 +155,8 @@ public:
     
     void StartSubsystemWSPR()
     {
+        StartI2C();
+        
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, HIGH);
         
         const uint32_t WSPR_TCXO_STARTUP_TIME_MAX_MS = 10;
@@ -141,16 +167,7 @@ public:
     {
         PAL.DigitalWrite(cfg_.pinWsprTxEnable, LOW);
         
-        // put the SDA/SCL pins low so the stupid clockgen doesn't power itself
-        // from them
-        const uint8_t PIN_SCL = 28;
-        const uint8_t PIN_SDA = 27;
-        
-        PAL.PinMode(PIN_SCL, OUTPUT);
-        PAL.PinMode(PIN_SDA, OUTPUT);
-        
-        PAL.DigitalWrite(PIN_SCL, LOW);
-        PAL.DigitalWrite(PIN_SDA, LOW);
+        StopI2C();
     }
     
     uint8_t PreSendMessage()
@@ -178,13 +195,22 @@ public:
         return channel;
     }
 
-    void SendMessage()
+    void SendMessageLiteral()
     {
         // Kick the watchdog
         PAL.WatchdogReset();
         
         // Send the message synchronously
-        wsprMessageTransmitter_.Send(&wsprMessage_);
+        wsprMessageTransmitter_.Send(&wsprMessageLiteral_);
+    }
+    
+    void SendMessageEncoded()
+    {
+        // Kick the watchdog
+        PAL.WatchdogReset();
+        
+        // Send the message synchronously
+        wsprMessageTransmitter_.Send(&wsprMessageEncoded_);
     }
     
     void PostSendMessage()
@@ -203,32 +229,22 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void FillOutWSPRMessage()
+    void FillOutWSPRMessageLiteral()
+    {
+        // The boring regular one with real callsign which satisfies the FCC
+        wsprMessageLiteral_.SetCallsign(userConfig_.wspr.callsign);
+        wsprMessageLiteral_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
+        wsprMessageLiteral_.SetPower(10);   // 10 mW == 10dBm
+    }
+
+    void FillOutWSPRMessageEncoded()
     {
         // Fill out actual message
-        wsprMessage_.SetId(userConfig_.wspr.callsignId);
-        wsprMessage_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
-        wsprMessage_.SetAltitudeFt(gpsLocationMeasurement_.altitudeFt);
-        wsprMessage_.SetSpeedKnots(gpsLocationMeasurement_.speedKnots);
-        wsprMessage_.SetTemperatureC(GetTemperatureC());
-        wsprMessage_.SetMilliVoltage(GetInputMilliVoltage());
-    }
-    
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // Power Regulator Controls
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    void RegulatorPowerSaveEnable()
-    {
-        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, LOW);
-    }
-    
-    void RegulatorPowerSaveDisable()
-    {
-        PAL.DigitalWrite(cfg_.pinRegPowerSaveEnable, HIGH);
+        wsprMessageEncoded_.SetId(userConfig_.wspr.callsignId);
+        wsprMessageEncoded_.SetGrid(gpsLocationMeasurement_.maidenheadGrid);
+        wsprMessageEncoded_.SetAltitudeFt(gpsLocationMeasurement_.altitudeFt);
+        wsprMessageEncoded_.SetSpeedKnots(gpsLocationMeasurement_.speedKnots);
+        wsprMessageEncoded_.SetTemperatureC(tempC_);
     }
     
     
@@ -311,51 +327,23 @@ public:
     // Temperature
     //
     ///////////////////////////////////////////////////////////////////////////
-    
-    int8_t GetTemperatureC()
+
+    void StartSubsystemTemperature()
     {
-        // Put voltage across voltage divider
-        PAL.DigitalWrite(cfg_.pinTempSensorEnable, HIGH);
-        
-        // Take 8 samples and average them to reduce transients
-        uint16_t adcVal = PAL.AnalogRead1V1(cfg_.pinTempSensorVoltageSense, 1);
-        
-        // Cut power
-        PAL.DigitalWrite(cfg_.pinTempSensorEnable, LOW);
-        
-        // Calculate actual millivolts sensed
-        constexpr double MV_STEP = 1.07421875;
-        uint16_t mvSensed = adcVal * MV_STEP;
-        
-        // Apply formula calculated in spreadsheet.
-        // This is, at -50C, we expect to see ~42mV.
-        // From there, we expect to see a 1mV change for every 5C temperature
-        // change in the range of temperatures from -50 C to 20 C.
-        int8_t tempC =  -50 + ((mvSensed - 42) * 5);
-        
-        return tempC;
+        StartI2C();
+
+        sensorTemp_.Wake();
+
+        PAL.Delay(SensorTemperatureMCP9808::MS_MAX_TEMP_SENSE_DURATION);
     }
-    
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // Input Voltage
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    
-    uint16_t GetInputMilliVoltage()
+
+    void StopSubsystemTemperature()
     {
-        // Circuit has a voltage divider halve the input voltage.
-        // Use the 8x sample option.
-        uint16_t adcVal = PAL.AnalogRead(cfg_.pinInputVoltage, 1);
-        
-        // Scale to account for input divider, also scale to input millivolts
-        constexpr double FACTOR = (2.0 * 3300.0 / 1024.0);
-        uint16_t inputMilliVolt = adcVal * FACTOR;
-        
-        return inputMilliVolt;
+        sensorTemp_.Sleep();
+
+        StopI2C();
     }
-    
-    
+
     
 public:
     
@@ -363,18 +351,18 @@ public:
 
     AppPicoTrackerWSPR2UserConfig userConfig_;
     
-    uint8_t inLowAltitudeStickyPeriod_ = 1;
-    
     TimedEventHandlerDelegate tedWake_;
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsLocationMeasurement_;
-    uint8_t                      gpsLocationLockOk_;
     SensorGPSUblox::Measurement  gpsTimeMeasurement_;
+
+    SensorTemperatureMCP9808  sensorTemp_;
+    int8_t                    tempC_ = 0;
     
-    WSPRMessagePicoTrackerWSPR2 wsprMessage_;
+    WSPRMessage                 wsprMessageLiteral_;
+    WSPRMessagePicoTrackerWSPR2 wsprMessageEncoded_;
     WSPRMessageTransmitter      wsprMessageTransmitter_;
-    
     
     const TerminalControl::Color colorOutput_ = TerminalControl::Color::YELLOW;
 

@@ -282,7 +282,7 @@ private:
                     
                     Log(P("Setting WsprCallsignId to \""), p, '"');
 
-                    wsprMessage_.SetId((char *)p);
+                    wsprMessageEncoded_.SetId((char *)p);
 
                     printCurrentValues = 1;
                 }
@@ -290,7 +290,7 @@ private:
                 {
                     Log(P("Setting Grid to \""), p3, '"');
 
-                    wsprMessage_.SetGrid(p3);
+                    wsprMessageEncoded_.SetGrid(p3);
 
                     printCurrentValues = 1;
                 }
@@ -300,7 +300,7 @@ private:
                     
                     Log(P("Setting AltitudeFt to \""), val, '"');
 
-                    wsprMessage_.SetAltitudeFt(val);
+                    wsprMessageEncoded_.SetAltitudeFt(val);
 
                     printCurrentValues = 1;
                 }
@@ -310,7 +310,7 @@ private:
                     
                     Log(P("Setting SpeedKnots to \""), val, '"');
 
-                    wsprMessage_.SetSpeedKnots(val);
+                    wsprMessageEncoded_.SetSpeedKnots(val);
 
                     printCurrentValues = 1;
                 }
@@ -320,7 +320,7 @@ private:
                     
                     Log(P("Setting TempC to \""), val, '"');
 
-                    wsprMessage_.SetTemperatureC(val);
+                    wsprMessageEncoded_.SetTemperatureC(val);
 
                     printCurrentValues = 1;
                 }
@@ -330,7 +330,7 @@ private:
                     
                     Log(P("Setting MilliVolts to \""), val, '"');
 
-                    wsprMessage_.SetMilliVoltage(val);
+                    wsprMessageEncoded_.SetMilliVoltage(val);
 
                     printCurrentValues = 1;
                 }
@@ -385,13 +385,13 @@ private:
         FillOutWSPRMessage();
         
         // Override GPS-related due to not having a lock yet
-        wsprMessage_.SetGrid("FN20XR");
-        wsprMessage_.SetAltitudeFt(13500);
-        wsprMessage_.SetSpeedKnots(76);
+        wsprMessageEncoded_.SetGrid("FN20XR");
+        wsprMessageEncoded_.SetAltitudeFt(13500);
+        wsprMessageEncoded_.SetSpeedKnots(76);
         
         // Override temp/voltage for now just for a standard startup value
-        wsprMessage_.SetTemperatureC(-30);
-        wsprMessage_.SetMilliVoltage(3100);
+        wsprMessageEncoded_.SetTemperatureC(-30);
+        wsprMessageEncoded_.SetMilliVoltage(3100);
     }
     
     void ExposeBitTransitions()
@@ -474,16 +474,16 @@ private:
         const char *grid     = NULL;
         uint8_t     powerDbm = 0;
         
-        wsprMessage_.GetData(callsign, grid, powerDbm);
+        wsprMessageEncoded_.GetData(callsign, grid, powerDbm);
         
         PrintHeading(P("WSPR Encoded Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("wsprCallsignId: "), wsprMessage_.GetId());
-        Log(P("grid          : "), wsprMessage_.GetGrid());
-        Log(P("altitudeFt    : "), wsprMessage_.GetAltitudeFt());
-        Log(P("speedKnots    : "), wsprMessage_.GetSpeedKnots());
-        Log(P("tempC         : "), wsprMessage_.GetTemperatureC());
-        Log(P("milliVolts    : "), wsprMessage_.GetMilliVoltage());
+        Log(P("wsprCallsignId: "), wsprMessageEncoded_.GetId());
+        Log(P("grid          : "), wsprMessageEncoded_.GetGrid());
+        Log(P("altitudeFt    : "), wsprMessageEncoded_.GetAltitudeFt());
+        Log(P("speedKnots    : "), wsprMessageEncoded_.GetSpeedKnots());
+        Log(P("tempC         : "), wsprMessageEncoded_.GetTemperatureC());
+        Log(P("milliVolts    : "), wsprMessageEncoded_.GetMilliVoltage());
         LogNL();
         
         PrintHeading(P("WSPR Transmit Values"), colorHeaderValues_);

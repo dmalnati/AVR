@@ -74,18 +74,7 @@ public:
     {
         return temperatureC_;
     }
-    
-    void SetMilliVoltage(uint16_t milliVolt)
-    {
-        milliVolt_ = milliVolt;
-        
-        Recalculate();
-    }
-    
-    uint16_t GetMilliVoltage()
-    {
-        return milliVolt_;
-    }
+
 
 private:
 
@@ -274,22 +263,12 @@ private:
     
     static uint8_t CalculateTemperatureCValue(int8_t temperatureC)
     {
-        // The temperature is in the range of -50 to 20 C
-        // It is in increments of 10C.
-        // That makes 8 values: -50, -40, -30, -20, -10, 0, 10, 20
-        
-        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(temperatureC, 8, 10, -50);
-        
-        return idxLastAtOrAbove;
-    }
-
-    static uint8_t CalculateMilliVoltValue(uint16_t milliVolt)
-    {
-        // The milliVolt is in the range of 1500 - 4500
-        // It is in increments of 1500
-        // That makes 3 values: 1500, 3000, 4500
-        
-        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(milliVolt, 3, 1500, 1500);
+        // 27 values to use, so 26 steps.
+        // Define each step to be 4 C (~ 7.2 F).
+        // That covers a span of 104 C (187.2 F)
+        // Define the lowest range to be -50 C (-58 F)
+        // That puts the top of the range to be 54 C (129 F).
+        uint8_t idxLastAtOrAbove = GetIdxLastAtOrAbove(temperatureC, 27, 4, -50);
         
         return idxLastAtOrAbove;
     }
@@ -314,8 +293,7 @@ private:
         // Callsign 3  0-9         Telemetry Channel (10)
         // Callsign 4  A-Z         Grid Square 5th char (A-X) (24)
         // Callsign 5  A-Z         Grid Square 6th char (A-X) (24)
-        // Callsign 6  A-Z, space  Temperature(8)
-        //                         Voltage(3)
+        // Callsign 6  A-Z, space  Temperature(27)
         
         
         // Start by breaking down all provided inputs into the constituents
@@ -328,7 +306,6 @@ private:
         CalculateAltitudeValues(altitudeFt_, power, ftIncr1000, ftIncr500);
         
         uint8_t temperatureCValue = CalculateTemperatureCValue(temperatureC_);
-        uint8_t milliVoltValue    = CalculateMilliVoltValue(milliVolt_);
         
         
         // Temporary storage
@@ -359,8 +336,7 @@ private:
         
         // Callsign 6 is temperature and voltage
         uint8_t cs6Val = 0;
-        cs6Val = Pack(cs6Val, temperatureCValue, 8);
-        cs6Val = Pack(cs6Val, milliVoltValue,    3);
+        cs6Val = Pack(cs6Val, temperatureCValue, 27);
         char cs6Char = MapToAlphaSpace(cs6Val);
         
         callsign[5] = cs6Char;
@@ -385,7 +361,6 @@ private:
     uint32_t altitudeFt_   = 0;
     uint8_t  speedKnots_   = 0;
     int8_t   temperatureC_ = 0;
-    uint16_t milliVolt_    = 0;
 };
 
 

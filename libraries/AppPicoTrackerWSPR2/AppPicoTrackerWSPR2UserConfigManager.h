@@ -9,7 +9,7 @@
 
 
 class AppPicoTrackerWSPR2UserConfigManager
-: public PersistantConfigManager<AppPicoTrackerWSPR2UserConfig, 13, 0, 1>
+: public PersistantConfigManager<AppPicoTrackerWSPR2UserConfig, 8, 0, 1>
 {
 public:
 
@@ -34,19 +34,12 @@ private:
     {
         Menu().RegisterParamSTR(P("trackerId"),                    Config().device.id, AppPicoTrackerWSPR2UserConfig::ID_LEN);
         
+        Menu().RegisterParamSTR(P("wsprCallsign"),                 Config().wspr.callsign, AppPicoTrackerWSPR2UserConfig::CALLSIGN_LEN);
         Menu().RegisterParamSTR(P("wsprCallsignId"),               Config().wspr.callsignId, AppPicoTrackerWSPR2UserConfig::CALLSIGN_ID_LEN);
-        
-        //Menu().RegisterParamU8(P("solarMode"),                    &Config().power.solarMode);
-        //Menu().RegisterParamU16(P("minMilliVoltGpsLocationLock"), &Config().power.minMilliVoltGpsLocationLock);
-        //Menu().RegisterParamU16(P("minMilliVoltGpsTimeLock"),     &Config().power.minMilliVoltGpsTimeLock);
-        //Menu().RegisterParamU16(P("minMilliVoltTransmit"),        &Config().power.minMilliVoltTransmit);
-        
-        Menu().RegisterParamU32(P("gpsLockTimeoutMs"),            &Config().gps.gpsLockTimeoutMs, idxFormatter_);
         
         Menu().RegisterParamU32(P("lhAltFtThreshold"),            &Config().geo.lowHighAltitudeFtThreshold);
         Menu().RegisterParamU32(P("hAlt.wakeAndEvaluateMs"),      &Config().geo.highAltitude.wakeAndEvaluateMs, idxFormatter_);
         Menu().RegisterParamU32(P("lAlt.wakeAndEvaluateMs"),      &Config().geo.lowAltitude.wakeAndEvaluateMs, idxFormatter_);
-        Menu().RegisterParamU32(P("lAlt.stickyMs"),               &Config().geo.lowAltitude.stickyMs, idxFormatter_);
         
         Menu().RegisterParamI32(P("crystalCorrectionFactor"),     &Config().radio.mtCalibration.crystalCorrectionFactor);
         Menu().RegisterParamI32(P("systemClockOffsetMs"),         &Config().radio.mtCalibration.systemClockOffsetMs);
