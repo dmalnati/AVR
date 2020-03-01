@@ -321,8 +321,7 @@ public:
         Measurement             *m,
         uint32_t                 durationEachAttemptMs,
         function<void(void)>    &fnBeforeAttempt,
-        function<void(void)>    &fnAfterAttempt,
-        function<uint8_t(void)> &fnOkToContinue)
+        function<void(void)>    &fnAfterAttempt)
     {
         uint8_t retVal = 0;
         
@@ -333,7 +332,7 @@ public:
         // Sleep until next GPS lock time or two min mark, whichever is
         // appropriate.
         uint32_t durationActualBeforeTwoMinMark = 0;
-        if (gpsLockOk && fnOkToContinue())
+        if (gpsLockOk)
         {
             // Now we're able to know how long we are before the two min mark by
             // looking at the GPS data.
@@ -346,7 +345,7 @@ public:
         }
         
         // If time available to get another GPS lock, do it.
-        if (gpsLockOk && fnOkToContinue())
+        if (gpsLockOk)
         {
             // We now know the actual duration remaining before the two min mark.
             // Possible we don't have time to try to lock again, due to,
@@ -367,7 +366,7 @@ public:
         // Sleep until two min mark.  Either because we got a new more precise
         // time lock, or because we are burning off the remaining time from
         // the original lock.
-        if (gpsLockOk && fnOkToContinue())
+        if (gpsLockOk)
         {
             // We have now locked once, and we're about to sleep off any
             // remaining time before the two min mark.
