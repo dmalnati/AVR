@@ -36,6 +36,11 @@ class TWIClass
     
     // Other
     static const uint8_t  DEFAULT_PRESCALER  = 1;
+
+    // Pin numbers
+    const uint8_t PIN_SCL = 28;
+    const uint8_t PIN_SDA = 27;
+
     
 public:
 
@@ -46,6 +51,27 @@ public:
         SetFreq100K();
     }
     
+    //////////////////////////////////////////////////////////////////////
+    //
+    // User Code -- Control bus on/off to prevent leakage current
+    //
+    //////////////////////////////////////////////////////////////////////
+    
+    void BusOn()
+    {
+        PAL.PinMode(PIN_SCL, OUTPUT);
+        PAL.PinMode(PIN_SDA, OUTPUT);
+        
+        PAL.DigitalWrite(PIN_SCL, LOW);
+        PAL.DigitalWrite(PIN_SDA, LOW);
+    }
+
+    void BusOff()
+    {
+        PAL.PinMode(PIN_SCL, INPUT);
+        PAL.PinMode(PIN_SDA, INPUT);
+    }
+
     //////////////////////////////////////////////////////////////////////
     //
     // User Code -- Bus speed
