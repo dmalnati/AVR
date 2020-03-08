@@ -8,5 +8,5 @@ cd "/c/Program Files (x86)/Arduino/hardware/tools/avr/bin"
 -c usbasp \
 -U lfuse:w:0xE2:m \
 -U hfuse:w:0xDF:m \
--U efuse:w:0xFA:m
+-U efuse:w:0xFE:m
 
