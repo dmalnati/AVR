@@ -67,6 +67,15 @@ public:
         {
             Log(P("BODR"));
         }
+
+        // Mandate low BOD fuse
+        uint16_t bod = PAL.GetFuseBODLimMilliVolts();
+        if (bod != 1800)
+        {
+            Log(P("BOD WRONG ("), bod, P(") -- Set to 1800"));
+            PAL.Delay(5000);
+            PAL.SoftReset();
+        }
         
         // Shut down subsystems
         // Floating pins have been seen to be enough to be high enough to
@@ -86,6 +95,7 @@ public:
         StopSubsystemWSPR();
 
         // Temperature Subsystem
+        StartSubsystemTemperature();
         StopSubsystemTemperature();
 
         // Bring I2C bus offline since some components behave badly when not
@@ -119,8 +129,6 @@ public:
     //
     // Instead of subsystems coordinating, this is a
     // reference-counted control over the I2C bus.
-
-    uint8_t i2cRefCount_ = 0;
 
     void StartI2C()
     {
@@ -211,6 +219,39 @@ public:
         
         // Send the message synchronously
         wsprMessageTransmitter_.Send(&wsprMessageEncoded_);
+    }
+
+    void SendMessages()
+    {
+        PAL.WatchdogReset();
+
+        // First send the FCC-mandated message which reveals the
+        // true callsign
+        Log(P("Transmitting literal message"));
+        SendMessageLiteral();
+
+        // We want to now wait for the correct time to send the next
+        // message.
+        //
+        // Duration of transmission of the first:
+        // 162 symbols at 1.4648 baud = 110.6 s (110.592 = 1m50.592)
+        //
+        // We started the last at 1 second after a 2 min mark.
+        // We want to do that again.  That's 2 min from the last start.
+        // Since the prior transmission took 110.6 sec, we have
+        // 120 - 110.6 = 9.4 seconds to wait.
+        const uint32_t MS_WAIT = 9400;
+        Log(P("Waiting for next 2-min mark"));
+        PAL.Delay(MS_WAIT / 2);
+        PAL.WatchdogReset();
+        PAL.Delay(MS_WAIT / 2);
+        PAL.WatchdogReset();
+
+        // Now send the second encoded message
+        Log(P("Transmitting encoded message"));
+        SendMessageEncoded();
+        
+        PAL.WatchdogReset();
     }
     
     void PostSendMessage()
@@ -332,6 +373,12 @@ public:
     {
         StartI2C();
 
+        // Sadly the WSPR transmitter misbehaves and pulls down the I2C bus.
+        // Just start it up before taking the temp, as the temp is the only
+        // other I2C peripheral.  I don't want to add more parts to the system
+        // if I can solve it in software.
+        StartSubsystemWSPR();
+
         sensorTemp_.Wake();
 
         PAL.Delay(SensorTemperatureMCP9808::MS_MAX_TEMP_SENSE_DURATION);
@@ -340,6 +387,8 @@ public:
     void StopSubsystemTemperature()
     {
         sensorTemp_.Sleep();
+
+        StopSubsystemWSPR();
 
         StopI2C();
     }
@@ -352,6 +401,8 @@ public:
     AppPicoTrackerWSPR2UserConfig userConfig_;
     
     TimedEventHandlerDelegate tedWake_;
+
+    uint8_t i2cRefCount_ = 0;
     
     SensorGPSUblox               gps_;
     SensorGPSUblox::Measurement  gpsLocationMeasurement_;

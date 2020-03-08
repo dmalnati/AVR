@@ -30,12 +30,12 @@ struct AppPicoTrackerWSPR2UserConfig
         
         struct
         {
-            uint32_t wakeAndEvaluateMs = 30L * 60L * 1000L;    // 30 min
+            uint32_t wakeAndEvaluateMs = 600000UL;    // 10 min
         } highAltitude;
         
         struct
         {
-            uint32_t wakeAndEvaluateMs =        60L * 1000L;   // 60 sec, 1 min
+            uint32_t wakeAndEvaluateMs =  60000UL;   // 60 sec, 1 min
         } lowAltitude;
     } geo;
     

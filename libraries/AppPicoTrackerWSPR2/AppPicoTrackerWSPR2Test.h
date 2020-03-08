@@ -116,15 +116,11 @@ private:
                 }
                 else if (!strcmp_P(p2, P("tempC")))
                 {
-                    int8_t tempC = GetTemperatureC();
+                    StartSubsystemTemperature();
+                    int8_t tempC = sensorTemp_.GetTempC();
+                    StopSubsystemTemperature();
                     
                     Log(P("tempC: "), tempC, ", tempF: ", ((tempC * (9.0 / 5.0)) + 32));
-                }
-                else if (!strcmp_P(p2, P("milliVolts")))
-                {
-                    uint16_t inputMilliVolt = GetInputMilliVoltage();
-                    
-                    Log(P("milliVolts: "), inputMilliVolt);
                 }
                 else if (!strcmp_P(p2, P("gps")))
                 {
@@ -276,13 +272,13 @@ private:
             
             if (!strcmp_P(p1, P("set")))
             {
-                if (!strcmp_P(p2, P("wsprCallsignId")) && tokenCount == 3)
+                if (!strcmp_P(p2, P("wsprCallsign")) && tokenCount == 3)
                 {
                     const char *p = p3;
                     
-                    Log(P("Setting WsprCallsignId to \""), p, '"');
+                    Log(P("Setting WsprCallsign to \""), p, '"');
 
-                    wsprMessageEncoded_.SetId((char *)p);
+                    wsprMessageLiteral_.SetCallsign((char *)p);
 
                     printCurrentValues = 1;
                 }
@@ -290,7 +286,26 @@ private:
                 {
                     Log(P("Setting Grid to \""), p3, '"');
 
+                    wsprMessageLiteral_.SetGrid(p3);
                     wsprMessageEncoded_.SetGrid(p3);
+
+                    printCurrentValues = 1;
+                }
+                else if (!strcmp_P(p2, P("powerDbm")) && tokenCount == 3)
+                {
+                    Log(P("Setting Power to \""), p3, '"');
+
+                    wsprMessageLiteral_.SetPower(atoi(p3));
+
+                    printCurrentValues = 1;
+                }
+                else if (!strcmp_P(p2, P("wsprCallsignId")) && tokenCount == 3)
+                {
+                    const char *p = p3;
+                    
+                    Log(P("Setting WsprCallsignId to \""), p, '"');
+
+                    wsprMessageEncoded_.SetId((char *)p);
 
                     printCurrentValues = 1;
                 }
@@ -324,23 +339,13 @@ private:
 
                     printCurrentValues = 1;
                 }
-                else if (!strcmp_P(p2, P("milliVolts")) && tokenCount == 3)
-                {
-                    uint16_t val = atol(p3);
-                    
-                    Log(P("Setting MilliVolts to \""), val, '"');
-
-                    wsprMessageEncoded_.SetMilliVoltage(val);
-
-                    printCurrentValues = 1;
-                }
             }
 
             if (!strcmp_P(p1, P("test")))
             {
                 if (!strcmp_P(p2, P("send")))
                 {
-                    Log(P("Sending"));
+                    Log(P("Sending both messages"));
 
                     if (!onOff_)
                     {
@@ -350,7 +355,39 @@ private:
                     printCurrentValues = 1;
                     
                     // Invoke the application's SendMessage function
-                    SendMessage();
+                    SendMessages();
+
+                    Log(P("Send complete"));
+                }
+                if (!strcmp_P(p2, P("sendL")))
+                {
+                    Log(P("Sending Literal"));
+
+                    if (!onOff_)
+                    {
+                        TestRadioOn();
+                    }
+
+                    printCurrentValues = 1;
+                    
+                    // Invoke the application's SendMessage function
+                    SendMessageLiteral();
+
+                    Log(P("Send complete"));
+                }
+                if (!strcmp_P(p2, P("sendE")))
+                {
+                    Log(P("Sending Encoded"));
+
+                    if (!onOff_)
+                    {
+                        TestRadioOn();
+                    }
+
+                    printCurrentValues = 1;
+                    
+                    // Invoke the application's SendMessage function
+                    SendMessageEncoded();
 
                     Log(P("Send complete"));
                 }
@@ -382,16 +419,17 @@ private:
     void SetupInitialState()
     {
         // Set some defaults
-        FillOutWSPRMessage();
+        FillOutWSPRMessageLiteral();
+        FillOutWSPRMessageEncoded();
         
+        wsprMessageLiteral_.SetGrid("FN20XR");
+        wsprMessageLiteral_.SetPower(10);
+
         // Override GPS-related due to not having a lock yet
         wsprMessageEncoded_.SetGrid("FN20XR");
         wsprMessageEncoded_.SetAltitudeFt(13500);
         wsprMessageEncoded_.SetSpeedKnots(76);
-        
-        // Override temp/voltage for now just for a standard startup value
         wsprMessageEncoded_.SetTemperatureC(-30);
-        wsprMessageEncoded_.SetMilliVoltage(3100);
     }
     
     void ExposeBitTransitions()
@@ -426,7 +464,6 @@ private:
         TerminalControl::ChangeColor(colorItems_);
         Log(P("test leds"));
         Log(P("test tempC"));
-        Log(P("test milliVolts"));
         Log(P("test gps on"));
         Log(P("test gps off"));
         LogNL();
@@ -447,12 +484,18 @@ private:
         
         PrintHeading(P("WPSR Send Commands"), colorHeaderCommands_);
         TerminalControl::ChangeColor(colorItems_);
+        Log(P("set  wsprCallsign"));
+        Log(P("set  grid"));
+        Log(P("set  powerDbm"));
+        LogNL();
         Log(P("set  wsprCallsignId"));
         Log(P("set  grid"));
         Log(P("set  altitudeFt"));
         Log(P("set  speedKnots"));
         Log(P("set  temperatureC"));
-        Log(P("set  milliVolts"));
+        LogNL();
+        Log(P("test sendL"));
+        Log(P("test sendE"));
         Log(P("test send"));
         LogNL();
 
@@ -474,7 +517,13 @@ private:
         const char *grid     = NULL;
         uint8_t     powerDbm = 0;
         
-        wsprMessageEncoded_.GetData(callsign, grid, powerDbm);
+        wsprMessageLiteral_.GetData(callsign, grid, powerDbm);
+        PrintHeading(P("WSPR Literal Transmit Values"), colorHeaderValues_);
+        TerminalControl::ChangeColor(colorItems_);
+        Log(P("wsprCallsign: "), callsign);
+        Log(P("grid        : "), grid);
+        Log(P("powerDbm    : "), powerDbm);
+        LogNL();
         
         PrintHeading(P("WSPR Encoded Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
@@ -483,14 +532,14 @@ private:
         Log(P("altitudeFt    : "), wsprMessageEncoded_.GetAltitudeFt());
         Log(P("speedKnots    : "), wsprMessageEncoded_.GetSpeedKnots());
         Log(P("tempC         : "), wsprMessageEncoded_.GetTemperatureC());
-        Log(P("milliVolts    : "), wsprMessageEncoded_.GetMilliVoltage());
         LogNL();
-        
-        PrintHeading(P("WSPR Transmit Values"), colorHeaderValues_);
+
+        wsprMessageEncoded_.GetData(callsign, grid, powerDbm);
+        PrintHeading(P("WSPR Encoded Transmit Values"), colorHeaderValues_);
         TerminalControl::ChangeColor(colorItems_);
-        Log(P("callsign   : "), callsign);
-        Log(P("grid       : "), grid);
-        Log(P("powerDbm   : "), powerDbm);
+        Log(P("wsprCallsign: "), callsign);
+        Log(P("grid        : "), grid);
+        Log(P("powerDbm    : "), powerDbm);
         LogNL();
         
         PrintHeading(P("WSPR Frequency Values"), colorHeaderValues_);

@@ -1,28 +1,28 @@
 #include "AppPicoTrackerWSPR2.h"
-//#include "AppPicoTrackerWSPR2Test.h"
+#include "AppPicoTrackerWSPR2Test.h"
 
 
 static AppPicoTrackerWSPR2Config cfg =
 {
     // Human interfacing
-    .pinConfigure = 16, // pin A
+    .pinConfigure = 26, // pin A
     
     // GPS
-    .pinGpsBackupPower =  5,
-    .pinGpsEnable      = 14,
-    .pinGpsSerialRx    = 23,
-    .pinGpsSerialTx    = 24,
+    .pinGpsBackupPower = 11,
+    .pinGpsEnable      =  5,
+    .pinGpsSerialRx    = 13,
+    .pinGpsSerialTx    = 12,
 
-    .gpsMaxDurationLocationLockWaitMs = 150000UL, // 2m30 - 85th percentile cold start success
+    .gpsMaxDurationLocationLockWaitMs = 300000UL,  // 5 minutes, 2x the 85-percentile cold start success
     .gpsMaxDurationTimeLockWaitMs     =  10000UL,  // 10 seconds
     .gpsDurationWaitPostResetMs       =  30000UL,  // 30 seconds
 
     // WSPR TX
-    .pinWsprTxEnable = 15,
+    .pinWsprTxEnable = 14,
 
     // Status LEDs
-    .pinLedRed   = 12,
-    .pinLedGreen = 13,
+    .pinLedRed   = 24,
+    .pinLedGreen = 23,
 };
 
 #if 1

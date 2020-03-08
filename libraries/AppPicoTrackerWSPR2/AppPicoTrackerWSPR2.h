@@ -236,29 +236,7 @@ private:
                 }
                 
                 // Send WSPR messages
-                
-                // First send the FCC-mandated message which reveals the
-                // true callsign
-                Log(P("Transmitting literal message"));
-                SendMessageLiteral();
-
-                // We want to now wait for the correct time to send the next
-                // message.
-                //
-                // Duration of transmission of the first:
-                // 162 symbols at 1.4648 baud = 110.6 s (110.592 = 1m50.592)
-                //
-                // We started the last at 1 second after a 2 min mark.
-                // We want to do that again.  That's 2 min from the last start.
-                // Since the prior transmission took 110.6 sec, we have
-                // 120 - 110.6 = 9.4 seconds to wait.
-                const uint32_t MS_WAIT = 9400;
-                Log(P("Waiting for next 2-min mark"));
-                PAL.Delay(MS_WAIT);
-
-                // Now send the second encoded message
-                Log(P("Transmitting encoded message"));
-                SendMessageEncoded();
+                SendMessages();
                 
                 Log(P("Radio off"));
                 PostSendMessage();
