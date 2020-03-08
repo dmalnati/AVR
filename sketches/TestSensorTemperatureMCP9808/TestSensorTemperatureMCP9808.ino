@@ -140,7 +140,6 @@ void setup()
 
     
 
-    sensor.Init();
     console.Start();
     evm.MainLoop();
 }
