@@ -173,7 +173,7 @@ void setup()
             
             Log(P("Setting SpeedMPH to \""), val, '"');
 
-            m.SetSpeedMph(val);
+            //m.SetSpeedMph(val);
 
             PrintCurrentValues();
         }
@@ -291,7 +291,8 @@ void setup()
 
         PrintCurrentValues();
         
-        mt.Send(&m, type);
+        //mt.Send(&m, type);
+        //mt.Send(&mOld, type);
 
         Log(P("Send complete"));
     });
@@ -379,7 +380,7 @@ void setup()
     m.SetId("Q1");
     m.SetGrid("FN20XR");
     m.SetAltitudeFt(13500);
-    m.SetSpeedMph(88);
+    //m.SetSpeedMph(88);
     m.SetTemperatureC(-30);
     m.SetMilliVoltage(3100);
 
