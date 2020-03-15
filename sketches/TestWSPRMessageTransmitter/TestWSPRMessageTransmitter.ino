@@ -62,6 +62,8 @@ void PrintMenu()
     Log(P("on  - Turn on radio"));
     Log(P("off - Turn off radio"));
     LogNL();
+    Log(P("drive <mA=2,4,6,8>"));
+    LogNL();
     Log(P("Other"));
     LogX('-', 5);
     //Log(P("test - test the configuration of the message to be sent"));
@@ -228,6 +230,24 @@ void setup()
         mt.SetFreqHundredths(freqInHundredths);
 
         onOff = 1;
+    });
+
+    console.RegisterCommand("drive", [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Setting drive to \""), val, '"');
+
+            if (val == 2) { mt.SetDrive2(); }
+            if (val == 4) { mt.SetDrive4(); }
+            if (val == 6) { mt.SetDrive6(); }
+            if (val == 8) { mt.SetDrive8(); }
+
+            PrintCurrentValues();
+        }
     });
 
     console.RegisterCommand("freq", [](char *cmdStr){

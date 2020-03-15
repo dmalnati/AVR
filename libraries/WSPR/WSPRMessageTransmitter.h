@@ -4,7 +4,9 @@
 
 #include "PAL.h"
 #include "Function.h"
-#include "si5351.wspr.h"
+// #include "si5351.h"
+//#include "si5351.wspr.h"
+#include "si5351.wspr.2.h"
 #include "WSPRMessage.h"
 #include "WSPREncoder.h"
 
@@ -93,12 +95,20 @@ public:
         // Tune to default freq
         SetFreqHundredths(GetCalculatedFreqHundredths());
 
-        // Configure to drive at max power
+        // First clock used to set the frequency
         radio_.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);
-        
-        // Enable the clock
         radio_.set_clock_pwr(SI5351_CLK0, 1);
         radio_.output_enable(SI5351_CLK0, 1);
+
+        // Fan out and invert the first clock signal for a
+        // 180-degree phase shift on second clock
+        radio_.set_clock_fanout(SI5351_FANOUT_MS, 1);
+        radio_.set_clock_source(SI5351_CLK1, SI5351_CLK_SRC_MS0);
+        radio_.set_clock_invert(SI5351_CLK1, 1);
+
+        radio_.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
+        radio_.set_clock_pwr(SI5351_CLK1, 1);
+        radio_.output_enable(SI5351_CLK1, 1);
     }
     
     void Send(WSPRMessage *msg)
@@ -168,6 +178,16 @@ public:
         radio_.output_enable(SI5351_CLK2, 0);
         radio_.set_clock_pwr(SI5351_CLK2, 0);
     }
+
+    void SetDrive(si5351_drive pwr)
+    {
+        radio_.drive_strength(SI5351_CLK0, pwr);
+        radio_.drive_strength(SI5351_CLK1, pwr);
+    }
+    void SetDrive2() { SetDrive(SI5351_DRIVE_2MA); }
+    void SetDrive4() { SetDrive(SI5351_DRIVE_4MA); }
+    void SetDrive6() { SetDrive(SI5351_DRIVE_6MA); }
+    void SetDrive8() { SetDrive(SI5351_DRIVE_8MA); }
     
     
 private:
