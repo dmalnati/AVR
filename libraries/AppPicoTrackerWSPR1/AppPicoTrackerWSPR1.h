@@ -259,15 +259,13 @@ private:
             
             function<void(void)>    fnBeforeAttempt = [this]() { StartGPS(); };
             function<void(void)>    fnAfterAttempt  = [this]() { StopGPS(); };
-            function<uint8_t(void)> fnOkToContinue  = [this]() { return InputVoltageSufficient(userConfig_.power.minMilliVoltTransmit); };
             
             uint8_t gpsTimeLockOk =
                 gps_.GetNewTimeMeasurementSynchronousTwoMinuteMarkUnderWatchdog(
                     &gpsTimeMeasurement_,
                     cfg_.gpsMaxDurationTimeLockWaitMs,
                     fnBeforeAttempt,
-                    fnAfterAttempt,
-                    fnOkToContinue
+                    fnAfterAttempt
                 );
             
             // The GPS may have locked at an even minute and :00 seconds.
