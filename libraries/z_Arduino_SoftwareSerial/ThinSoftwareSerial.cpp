@@ -247,6 +247,7 @@ ISR(PCINT3_vect, ISR_ALIASOF(PCINT0_vect));
 // Constructor
 //
 ThinSoftwareSerial::ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic /* = false */) : 
+  _runningAtSpeedFactor(100.0),
   _rx_delay_centering(0),
   _rx_delay_intrabit(0),
   _rx_delay_stopbit(0),
@@ -370,6 +371,19 @@ void ThinSoftwareSerial::begin(long speed)
   pinMode(_DEBUG_PIN1, OUTPUT);
   pinMode(_DEBUG_PIN2, OUTPUT);
 #endif
+
+  // Adjust timing in accordance with clock drift.
+  //
+  // Decode issues were seen previously with an AVR which had an internal
+  // clock which was at 97% (3% slow).
+  //
+  // Tuning the intrabit parameter resolved the issue.
+  //
+  // Since each byte of serial is clocked independently, there will be no
+  // cumulative error.
+  //
+  // In other words, we only have to be accurate for 8 bits.
+  _rx_delay_intrabit *= _runningAtSpeedFactor;
 
   listen();
 }

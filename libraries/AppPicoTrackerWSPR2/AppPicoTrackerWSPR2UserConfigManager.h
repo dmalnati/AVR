@@ -27,6 +27,27 @@ public:
             LogNNL(buf);
         });
     }
+
+    virtual void OnDone() override
+    {
+        // It's the percent speed the clock is running at.
+        // If 1.00, clock is running at actual time (100%).
+        // If < 1.00, eg 0.97, clock is running at 97% speed (so it's slow).
+        // If > 1.00, eg 1.03, clock is running at 103% speed (so it's fast).
+
+        // Since we now have in hand the systemClockOffsetMs, and we know it's
+        // in terms of a 683ms signal, we can calculate the speed of the device.
+        //
+        // A negative value of systemClockOffsetMs means the device is running
+        // too slowly.
+        // 
+        // By example, if systemClockOffsetMs is -20ms, then (638+-20)/683=0.97.
+
+        const uint32_t PULSE_DURATION_MS = 683;
+
+        Config().calculated.runningAtSpeedFactor = 
+            (double)(PULSE_DURATION_MS + Config().radio.mtCalibration.systemClockOffsetMs) / PULSE_DURATION_MS;
+    }
     
 private:
 

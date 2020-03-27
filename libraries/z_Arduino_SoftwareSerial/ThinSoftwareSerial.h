@@ -49,8 +49,15 @@ http://arduiniana.org.
 
 class ThinSoftwareSerial
 {
-private:
+public:
   // per object data
+  
+  // It's the percent speed the clock is running at.
+  // If 1.00, clock is running at actual time (100%).
+  // If < 1.00, eg 0.97, clock is running at 97% speed (so it's slow).
+  // If > 1.00, eg 1.03, clock is running at 103% speed (so it's fast).
+  double _runningAtSpeedFactor;
+
   uint8_t _receivePin;
   uint8_t _receiveBitMask;
   volatile uint8_t *_receivePortRegister;
@@ -91,6 +98,7 @@ public:
   // public methods
   ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic = false);
   ~ThinSoftwareSerial();
+  void SetRunAtSpeedFactor(double runningAtSpeedFactor) { _runningAtSpeedFactor = runningAtSpeedFactor; }
   void begin(long speed);
   bool listen();
   void end();

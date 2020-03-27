@@ -66,6 +66,10 @@ public:
             {
                 Blink(cfg_.pinLedGreen, 300);
             }
+
+            // Calibration data entered, so can indicate the running speed to
+            // the software serial lib under the GPS lib
+            gps_.DebugGetSS().SetRunAtSpeedFactor(userConfig_.calculated.runningAtSpeedFactor);
             
             // Begin tracker reporting, fire first event immediately.
             // No point using interval, the decision about how long to sleep for is

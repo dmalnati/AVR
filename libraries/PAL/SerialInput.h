@@ -1114,6 +1114,7 @@ private:
         
         // Add our own command 
         Menu().RegisterCommand(P("done"), [this](){
+            OnDone();
             Save();
             Evm::GetInstance().EndMainLoop();
         });
@@ -1131,6 +1132,7 @@ private:
         
         if (letDefaultApplyAutomatically)
         {
+            OnDone();
             Save();
         }
         else
@@ -1146,6 +1148,8 @@ private:
     
     // No implementation, inheriting class needs to implement
     virtual void SetupMenu() = 0;
+
+    virtual void OnDone() { }
     
     
 protected:
