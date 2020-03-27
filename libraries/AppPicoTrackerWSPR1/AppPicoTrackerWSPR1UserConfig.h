@@ -58,6 +58,11 @@ struct AppPicoTrackerWSPR1UserConfig
     {
         WSPRMessageTransmitter::Calibration mtCalibration;
     } radio;
+    
+    struct
+    {
+        double runningAtSpeedFactor = 1.00;
+    } calculated;
 };
 
 

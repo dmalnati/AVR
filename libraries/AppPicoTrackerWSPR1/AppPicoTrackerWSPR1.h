@@ -90,6 +90,10 @@ public:
                 OnWake();
             });
             tedWake_.RegisterForTimedEvent(0);
+
+            // Calibration data entered, so can indicate the running speed to
+            // the software serial lib under the GPS lib
+            gps_.DebugGetSS().SetRunAtSpeedFactor(userConfig_.calculated.runningAtSpeedFactor);
             
             // Going into low-current sleep, enable power save
             RegulatorPowerSaveEnable();

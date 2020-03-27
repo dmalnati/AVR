@@ -159,16 +159,16 @@ private:
                     Log(P("Testing system clock"));
                     Log(P("Current systemClockOffsetMs = "), mtc_.systemClockOffsetMs);
                     Log(P("Measure with scope, get pulse widths to "), WSPRMessageTransmitter::WSPR_DELAY_MS, P(" ms"));
-                    Log(P("Positive adjustments make pulses smaller"));
-                    Log(P("negative adjustments make pulses larger"));
+                    Log(P("Positive adjustments make pulse durations longer"));
+                    Log(P("Negative adjustments make pulse durations shorter"));
                     Log(P("Starting test"));
 
                     for (uint8_t i = 0; i < 3; ++i)
                     {
                         PAL.DigitalWrite(cfg_.pinConfigure, HIGH);
-                        PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
+                        PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS + mtc_.systemClockOffsetMs);
                         PAL.DigitalWrite(cfg_.pinConfigure, LOW);
-                        PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS - mtc_.systemClockOffsetMs);
+                        PAL.Delay(WSPRMessageTransmitter::WSPR_DELAY_MS + mtc_.systemClockOffsetMs);
                     }
 
                     Log(P("Done"));
