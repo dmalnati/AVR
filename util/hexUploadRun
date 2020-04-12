@@ -1,0 +1,13 @@
+#!/bin/bash
+
+cd "/c/Program Files (x86)/Arduino/hardware/tools/avr/bin"
+
+./avrdude.exe \
+-C "C:\Program Files (x86)\Arduino\hardware\tools\avr/etc/avrdude.conf" \
+-v \
+-V \
+-p atmega328p \
+-c usbasp \
+-B30 \
+-Uflash:w:C\:\\Users\\doug\\AppPicoTrackerWSPR1Config.ino.run.2020-02-24.hex:i
+
