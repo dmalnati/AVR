@@ -152,12 +152,10 @@ private:
                 {
                     PAL.PinMode(cfg_.pinConfigure, OUTPUT);
 
-                    Log(P("Testing system clock"));
                     Log(P("Current systemClockOffsetMs = "), mtc_.systemClockOffsetMs);
                     Log(P("Measure with scope, get pulse widths to "), WSPRMessageTransmitter::WSPR_DELAY_MS, P(" ms"));
                     Log(P("Positive adjustments make pulse durations longer"));
                     Log(P("Negative adjustments make pulse durations shorter"));
-                    Log(P("Starting test"));
 
                     for (uint8_t i = 0; i < 3; ++i)
                     {

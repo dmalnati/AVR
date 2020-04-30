@@ -86,7 +86,6 @@ public:
         
         // GPS Subsystem
         PAL.PinMode(cfg_.pinGpsBackupPower, OUTPUT);
-        PAL.DigitalWrite(cfg_.pinGpsBackupPower, HIGH);
         PAL.PinMode(cfg_.pinGpsEnable, OUTPUT);
         StopSubsystemGPS();
         
