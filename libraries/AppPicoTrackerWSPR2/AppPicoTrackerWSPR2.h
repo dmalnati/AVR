@@ -35,7 +35,6 @@ public:
         Blink(cfg_.pinLedGreen, 100);
 
         // Indicate radio working
-        Log(P("Radio Test"));
         for (uint8_t i = 0; i < 3; ++i)
         {
             PreSendMessage();
@@ -80,7 +79,6 @@ public:
             tedWake_.RegisterForTimedEvent(0);
             
             // Handle async events
-            Log(P("Running"));
             evm_.MainLoopLowPower();
         }
         else

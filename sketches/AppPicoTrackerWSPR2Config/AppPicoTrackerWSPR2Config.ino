@@ -5,11 +5,11 @@
 static AppPicoTrackerWSPR2Config cfg =
 {
     // Human interfacing
-    .pinConfigure = 26, // pin A
+    .pinConfigure = 16, // pin A
     
     // GPS
     .pinGpsBackupPower = 11,
-    .pinGpsEnable      =  5,
+    .pinGpsEnable      = 10,
     .pinGpsSerialRx    = 13,
     .pinGpsSerialTx    = 12,
 
@@ -18,7 +18,7 @@ static AppPicoTrackerWSPR2Config cfg =
     .gpsDurationWaitPostResetMs       =  30000UL,  // 30 seconds
 
     // WSPR TX
-    .pinWsprTxEnable = 14,
+    .pinWsprTxEnable = 26,
 
     // Status LEDs
     .pinLedRed   = 24,
