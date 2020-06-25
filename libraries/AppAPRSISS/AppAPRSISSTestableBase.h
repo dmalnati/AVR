@@ -85,17 +85,53 @@ public:
         // Set freq select button as input (pullup)
         PAL.PinMode(cfg_.pinFreqSelect, INPUT_PULLUP);
 
+        // Blink to indicate power on
+        Blink(cfg_.pinLedRed,   100);
+        Blink(cfg_.pinLedGreen, 100);
+
         // Init radio
         radio_.Init();
-        
+
+        // Run radio continuously, as this will maybe be hooked up to an RF
+        // amplifier which will be much happer to have an input signal live
+        // and not burn itself out amplifying a floating signal.
+        radio_.Start();
+
         // Set up APRS Message Sender
         amt_.Init([this](){ 
             PAL.WatchdogReset();
+            radio_.Stop();
             radio_.Start();
         }, [this](){
-            radio_.Stop();
             PAL.WatchdogReset();
+            radio_.Stop();
+            radio_.Start();
         });
+
+        // Decide what RF diagnostic action to take on startup depending on
+        //whether the user holds down the transmit button on power up or not
+        SetFreqBasedOnSwitch();
+        if (PAL.DigitalRead(cfg_.pinSend))
+        {
+            // Button not held -- normal startup, just flash some RF so
+            // can be seen on SDR# or heard on radio
+            Log(P("Flashing some RF"));
+            for (uint8_t i = 0; i < 3; ++i)
+            {
+                // Flash some RF which won't be decoded, just to show we're here
+                PAL.DigitalWrite(cfg_.pinLedRed, HIGH);
+                amt_.TestTransmitFlash();
+                PAL.DigitalWrite(cfg_.pinLedRed, LOW);
+                PAL.Delay(200);
+            }
+        }
+        else
+        {
+            // Button held -- diagnostic mode, transmit nonsense forever
+            Log(P("RF Forever"));
+            PAL.DigitalWrite(cfg_.pinLedRed, HIGH);
+            amt_.TestTransmitForever();
+        }
     }
     
     
@@ -173,17 +209,17 @@ public:
         // Set up radio frequency based on user config
         if (PAL.DigitalRead(cfg_.pinFreqSelect))
         {
-            // decodable regular APRS freq
+            // Decodable regular APRS freq
             const uint32_t APRS_TYP_FREQUENCY = 144390000UL;
-            radio_.SetFrequency(APRS_TYP_FREQUENCY);
+            radio_.SetFrequency(APRS_TYP_FREQUENCY, 1);
 
             Log(P("Using US land APRS freq of 144.390MHz"));
         }
         else
         {
-            // Typical USA APRS freq
+            // Typical ISS APRS freq
             const uint32_t APRS_ISS_FREQUENCY = 145825000UL;
-            radio_.SetFrequency(APRS_ISS_FREQUENCY);
+            radio_.SetFrequency(APRS_ISS_FREQUENCY, 1);
 
             Log(P("Using ISS APRS freq of 145.825MHz"));
         }
@@ -247,7 +283,21 @@ public:
     }
     
     
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Misc
+    //
+    ///////////////////////////////////////////////////////////////////////////
     
+    void Blink(uint8_t pin, uint32_t durationMs)
+    {
+        PAL.DigitalWrite(pin, HIGH);
+        PAL.Delay(durationMs);
+        PAL.DigitalWrite(pin, LOW);
+        PAL.Delay(durationMs);
+    }
+    
+
     
 public:
     

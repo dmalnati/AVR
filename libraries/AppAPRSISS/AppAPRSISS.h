@@ -44,10 +44,6 @@ public:
     {
         AppAPRSISSTestableBase::Init();
         
-        // Blink to indicate power on
-        Blink(cfg_.pinLedRed,   100);
-        Blink(cfg_.pinLedGreen, 100);
-
         // Interact with user if present
         uint8_t userConfigOk = 0;
         
@@ -59,7 +55,7 @@ public:
             AppAPRSISSUserConfigManager mgr(cfg_.pinConfigure, userConfig_);
             
             // For use in testing out different configurations
-            uint8_t letDefaultApplyAutomatically = 0;
+            uint8_t letDefaultApplyAutomatically = 1;
             userConfigOk = mgr.GetConfig(letDefaultApplyAutomatically);
         }
 
@@ -140,15 +136,6 @@ private:
     }
 
     
-    void Blink(uint8_t pin, uint32_t durationMs)
-    {
-        PAL.DigitalWrite(pin, HIGH);
-        PAL.Delay(durationMs);
-        PAL.DigitalWrite(pin, LOW);
-        PAL.Delay(durationMs);
-    }
-    
-
 private:
 
     static const uint8_t C_IDLE  =  0;

@@ -121,6 +121,29 @@ public:
         
         msg_.Reset();
     }
+
+    void TestTransmitFlash()
+    {
+        uint8_t buf[32];
+
+        fnBeforeModemStart_();
+        PAL.Delay(radioWarmupDurationMs_);
+        TransmitPrivate(buf, sizeof(buf));
+        fnAfterModemEnd_();
+    }
+
+    void TestTransmitForever()
+    {
+        uint8_t buf[32];
+
+        fnBeforeModemStart_();
+        PAL.Delay(radioWarmupDurationMs_);
+        
+        while (1)
+        {
+            TransmitPrivate(buf, sizeof(buf));
+        }
+    }
     
 private:
 
