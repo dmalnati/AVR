@@ -24,15 +24,17 @@
 class RFLink_Raw
 {
 public:
-    static const uint8_t C_IDLE  = 1;
-    static const uint8_t C_TIMED = 0;
+    static const uint8_t C_IDLE  = 0;
+    static const uint8_t C_TIMED = 1;
     static const uint8_t C_INTER = 0;
     
-    static const uint16_t DEFAULT_BAUD = 2000;
+    //static const uint16_t DEFAULT_BAUD = 2000;
+    static const uint16_t DEFAULT_BAUD = 100;
     
     static const uint8_t  POLL_PERIOD_MS = 10;
 
     RFLink_Raw()
+    : sendSync_(1)
     {
         // Nothing to do
     }
@@ -68,17 +70,27 @@ public:
         
         return (rxPin != -1 || txPin != -1);
     }
+
+    void SetSendSync(uint8_t val)
+    {
+        sendSync_ = val;
+    }
     
     uint8_t Send(uint8_t* buf, uint8_t len)
     {
         uint8_t retVal = 0;
 
         // VirtualWire synchronously finishes sending the prior message if the
-        // next is sent before completion.
-        // That is an appropriate simplification.
+        // next is sent before completion, unless sendSync is enabled, at which
+        // point this function doesn't return until the message is fully sent.
 
         // pass-through to VirtualWire
         retVal = vw_send(buf, len);
+
+        if (sendSync_)
+        {
+            vw_wait_tx();
+        }
         
         return retVal;
     }
@@ -120,6 +132,8 @@ private:
     
     // Misc
     TimedEventHandlerDelegate ted_;
+
+    uint8_t sendSync_;
 };
 
 
@@ -153,6 +167,7 @@ public:
     : realm_(0)
     , srcAddr_(0)
     , dstAddr_(0)
+    , protocolId_(0)
     , promiscuousMode_(0)
     {
         // Nothing to do
@@ -193,6 +208,11 @@ public:
         dstAddr_ = dstAddr;
     }
     
+    void SetProtocolId(uint8_t protocolId)
+    {
+        protocolId_ = protocolId;
+    }
+    
     void EnablePromiscuousMode()
     {
         promiscuousMode_ = 1;
@@ -202,10 +222,14 @@ public:
     {
         promiscuousMode_ = 0;
     }
+
+    void SetSendSync(uint8_t val)
+    {
+        RFLink_Raw::SetSendSync(val);
+    }
     
     // Encapsulate
     uint8_t SendTo(uint8_t  dstAddr,
-                   uint8_t  protocolId,
                    uint8_t *buf,
                    uint8_t  bufSize)
     {
@@ -227,7 +251,7 @@ public:
             hdr->realm      = realm_;
             hdr->srcAddr    = srcAddr_;
             hdr->dstAddr    = dstAddr;
-            hdr->protocolId = protocolId;
+            hdr->protocolId = protocolId_;
 
             // Copy in user data
             memcpy(&(bufNew[sizeof(RFLinkHeader)]), buf, bufSize);
@@ -239,9 +263,9 @@ public:
         return retVal;
     }
     
-    uint8_t Send(uint8_t protocolId, uint8_t *buf, uint8_t bufSize)
+    uint8_t Send(uint8_t *buf, uint8_t bufSize)
     {
-        return SendTo(dstAddr_, protocolId, buf, bufSize);
+        return SendTo(dstAddr_, buf, bufSize);
     }
 
     
@@ -249,12 +273,16 @@ private:
     // Intercepted from RFLink_Raw
     void OnRxAvailable(uint8_t *buf, uint8_t bufSize)
     {
+        Log("RX Available");
+
         // Filter before passing up.  Must have at least full header.
         if (bufSize >= sizeof(RFLinkHeader))
         {
             RFLinkHeader *hdr = (RFLinkHeader *)buf;
 
-            if ((hdr->realm == realm_ && hdr->dstAddr == srcAddr_) || 
+            if ((hdr->realm      == realm_   &&
+                 hdr->dstAddr    == srcAddr_ &&
+                 hdr->protocolId == protocolId_) || 
                 promiscuousMode_)
             {
                 // Filter criteria passed.
@@ -274,6 +302,7 @@ private:
     uint8_t realm_;
     uint8_t srcAddr_;
     uint8_t dstAddr_;
+    uint8_t protocolId_;
     uint8_t promiscuousMode_;
 };
 
