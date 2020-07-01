@@ -4,8 +4,6 @@
 
 #include "PAL.h"
 #include "Log.h"
-#include "Timer1.h"
-#include "Timer2.h"
 #include "Evm.h"
 #include "SerialInput.h"
 #include "RFLink.h"
@@ -52,10 +50,6 @@ Logic of slave:
 
 
 
-// Timer1:A = 15
-// Timer1:B = 16
-// Timer2:A = 17
-// Timer2:B =  5
 
 
 
@@ -65,121 +59,6 @@ Logic of slave:
 // Should be a class deciding what to do with those
 
 
-class RgbLedPwmController
-{
-public:
-
-    RgbLedPwmController()
-    : tcLedRed_(Timer1::GetTimerChannelB())
-    , tcLedGreen_(Timer2::GetTimerChannelA())
-    , tcLedBlue_(Timer2::GetTimerChannelB())
-    {
-        // Nothing to do
-    }
-
-    // Do this to put timers in known state after all startup routines
-    // have completed, as the Arduino system mucks around too much.
-    void Init()
-    {
-        Stop();
-        Reset();
-    }
-
-    void Start()
-    {
-        // Set up timers for fast wrapping, we just want high-res pwm
-        Timer1::SetTimerPrescaler(Timer1::TimerPrescaler::DIV_BY_1);
-        Timer1::SetTimerMode(Timer1::TimerMode::FAST_PWM_8_BIT);
-        Timer1::SetTimerValue(0);
-        
-        Timer2::SetTimerPrescaler(Timer2::TimerPrescaler::DIV_BY_1);
-        Timer2::SetTimerMode(Timer2::TimerMode::FAST_PWM);
-        Timer2::SetTimerValue(0);
-        
-        // Set up Timer1 Channel A -- Red
-        tcLedRed_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::CLEAR);
-        tcLedRed_->SetValue(0);
-        
-        // Set up Timer1 Channel B -- Green
-        tcLedGreen_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::CLEAR);
-        tcLedGreen_->SetValue(0);
-        
-        // Set up Timer2 Channel A -- Blue
-        tcLedBlue_->SetFastPWMModeBehavior(TimerChannel::FastPWMModeBehavior::CLEAR);
-        tcLedBlue_->SetValue(0);
-
-        Timer1::StartTimer();
-        Timer2::StartTimer();
-    }
-
-    uint8_t GetRed()
-    {
-        return tcLedRed_->GetValue();
-    }
-    
-    uint8_t GetGreen()
-    {
-        return tcLedGreen_->GetValue();
-    }
-
-    uint8_t GetBlue()
-    {
-        return tcLedBlue_->GetValue();
-    }
-
-    void SetRed(uint8_t val)
-    {
-        tcLedRed_->SetValue(val);
-    }
-
-    void SetGreen(uint8_t val)
-    {
-        tcLedGreen_->SetValue(val);
-    }
-
-    void SetBlue(uint8_t val)
-    {
-        tcLedBlue_->SetValue(val);
-    }
-
-    void SetRGB(uint8_t redVal, uint8_t greenVal, uint8_t blueVal)
-    {
-        SetRed(redVal);
-        SetGreen(greenVal);
-        SetBlue(blueVal);
-
-        // Log(PAL.Millis(), ": ", redVal, " ", greenVal, " ", blueVal);
-    }
-
-    void Stop()
-    {
-        Timer1::StopTimer();
-        Timer2::StopTimer();
-    }
-
-    void Reset()
-    {
-        Timer1::SetTimerValue(0);
-        Timer2::SetTimerValue(0);
-
-        tcLedRed_->SetValue(0);
-        tcLedGreen_->SetValue(0);
-        tcLedBlue_->SetValue(0);
-    }
-    
-    ~RgbLedPwmController()
-    {
-        Stop();
-    }
-
-
-private:
-
-    // PWM Control
-    TimerChannel   *tcLedRed_;
-    TimerChannel   *tcLedGreen_;
-    TimerChannel   *tcLedBlue_;
-};
 
 
 
