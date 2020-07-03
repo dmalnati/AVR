@@ -15,12 +15,9 @@ protected:
     static const     uint16_t SAMPLING_FREQUENCY_HZ = 100;
     static const     uint32_t SAMPLING_INTERVAL_MS  = 1000 / SAMPLING_FREQUENCY_HZ;
 
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS      = 10000;
-    static constexpr double   DEFAULT_SIGNAL_FREQUENCY_RED_HZ   = (double)1000 / DEFAULT_SIGNAL_PERIOD_RED_MS;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS    = 5000;
-    static constexpr double   DEFAULT_SIGNAL_FREQUENCY_GREEN_HZ = (double)1000 / DEFAULT_SIGNAL_PERIOD_GREEN_MS;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS     = 8000;
-    static constexpr double   DEFAULT_SIGNAL_FREQUENCY_BLUE_HZ  = (double)1000 / DEFAULT_SIGNAL_PERIOD_BLUE_MS;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS   = 10000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS =  5000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS  =  8000;
     
     static const uint8_t DEFAULT_PHASE_OFFSET_BRADS = 0;
 
@@ -48,9 +45,9 @@ public:
         soGreen_.SetSampleRate(SAMPLING_FREQUENCY_HZ);
         soBlue_.SetSampleRate(SAMPLING_FREQUENCY_HZ);
 
-        SetFrequencyRed(DEFAULT_SIGNAL_FREQUENCY_RED_HZ);
-        SetFrequencyGreen(DEFAULT_SIGNAL_FREQUENCY_GREEN_HZ);
-        SetFrequencyBlue(DEFAULT_SIGNAL_FREQUENCY_BLUE_HZ);
+        SetPeriodRed(DEFAULT_SIGNAL_PERIOD_RED_MS);
+        SetPeriodGreen(DEFAULT_SIGNAL_PERIOD_GREEN_MS);
+        SetPeriodBlue(DEFAULT_SIGNAL_PERIOD_BLUE_MS);
 
         SetPhaseOffsetAll(DEFAULT_PHASE_OFFSET_BRADS);
 
@@ -60,6 +57,28 @@ public:
     ~RgbLedEffectsController()
     {
         Stop();
+    }
+
+    void SetPeriodAll(uint32_t periodMs)
+    {
+        SetPeriodRed(periodMs);
+        SetPeriodGreen(periodMs);
+        SetPeriodBlue(periodMs);
+    }
+
+    void SetPeriodRed(uint32_t periodMs)
+    {
+        SetFrequencyRed(PeriodToFrequency(periodMs));
+    }
+
+    void SetPeriodGreen(uint32_t periodMs)
+    {
+        SetFrequencyGreen(PeriodToFrequency(periodMs));
+    }
+
+    void SetPeriodBlue(uint32_t periodMs)
+    {
+        SetFrequencyBlue(PeriodToFrequency(periodMs));
     }
 
     void SetFrequencyAll(double frequency)
@@ -183,6 +202,11 @@ protected:
     RgbColorState colorState_;
 
 private:
+
+    double PeriodToFrequency(uint32_t periodMs)
+    {
+        return (double)1000 / periodMs;
+    }
 
     void OnTimeout()
     {

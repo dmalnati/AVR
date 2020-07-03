@@ -56,6 +56,63 @@ void setup()
         c.Stop();
     });
 
+    console.RegisterCommand("freq", 1, [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            double val = atof(str.TokenAtIdx(1, ' '));
+            uint32_t period = 1000 / val;
+
+            Log("Freq ", val, " Hz, Period ", period, " ms");
+
+            c.SetFrequencyAll(val);
+        }
+    });
+    
+    console.RegisterCommand("freqr", 1, [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            double val = atof(str.TokenAtIdx(1, ' '));
+            uint32_t period = 1000 / val;
+
+            Log("FreqR ", val, " Hz, PeriodR ", period, " ms");
+
+            c.SetFrequencyRed(val);
+        }
+    });
+    
+    console.RegisterCommand("freqg", 1, [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            double val = atof(str.TokenAtIdx(1, ' '));
+            uint32_t period = 1000 / val;
+
+            Log("FreqG ", val, " Hz, PeriodG ", period, " ms");
+
+            c.SetFrequencyGreen(val);
+        }
+    });
+    
+    console.RegisterCommand("freqb", 1, [](char *cmdStr){
+        Str str(cmdStr);
+        
+        if (str.TokenCount(' ') == 2)
+        {
+            double val = atof(str.TokenAtIdx(1, ' '));
+            uint32_t period = 1000 / val;
+
+            Log("FreqB ", val, " Hz, PeriodB ", period, " ms");
+
+            c.SetFrequencyBlue(val);
+        }
+    });
+    
+
     console.RegisterCommand("per", 1, [](char *cmdStr){
         Str str(cmdStr);
         
@@ -63,10 +120,10 @@ void setup()
         {
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
             double freq = (double)1000 / val;
-            
-            Log(P("Freq "), freq, " Hz, Period ", val, " ms");
 
-            c.SetFrequencyAll(freq);
+            Log("Period ", val, " ms, Freq ", freq, " Hz");
+
+            c.SetPeriodAll(val);
         }
     });
 
@@ -78,9 +135,9 @@ void setup()
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
             double freq = (double)1000 / val;
             
-            Log(P("FreqR "), freq, " Hz, Period ", val, " ms");
+            Log("PeriodR ", val, " ms, FreqR ", freq, " Hz");
 
-            c.SetFrequencyRed(freq);
+            c.SetPeriodRed(val);
         }
     });
     
@@ -92,9 +149,9 @@ void setup()
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
             double freq = (double)1000 / val;
             
-            Log(P("FreqG "), freq, " Hz, Period ", val, " ms");
+            Log("PeriodG ", val, " ms, FreqG ", freq, " Hz");
 
-            c.SetFrequencyGreen(freq);
+            c.SetPeriodGreen(val);
         }
     });
         
@@ -106,9 +163,9 @@ void setup()
             uint32_t val = atol(str.TokenAtIdx(1, ' '));
             double freq = (double)1000 / val;
             
-            Log(P("FreqB "), freq, " Hz, Period ", val, " ms");
+            Log("PeriodB ", val, " ms, FreqB ", freq, " Hz");
 
-            c.SetFrequencyBlue(freq);
+            c.SetPeriodBlue(val);
         }
     });
     
@@ -169,7 +226,6 @@ void setup()
 
     console.Start();
 
-    Log("MainLoop");
     evm.MainLoop();
 }
 
