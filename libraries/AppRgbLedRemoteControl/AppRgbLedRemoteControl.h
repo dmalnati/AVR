@@ -66,55 +66,6 @@ Logic of slave:
 
 
 
-class RgbLedEffectsController
-{
-public:
-    RgbLedEffectsController()
-    {
-        // Nothing to do
-    }
-
-    void Start()
-    {
-        ted_.SetCallback([this](){
-            OnTimeout();
-        });
-
-        ted_.RegisterForTimedEventIntervalRigid(10, 0);
-
-        pwmController_.Init();
-        pwmController_.Start();
-
-        Log("Effects controller started");
-    }
-
-    ~RgbLedEffectsController()
-    {
-        ted_.DeRegisterForTimedEvent();
-    }
-
-
-private:
-
-    void OnTimeout()
-    {
-        pwmController_.SetRGB(
-            pwmController_.GetRed() + 3,
-            pwmController_.GetGreen() + 3,
-            pwmController_.GetBlue() + 3
-        );
-
-        // Log("Effects OnTimeout");
-    }
-
-
-    TimedEventHandlerDelegate ted_;
-
-    RgbLedPwmController pwmController_;
-};
-
-
-
 
 
 
