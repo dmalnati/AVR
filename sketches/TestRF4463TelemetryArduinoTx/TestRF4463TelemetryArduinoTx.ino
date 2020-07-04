@@ -12,15 +12,27 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 RF4463 rf4463;
-unsigned char tx_buf[]={"swwxABCDEFGHIm"};
+//unsigned char tx_buf[]={"swwxABCDEFGHIm"};
+char tx_buf[64];
 unsigned char val;
 unsigned char flag=0;    //  flag of rx mode
+
+void PopulateData()
+{
+    memset(tx_buf, (uint8_t)'A', sizeof(tx_buf));
+}
+
 void setup() {
   Serial.begin(9600);
   if(!rf4463.init())
   {
      Serial.println("Init fail!");
   }
+  else
+  {
+    Serial.println("Init success!");
+  }
+   PopulateData();
    rf4463.enterStandbyMode();
 }
 void loop() 
@@ -28,8 +40,28 @@ void loop()
     val=Serial.read();  // please make sure serial is OK befor runing this code
     if(val=='T')    // tx a packet if receive "T"
     {
-       rf4463.txPacket(tx_buf,sizeof(tx_buf));
-       rf4463.enterStandbyMode();
-       Serial.println("tx");
+       Serial.print("Sending ");
+       Serial.print(sizeof(tx_buf));
+       Serial.println(" bytes of data");
+       uint32_t startTime = micros();
+       rf4463.txPacket((unsigned char *)tx_buf,sizeof(tx_buf));
+       uint32_t txTime = micros();
+       //rf4463.enterStandbyMode();
+       uint32_t standbyTime = micros();
+
+       uint32_t totalDuration   = standbyTime - startTime;
+       uint32_t txDuration      = txTime - startTime;
+       uint32_t standbyDuration = standbyTime - txTime;
+
+       Serial.print("tx: ");
+       Serial.print(txDuration);
+       Serial.println(" us");
+       Serial.print("standby: ");
+       Serial.print(standbyDuration);
+       Serial.println(" us");
+       Serial.print("total: ");
+       Serial.print(totalDuration);
+       Serial.println(" us");
+       Serial.println();
     }
 }
