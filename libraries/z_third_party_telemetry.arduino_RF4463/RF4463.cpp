@@ -21,8 +21,9 @@ void RF4463::spiInit()
 
 	// depends on RF4463 spi timing
 	SPI.setBitOrder(MSBFIRST);
-	// too fast may cause error
-	SPI.setClockDivider(SPI_CLOCK_DIV16);
+	// 4463 top speed 10MHz, so even at 16MHz AVR clock, we come in at 8MHz.
+	// Cannot div1, doesn't exist.
+	SPI.setClockDivider(SPI_CLOCK_DIV2);
 	SPI.setDataMode(SPI_MODE0);
 }
 void RF4463::pinInit()
@@ -282,10 +283,12 @@ bool RF4463::clrInterrupts()
 void RF4463::writeTxFifo(uint8_t* databuf,uint8_t length)
 {
 	setProperties(RF4463_PROPERTY_PKT_FIELD_2_LENGTH_7_0, sizeof(length),&length);
-	uint8_t buf[length+1];
-	buf[0]=length;
-	memcpy(buf+1,databuf,length);
-	setCommand(length+1,RF4463_CMD_TX_FIFO_WRITE,buf);
+
+	setCommandStart();
+	setCommandWriteCommand(RF4463_CMD_TX_FIFO_WRITE);
+	setCommandWriteBuffer(1, &length);
+	setCommandWriteBuffer(length, databuf);
+	setCommandEnd();
 }
 uint8_t RF4463::ReadRxFifo(uint8_t* databuf)
 {
@@ -341,16 +344,44 @@ bool RF4463::setTxPower(uint8_t power)
 }
 bool RF4463::setCommand(uint8_t length,uint8_t command,uint8_t* paraBuf)
 {
+	uint8_t retVal = 0;
+
+	if (setCommandStart())
+	{
+		retVal = 1;
+
+		setCommandWriteCommand(command);
+		setCommandWriteBuffer(length, paraBuf);
+		setCommandEnd();
+	}
+
+	return retVal;
+}
+bool RF4463::setCommandStart()
+{
 	if(!checkCTS())
 		return false;
 
 	digitalWrite(_nSELPin, LOW);
-	spiByte(command);				// send command
-	spiWriteBuf(length,paraBuf);	// send parameters
-	digitalWrite(_nSELPin, HIGH);
 
 	return true;
 }
+void RF4463::setCommandWriteCommand(uint8_t command)
+{
+	spiByte(command);				// send command
+}
+void RF4463::setCommandWriteBuffer(uint8_t length, uint8_t* paraBuf)
+{
+	spiWriteBuf(length,paraBuf);	// send parameters
+}
+void RF4463::setCommandEnd()
+{
+	digitalWrite(_nSELPin, HIGH);
+}
+
+
+
+
 bool RF4463::getCommand(uint8_t length,uint8_t command,uint8_t* paraBuf)
 {
 	if(!checkCTS())

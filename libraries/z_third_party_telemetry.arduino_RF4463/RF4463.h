@@ -520,6 +520,11 @@ class RF4463
 	///	 @param	paraBuf			 parameters buf
 	///  @return  1 if ok, 0 otherwise
 	bool		setCommand(uint8_t length,uint8_t command,uint8_t* paraBuf);
+	bool setCommandStart();
+	void setCommandWriteCommand(uint8_t command);
+	void setCommandWriteBuffer(uint8_t length, uint8_t* paraBuf);
+	void setCommandEnd();
+
 	///  read command.
 	///	 @param	length			 length of parameters to read
 	///	 @param	command			 command to read

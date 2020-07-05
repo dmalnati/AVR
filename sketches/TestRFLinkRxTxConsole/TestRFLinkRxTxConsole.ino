@@ -15,6 +15,12 @@ static RFLink4463_Raw &rr = *r.GetLinkRaw();
 
 Pin dbg(6, LOW);
 
+static char bufTx64[65] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789"
+    ":)";
+
 
 //[](RFLinkHeader *hdr, uint8_t *buf, uint8_t bufSize){
 //            Log(P("RxCb - "), bufSize, P(" bytes"));
@@ -110,16 +116,37 @@ void setup()
     console.RegisterCommand("sendr", [](char *cmdStr){
         char *strSend = &cmdStr[6];
         uint8_t len = strlen(strSend);
-        Log(P("Send ["), len, P("]: \""), strSend, "\"");
 
+        // support sending a size-in-bytes as opposed to a string
+        uint8_t bufSize = atoi(strSend);
+        char cTmp = '\0';
+        uint8_t restoreByte = 0;
+        if (bufSize != 0 && bufSize <= 64)
+        {
+            strSend = bufTx64;
+            len     = bufSize;
+
+            cTmp = bufTx64[bufSize];
+            bufTx64[bufSize] = '\0';
+
+            restoreByte = 1;
+        }
+        
+        Log(P("Send ["), len, P("]: \""), strSend, "\"");
+        
         SEND_TIME_START = PAL.Micros();
         PAL.DigitalWrite(dbg, HIGH);
-        uint8_t retVal = rr.Send((uint8_t *)strSend, strlen(strSend));
+        uint8_t retVal = rr.Send((uint8_t *)strSend, len);
         uint32_t timeAfterSend = PAL.Micros();
         Log(P("  "), retVal);
 
         uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
         Log(P("  Send time: "), timeDiff, " us");
+
+        if (restoreByte)
+        {
+            bufTx64[bufSize] = cTmp;
+        }
     });
 
 
