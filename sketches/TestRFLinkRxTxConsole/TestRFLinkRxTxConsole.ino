@@ -1,5 +1,6 @@
 #include "Evm.h"
 #include "Log.h"
+#include "LogBlob.h"
 #include "SerialInput.h"
 #include "RFLink4463.h"
 
@@ -22,24 +23,12 @@ static char bufTx64[65] =
     ":)";
 
 
-//[](RFLinkHeader *hdr, uint8_t *buf, uint8_t bufSize){
-//            Log(P("RxCb - "), bufSize, P(" bytes"));
-//            Log(P("  realm     : "), hdr->realm);
-//            Log(P("  srcAddr   : "), hdr->srcAddr);
-//            Log(P("  dstAddr   : "), hdr->dstAddr);
-//            Log(P("  protocolId: "), hdr->protocolId);
-//        }
-
-
 
 static uint32_t SEND_TIME_START = 0;
 
 
-void setup()
+void OnCommand(char *cmdStr)
 {
-    LogStart(9600);
-    Log("Starting");
-
     ///////////////////////////////////////////////////
     //
     // Shortcuts to roles you may want to test out
@@ -47,17 +36,47 @@ void setup()
     ///////////////////////////////////////////////////
 
     // raw sender - async
-    console.RegisterCommand("rawsa", [](char *){
+    Str str(cmdStr);
+    const char *cmd = str.TokenAtIdx(0, ' ');
+    
+    if (!strcmp_P(cmd, P("test")))
+    {
+        Log("it works");
+
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Val "), val);
+        }
+    }
+
+    ///////////////////////////////////////////////////
+    //
+    // Test Role Scenario Shortcuts
+    //
+    ///////////////////////////////////////////////////
+
+    // Raw Sender - Asynchronous
+    else if (!strcmp_P(cmd, P("rawsa")))
+    {
         console.Exec("somtc");
         console.Exec("sss 0");
-    });
+    }
 
-    // raw receiver
-    console.RegisterCommand("rawr", [](char *){
+    // Raw Receciver
+    else if (!strcmp_P(cmd, P("rawr")))
+    {
+        console.Exec("somrcr");
         console.Exec("mr");
-        console.Exec("somrc");
-    });
+    }
 
+    // Link Receciver
+    else if (!strcmp_P(cmd, P("lr")))
+    {
+        console.Exec("somrcl");
+        console.Exec("mr");
+    }
 
     
     ///////////////////////////////////////////////////
@@ -66,31 +85,34 @@ void setup()
     //
     ///////////////////////////////////////////////////
 
-    console.RegisterCommand("init", [](char *){
+    else if (!strcmp_P(cmd, P("init")))
+    {
         Log(P("Init"));
         uint8_t retVal = r.Init();
         Log(P("  "), retVal);
-    });
-
-    console.RegisterCommand("somrc", [](char *){
+    }
+    else if (!strcmp_P(cmd, P("somrcr")))
+    {
         Log(P("SetOnMessageReceivedCallback(Raw)"));
-        rr.SetOnMessageReceivedCallback([](uint8_t * /* buf */, uint8_t bufSize){
+        rr.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufSize){
             Log(P("RxCbRaw - "), bufSize, P(" bytes"));
+            LogBlob(buf, bufSize);
+            LogNL();
         });
-    });
-    console.RegisterCommand("somtc", [](char *){
+    }
+    else if (!strcmp_P(cmd, P("somtc")))
+    {
         Log(P("SetOnMessageTransmittedCallback"));
         r.SetOnMessageTransmittedCallback([](){
             PAL.DigitalWrite(dbg, LOW);
             Log(P("TxCb"));
             uint32_t timeDiff = PAL.Micros() - SEND_TIME_START;
             Log(P("  Send time total: "), timeDiff, " us");
+            LogNL();
         });
-    });
-
-    console.RegisterCommand("sss", 1, [](char *cmdStr){
-        Str str(cmdStr);
-        
+    }
+    else if (!strcmp_P(cmd, P("sss")))
+    {
         if (str.TokenCount(' ') == 2)
         {
             uint32_t val = atoi(str.TokenAtIdx(1, ' '));
@@ -99,21 +121,21 @@ void setup()
 
             r.SetSendSync(val);
         }
-    });
-
-    console.RegisterCommand("mlp", [](char *){
+    }
+    else if (!strcmp_P(cmd, P("mlp")))
+    {
         Log(P("ModeLowPower"));
         uint8_t retVal = r.ModeLowPower();
         Log(P("  "), retVal);
-    });
-    
-    console.RegisterCommand("mr", [](char *){
+    }
+    else if (!strcmp_P(cmd, P("mr")))
+    {
         Log(P("ModeReceive"));
         uint8_t retVal = r.ModeReceive();
         Log(P("  "), retVal);
-    });
-
-    console.RegisterCommand("sendr", [](char *cmdStr){
+    }
+    else if (!strcmp_P(cmd, P("sendr")))
+    {
         char *strSend = &cmdStr[6];
         uint8_t len = strlen(strSend);
 
@@ -133,6 +155,7 @@ void setup()
         }
         
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
+        LogBlob((uint8_t *)strSend, len);
         
         SEND_TIME_START = PAL.Micros();
         PAL.DigitalWrite(dbg, HIGH);
@@ -147,9 +170,7 @@ void setup()
         {
             bufTx64[bufSize] = cTmp;
         }
-    });
-
-
+    }
 
     ///////////////////////////////////////////////////
     //
@@ -157,37 +178,240 @@ void setup()
     //
     ///////////////////////////////////////////////////
 
-    
-
-
-
-
-
-
-
-
-    
-    
-    console.RegisterCommand("phase", 1, [](char *cmdStr){
-        Str str(cmdStr);
-        
+    else if (!strcmp_P(cmd, P("show")))
+    {
+        Log(P("Realm : "), r.GetRealm());
+        Log(P("Src   : "), r.GetSrcAddr());
+        Log(P("Dst   : "), r.GetDstAddr());
+        Log(P("Prot  : "), r.GetProtocolId());
+        Log(P("RBroad: "), r.GetReceiveBroadcast());
+        Log(P("PROM  : "), r.GetPromiscuousMode());
+    }
+    else if (!strcmp_P(cmd, P("realm")))
+    {
         if (str.TokenCount(' ') == 2)
         {
             uint32_t val = atoi(str.TokenAtIdx(1, ' '));
             
-            Log(P("Phase "), val, " brads");
+            Log(P("Realm "), val);
 
-            //c.SetPhaseOffsetAll(val);
+            r.SetRealm(val);
+            console.Exec("show");
         }
-    });
-    
-    
-    
+    }
+    else if (!strcmp_P(cmd, P("src")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Src "), val);
 
+            r.SetSrcAddr(val);
+            console.Exec("show");
+        }
+    }
+    else if (!strcmp_P(cmd, P("dst")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Dst "), val);
+
+            r.SetDstAddr(val);
+            console.Exec("show");
+        }
+    }
+    else if (!strcmp_P(cmd, P("protid")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("ProtocolID "), val);
+
+            r.SetProtocolId(val);
+            console.Exec("show");
+        }
+    }
+    else if (!strcmp_P(cmd, P("rbroad")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("RcvBroadcast "), val);
+
+            r.SetReceiveBroadcast(val);
+            console.Exec("show");
+        }
+    }
+    else if (!strcmp_P(cmd, P("prom")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Promiscuous "), val);
+
+            r.SetPromiscuousMode(val);
+            console.Exec("show");
+        }
+    }
+    else if (!strcmp_P(cmd, P("sendl")))
+    {
+        char *strSend = &cmdStr[6];
+        uint8_t len = strlen(strSend);
+
+        // support sending a size-in-bytes as opposed to a string
+        uint8_t bufSize = atoi(strSend);
+        char cTmp = '\0';
+        uint8_t restoreByte = 0;
+        if (bufSize != 0 && bufSize <= 64)
+        {
+            strSend = bufTx64;
+            len     = bufSize;
+
+            cTmp = bufTx64[bufSize];
+            bufTx64[bufSize] = '\0';
+
+            restoreByte = 1;
+        }
+
+        Log(P("Send ["), len, P("]: \""), strSend, "\"");
+        LogBlob((uint8_t *)strSend, len);
+        
+        SEND_TIME_START = PAL.Micros();
+        PAL.DigitalWrite(dbg, HIGH);
+        uint8_t retVal = r.Send((uint8_t *)strSend, len);
+        uint32_t timeAfterSend = PAL.Micros();
+        Log(P("  "), retVal);
+
+        uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+        Log(P("  Send time: "), timeDiff, " us");
+
+        if (restoreByte)
+        {
+            bufTx64[bufSize] = cTmp;
+        }
+    }
+    else if (!strcmp_P(cmd, P("sendto")))
+    {
+        // sendto <dst> <data>
+        if (str.TokenCount(' ') >= 3)
+        {
+            // find dst
+            uint8_t dst = atoi(str.TokenAtIdx(1, ' '));
+
+            // find data, follows command and destination
+            const char *strSend = str.UnsafePtrAtTokenAtIdx(2, ' ');
+            uint8_t len = strlen(strSend);
+    
+            // support sending a size-in-bytes as opposed to a string
+            uint8_t bufSize = atoi(strSend);
+            char cTmp = '\0';
+            uint8_t restoreByte = 0;
+            if (bufSize != 0 && bufSize <= 64)
+            {
+                strSend = bufTx64;
+                len     = bufSize;
+    
+                cTmp = bufTx64[bufSize];
+                bufTx64[bufSize] = '\0';
+    
+                restoreByte = 1;
+            }
+    
+            Log(P("SendTo "), dst, P(" ["), len, P("]: \""), strSend, "\"");
+            LogBlob((uint8_t *)strSend, len);
+            
+            SEND_TIME_START = PAL.Micros();
+            PAL.DigitalWrite(dbg, HIGH);
+            uint8_t retVal = r.SendTo(dst, (uint8_t *)strSend, len);
+            uint32_t timeAfterSend = PAL.Micros();
+            Log(P("  "), retVal);
+    
+            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+            Log(P("  Send time: "), timeDiff, " us");
+    
+            if (restoreByte)
+            {
+                bufTx64[bufSize] = cTmp;
+            }
+        }
+    }
+    else if (!strcmp_P(cmd, P("somrcl")))
+    {
+        Log(P("SetOnMessageReceivedCallback(Link)"));
+        r.SetOnMessageReceivedCallback([](RFLinkHeader *hdr, uint8_t *buf, uint8_t bufSize){
+            Log(P("RxCb - "), bufSize, P(" bytes"));
+            Log(P("  realm     : "), hdr->realm);
+            Log(P("  srcAddr   : "), hdr->srcAddr);
+            Log(P("  dstAddr   : "), hdr->dstAddr);
+            Log(P("  protocolId: "), hdr->protocolId);
+            LogBlob(buf, bufSize);
+            LogNL();
+        });
+    }
+
+    ///////////////////////////////////////////////////
+    //
+    // Template
+    //
+    ///////////////////////////////////////////////////
+   
+    else if (!strcmp_P(cmd, P("")))
+    {
+
+    }
+
+
+
+    ///////////////////////////////////////////////////
+    //
+    // Error
+    //
+    ///////////////////////////////////////////////////
+
+    else
+    {
+        Log("ERR: ", cmdStr);
+    }
+
+    LogNL();
+}
+
+
+void setup()
+{
+    LogStart(9600);
+    Log("Starting");
+
+    ///////////////////////////////////////////////////
+    //
+    // Command Setup
+    //
+    ///////////////////////////////////////////////////
+
+    console.RegisterErrorHandler([](char *cmdStr){
+        OnCommand(cmdStr);
+    });
+
+    ///////////////////////////////////////////////////
+    //
+    // Startup
+    //
+    ///////////////////////////////////////////////////
+
+    console.SetVerbose(0);
     console.Start();
+
+    console.Exec("rawsa");
 
     uint8_t initOk = r.Init();
     Log("Init - ", initOk ? "OK" : "ERR");
+    LogNL();
 
     evm.MainLoop();
 }

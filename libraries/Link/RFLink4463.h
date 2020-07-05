@@ -81,7 +81,7 @@ public:
     uint8_t Init()
     {
         ChangeState(State::IDLE);
-        
+
         uint8_t retVal = radio_.init();
 
         return retVal;
@@ -287,7 +287,7 @@ private:
 
 
 
-// Stand in the way of RFLink4463_Raw and data handed back to the application
+// Provide addressing/filtering on top of raw RF
 
 struct RFLinkHeader
 {
@@ -307,18 +307,21 @@ public:
     , realm_(0)
     , srcAddr_(0)
     , dstAddr_(0)
+    , receiveBroadcast_(0)
     , protocolId_(0)
     , promiscuousMode_(0)
     {
-        RFLink4463_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){
-            OnRxAvailable(buf, bufSize);
-        });
+        // Nothing to do
     }
     
     void SetOnMessageReceivedCallback(function<void(RFLinkHeader *hdr,
                                                     uint8_t      *buf,
                                                     uint8_t       bufSize)> rxCb)
     {
+        RFLink4463_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){
+            OnRxAvailable(buf, bufSize);
+        });
+
         rxCb_ = rxCb;
     }
     
@@ -326,37 +329,62 @@ public:
     {
         realm_ = realm;
     }
+
+    uint8_t GetRealm() const
+    {
+        return realm_;
+    }
     
     void SetSrcAddr(uint8_t srcAddr)
     {
         srcAddr_ = srcAddr;
+    }
+
+    uint8_t GetSrcAddr() const
+    {
+        return srcAddr_;
     }
     
     void SetDstAddr(uint8_t dstAddr)
     {
         dstAddr_ = dstAddr;
     }
+
+    uint8_t GetDstAddr() const
+    {
+        return dstAddr_;
+    }
     
     void SetProtocolId(uint8_t protocolId)
     {
         protocolId_ = protocolId;
     }
-    
-    void EnablePromiscuousMode()
+
+    uint8_t GetProtocolId() const
     {
-        promiscuousMode_ = 1;
-    }
-    
-    void DisablePromiscuousMode()
-    {
-        promiscuousMode_ = 0;
+        return protocolId_;
     }
 
-    void SetSendSync(uint8_t val)
+    void SetReceiveBroadcast(uint8_t receiveBroadcast)
     {
-        RFLink4463_Raw::SetSendSync(val);
+        receiveBroadcast_ = receiveBroadcast;
+    }
+
+    uint8_t GetReceiveBroadcast() const
+    {
+        return receiveBroadcast_;
     }
     
+    void SetPromiscuousMode(uint8_t val)
+    {
+        promiscuousMode_ = val;
+    }
+
+    uint8_t GetPromiscuousMode() const
+    {
+        return promiscuousMode_;
+    }
+
     // Encapsulate
     uint8_t SendTo(uint8_t  dstAddr,
                    uint8_t *buf,
@@ -406,7 +434,6 @@ public:
     
 private:
 
-    // Intercepted from RFLink4463_Raw
     void OnRxAvailable(uint8_t *buf, uint8_t bufSize)
     {
         // Filter before passing up.  Must have at least full header.
@@ -414,10 +441,13 @@ private:
         {
             RFLinkHeader *hdr = (RFLinkHeader *)buf;
 
-            if ((hdr->realm      == realm_   &&
-                 hdr->dstAddr    == srcAddr_ &&
-                 hdr->protocolId == protocolId_) || 
-                promiscuousMode_)
+            // Calculate whether to pass along this message
+            uint8_t realmOk    = (hdr->realm == realm_);
+            uint8_t addrOk     = (hdr->dstAddr == srcAddr_) ||
+                                 (hdr->dstAddr == 255 && receiveBroadcast_);
+            uint8_t protocolOk = (hdr->protocolId == protocolId_);
+
+            if ((realmOk && addrOk && protocolOk) || promiscuousMode_)
             {
                 // Filter criteria passed.
                 
@@ -436,6 +466,7 @@ private:
     uint8_t realm_;
     uint8_t srcAddr_;
     uint8_t dstAddr_;
+    uint8_t receiveBroadcast_;
     uint8_t protocolId_;
     uint8_t promiscuousMode_;
 };
