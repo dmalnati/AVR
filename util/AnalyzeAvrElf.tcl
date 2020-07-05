@@ -539,7 +539,8 @@ proc GetCumulativeSizeDataSpecial { } {
 
 
 proc GetSize { line } {
-    return [string trimleft [lindex $line 1] 0]
+    set partList [split $line]
+    return [string trimleft [lindex $partList 1] 0]
 }
 
 proc GetSymbolProperties { symbol } {
@@ -552,7 +553,8 @@ proc GetSymbolProperties { symbol } {
     set idxFor [string first " for " $symbol]
 
     if { $idxFor != -1 } {
-        set special [lindex $symbol 0]
+        set partList [split $symbol]
+        set special [lindex $partList 0]
 
         set symbol [string range $symbol [expr $idxFor + 5] end]
     }
@@ -636,7 +638,8 @@ proc GetSymbol { line } {
 proc FlagType { line } {
     set retVal "UNKNOWN"
 
-    set flag [lindex $line 2]
+    set partList [split $line]
+    set flag [lindex $partList 2]
 
     switch -exact -- $flag {
         B -
