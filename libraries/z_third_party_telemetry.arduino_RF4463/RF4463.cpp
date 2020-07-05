@@ -181,9 +181,13 @@ bool RF4463::checkDevice()
 	{
 		return false;
 	}
+
+	return true;
 }
-bool RF4463::txPacket(uint8_t* sendbuf,uint8_t sendLen)
+bool RF4463::txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
 {
+	uint8_t retVal = 0;
+
 	uint16_t txTimer;
 
 	fifoReset();		 				// clr fifo
@@ -191,19 +195,33 @@ bool RF4463::txPacket(uint8_t* sendbuf,uint8_t sendLen)
 	setTxInterrupt();
 	clrInterrupts();					// clr int factor	
 	enterTxMode();						// enter TX mode
-	
-	txTimer=RF4463_TX_TIMEOUT;
-	while(txTimer--)
-	{
-		if(waitnIRQ())					// wait INT
-		{
-			return true;
-		}
-		delay(1);
-	}
-	init();								// reset RF4463 if tx time out
 
-	return false;
+	if (!syncSend)
+	{
+		retVal = true;
+	}
+	else
+	{
+		txTimer=RF4463_TX_TIMEOUT;
+		while(txTimer--)
+		{
+			if(waitnIRQ())					// wait INT
+			{
+				retVal = 1;
+			}
+			else
+			{
+				delay(1);
+			}
+		}
+
+		if (!retVal)
+		{
+			init();								// reset RF4463 if tx time out
+		}
+	}
+
+	return retVal;
 }
 uint8_t RF4463::rxPacket(uint8_t* recvbuf)
 {
@@ -349,6 +367,8 @@ bool RF4463::getCommand(uint8_t length,uint8_t command,uint8_t* paraBuf)
 	spiByte(RF4463_CMD_READ_BUF);	// turn to read command mode
 	spiReadBuf(length,paraBuf);		// read parameters
 	digitalWrite(_nSELPin, HIGH);
+
+	return true;	
 }
 
 bool RF4463::setProperties(uint16_t startProperty, uint8_t length ,uint8_t* paraBuf)

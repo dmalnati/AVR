@@ -11,8 +11,10 @@
 #include<RF4463.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
-RF4463 rf4463;
-//unsigned char tx_buf[]={"swwxABCDEFGHIm"};
+static const uint8_t PIN_IRQ =  6;  // chip pin 12
+static const uint8_t PIN_SDN =  7;  // chip pin 13
+static const uint8_t PIN_SEL =  8;  // chip pin 14
+RF4463 rf4463(PIN_IRQ, PIN_SDN, PIN_SEL);
 char tx_buf[64];
 unsigned char val;
 unsigned char flag=0;    //  flag of rx mode
@@ -24,6 +26,7 @@ void PopulateData()
 
 void setup() {
   Serial.begin(9600);
+  Serial.println("Transmitter demo");
   if(!rf4463.init())
   {
      Serial.println("Init fail!");
@@ -32,6 +35,7 @@ void setup() {
   {
     Serial.println("Init success!");
   }
+  Serial.println();
    PopulateData();
    rf4463.enterStandbyMode();
 }
@@ -44,7 +48,7 @@ void loop()
        Serial.print(sizeof(tx_buf));
        Serial.println(" bytes of data");
        uint32_t startTime = micros();
-       rf4463.txPacket((unsigned char *)tx_buf,sizeof(tx_buf));
+       rf4463.txPacket((unsigned char *)tx_buf,sizeof(tx_buf),1);
        uint32_t txTime = micros();
        //rf4463.enterStandbyMode();
        uint32_t standbyTime = micros();

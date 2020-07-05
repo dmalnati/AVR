@@ -5,11 +5,6 @@
 
 #include "Arduino.h"
 
-typedef 	boolean			bool;
-typedef 	unsigned char	uint8_t;
-typedef 	unsigned int	uint16_t;
-typedef 	unsigned long	uint32_t;
-
 #define RF4463_CTS_REPLY					  0xff
 // Waiting time for a valid FFh CTS reading
 // the typical time is 20us
@@ -474,7 +469,7 @@ class RF4463
 	///  @param nSELPin		output pin,slave select pin
 	///  @note  Didn't use Arduino external interrupts there
 	///  In shutdown mode,RF setting will lose
-	RF4463(uint8_t nIRQPin = 2, uint8_t sdnPin = 9,uint8_t nSELPin = 10);
+	RF4463(uint8_t nIRQPin, uint8_t sdnPin,uint8_t nSELPin);
 	///  Initialise RF4463,parameters are from "radio_config_Si4463.h"
 	///  Setting parameter is 433.5Mhz,1.2kbps
 	///  To make sure RF4463 work, some parameters has been rewrite.
@@ -487,7 +482,7 @@ class RF4463
 	///  @param sendbuf		buf of data to send
 	///  @param	sendLen		length of data to send,less than 64 bytes
 	///	 @return  1 if tx ok, 0 otherwise
-	bool		txPacket(uint8_t* sendbuf,uint8_t sendLen);
+	bool		txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend);
 	///  Receive packet from RF
 	///  @param recvbuf		buf to save the rx data
 	///	 @return length of rx data

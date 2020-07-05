@@ -19,11 +19,33 @@
 
 // INPUT DATA
 /*
-// Crys_freq(Hz): 30000000    Crys_tol(ppm): 10    IF_mode: 2    High_perf_Ch_Fil: 1    OSRtune: 0    Ch_Fil_Bw_AFC: 0    ANT_DIV: 0    PM_pattern: 0    
-// MOD_type: 2    Rsymb(sps): 1200    Fdev(Hz): 3000    RXBW(Hz): 150000    Manchester: 0    AFC_en: 0    Rsymb_error: 0.0    Chip-Version: 2    
-// RF Freq.(MHz): 433.5    API_TC: 29    fhst: 250000    inputBW: 0    BERT: 0    RAW_dout: 0    D_source: 0    Hi_pfm_div: 1    
+// Crys_freq(Hz)   : 30000000 
+// Crys_tol(ppm)   : 10
+// IF_mode         : 2
+// High_perf_Ch_Fil: 1
+// OSRtune         : 0
+// Ch_Fil_Bw_AFC   : 0
+// ANT_DIV         : 0
+// PM_pattern      : 0    
+// MOD_type        : 2
+// Rsymb(sps)      : 1200
+// Fdev(Hz)        : 3000
+// RXBW(Hz)        : 150000
+// Manchester      : 0
+// AFC_en          : 0
+// Rsymb_error     : 0.0
+// Chip-Version    : 2    
+// RF Freq.(MHz)   : 433.5
+// API_TC          : 29
+// fhst            : 250000
+// inputBW         : 0
+// BERT            : 0
+// RAW_dout        : 0
+// D_source        : 0
+// Hi_pfm_div      : 1    
 // 
-// # WB filter 2 (BW =  25.77 kHz);  NB-filter 2 (BW = 25.77 kHz) // 
+// WB filter 2 (BW =  25.77 kHz)
+// NB-filter 2 (BW = 25.77 kHz)
 // Modulation index: 5
 */
 

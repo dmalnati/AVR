@@ -11,13 +11,17 @@
 #include<RF4463.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>
-RF4463 rf4463;
+static const uint8_t PIN_IRQ =  6;  // chip pin 12
+static const uint8_t PIN_SDN =  7;  // chip pin 13
+static const uint8_t PIN_SEL =  8;  // chip pin 14
+RF4463 rf4463(PIN_IRQ, PIN_SDN, PIN_SEL);
 unsigned char flag=1;    //  flag of rx mode
 unsigned char rx_len;
 unsigned char rx_buf[64];
 
 void setup() {
   Serial.begin(9600);
+  Serial.println("Reciever demo");
   if(!rf4463.init())
   {
      Serial.println("Init fail!");
@@ -26,6 +30,7 @@ void setup() {
   {
     Serial.println("Init success!");
   }
+  Serial.println();
    rf4463.rxInit();    // wait for packet from tx
 }
 void loop() 
