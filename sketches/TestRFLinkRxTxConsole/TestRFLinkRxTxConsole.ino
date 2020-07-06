@@ -5,6 +5,9 @@
 #include "RFLink4463.h"
 
 
+// runs at 433.500 MHz
+
+
 static Evm::Instance<10,10,10> evm;
 static SerialAsyncConsoleEnhanced<25>  console;
 
@@ -143,7 +146,7 @@ void OnCommand(char *cmdStr)
         uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= 64)
+        if (bufSize != 0 && bufSize <= 50)
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -268,7 +271,7 @@ void OnCommand(char *cmdStr)
         uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= 64)
+        if (bufSize != 0 && bufSize <= 50)
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -312,7 +315,7 @@ void OnCommand(char *cmdStr)
             uint8_t bufSize = atoi(strSend);
             char cTmp = '\0';
             uint8_t restoreByte = 0;
-            if (bufSize != 0 && bufSize <= 64)
+            if (bufSize != 0 && bufSize <= 50)
             {
                 strSend = bufTx64;
                 len     = bufSize;

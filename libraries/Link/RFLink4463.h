@@ -59,7 +59,7 @@
 class RFLink4463_Raw
 {
 public:
-    static const uint8_t MAX_PACKET_SIZE = 64;
+    static const uint8_t MAX_PACKET_SIZE = 50;
 
 public:
     RFLink4463_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
