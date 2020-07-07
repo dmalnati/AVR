@@ -66,10 +66,41 @@ public:
 
     ///////////////////////////////////////////////////////////////////
     //
-    // All property setters
+    // All property getters/setters
     //
     ///////////////////////////////////////////////////////////////////
 
+    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+    {
+        uint8_t retVal = 0;
+
+        uint8_t bufReq[] = {
+            propGroup,
+            bufLen,
+            propIdx,
+        };
+
+        // Use the GET_PROPERTY command
+        retVal = SendCommand(0x12, bufReq, sizeof(bufReq), buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+    {
+        uint8_t bufReqLen = bufLen + 3;
+        uint8_t bufReq[bufReqLen];
+
+        bufReq[0] = propGroup;
+        bufReq[1] = bufLen;
+        bufReq[2] = propIdx;
+
+        memcpy(&bufReq[3], buf, bufLen);
+
+        uint8_t ok = SendCommand(0x11, bufReq, bufReqLen);
+
+        return ok;
+    }
 
     uint8_t ConfirmSetProperty(uint8_t group, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
     {
@@ -99,52 +130,6 @@ public:
         return retVal;
     }
 
-
-    bool setProperties(uint16_t startProperty, uint8_t length ,uint8_t* paraBuf)
-    {
-        uint8_t retVal = 0;
-
-        uint8_t  group   = startProperty >> 8;
-        uint8_t  propIdx = startProperty & 0xFF;
-        uint8_t *buf     = paraBuf;
-        uint8_t  bufLen  = length;
-
-        SetProperty(group, propIdx, buf, bufLen);
-
-        return retVal;
-    }
-
-    uint8_t SetSyncWordList(uint8_t *syncWordList, uint8_t syncWordListLen)
-    {
-        uint8_t retVal = 0;
-
-        if (0 < syncWordListLen && syncWordListLen < 4)
-        {
-            {
-                // Set SYNC_CONFIG length
-                uint8_t group   = 0x11;
-                uint8_t propIdx = 0x00;
-                uint8_t buf     = syncWordListLen - 1;
-
-                retVal &= SetProperty(group, propIdx, &buf, 1);
-            }
-
-            // TODO -- why mess with these?
-            {
-                // Set SYNC_BITS values (up to 4)
-                uint8_t  group   = 0x11;
-                uint8_t  propIdx = 0x01;
-                uint8_t *buf     = syncWordList;
-                uint8_t  bufLen  = syncWordListLen;
-
-                retVal &= SetProperty(group, propIdx, buf, bufLen);
-            }
-        }
-
-        return retVal;
-    }
-
-
     uint8_t SetTxPower(uint8_t power)
     {
         uint8_t retVal = 0;
@@ -166,7 +151,6 @@ public:
 
         return retVal;
     }
-
 
     uint8_t SetRxInterrupt()
     {
@@ -203,25 +187,6 @@ public:
 
         return retVal;
     }
-
-    // Only supporting 8-bit values
-    uint8_t SetPacketField2Length(uint8_t length)
-    {
-        uint8_t retVal = 0;
-
-        uint8_t  group   = 0x12;
-        uint8_t  propIdx = 0x11;
-        uint8_t  buf[]   = {
-            0x00,   // FIELD_2_LENGTH[12:8]
-            length, // FIELD_2_LENGTH[7:0]
-        };
-        uint8_t  bufLen  = sizeof(buf);
-
-        retVal = SetProperty(group, propIdx, buf, bufLen);
-
-        return retVal;
-    }
-
 
     uint8_t SetSequencerModeGuaranteed()
     {
@@ -309,7 +274,6 @@ public:
         return retVal;
     }
 
-
     uint8_t SetPacketCRC()
     {
         uint8_t retVal = 0;
@@ -378,9 +342,7 @@ public:
         return retVal;
     }
 
-
-
-    uint8_t SetPacketRxLenConfiguration()
+    uint8_t SetPacketRxVariableLenConfiguration()
     {
         uint8_t retVal = 0;
 
@@ -403,8 +365,6 @@ public:
         //
         // Need to understand better the specific packet configuration in play
         // and how CRCs fit into that.
-
-
 
         // Set:
         // PKT_LEN              - Configuration bits for reception of a variable length packet
@@ -434,15 +394,182 @@ public:
         };
         uint8_t  bufLen  = sizeof(buf);
 
-        retVal = ConfirmSetProperty(group, propIdx, buf, bufLen);
+        retVal = SetProperty(group, propIdx, buf, bufLen);
+
+        return retVal;
+    }
+
+    // Only supporting 8-bit values
+    uint8_t SetPacketField2Length(uint8_t length)
+    {
+        uint8_t retVal = 0;
+
+        uint8_t  group   = 0x12;
+        uint8_t  propIdx = 0x11;
+        uint8_t  buf[]   = {
+            0x00,   // FIELD_2_LENGTH[12:8]
+            length, // FIELD_2_LENGTH[7:0]
+        };
+        uint8_t  bufLen  = sizeof(buf);
+
+        retVal = SetProperty(group, propIdx, buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t SetPacketField2Configuration()
+    {
+        uint8_t retVal = 0;
+
+        uint8_t  group   = 0x12;
+        uint8_t  propIdx = 0x0D;
+        uint8_t  buf[]   = {
+            // PKT_FIELD_1_LENGTH[12:8] (0x00 default)
+            0x00,
+            // PKT_FIELD_1_LENGTH[7:0] (0x00 default)
+            // override to 1 byte
+            0x01,
+
+            // PKT_FIELD_1_CONFIG (0x00 default)
+            // override to
+            // RF4463_FIELD_CONFIG_PN_START (0x04) --
+            //   load pseudo-random num (PN) seed value at start, don't carry
+            //   over from prior packet.
+            //
+            0x04,
+            
+            // PKT_FIELD_1_CRC_CONFIG (0x00 default)
+            // override to
+            //   RF4463_FIELD_CONFIG_CRC_START  (0x80) --
+            //     TX - load CRC with seed value at start, don't carry over from prior
+            //   RF4463_FIELD_CONFIG_SEND_CRC   (0x20) --
+            //     TX - send a CRC after this field
+            //   RF4463_FIELD_CONFIG_CHECK_CRC  (0x08) --
+            //     RX - check the CRC upon reception
+            //   RF4463_FIELD_CONFIG_CRC_ENABLE (0x02) --
+            //     RX/TX -- enable calculation (not necessarily send)
+            //
+            // Nets out to 0xAA
+            0xAA,
+
+            // PKT_FIELD_2_LENGTH (0x00, 0x00 default)
+            // override to 50 (decimal) bytes, representing the maximum expected length
+            // for when this field is variable (which it is)
+            0x00,
+            50,
+
+            // PKT_FIELD_2_CONFIG (0x00 default)
+            // override to
+            //   RF4463_FIELD_CONFIG_PN_START (0x04) --
+            //     Unclear what this does... setting a field with no defined meaning
+            //     and was previously reserved.
+            //     TODO -- I suspect this can be reset to default.
+            0x04,
+            
+            // PKT_FIELD_2_CRC_CONFIG (0x00 default)
+            // override to
+            //   RF4463_FIELD_CONFIG_CRC_START  (0x80) --
+            //     TODO -- this has no meaning here.  Reserved or 0 bitfield.
+            //   RF4463_FIELD_CONFIG_SEND_CRC   (0x20) --
+            //     TX - send a CRC after this field
+            //   RF4463_FIELD_CONFIG_CHECK_CRC  (0x08) --
+            //     RX - check the CRC upon reception
+            //   RF4463_FIELD_CONFIG_CRC_ENABLE (0x02) --
+            //     RX/TX -- enable calculation (not necessarily send)
+            //
+            // Nets out to 0xAA
+            0xAA,
+
+            // PKT_FIELD_3_LENGTH (0x00, 0x00 default)
+            0x00,
+            0x00,
+
+            // PKT_FIELD_3_CRC_CONFIG (0x00 default)
+            0x00,
+
+            // PKT_FIELD_4_LENGTH (0x00 default)
+            0x00,
+        };
+        uint8_t  bufLen  = sizeof(buf);
+
+        retVal = SetProperty(group, propIdx, buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t SetPacketField4And5Configuration()
+    {
+        uint8_t retVal = 0;
+
+        uint8_t  group   = 0x12;
+        uint8_t  propIdx = 0x19;
+        uint8_t  buf[]   = {
+            // PKT_FIELD_4_LENGTH (0x00, 0x00 default)
+            0x00,
+            0x00,
+            
+            // PKT_FIELD_4_CONFIG (0x00 default)
+            0x00,
+            
+            // PKT_FIELD_4_CRC_CONFIG (0x00 default)
+            0x00,
+            
+            // PKT_FIELD_5_LENGTH (0x00, 0x00 default)
+            0x00,
+            0x00,
+            
+            // PKT_FIELD_5_CONFIG (0x00 default)
+            0x00,
+            
+            // PKT_FIELD_5_CRC_CONFIG (0x00 default)
+            0x00,
+        };
+        uint8_t  bufLen  = sizeof(buf);
+
+        retVal = SetProperty(group, propIdx, buf, bufLen);
 
         return retVal;
     }
 
 
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Property getters/setters
+    //
+    // Working functions, but not used after removing use and letting
+    // defaults drive behavior
+    //
+    ///////////////////////////////////////////////////////////////////
 
+    uint8_t SetSyncWordList(uint8_t *syncWordList, uint8_t syncWordListLen)
+    {
+        uint8_t retVal = 0;
 
+        if (0 < syncWordListLen && syncWordListLen < 4)
+        {
+            {
+                // Set SYNC_CONFIG length
+                uint8_t group   = 0x11;
+                uint8_t propIdx = 0x00;
+                uint8_t buf     = syncWordListLen - 1;
 
+                retVal &= SetProperty(group, propIdx, &buf, 1);
+            }
+
+            // TODO -- why mess with these?
+            {
+                // Set SYNC_BITS values (up to 4)
+                uint8_t  group   = 0x11;
+                uint8_t  propIdx = 0x01;
+                uint8_t *buf     = syncWordList;
+                uint8_t  bufLen  = syncWordListLen;
+
+                retVal &= SetProperty(group, propIdx, buf, bufLen);
+            }
+        }
+
+        return retVal;
+    }
 
 
 
@@ -524,13 +651,6 @@ void spiWriteBuf(uint8_t writeLen,uint8_t* writeBuf)
 		spiByte(*writeBuf++);
 }
 
-
-
-
-
-
-
-
 void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
 {
     	while (readLen--)
@@ -542,12 +662,79 @@ void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
 
 
 
+void fifoReset()
+{
+	uint8_t data=0x03;
+	setCommand(sizeof(data),RF4463_CMD_FIFO_INFO,&data);
+}
+
+void writeTxFifo(uint8_t* databuf,uint8_t length)
+{
+    SetPacketField2Length(length);
+
+	setCommandStart();
+	setCommandWriteCommand(RF4463_CMD_TX_FIFO_WRITE);
+	setCommandWriteBuffer(1, &length);
+	setCommandWriteBuffer(length, databuf);
+	setCommandEnd();
+}
+
+
+bool clrInterrupts()
+{
+    uint8_t buf[] = { 0x00, 0x00, 0x00 };  
+    return setCommand(sizeof(buf),RF4463_CMD_GET_INT_STATUS,buf);
+}
+
+void enterTxMode()
+{
+	uint8_t buf[]={0x00,0x30,0x00,0x00};
+	buf[0]=RF4463_FREQ_CHANNEL;
+	setCommand(4,RF4463_CMD_START_TX ,buf);
+}
+
+
+bool waitnIRQ()
+{
+	//return !digitalRead(_nIRQPin);		// inquire interrupt
+
+    return !PAL.DigitalRead(pinIrq_);
+}
+
+
+
+
+
+uint8_t ReadRxFifo(uint8_t* databuf)
+{
+	if(!checkCTS())
+		return 0;
+	uint8_t readLen;
+    PAL.DigitalWrite(pinChipSelect_, LOW);
+	spiByte(RF4463_CMD_RX_FIFO_READ);
+	spiReadBuf(1,&readLen);
+	spiReadBuf(readLen,databuf);
+    PAL.DigitalWrite(pinChipSelect_, HIGH);
+	return readLen;
+}
+
+
+
+
+void enterRxMode()
+{
+	uint8_t buf[]={0x00,0x00,0x00,0x00,0x00,0x08,0x08};
+	buf[0]=RF4463_FREQ_CHANNEL;
+	setCommand(7,RF4463_CMD_START_RX ,buf);
+}
+
+
 
 
 
     ///////////////////////////////////////////////////////////////////
     //
-    // Duplicating RF4463 code
+    // Duplicating RF4463 interface
     //
     ///////////////////////////////////////////////////////////////////
 
@@ -675,20 +862,9 @@ void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
         }
     }
 
-
-
     void MoreConfig()
     {
         SetSequencerModeGuaranteed();
-
-    	uint8_t buf[20];
-
-        // TODO -- only necessary to restore defaults after reading in the
-        // radio config.
-        // Stop reading radio config, then delete this.
-        buf[0] = 0x2d;
-        buf[1] = 0xd4;
-        SetSyncWordList(buf,2);
 
         // TODO -- we do want CRCs, but 2 or 4 byte.
         // Want to stop reading in the radio config.
@@ -697,46 +873,13 @@ void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
         
         // TODO -- stop using this as-is and work out a specific packet format
         // that you want.
-        SetPacketRxLenConfiguration();
+        SetPacketRxVariableLenConfiguration();
         
-        // set length of Field 1 -- 4
-        // variable len,field as length field,field 2 as data field
-        // didn't use field 3 -- 4
-        buf[0] = 0x00;	// PKT_FIELD_1_LENGTH_2
-        buf[1] = 0x01;	// PKT_FIELD_1_LENGTH_1
-        
-        // PKT_FIELD_1_CONFIG
-        buf[2] = RF4463_FIELD_CONFIG_PN_START;
+        // TODO -- stop using this as-is and work out a specific packet format
+        // that you want.
+        SetPacketField2Configuration();
 
-        //PKT_FIELD_1_CRC_CONFIG
-        buf[3] = RF4463_FIELD_CONFIG_CRC_START|RF4463_FIELD_CONFIG_SEND_CRC|RF4463_FIELD_CONFIG_CHECK_CRC|RF4463_FIELD_CONFIG_CRC_ENABLE;
-        
-        // PKT_FIELD_2_LENGTH
-        buf[4] = 0x00;
-        buf[5] = 50;	// -- bingo, that's the 50 char limit there
-
-        // PKT_FIELD_2_CONFIG -- this doesn't even make sense for field 2, PN doesn't apply here
-        buf[6] = RF4463_FIELD_CONFIG_PN_START;
-        
-        // PKT_FIELD_2_CRC_CONFIG
-        buf[7] = RF4463_FIELD_CONFIG_CRC_START|RF4463_FIELD_CONFIG_SEND_CRC|RF4463_FIELD_CONFIG_CHECK_CRC|RF4463_FIELD_CONFIG_CRC_ENABLE;;
-        
-        // 
-        buf[8]  = 0x00; 
-        buf[9] = 0x00;
-        buf[10] = 0x00;
-        buf[11] = 0x00;
-        setProperties(RF4463_PROPERTY_PKT_FIELD_1_LENGTH_12_8 ,12,buf);
-
-        buf[0] = 0x00;
-        buf[1] = 0x00;
-        buf[2] = 0x00;
-        buf[3] = 0x00;
-        buf[4] = 0x00;
-        buf[5] = 0x00;
-        buf[6] = 0x00;
-        buf[7] = 0x00;
-        setProperties(RF4463_PROPERTY_PKT_FIELD_4_LENGTH_12_8,8,buf);
+        SetPacketField4And5Configuration();
 
         // set max tx power
         SetTxPower(127);
@@ -745,19 +888,18 @@ void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
 
 
 
-    bool enterStandbyMode()
-    {
-        uint8_t data=0x01;
-        return setCommand(1,RF4463_CMD_CHANGE_STATE,&data);
-    }
-
+bool enterStandbyMode()
+{
+    uint8_t data=0x01;
+    return setCommand(1,RF4463_CMD_CHANGE_STATE,&data);
+}
 
 bool rxInit()
 {		
 	uint8_t length;
 	length=50;
-	setProperties(RF4463_PROPERTY_PKT_FIELD_2_LENGTH_7_0, sizeof(length),&length);	// reload rx fifo size
-	fifoReset();				// clr fifo
+	SetPacketField2Length(length);
+    fifoReset();				// clr fifo
     SetRxInterrupt();
 	clrInterrupts();			// clr int factor	
 	enterRxMode();				// enter RX mode
@@ -765,13 +907,15 @@ bool rxInit()
 }
 
 
-
-void enterRxMode()
+uint8_t rxPacket(uint8_t *recvbuf)
 {
-	uint8_t buf[]={0x00,0x00,0x00,0x00,0x00,0x08,0x08};
-	buf[0]=RF4463_FREQ_CHANNEL;
-	setCommand(7,RF4463_CMD_START_RX ,buf);
+	uint8_t rxLen;
+	rxLen=ReadRxFifo(recvbuf);			// read data from fifo
+	fifoReset();						// clr fifo
+
+	return rxLen;
 }
+
 
 bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
 {
@@ -814,69 +958,6 @@ bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
 }
 
 
-void fifoReset()
-{
-	uint8_t data=0x03;
-	setCommand(sizeof(data),RF4463_CMD_FIFO_INFO,&data);
-}
-
-void writeTxFifo(uint8_t* databuf,uint8_t length)
-{
-    SetPacketField2Length(length);
-
-	setCommandStart();
-	setCommandWriteCommand(RF4463_CMD_TX_FIFO_WRITE);
-	setCommandWriteBuffer(1, &length);
-	setCommandWriteBuffer(length, databuf);
-	setCommandEnd();
-}
-
-
-bool clrInterrupts()
-{
-    uint8_t buf[] = { 0x00, 0x00, 0x00 };  
-    return setCommand(sizeof(buf),RF4463_CMD_GET_INT_STATUS,buf);
-}
-
-void enterTxMode()
-{
-	uint8_t buf[]={0x00,0x30,0x00,0x00};
-	buf[0]=RF4463_FREQ_CHANNEL;
-	setCommand(4,RF4463_CMD_START_TX ,buf);
-}
-
-
-bool waitnIRQ()
-{
-	//return !digitalRead(_nIRQPin);		// inquire interrupt
-
-    return !PAL.DigitalRead(pinIrq_);
-}
-
-
-
-
-uint8_t rxPacket(uint8_t *recvbuf)
-{
-	uint8_t rxLen;
-	rxLen=ReadRxFifo(recvbuf);			// read data from fifo
-	fifoReset();						// clr fifo
-
-	return rxLen;
-}
-
-uint8_t ReadRxFifo(uint8_t* databuf)
-{
-	if(!checkCTS())
-		return 0;
-	uint8_t readLen;
-    PAL.DigitalWrite(pinChipSelect_, LOW);
-	spiByte(RF4463_CMD_RX_FIFO_READ);
-	spiReadBuf(1,&readLen);
-	spiReadBuf(readLen,databuf);
-    PAL.DigitalWrite(pinChipSelect_, HIGH);
-	return readLen;
-}
 
 
 
@@ -1071,282 +1152,7 @@ uint8_t ReadRxFifo(uint8_t* databuf)
         }
     }
 
-    void StartPacketHandler()
-    {
-        // # Start
-        // RESET
-                PowerOnReset();
 
-        // 'POWER_UP' 01 00 01 C9 C3 80
-                PowerUp();
-
-        // 'PART_INFO'
-        // 'FUNC_INFO'
-
-        // # Adjust Crystal Osc cap bank to center oscillator frequency
-        // 'SET_PROPERTY' 'GLOBAL_XO_TUNE' 4B
-        // DM -- no, default is fine
-
-        // # Set interrupts = Packet Sent
-        // 'SET_PROPERTY' 'INT_CTL_ENABLE' 05
-
-        {
-            uint8_t buf[] = { 0x05 };
-
-            const uint8_t GROUP = 0x01;
-            const uint8_t INDEX = 0x00;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-
-        // 'SET_PROPERTY' 'INT_CTL_PH_ENABLE' 20
-
-        // equal, enable packet sent interrupt
-        {
-            uint8_t buf[] = { 0x20 };
-
-            const uint8_t GROUP = 0x01;
-            const uint8_t INDEX = 0x01;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // # Read and clear any existing interrupts
-        // 'GET_INT_STATUS' 00 00 00
-
-        ClearInterrupts();
-
-
-
-        // # General parameters, Mod Type = 2GFSK, Packet FIFO
-        // 'SET_PROPERTY' 'MODEM_MOD_TYPE' 03
-
-        // equal, set to 2GFSK, packet FIFO is default
-        {
-            MODEM_MOD_TYPE_PROP prop;
-
-            prop.BYTE0.MOD_TYPE = 3;
-
-            SetProperty(prop);
-        }
-
-
-        // 'SET_PROPERTY' 'MODEM_MAP_CONTROL' 00
-
-        // equal, disable manchester encoding (defaulted to on)
-        {
-            MODEM_MAP_CONTROL_PROP prop;
-
-            SetProperty(prop);
-        }
-
-
-
-        // 'SET_PROPERTY' 'MODEM_CLKGEN_BAND' 08
-        // DM -- this is the default already
-
-
-
-        // # Freq control group = 915.0 MHz
-        // 'SET_PROPERTY' 'FREQ_CONTROL_INTE' 3C
-        // 'SET_PROPERTY' 'FREQ_CONTROL_FRAC_2' 08
-        // 'SET_PROPERTY' 'FREQ_CONTROL_FRAC_1' 00
-        // 'SET_PROPERTY' 'FREQ_CONTROL_FRAC_0' 00
-
-        {
-            uint8_t buf[] = { 0x3C, 0x08, 0x00, 0x00 };
-
-            const uint8_t GROUP = 0x40;
-            const uint8_t INDEX = 0x00;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // 'SET_PROPERTY' 'FREQ_CONTROL_W_SIZE' 20
-        // DM -- this is the default already
-
-
-        // # PA control group = Class-E, +20 dBm
-        // AN626
-        // Rev. 0.2 27
-
-
-        // 'SET_PROPERTY' 'PA_MODE' 08
-        // DM -- this is the default already
-
-
-        // 'SET_PROPERTY' 'PA_PWR_LVL' 7F
-        // DM -- this is the default already
-
-
-        // 'SET_PROPERTY' 'PA_BIAS_CLKDUTY' 00
-        // DM -- this is the default already
-
-
-        // 'SET_PROPERTY' 'PA_TC' 3D
-
-        // 14us (default) to 6us delay of rising edge of PA ramp for (G)FSK
-        // not sure why changing this...
-        {
-            PA_TC_PROP prop;
-
-            prop.BYTE0.FSK_MOD_DLY = 3;
-            prop.BYTE0.TC          = 13;    // 0x0D
-
-            SetProperty(prop);
-        }
-
-
-        // # Tx parameters, DR=5kbps, Dev=1.625kHz, TXOSR=40
-        // 'SET_PROPERTY' 'MODEM_DATA_RATE_2' 00
-        // 'SET_PROPERTY' 'MODEM_DATA_RATE_1' 4E
-        // 'SET_PROPERTY' 'MODEM_DATA_RATE_0' 20
-
-        {
-            MODEM_DATA_RATE_PROP prop;
-
-            prop.BYTE0.DATA_RATE = 0x00;
-            prop.BYTE1.DATA_RATE = 0x4E;
-            prop.BYTE2.DATA_RATE = 0x20;
-
-            SetProperty(prop);
-        }
-
-
-        // 'SET_PROPERTY' 'MODEM_TX_NCO_MODE_3' 04
-        // 'SET_PROPERTY' 'MODEM_TX_NCO_MODE_2' 2D
-        // 'SET_PROPERTY' 'MODEM_TX_NCO_MODE_1' C6
-        // 'SET_PROPERTY' 'MODEM_TX_NCO_MODE_0' C0
-
-        {
-            uint8_t buf[] = { 0x04, 0x2D, 0xC6, 0xC0 };
-
-            const uint8_t GROUP = 0x20;
-            const uint8_t INDEX = 0x06;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // 'SET_PROPERTY' 'MODEM_FREQ_DEV_2' 00
-        // 'SET_PROPERTY' 'MODEM_FREQ_DEV_1' 00
-        // 'SET_PROPERTY' 'MODEM_FREQ_DEV_0' 39
-
-        {
-            uint8_t buf[] = { 0x00, 0x00, 0x39 };
-
-            const uint8_t GROUP = 0x20;
-            const uint8_t INDEX = 0x0A;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-        // 'SET_PROPERTY' 'MODEM_TX_RAMP_DELAY' 01
-        // DM -- this is the default already
-
-
-
-        // # Set Preamble = Std '0101, Length = 5 bytes
-        // 'SET_PROPERTY' 'PREAMBLE_TX_LENGTH' 05
-
-        // Not sure why changing 8 (default) to 5
-        {
-            uint8_t buf[] = { 0x05 };
-
-            const uint8_t GROUP = 0x10;
-            const uint8_t INDEX = 0x00;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-        // 'SET_PROPERTY' 'PREAMBLE_CONFIG' 12
-        // changing default 0x21 to 0x12
-        {
-            uint8_t buf[] = { 0x21 };
-
-            const uint8_t GROUP = 0x10;
-            const uint8_t INDEX = 0x04;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // # Set Sync word = 2 bytes = 0xB42B (sent little-endian = 0x2DD4 over air interface)
-        // 'SET_PROPERTY' 'SYNC_CONFIG' 01
-        // DM -- this is the default already
-
-        // 'SET_PROPERTY' 'SYNC_BITS_31_24' B4
-        // 'SET_PROPERTY' 'SYNC_BITS_23_16' 2B
-        {
-            uint8_t buf[] = { 0xB4, 0x2B };
-
-            const uint8_t GROUP = 0x11;
-            const uint8_t INDEX = 0x01;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // # Enable CRC, set the X15+X12+X5+1 16-bit polynomial, seed value = 1's
-        // 'SET_PROPERTY' 'PKT_CRC_CONFIG' 85
-        {
-            uint8_t buf[] = { 0x85 };
-
-            const uint8_t GROUP = 0x12;
-            const uint8_t INDEX = 0x00;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-        // # Set fixed packet length, Field-1 = 10 bytes, CRC across Field-1, load seed value
-        // 'SET_PROPERTY' 'PKT_LEN' 00
-        // DM -- this is the default already
-
-        // 'SET_PROPERTY' 'PKT_FIELD_1_LENGTH_12_8' 00
-        // 'SET_PROPERTY' 'PKT_FIELD_1_LENGTH_7_0' 0A
-
-        {
-            uint8_t buf[] = { 0x00, 0x0A };
-
-            const uint8_t GROUP = 0x12;
-            const uint8_t INDEX = 0x0D;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-
-
-        // 'SET_PROPERTY' 'PKT_FIELD_1_CONFIG' 00
-        // DM -- this is the default already
-
-        // 'SET_PROPERTY' 'PKT_FIELD_1_CRC_CONFIG' A2
-        {
-            uint8_t buf[] = { 0xA2 };
-
-            const uint8_t GROUP = 0x12;
-            const uint8_t INDEX = 0x10;
-            SetProperty(GROUP, INDEX, buf, sizeof(buf));
-        }
-    }
-
-    uint8_t SendPH()
-    {
-        uint8_t retVal = 0;
-
-        // # Load 10-bytes of arbitrary data into TX FIFO
-        // 'WRITE_TX_FIFO' 01 02 03 04 05 06 07 08 09 0A
-
-        {
-            uint8_t buf[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A };
-
-            const uint8_t CMD_ID = 0x66;
-            retVal = SendCommand(CMD_ID, buf, sizeof(buf));
-        }
-
-        // # Start transmitting, return to READY after packet
-        // AN626
-        // 28 Rev. 0.2
-        // 'START_TX' 00 30 00 00
-
-        {
-            ChangeStateToTx();
-        }
-
-        return retVal;
-    }
 
     void StartDirectInput()
     {
@@ -1362,38 +1168,8 @@ uint8_t ReadRxFifo(uint8_t* databuf)
         PAL.DigitalWrite(pinShutdown_, HIGH);
     }
 
-    uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
-    {
-        uint8_t bufReqLen = bufLen + 3;
-        uint8_t bufReq[bufReqLen];
 
-        bufReq[0] = propGroup;
-        bufReq[1] = bufLen;
-        bufReq[2] = propIdx;
 
-        memcpy(&bufReq[3], buf, bufLen);
-
-        //uint8_t ok = SendAndWaitAndReceive(0x11, bufReq, bufReqLen, nullptr, 0);
-        uint8_t ok = SendCommand(0x11, bufReq, bufReqLen);
-
-        return ok;
-    }
-
-    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
-    {
-        uint8_t retVal = 0;
-
-        uint8_t bufReq[] = {
-            propGroup,
-            bufLen,
-            propIdx,
-        };
-
-        // Use the GET_PROPERTY command
-        retVal = SendCommand(0x12, bufReq, sizeof(bufReq), buf, bufLen);
-
-        return retVal;
-    }
 
     uint8_t SendCommand(uint8_t  cmdId,
                         uint8_t *buf,
@@ -1448,8 +1224,6 @@ uint8_t ReadRxFifo(uint8_t* databuf)
         RFSI4463PRO::GET_INT_STATUS_REQ req;
         RFSI4463PRO::GET_INT_STATUS_REP rep;
 
-        RFSI4463PRODebug::Print(rep);
-        
         uint8_t retVal = Command_GET_INT_STATUS(req, rep);
         
         return retVal;
@@ -1463,7 +1237,6 @@ uint8_t ReadRxFifo(uint8_t* databuf)
     ///////////////////////////////////////////////////////////////////////////
 
     #include "RFSI4463PRO_Generated.h"
-    #include "RFSI4463PRODebug.h"
     
     
 private:
