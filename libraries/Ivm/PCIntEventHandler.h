@@ -54,7 +54,45 @@ private:
 
 
 
+//////////////////////////////////////////////////////////////////////
+//
+// Helpers
+//
+//////////////////////////////////////////////////////////////////////
 
+
+class PCIntEventHandlerDelegate
+: public PCIntEventHandler
+{
+public:
+    PCIntEventHandlerDelegate()
+    {
+        // Nothing to do
+    }
+    
+    void SetCallback(function<void(uint8_t)> cbFn)
+    {
+        cbFn_ = cbFn;
+    }
+    
+    function<void(uint8_t)> GetCallback()
+    {
+        return cbFn_;
+    }
+    
+    void operator()()
+    {
+        GetCallback()(GetLogicLevel());
+    }
+
+private:
+    virtual void OnPCIntEvent(uint8_t logicLevel)
+    {
+        cbFn_(logicLevel);
+    }
+
+    function<void(uint8_t)> cbFn_;
+};
 
 
 
