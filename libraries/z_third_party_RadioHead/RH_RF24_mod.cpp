@@ -28,10 +28,10 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
 
 RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
     :
-    RHSPIDriver(slaveSelectPin, spi)
+    RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin), spi)
 {
-    _interruptPin = interruptPin;
-    _sdnPin = sdnPin;
+    _interruptPin = PAL.GetArduinoPinFromPhysicalPin(interruptPin);
+    _sdnPin = PAL.GetArduinoPinFromPhysicalPin(sdnPin);
     _idleMode = RH_RF24_DEVICE_STATE_READY;
     _myInterruptIndex = 0xff; // Not allocated yet
 }

@@ -18,8 +18,27 @@
 // http://www.silabs.com/Support%20Documents/TechnicalDocs/AN736.pdf
 // http://nicerf.com/manage/upfile/indexbanner/635231050196868750.pdf    (API description)
 // http://www.silabs.com/Support%20Documents/Software/Si446x%20RX_HOP%20PLL%20Calculator.xlsx
-#ifndef RH_RF24_h
-#define RH_RF24_h
+#ifndef RH_RF24_mod_h
+#define RH_RF24_mod_h
+
+
+/*
+ * Changes I'm making
+ * - support my core libraries
+ * - take in real pin numbers, not arduino pin numbers
+ *   - but convert to arduino internally
+ * - support pin change interrupts instead of port interrupts
+ * - Log not Serial
+ * 
+ * Basically
+ * - external interfaces work the way I am used to
+ * - internal resources can make use of core libs to work better
+ * 
+ */
+
+#include "PAL.h"
+#include "Log.h"
+
 
 #include <RHGenericSPI.h>
 #include <RHSPIDriver.h>

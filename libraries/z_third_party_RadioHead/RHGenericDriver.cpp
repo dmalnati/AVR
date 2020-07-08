@@ -174,6 +174,11 @@ bool  RHGenericDriver::sleep()
 // Diagnostic help
 void RHGenericDriver::printBuffer(const char* prompt, const uint8_t* buf, uint8_t len)
 {
+    // avoid compiler warnings about unused
+    (void)prompt;
+    (void)buf;
+    (void)len;
+    
 #ifdef RH_HAVE_SERIAL
     Serial.println(prompt);
     uint8_t i;
