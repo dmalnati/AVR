@@ -6,7 +6,9 @@
 #include "Function.h"
 #include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
-#include "RF4463.h"
+//#include "RF4463.h"
+#include "RFSI4463PRO_tmp.h"
+#include "Log.h"
 
 
 //
@@ -63,11 +65,12 @@ public:
 
 public:
     RFLink4463_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
-    : radio_(
-        PAL.GetArduinoPinFromPhysicalPin(pinIrq),
-        PAL.GetArduinoPinFromPhysicalPin(pinSdn),
-        PAL.GetArduinoPinFromPhysicalPin(pinSel)
-    )
+    // : radio_(
+    //     PAL.GetArduinoPinFromPhysicalPin(pinIrq),
+    //     PAL.GetArduinoPinFromPhysicalPin(pinSdn),
+    //     PAL.GetArduinoPinFromPhysicalPin(pinSel)
+    // )
+    : radio_(pinIrq, pinSel, pinSdn)    // my libs RFSI4463PRO
     , ied_(pinIrq, LEVEL_FALLING)
     , sendSync_(1)
     , state_(State::IDLE)
@@ -108,7 +111,7 @@ public:
 
         ChangeState(State::LOW_POWER);
 
-        retVal = radio_.enterStandbyMode();
+        retVal = radio_.EnterStandbyMode();
 
         return retVal;
     }
@@ -194,6 +197,13 @@ public:
         *buf     = buf_;
         *bufSize = MAX_PACKET_SIZE;
     }
+
+    
+    RFSI4463PRO &GetRadio()
+    {
+        return radio_;
+    }
+    
     
     
 private:
@@ -208,6 +218,16 @@ private:
 
     void OnPinChange()
     {
+        uint16_t phStatus = radio_.CmdGetPhStatus_Debug();
+
+        uint8_t phStatusPending = ((uint8_t *)&phStatus)[0];
+        uint8_t phStatusCurrent = ((uint8_t *)&phStatus)[1];
+
+        Log("statusP: ", LogBIN(phStatusPending));
+        Log("statusC: ", LogBIN(phStatusCurrent));
+
+        radio_.CmdFifoInfo_GetCountsDebug();
+
         if (state_ == State::SENDING)
         {
             ChangeState(State::IDLE);
@@ -216,8 +236,6 @@ private:
         }
         else if (state_ == State::RECEIVING)
         {
-            radio_.clrInterrupts();
-
             uint8_t bufSize = radio_.rxPacket(buf_);
 
             radio_.rxInit();
@@ -260,11 +278,12 @@ private:
         PreChangeState(newState);
         PostChangeState(newState);
     }
-    
+
 
 private:
 
-    RF4463 radio_;
+    // RF4463 radio_;
+    RFSI4463PRO radio_;
 
     InterruptEventHandlerDelegate ied_;
         

@@ -296,7 +296,29 @@
 //   MODEM_FREQ_DEV_2 - 17-bit unsigned TX frequency deviation word.
 //   MODEM_FREQ_DEV_1 - 17-bit unsigned TX frequency deviation word.
 */
-#define RF_MODEM_MOD_TYPE_12 0x11, 0x20, 0x0C, 0x00, 0x02, 0x00, 0x07, 0x00, 0x2E, 0xE0, 0x01, 0xC9, 0xC3, 0x80, 0x00, 0x00
+#define RF_MODEM_MOD_TYPE_12 0x11, 0x20, 0x0C, 0x00, \
+        /* MODEM_MOD_TYPE (0x02 default, no change) */ \
+        0x02, \
+        /* MODEM_MAP_CONTROL (0x80 default, now disables manchester feature) */ \
+        0x00, \
+        \
+        /* MODEM_DSM_CTRL (0x07, no change) */ \
+        0x07, \
+        \
+        /* MODEM_DATA_RATE (0x0F, 0x42, 0x40 default of 100kbps, not sure below value without calculations) */ \
+        0x00, \
+        0x2E, \
+        0xE0, \
+        \
+        /* MODEM_TX_NCO_MODE (0x01,0xC9,0xC3,0x80 default, no change) */ \
+        0x01, \
+        0xC9, \
+        0xC3, \
+        0x80, \
+        \
+        /* MODEM_FREQ_DEV (0x00,0x06,0xd3 default, not sure below without calculation) */ \
+        0x00, \
+        0x00
 
 /*
 // Set properties:           RF_MODEM_FREQ_DEV_0_1
@@ -307,7 +329,9 @@
 // Descriptions:
 //   MODEM_FREQ_DEV_0 - 17-bit unsigned TX frequency deviation word.
 */
-#define RF_MODEM_FREQ_DEV_0_1 0x11, 0x20, 0x01, 0x0C, 0xD2
+#define RF_MODEM_FREQ_DEV_0_1 0x11, 0x20, 0x01, 0x0C, \
+        /* Continuation of MODEM_FREQ_DEV above */ \
+        0xD2
 
 /*
 // Set properties:           RF_MODEM_TX_RAMP_DELAY_8
@@ -325,7 +349,38 @@
 //   MODEM_DECIMATION_CFG1 - Specifies three decimator ratios for the Cascaded Integrator Comb (CIC) filter.
 //   MODEM_DECIMATION_CFG0 - Specifies miscellaneous parameters and decimator ratios for the Cascaded Integrator Comb (CIC) filter.
 */
-#define RF_MODEM_TX_RAMP_DELAY_8 0x11, 0x20, 0x08, 0x18, 0x01, 0x80, 0x08, 0x03, 0x80, 0x00, 0x70, 0x20
+#define RF_MODEM_TX_RAMP_DELAY_8 0x11, 0x20, 0x08, 0x18, \
+        /* MODEM_TX_RAMP_DELAY (0x01 default, no change) */ \
+        0x01, \
+        \
+        /* MODEM_MDM_CTRL (0x00 default, 0x80 is the only alternative) */ \
+        /*   adjusts PH_SRC_SEL = 1, take input from detector's output */ \
+        /*   (as opposed to phase computer output) */ \
+        /*   unclear the effect of this */ \
+        /*0x80,*/ \
+        0x00, /* alone this change worked */\
+        \
+        /* MODEM_IF_CONTROL (0x08 default, no change) */ \
+        0x08, \
+        \
+        /* MODEM_IF_FREQ (0x03,0xC0,0x00 default) */ \
+        /*   affects intermedite frequency in some way requiring calculation */ \
+        0x03, 0x80, 0x00, \
+        /* 0x03, 0xC0, 0x00, // resetting this back to default broke it */\
+        \
+        /* MODEM_DECIMATION_CFG1 (0x10 default) */ \
+        /* controls CIC (cascaded integrator comb) filter in some way */ \
+        0x70, \
+        /* 0x10, // resetting this back to default broke it */\
+        \
+        /* MODEM_DECIMATION_CFG0 (0x20 default, no change) */ \
+        0x20
+
+        // so two non-understood parameters matter by trial-and-error:
+        // MODEM_IF_FREQ
+        // MODEM_DECIMATION_CFG1
+
+
 
 /*
 // Set properties:           RF_MODEM_BCR_OSR_1_9
@@ -592,9 +647,11 @@
         /* only leave this here because config reader skips it */ \
         0x07, RF_POWER_UP, \
         \
-        0x10, RF_MODEM_MOD_TYPE_12, \
-        0x05, RF_MODEM_FREQ_DEV_0_1, \
-        0x0C, RF_MODEM_TX_RAMP_DELAY_8, \
+        /*0x10, RF_MODEM_MOD_TYPE_12,*/ \
+        /*0x05, RF_MODEM_FREQ_DEV_0_1,*/ \
+        \
+        /*0x0C, RF_MODEM_TX_RAMP_DELAY_8,*/ \
+        \
         0x0D, RF_MODEM_BCR_OSR_1_9, \
         0x0B, RF_MODEM_AFC_GEAR_7, \
         \

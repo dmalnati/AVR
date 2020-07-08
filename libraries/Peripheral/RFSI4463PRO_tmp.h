@@ -214,6 +214,11 @@ bool rxInit()
 
 uint8_t rxPacket(uint8_t *recvbuf)
 {
+    // TODO -- check if CRC error on reception
+    // seems that packet_rx event fires, but CRC can also be wrong
+    // at that point as well
+
+
 	uint8_t rxLen;
 	rxLen=ReadRxFifo(recvbuf);			// read data from fifo
 	ResetRxTxFifos();
@@ -331,7 +336,7 @@ bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
         RFSI4463PRO::POWER_UP_REQ req;
         
         req.BOOT_OPTIONS.FUNC = 1;
-        //req.XTAL_OPTIONS.TCXO = 1;
+        req.XTAL_OPTIONS.TCXO = 1;
         req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
         
         uint8_t retVal = Command_POWER_UP(req);
@@ -419,6 +424,89 @@ bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
 
         // set max tx power
         SetTxPower(127);
+
+
+        SetFrequencyInternal((uint32_t)433500000);
+
+
+        // To get rid of RF_MODEM_MOD_TYPE_12 from radio_config, put these two in place.
+
+        // Set data rate
+        /* MODEM_DATA_RATE (0x0F, 0x42, 0x40 default of 100kbps, not sure below value without calculations) */ \
+        {
+            uint8_t group = 0x20;
+            uint8_t propIdx = 0x03;
+            uint8_t buf[] = {
+                0x00,
+                0x2E,
+                0xE0,
+            };
+            uint8_t bufLen = sizeof(buf);
+
+            SetProperty(group, propIdx, buf, bufLen);
+        }
+
+        // Set frequency deviation
+        /* MODEM_FREQ_DEV (0x00,0x06,0xd3 default, not sure below without calculation) */ \
+        {
+            uint8_t group = 0x20;
+            uint8_t propIdx = 0x0A;
+            uint8_t buf[] = {
+                0x00,
+                0x00,
+                0xD2,
+            };
+            uint8_t bufLen = sizeof(buf);
+
+            SetProperty(group, propIdx, buf, bufLen);
+        }
+
+
+
+
+
+
+
+
+
+        // To get rid of RF_MODEM_TX_RAMP_DELAY_8 from radio_config, put these two in place.
+
+
+
+        // Set frequency deviation
+        /* MODEM_IF_FREQ (0x03,0xC0,0x00 default) */ \
+        /*   affects intermedite frequency in some way requiring calculation */ \
+        {
+            uint8_t group = 0x20;
+            uint8_t propIdx = 0x1B;
+            uint8_t buf[] = {
+                0x03,
+                0x80,
+                0x00,
+            };
+            uint8_t bufLen = sizeof(buf);
+
+            SetProperty(group, propIdx, buf, bufLen);
+        }
+
+        /* MODEM_DECIMATION_CFG1 (0x10 default) */ \
+        /* controls CIC (cascaded integrator comb) filter in some way */ \
+        {
+            uint8_t group = 0x20;
+            uint8_t propIdx = 0x1E;
+            uint8_t buf[] = {
+                0x70,
+            };
+            uint8_t bufLen = sizeof(buf);
+
+            SetProperty(group, propIdx, buf, bufLen);
+        }
+
+
+
+
+
+
     }
 
 
@@ -783,7 +871,8 @@ void enterTxMode()
             // RF4463_PREAMBLE_STANDARD_1010 (0x01)     (this is default)
             // 
             // this nets out to 0x31 (0011 0001)
-            0x21,   // PREAMBLE_CONFIG       (0x21 default)
+            //0x21,   // PREAMBLE_CONFIG       (0x21 default)
+            0x31,   // PREAMBLE_CONFIG       (0x21 default)
 
 
 
@@ -794,7 +883,7 @@ void enterTxMode()
         };
         uint8_t  bufLen  = sizeof(buf);
 
-        retVal = SetProperty(group, propIdx, buf, bufLen);
+        retVal = ConfirmSetProperty(group, propIdx, buf, bufLen);
 
         return retVal;
     }
@@ -1185,19 +1274,19 @@ void setCommandEnd()
         SetProperty(group, propIdx, buf, bufLen);
         GetProperty(group, propIdx, afterList, bufLen);
 
-        Log("group: ", group);
-        Log("propIdx: ", propIdx);
-        Log("count: ", bufLen);
+        Log(P("group  : "), LogHEX(group));
+        Log(P("propIdx: "), LogHEX(propIdx));
+        Log(P("count  : "), bufLen);
         for (uint8_t i = 0; i < bufLen; ++i)
         {
-            Log(beforeList[i], "\t->\t", buf[i], "\t->\t", afterList[i]);
+            Log(LogHEX(beforeList[i]), P(" -> "), LogHEX(buf[i]), P(" -> "), LogHEX(afterList[i]));
 
             if (buf[i] != afterList[i])
             {
                 retVal = 0;
             }
         }
-        Log("OK: ", retVal);
+        Log(P("OK: "), retVal);
 
         return retVal;
     }
@@ -1456,7 +1545,6 @@ bool checkCTS()
     #include "RFSI4463PRO_Generated.h"
     
     
-private:
 
     void PowerOnReset()
     {

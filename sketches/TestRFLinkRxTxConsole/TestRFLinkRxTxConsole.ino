@@ -9,13 +9,14 @@
 
 
 static Evm::Instance<10,10,10> evm;
-static SerialAsyncConsoleEnhanced<25>  console;
+static SerialAsyncConsoleEnhanced<5>  console;
 
 static const uint8_t PIN_IRQ = 12;
 static const uint8_t PIN_SDN = 13;
 static const uint8_t PIN_SEL = 14;
 static RFLink r(PIN_IRQ, PIN_SDN, PIN_SEL);
 static RFLink4463_Raw &rr = *r.GetLinkRaw();
+static RFSI4463PRO &rf = r.GetRadio();
 
 Pin dbg(6, LOW);
 
@@ -360,6 +361,24 @@ void OnCommand(char *cmdStr)
 
     ///////////////////////////////////////////////////
     //
+    // RF4463PRO
+    //
+    ///////////////////////////////////////////////////
+   
+    else if (!strcmp_P(cmd, P("freq")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atol(str.TokenAtIdx(1, ' '));
+            
+            Log(P("Freq "), val);
+
+            rf.SetFrequencyInternal(val);
+        }
+    }
+
+    ///////////////////////////////////////////////////
+    //
     // Template
     //
     ///////////////////////////////////////////////////
@@ -410,11 +429,14 @@ void setup()
     console.SetVerbose(0);
     console.Start();
 
-    console.Exec("rawsa");
-
+    
     uint8_t initOk = r.Init();
     Log("Init - ", initOk ? "OK" : "ERR");
     LogNL();
+
+    console.Exec("rawsa");
+    console.Exec("rawr");
+
 
     evm.MainLoop();
 }
