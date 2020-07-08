@@ -64,73 +64,383 @@ public:
 
 
 
+    /*
+     * Layout of interface
+     * 
+     * [public]
+     * - ctor, pinSetting
+     * - API functions
+     *   - common
+     *   - packet mode
+     *   - raw mode
+     * 
+     * [private]
+     * 
+     * - misc
+     * 
+     * - command convenience functions
+     * - command primitives
+     * 
+     * - property convenience functions
+     * - property primitives
+     * 
+     * - module communication primitives
+     * - spi / module electrical primitives
+     * 
+     * - unclassified
+     * - legacy
+     * 
+     */
+
+
+
+
     ///////////////////////////////////////////////////////////////////
     //
-    // All property getters/setters
+    // Constructor
     //
     ///////////////////////////////////////////////////////////////////
 
-    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // API Functions - Common
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+
+    uint8_t init()
     {
         uint8_t retVal = 0;
 
-        uint8_t bufReq[] = {
-            propGroup,
-            bufLen,
-            propIdx,
-        };
+        Log(P("init()"));
 
-        // Use the GET_PROPERTY command
-        retVal = SendCommand(0x12, bufReq, sizeof(bufReq), buf, bufLen);
+        // This inits pins and SPI as the lib does
+        Init();
 
-        return retVal;
-    }
+        // The lib then does two things in one function call:
+        // powerOnReset();
+        // - power on reset
+        // - send power up command
 
-    uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
-    {
-        uint8_t bufReqLen = bufLen + 3;
-        uint8_t bufReq[bufReqLen];
+        PowerOnReset(); // mine is the same as theirs
+        Log(P("POR"));
 
-        bufReq[0] = propGroup;
-        bufReq[1] = bufLen;
-        bufReq[2] = propIdx;
+        // Their powerup is the same as mine, except they don't enable
+        // the TCXO for some reason (use XTAL)
+        //#define RF_POWER_UP 0x02, 0x01, 0x00, 0x01, 0xC9, 0xC3, 0x80
+        PowerUp2();
+        Log(P("PU2"));
 
-        memcpy(&bufReq[3], buf, bufLen);
 
-        uint8_t ok = SendCommand(0x11, bufReq, bufReqLen);
-
-        return ok;
-    }
-
-    uint8_t ConfirmSetProperty(uint8_t group, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
-    {
-        uint8_t retVal = 1;
-
-        uint8_t beforeList[bufLen] = { 0 };
-        uint8_t afterList[bufLen] = { 0 };
-
-        GetProperty(group, propIdx, beforeList, bufLen);
-        SetProperty(group, propIdx, buf, bufLen);
-        GetProperty(group, propIdx, afterList, bufLen);
-
-        Log("group: ", group);
-        Log("propIdx: ", propIdx);
-        Log("count: ", bufLen);
-        for (uint8_t i = 0; i < bufLen; ++i)
+        // Should be able to communicate via SPI at this point, test it
+        retVal = CheckDevice();
+        if (retVal)
         {
-            Log(beforeList[i], "\t->\t", buf[i], "\t->\t", afterList[i]);
-
-            if (buf[i] != afterList[i])
-            {
-                retVal = 0;
-            }
+            Log("CheckDevice SUCCESS");
         }
-        Log("OK: ", retVal);
+        else
+        {
+            Log("CheckDevice FAIL");
+        }
+
+
+        // The lib then sets the .h value config
+        ReadConfig();
+        Log(P("RC"));
+
+        MoreConfig();
+        Log(P("MC"));
+
 
         return retVal;
     }
 
     uint8_t SetTxPower(uint8_t power)
+    {
+        return SetTxPowerInternal(power);
+    }
+
+    uint8_t EnterStandbyMode()
+    {
+        return CmdChangeState_StandbyMode();
+    }
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // API Functions - Packet Mode
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+// Reset to state where waiting for packet.
+// Any interrupt IRQ line is reset at this point.
+// Once IRQ fires, you can read the packet.
+// Call this again once you've received the packet.  (why, so shitty)
+//   (but certainly caller will need to clear IRQ line somehow, so don't
+//    forget if you change behavior here)
+//
+// What happens if you receive multiple packets before clearing IRQ?
+// Do you throw away the fifo contents?
+bool rxInit()
+{		
+	uint8_t length;
+	length=50;
+	SetPacketField2Length(length);
+
+    ResetRxTxFifos();
+
+    SetRxInterrupt();
+
+	ClearInterrupts();
+	
+    CmdStartRx_UsePktFieldConfigForSizing();
+
+    return true;
+}
+
+
+uint8_t rxPacket(uint8_t *recvbuf)
+{
+	uint8_t rxLen;
+	rxLen=ReadRxFifo(recvbuf);			// read data from fifo
+	ResetRxTxFifos();
+
+	return rxLen;
+}
+
+
+bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
+{
+	uint8_t retVal = 0;
+
+	uint16_t txTimer;
+
+	ResetRxTxFifos();
+	writeTxFifo(sendbuf,sendLen);		// load data to fifo	
+	SetTxInterrupt();
+	ClearInterrupts();
+	enterTxMode();						// enter TX mode
+
+	if (!syncSend)
+	{
+		retVal = true;
+	}
+	else
+	{
+		txTimer=RF4463_TX_TIMEOUT;
+		while(txTimer--)
+		{
+			if(waitnIRQ())					// wait INT
+			{
+				retVal = 1;
+			}
+			else
+			{
+				delay(1);
+			}
+		}
+
+		if (!retVal)
+		{
+			init();								// reset RF4463 if tx time out
+		}
+	}
+
+	return retVal;
+}
+
+
+
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // API Functions - Raw Mode
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Misc
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+    uint8_t PowerUp2()
+    {
+        RFSI4463PRO::POWER_UP_REQ req;
+        
+        req.BOOT_OPTIONS.FUNC = 1;
+        //req.XTAL_OPTIONS.TCXO = 1;
+        req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
+        
+        uint8_t retVal = Command_POWER_UP(req);
+        
+        return retVal;
+    }
+
+    uint8_t CheckDevice()
+    {
+        uint8_t retVal = 0;
+
+        const uint8_t RESPONSE_LEN = 9;
+        uint8_t buf[RESPONSE_LEN] = { 0 };
+
+        const uint8_t COMMAND_PART_INFO = 0x01;
+        SendCommand(COMMAND_PART_INFO, nullptr, 0, buf, RESPONSE_LEN);
+
+        uint16_t partInfo = (buf[1] << 8) | buf[2];
+
+        if (partInfo == 0x4463)
+        {
+            retVal = 1;
+        }
+
+        return retVal;
+    }
+
+    void ReadConfig()
+    {
+        // setConfig(RF4463_CONFIGURATION_DATA,sizeof(RF4463_CONFIGURATION_DATA));
+        // Configuration parameters from "radio_config_Si4463.h"
+        static uint8_t RF4463_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
+
+        const uint8_t* parameters = RF4463_CONFIGURATION_DATA;
+        uint16_t paraLen = sizeof(RF4463_CONFIGURATION_DATA);
+
+        // command buf starts with length of command in RADIO_CONFIGURATION_DATA_ARRAY
+        uint8_t cmdLen;
+        uint8_t command;
+        uint16_t pos;
+        uint8_t buf[30];
+
+        // power up command had already send
+        paraLen=paraLen-1;
+        cmdLen=parameters[0];
+        pos=cmdLen+1;
+        
+        while(pos<paraLen)
+        {
+            cmdLen=parameters[pos++]-1;		// get command lend
+            command=parameters[pos++];		// get command
+            memcpy(buf,parameters+pos,cmdLen);		// get parameters
+            
+            //setCommand(cmdLen,command,buf);
+            {
+                uint8_t  cmd           = command;
+                uint8_t *cmdArgList    = buf;
+                uint8_t  cmdArgListLen = cmdLen;
+
+                SendCommand(cmd, cmdArgList, cmdArgListLen);
+            }
+
+            pos=pos+cmdLen;
+        }
+    }
+
+    void MoreConfig()
+    {
+        SetSequencerModeGuaranteed();
+
+        // TODO -- we do want CRCs, but 2 or 4 byte.
+        // Want to stop reading in the radio config.
+        // Then figure out how to tune this.
+        SetPacketCRC();
+        
+        // TODO -- stop using this as-is and work out a specific packet format
+        // that you want.
+        SetPacketRxVariableLenConfiguration();
+        
+        // TODO -- stop using this as-is and work out a specific packet format
+        // that you want.
+        SetPacketField2Configuration();
+
+        SetPacketField4And5Configuration();
+
+        // set max tx power
+        SetTxPower(127);
+    }
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Command Convenience Functions
+    //
+    ///////////////////////////////////////////////////////////////////
+    
+    uint8_t ClearInterrupts()
+    {
+        return CmdGetIntStatus_ClearInterrupts();
+    }
+
+    uint8_t ResetRxTxFifos()
+    {
+        return CmdFifoInfo_ResetRxTxFifos();
+    }
+
+
+    uint8_t SetTxPowerInternal(uint8_t power)
     {
         uint8_t retVal = 0;
 
@@ -152,6 +462,195 @@ public:
         return retVal;
     }
 
+
+
+
+uint8_t ReadRxFifo(uint8_t* databuf)
+{
+	if(!checkCTS())
+		return 0;
+	uint8_t readLen;
+    PAL.DigitalWrite(pinChipSelect_, LOW);
+	spiByte(RF4463_CMD_RX_FIFO_READ);
+	spiReadBuf(1,&readLen);
+	spiReadBuf(readLen,databuf);
+    PAL.DigitalWrite(pinChipSelect_, HIGH);
+	return readLen;
+}
+
+
+void writeTxFifo(uint8_t* databuf,uint8_t length)
+{
+    SetPacketField2Length(length);
+
+	setCommandStart();
+	setCommandWriteCommand(RF4463_CMD_TX_FIFO_WRITE);
+	setCommandWriteBuffer(1, &length);
+	setCommandWriteBuffer(length, databuf);
+	setCommandEnd();
+}
+
+
+
+
+
+
+
+void enterTxMode()
+{
+	uint8_t buf[]={0x00,0x30,0x00,0x00};
+	buf[0]=RF4463_FREQ_CHANNEL;
+	setCommand(4,RF4463_CMD_START_TX ,buf);
+}
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Command Primitives
+    //
+    ///////////////////////////////////////////////////////////////////
+
+    uint8_t CmdStartRx_UsePktFieldConfigForSizing()
+    {
+        uint8_t retVal = 0;
+
+        // Cmd START_RX
+        uint8_t cmd = 0x32;
+        uint8_t buf[] = {
+            // CHANNEL -- just leave at 0 to avoid questions around what channel to use
+            0x00,
+
+            // CONDITION
+            //   UPDATE - apply now, not for the future
+            //   START  - start rx immediately
+            0x00,
+
+            // RX_LEN -- use the PKT_FIELD_X_LENGTH properties
+            0x00,
+            0x00,
+            
+            // NEXT_STATE1
+            //   RXTIMEOUT_STATE[3:0] --
+            //     what to do if preamble detection times out.  0 = stay in RX.
+            0x00,
+
+            // NEXT_STATE2
+            //   RXVALID_STATE[3:0] --
+            //     go to what state when a valid packet recieved?
+            //     8 = re-arm to receive next packet
+            0x08,
+
+            // NEXT_STATE3
+            //   RXINVALID_STATE[3:0] --
+            //     go to what state when an invalid packet received?
+            //     8 = re-arm to receive next packet
+            0x08,
+        };
+        uint8_t bufLen = sizeof(buf);
+
+        retVal = SendCommand(cmd, buf, bufLen);
+
+        return retVal;
+    }
+
+
+    uint16_t CmdGetPhStatus_Debug()
+    {
+        // Cmd GET_PH_STATUS
+        uint8_t cmd = 0x21;
+        uint16_t bufRep;
+        uint8_t bufRepLen = sizeof(bufRep);
+
+        SendAndWaitAndReceive(cmd, nullptr, 0, (uint8_t *)&bufRep, bufRepLen);
+
+        return bufRep;
+    }
+
+    uint8_t CmdGetIntStatus_ClearInterrupts()
+    {
+        uint8_t retVal = 0;
+
+        // Cmd GET_INT_STATUS
+        // Basically set all interrupt indications to zero to clear them out
+        uint8_t cmd = 0x20;
+        uint8_t buf[] = {
+            // PH_CLR_PEND
+            0x00,
+            // MODEM_CLR_PEND
+            0x00,
+            // CHIP_CLR_PEND
+            0x00,
+        };
+        uint8_t bufLen = sizeof(buf);
+
+        retVal = SendCommand(cmd, buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t CmdFifoInfo_GetCountsDebug()
+    {
+        uint8_t retVal = 0;
+
+        // Cmd FIFO_INFO
+        uint8_t cmd = 0x15;
+        uint8_t bufRep[2] = { 0 };
+        uint8_t bufRepLen = sizeof(bufRep);
+
+        retVal = SendAndWaitAndReceive(cmd, nullptr, 0, bufRep, bufRepLen);
+
+        Log("RX_FIFO_COUNT: ", bufRep[0]);
+        Log("TX_FIFO_SPACE: ", bufRep[1]);
+
+        return retVal;
+    }
+
+    uint8_t CmdFifoInfo_ResetRxTxFifos()
+    {
+        uint8_t retVal = 0;
+
+        // Cmd FIFO_INFO
+        uint8_t cmd = 0x15;
+        uint8_t buf[] = {
+            // FIFO
+            //       1 = Reset TX FIFO
+            //      1  = Reset RX FIFO
+            0b00000011,
+        };
+        uint8_t bufLen = sizeof(buf);
+
+        retVal = SendCommand(cmd, buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t CmdChangeState_StandbyMode()
+    {
+        uint8_t retVal = 0;
+
+        // Cmd CHANGE_STATE
+        uint8_t cmd = 0x34;
+        uint8_t buf[] = {
+            // NEW_STATE
+            //   1 = SLEEP
+            0x01,
+        };
+        uint8_t bufLen = sizeof(buf);
+
+        retVal = SendCommand(cmd, buf, bufLen);
+
+        return retVal;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Property Convenience Functions
+    //
+    ///////////////////////////////////////////////////////////////////
+
     uint8_t SetRxInterrupt()
     {
         uint8_t retVal = 0;
@@ -159,9 +658,22 @@ public:
         uint8_t  group   = 0x01;
         uint8_t  propIdx = 0x00;
         uint8_t  buf[]   = {
-            0x03,   // INT_CTL
-            0x18,   // INT_CTL_PH_ENABLE
-            0x00,   // INT_CTL_MODEM_ENABLE
+            // INT_CTL_ENABLE (0x04 default)
+            //   CHIP_INT_STATUS_EN (1 = default)
+            //     0 = disable
+            //   MODEM_INT_STATUS_EN (0 = default)
+            //     0 = disable
+            //   PH_INT_STATUS_EN (0 = default)
+            //     1 = TX mode can fire IRQ on interrupts
+            0x01,
+
+            // INT_CTL_PH_ENABLE (0x00 default) -- select which PH events trigger interrupts
+            //   PACKET_RX = 1
+            0x10,
+
+            // INT_CTL_MODEM_ENABLE (0x00 default) -- select which modem events trigger interrupts
+            //   disables all events
+            0x00,
         };
         uint8_t  bufLen  = sizeof(buf);
 
@@ -177,9 +689,22 @@ public:
         uint8_t  group   = 0x01;
         uint8_t  propIdx = 0x00;
         uint8_t  buf[]   = {
-            0x01,   // INT_CTL
-            0x20,   // INT_CTL_PH_ENABLE
-            0x00,   // INT_CTL_MODEM_ENABLE
+            // INT_CTL_ENABLE (0x04 default)
+            //   CHIP_INT_STATUS_EN (1 = default)
+            //     0 = disable
+            //   MODEM_INT_STATUS_EN (0 = default)
+            //     0 = disable
+            //   PH_INT_STATUS_EN (0 = default)
+            //     1 = TX mode can fire IRQ on interrupts
+            0x01,
+
+            // INT_CTL_PH_ENABLE (0x00 default) -- select which PH events trigger interrupts
+            //   PACKET_SENT_EN = 1
+            0x20,
+
+            // INT_CTL_MODEM_ENABLE (0x00 default) -- select which modem events trigger interrupts
+            //   disables all events
+            0x00,
         };
         uint8_t  bufLen  = sizeof(buf);
 
@@ -532,46 +1057,12 @@ public:
     }
 
 
+
     ///////////////////////////////////////////////////////////////////
     //
-    // Property getters/setters
-    //
-    // Working functions, but not used after removing use and letting
-    // defaults drive behavior
+    // Property Primitives
     //
     ///////////////////////////////////////////////////////////////////
-
-    uint8_t SetSyncWordList(uint8_t *syncWordList, uint8_t syncWordListLen)
-    {
-        uint8_t retVal = 0;
-
-        if (0 < syncWordListLen && syncWordListLen < 4)
-        {
-            {
-                // Set SYNC_CONFIG length
-                uint8_t group   = 0x11;
-                uint8_t propIdx = 0x00;
-                uint8_t buf     = syncWordListLen - 1;
-
-                retVal &= SetProperty(group, propIdx, &buf, 1);
-            }
-
-            // TODO -- why mess with these?
-            {
-                // Set SYNC_BITS values (up to 4)
-                uint8_t  group   = 0x11;
-                uint8_t  propIdx = 0x01;
-                uint8_t *buf     = syncWordList;
-                uint8_t  bufLen  = syncWordListLen;
-
-                retVal &= SetProperty(group, propIdx, buf, bufLen);
-            }
-        }
-
-        return retVal;
-    }
-
-
 
 
 
@@ -584,9 +1075,10 @@ public:
 
     ///////////////////////////////////////////////////////////////////
     //
-    // Shims
+    // Module Communication Primitives - Commands
     //
     ///////////////////////////////////////////////////////////////////
+
 
 bool setCommand(uint8_t length,uint8_t command,uint8_t* paraBuf)
 {
@@ -600,23 +1092,22 @@ bool setCommand(uint8_t length,uint8_t command,uint8_t* paraBuf)
 
 	return retVal;
 }
-bool checkCTS()
-{
-    uint16_t timeOutCnt;
-	timeOutCnt=RF4463_CTS_TIMEOUT;
-	while(timeOutCnt--)				// cts counter
-	{
-		PAL.DigitalWrite(pinChipSelect_, LOW);
-		spiByte(RF4463_CMD_READ_BUF);	// send READ_CMD_BUFF command
-		if (spiByte(0) == RF4463_CTS_REPLY)	// read CTS
-		{
-			PAL.DigitalWrite(pinChipSelect_, HIGH);
-			return true;
-		}
-		PAL.DigitalWrite(pinChipSelect_, HIGH);
-	}
-	return	false;
-}
+
+
+
+    uint8_t SendCommand(uint8_t  cmdId,
+                        uint8_t *buf,
+                        uint8_t  bufLen,
+                        uint8_t *bufRep = nullptr,
+                        uint8_t  bufRepLen = 0)
+    {
+        uint8_t ok = SendAndWaitAndReceive(cmdId, buf, bufLen, bufRep, bufRepLen);
+
+        return ok;
+    }
+
+
+
 bool setCommandStart()
 {
 	if(!checkCTS())
@@ -639,6 +1130,99 @@ void setCommandEnd()
 	PAL.DigitalWrite(pinChipSelect_, HIGH);
 }
 
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Module Communication Primitives - Properties
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+    {
+        uint8_t retVal = 0;
+
+        uint8_t bufReq[] = {
+            propGroup,
+            bufLen,
+            propIdx,
+        };
+
+        // Use the GET_PROPERTY command
+        retVal = SendCommand(0x12, bufReq, sizeof(bufReq), buf, bufLen);
+
+        return retVal;
+    }
+
+    uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+    {
+        uint8_t bufReqLen = bufLen + 3;
+        uint8_t bufReq[bufReqLen];
+
+        bufReq[0] = propGroup;
+        bufReq[1] = bufLen;
+        bufReq[2] = propIdx;
+
+        memcpy(&bufReq[3], buf, bufLen);
+
+        uint8_t ok = SendCommand(0x11, bufReq, bufReqLen);
+
+        return ok;
+    }
+
+    uint8_t ConfirmSetProperty(uint8_t group, uint8_t propIdx, uint8_t *buf, uint8_t bufLen)
+    {
+        uint8_t retVal = 1;
+
+        uint8_t beforeList[bufLen] = { 0 };
+        uint8_t afterList[bufLen] = { 0 };
+
+        GetProperty(group, propIdx, beforeList, bufLen);
+        SetProperty(group, propIdx, buf, bufLen);
+        GetProperty(group, propIdx, afterList, bufLen);
+
+        Log("group: ", group);
+        Log("propIdx: ", propIdx);
+        Log("count: ", bufLen);
+        for (uint8_t i = 0; i < bufLen; ++i)
+        {
+            Log(beforeList[i], "\t->\t", buf[i], "\t->\t", afterList[i]);
+
+            if (buf[i] != afterList[i])
+            {
+                retVal = 0;
+            }
+        }
+        Log("OK: ", retVal);
+
+        return retVal;
+    }
+
+
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // SPI / Module Electrical Primitives
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+bool waitnIRQ()
+{
+	//return !digitalRead(_nIRQPin);		// inquire interrupt
+
+    return !PAL.DigitalRead(pinIrq_);
+}
+
+
 uint8_t spiByte(uint8_t writeData)
 {
 	uint8_t readData;
@@ -658,438 +1242,126 @@ void spiReadBuf(uint8_t readLen,uint8_t* readBuf)
 }
 
 
-
-
-
-
-void fifoReset()
+bool checkCTS()
 {
-	uint8_t data=0x03;
-	setCommand(sizeof(data),RF4463_CMD_FIFO_INFO,&data);
-}
-
-void writeTxFifo(uint8_t* databuf,uint8_t length)
-{
-    SetPacketField2Length(length);
-
-	setCommandStart();
-	setCommandWriteCommand(RF4463_CMD_TX_FIFO_WRITE);
-	setCommandWriteBuffer(1, &length);
-	setCommandWriteBuffer(length, databuf);
-	setCommandEnd();
-}
-
-
-bool clrInterrupts()
-{
-    uint8_t buf[] = { 0x00, 0x00, 0x00 };  
-    return setCommand(sizeof(buf),RF4463_CMD_GET_INT_STATUS,buf);
-}
-
-void enterTxMode()
-{
-	uint8_t buf[]={0x00,0x30,0x00,0x00};
-	buf[0]=RF4463_FREQ_CHANNEL;
-	setCommand(4,RF4463_CMD_START_TX ,buf);
-}
-
-
-bool waitnIRQ()
-{
-	//return !digitalRead(_nIRQPin);		// inquire interrupt
-
-    return !PAL.DigitalRead(pinIrq_);
+    uint16_t timeOutCnt;
+	timeOutCnt=RF4463_CTS_TIMEOUT;
+	while(timeOutCnt--)				// cts counter
+	{
+		PAL.DigitalWrite(pinChipSelect_, LOW);
+		spiByte(RF4463_CMD_READ_BUF);	// send READ_CMD_BUFF command
+		if (spiByte(0) == RF4463_CTS_REPLY)	// read CTS
+		{
+			PAL.DigitalWrite(pinChipSelect_, HIGH);
+			return true;
+		}
+		PAL.DigitalWrite(pinChipSelect_, HIGH);
+	}
+	return	false;
 }
 
 
 
-
-
-uint8_t ReadRxFifo(uint8_t* databuf)
-{
-	if(!checkCTS())
-		return 0;
-	uint8_t readLen;
-    PAL.DigitalWrite(pinChipSelect_, LOW);
-	spiByte(RF4463_CMD_RX_FIFO_READ);
-	spiReadBuf(1,&readLen);
-	spiReadBuf(readLen,databuf);
-    PAL.DigitalWrite(pinChipSelect_, HIGH);
-	return readLen;
-}
-
-
-
-
-void enterRxMode()
-{
-	uint8_t buf[]={0x00,0x00,0x00,0x00,0x00,0x08,0x08};
-	buf[0]=RF4463_FREQ_CHANNEL;
-	setCommand(7,RF4463_CMD_START_RX ,buf);
-}
-
-
-
-
-
-    ///////////////////////////////////////////////////////////////////
-    //
-    // Duplicating RF4463 interface
-    //
-    ///////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-    uint8_t init()
+    uint8_t SendAndWaitAndReceive(uint8_t  cmd,
+                                  uint8_t *reqBuf,
+                                  uint8_t  reqBufLen,
+                                  uint8_t *repBuf,
+                                  uint8_t  repBufLen)
     {
+        const uint8_t CMD_READ_CMD_BUFF = 0x44;
+    
+        const uint8_t VAL_TO_SEND_WHEN_READING = 0x00;
+        const uint8_t VAL_CLEAR_TO_SEND        = 0xFF;
+        
         uint8_t retVal = 0;
+        
+        //
+        // Step 1 -- Issue command
+        //
+        //SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
+        PAL.DigitalWrite(pinChipSelect_, LOW);
 
-        Log(P("init()"));
-
-        // This inits pins and SPI as the lib does
-        Init();
-
-        // The lib then does two things in one function call:
-        // powerOnReset();
-        // - power on reset
-        // - send power up command
-
-        PowerOnReset(); // mine is the same as theirs
-        Log(P("POR"));
-
-        // Their powerup is the same as mine, except they don't enable
-        // the TCXO for some reason (use XTAL)
-        //#define RF_POWER_UP 0x02, 0x01, 0x00, 0x01, 0xC9, 0xC3, 0x80
-        PowerUp2();
-        Log(P("PU2"));
-
-
-        // Should be able to communicate via SPI at this point, test it
-        retVal = CheckDevice();
-        if (retVal)
+        SPI.transfer(cmd);
+        
+        // Transfer as many command supplemental parameters as indicated
+        // (could be zero based on input, which is valid)
+        for (uint8_t i = 0; i < reqBufLen; ++i)
         {
-            Log("CheckDevice SUCCESS");
-        }
-        else
-        {
-            Log("CheckDevice FAIL");
+            SPI.transfer(reqBuf[i]);
         }
 
-
-        // The lib then sets the .h value config
-        ReadConfig();
-        Log(P("RC"));
-
-        MoreConfig();
-        Log(P("MC"));
-
-
-        return retVal;
-    }
-
-    uint8_t PowerUp2()
-    {
-        RFSI4463PRO::POWER_UP_REQ req;
+        // PAL.DelayMicroseconds(DELAY_US_BEFORE_CHIP_SELECT_RELEASE);
         
-        req.BOOT_OPTIONS.FUNC = 1;
-        //req.XTAL_OPTIONS.TCXO = 1;
-        req.XO_FREQ.XO_FREQ   = EXTERNAL_CRYSTAL_FREQ;
+        PAL.DigitalWrite(pinChipSelect_, HIGH);
+        //SPI.endTransaction();
         
-        uint8_t retVal = Command_POWER_UP(req);
-        
-        return retVal;
-    }
-
-    uint8_t CheckDevice()
-    {
-        uint8_t retVal = 0;
-
-        const uint8_t RESPONSE_LEN = 9;
-        uint8_t buf[RESPONSE_LEN] = { 0 };
-
-        const uint8_t COMMAND_PART_INFO = 0x01;
-        SendCommand(COMMAND_PART_INFO, nullptr, 0, buf, RESPONSE_LEN);
-
-        uint16_t partInfo = (buf[1] << 8) | buf[2];
-
-        if (partInfo == 0x4463)
+        //
+        // Step 2 -- Wait for chip to indicate that the result of the above
+        // command is complete and any data ready to read.
+        //
+        // This is done by issuing another command where:
+        // - issue the second command
+        // - wait for a CTS (clear to send) indication to be returned
+        //   (despite the fact that we're actually waiting to read, not send)
+        // - read however many bytes are expected
+        //
+        // If the chip indicates the results aren't ready to be read, start
+        // another complete transactional attempt to read again.
+        //
+        uint16_t readAttempts = 0;
+        uint8_t  rep          = !VAL_CLEAR_TO_SEND;
+        while (rep != VAL_CLEAR_TO_SEND && readAttempts < READ_ATTEMPT_LIMIT)
         {
-            retVal = 1;
-        }
-
-        return retVal;
-    }
-
-    void ReadConfig()
-    {
-        // setConfig(RF4463_CONFIGURATION_DATA,sizeof(RF4463_CONFIGURATION_DATA));
-        // Configuration parameters from "radio_config_Si4463.h"
-        static uint8_t RF4463_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
-
-        const uint8_t* parameters = RF4463_CONFIGURATION_DATA;
-        uint16_t paraLen = sizeof(RF4463_CONFIGURATION_DATA);
-
-        // command buf starts with length of command in RADIO_CONFIGURATION_DATA_ARRAY
-        uint8_t cmdLen;
-        uint8_t command;
-        uint16_t pos;
-        uint8_t buf[30];
-
-        // power up command had already send
-        paraLen=paraLen-1;
-        cmdLen=parameters[0];
-        pos=cmdLen+1;
-        
-        while(pos<paraLen)
-        {
-            cmdLen=parameters[pos++]-1;		// get command lend
-            command=parameters[pos++];		// get command
-            memcpy(buf,parameters+pos,cmdLen);		// get parameters
+            ++readAttempts;
             
-            //setCommand(cmdLen,command,buf);
-            {
-                uint8_t  cmd           = command;
-                uint8_t *cmdArgList    = buf;
-                uint8_t  cmdArgListLen = cmdLen;
+            //SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
+            PAL.DigitalWrite(pinChipSelect_, LOW);
 
-                SendCommand(cmd, cmdArgList, cmdArgListLen);
+            // Send command indicating we want to see the result of the previous
+            // command.
+            SPI.transfer(CMD_READ_CMD_BUFF);
+            
+            // Now wait for an indication that the result of the first command is
+            // actually ready to read.
+            rep = SPI.transfer(VAL_TO_SEND_WHEN_READING);
+
+            if (rep == VAL_CLEAR_TO_SEND)
+            {
+                retVal = 1;
+                
+                // Command result ready to read.
+                // Consume as many bytes of response as are expected
+                // (could be zero based on input, which is valid)
+                for (uint8_t i = 0; i < repBufLen; ++i)
+                {
+                    repBuf[i] = SPI.transfer(VAL_TO_SEND_WHEN_READING);
+                }
             }
 
-            pos=pos+cmdLen;
+            // PAL.DelayMicroseconds(DELAY_US_BEFORE_CHIP_SELECT_RELEASE);
+            
+            PAL.DigitalWrite(pinChipSelect_, HIGH);
+            //SPI.endTransaction();
         }
-    }
-
-    void MoreConfig()
-    {
-        SetSequencerModeGuaranteed();
-
-        // TODO -- we do want CRCs, but 2 or 4 byte.
-        // Want to stop reading in the radio config.
-        // Then figure out how to tune this.
-        SetPacketCRC();
         
-        // TODO -- stop using this as-is and work out a specific packet format
-        // that you want.
-        SetPacketRxVariableLenConfiguration();
-        
-        // TODO -- stop using this as-is and work out a specific packet format
-        // that you want.
-        SetPacketField2Configuration();
-
-        SetPacketField4And5Configuration();
-
-        // set max tx power
-        SetTxPower(127);
+        return retVal;
     }
 
 
 
-
-bool enterStandbyMode()
-{
-    uint8_t data=0x01;
-    return setCommand(1,RF4463_CMD_CHANGE_STATE,&data);
-}
-
-bool rxInit()
-{		
-	uint8_t length;
-	length=50;
-	SetPacketField2Length(length);
-    fifoReset();				// clr fifo
-    SetRxInterrupt();
-	clrInterrupts();			// clr int factor	
-	enterRxMode();				// enter RX mode
-	return true;
-}
-
-
-uint8_t rxPacket(uint8_t *recvbuf)
-{
-	uint8_t rxLen;
-	rxLen=ReadRxFifo(recvbuf);			// read data from fifo
-	fifoReset();						// clr fifo
-
-	return rxLen;
-}
-
-
-bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
-{
-	uint8_t retVal = 0;
-
-	uint16_t txTimer;
-
-	fifoReset();		 				// clr fifo
-	writeTxFifo(sendbuf,sendLen);		// load data to fifo	
-	SetTxInterrupt();
-	clrInterrupts();					// clr int factor	
-	enterTxMode();						// enter TX mode
-
-	if (!syncSend)
-	{
-		retVal = true;
-	}
-	else
-	{
-		txTimer=RF4463_TX_TIMEOUT;
-		while(txTimer--)
-		{
-			if(waitnIRQ())					// wait INT
-			{
-				retVal = 1;
-			}
-			else
-			{
-				delay(1);
-			}
-		}
-
-		if (!retVal)
-		{
-			init();								// reset RF4463 if tx time out
-		}
-	}
-
-	return retVal;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Unclassified
+    //
+    ///////////////////////////////////////////////////////////////////
+
+
+
+    ///////////////////////////////////////////////////////////////////
+    //
+    // Legacy
+    //
+    ///////////////////////////////////////////////////////////////////
     
     void Init()
     {
@@ -1171,63 +1443,8 @@ bool txPacket(uint8_t* sendbuf,uint8_t sendLen, uint8_t syncSend)
 
 
 
-    uint8_t SendCommand(uint8_t  cmdId,
-                        uint8_t *buf,
-                        uint8_t  bufLen,
-                        uint8_t *bufRep = nullptr,
-                        uint8_t  bufRepLen = 0)
-    {
-        uint8_t ok = SendAndWaitAndReceive(cmdId, buf, bufLen, bufRep, bufRepLen);
-
-        return ok;
-    }
 
 
-
-    
-    // uint8_t SetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t value)
-    // {
-    //     RFSI4463PRO::SET_PROPERTY_REQ req;
-        
-    //     req.GROUP.GROUP           = propGroup;
-    //     req.NUM_PROPS.NUM_PROPS   = 1;
-    //     req.START_PROP.START_PROP = propIdx;
-    //     req.DATA0.DATA0           = value;
-        
-    //     uint8_t retVal = Command_SET_PROPERTY(req);
-        
-    //     return retVal;
-    // }
-    
-    uint8_t GetProperty(uint8_t propGroup, uint8_t propIdx, uint8_t &value)
-    {
-        RFSI4463PRO::GET_PROPERTY_REQ req;
-        RFSI4463PRO::GET_PROPERTY_REP rep;
-        
-        req.GROUP.GROUP           = propGroup;
-        req.NUM_PROPS.NUM_PROPS   = 1;
-        req.START_PROP.START_PROP = propIdx;
-        
-        uint8_t retVal = Command_GET_PROPERTY(req, rep);
-        
-        if (retVal)
-        {
-            value = rep.DATA0.DATA0;
-        }
-        
-        return retVal;
-    }
-
-    
-    uint8_t ClearInterrupts()
-    {
-        RFSI4463PRO::GET_INT_STATUS_REQ req;
-        RFSI4463PRO::GET_INT_STATUS_REP rep;
-
-        uint8_t retVal = Command_GET_INT_STATUS(req, rep);
-        
-        return retVal;
-    }
     
     
     ///////////////////////////////////////////////////////////////////////////
@@ -1530,90 +1747,7 @@ private:
         */
     }
 
-    uint8_t SendAndWaitAndReceive(uint8_t  cmd,
-                                  uint8_t *reqBuf,
-                                  uint8_t  reqBufLen,
-                                  uint8_t *repBuf,
-                                  uint8_t  repBufLen)
-    {
-        const uint8_t CMD_READ_CMD_BUFF = 0x44;
-    
-        const uint8_t VAL_TO_SEND_WHEN_READING = 0x00;
-        const uint8_t VAL_CLEAR_TO_SEND        = 0xFF;
-        
-        uint8_t retVal = 0;
-        
-        //
-        // Step 1 -- Issue command
-        //
-        //SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
-        PAL.DigitalWrite(pinChipSelect_, LOW);
 
-        SPI.transfer(cmd);
-        
-        // Transfer as many command supplemental parameters as indicated
-        // (could be zero based on input, which is valid)
-        for (uint8_t i = 0; i < reqBufLen; ++i)
-        {
-            SPI.transfer(reqBuf[i]);
-        }
-
-        // PAL.DelayMicroseconds(DELAY_US_BEFORE_CHIP_SELECT_RELEASE);
-        
-        PAL.DigitalWrite(pinChipSelect_, HIGH);
-        //SPI.endTransaction();
-        
-        //
-        // Step 2 -- Wait for chip to indicate that the result of the above
-        // command is complete and any data ready to read.
-        //
-        // This is done by issuing another command where:
-        // - issue the second command
-        // - wait for a CTS (clear to send) indication to be returned
-        //   (despite the fact that we're actually waiting to read, not send)
-        // - read however many bytes are expected
-        //
-        // If the chip indicates the results aren't ready to be read, start
-        // another complete transactional attempt to read again.
-        //
-        uint16_t readAttempts = 0;
-        uint8_t  rep          = !VAL_CLEAR_TO_SEND;
-        while (rep != VAL_CLEAR_TO_SEND && readAttempts < READ_ATTEMPT_LIMIT)
-        {
-            ++readAttempts;
-            
-            //SPI.beginTransaction(SPISettings(SPI_SPEED, SPI_BIT_ORIENTATION, SPI_MODE));
-            PAL.DigitalWrite(pinChipSelect_, LOW);
-
-            // Send command indicating we want to see the result of the previous
-            // command.
-            SPI.transfer(CMD_READ_CMD_BUFF);
-            
-            // Now wait for an indication that the result of the first command is
-            // actually ready to read.
-            rep = SPI.transfer(VAL_TO_SEND_WHEN_READING);
-
-            if (rep == VAL_CLEAR_TO_SEND)
-            {
-                retVal = 1;
-                
-                // Command result ready to read.
-                // Consume as many bytes of response as are expected
-                // (could be zero based on input, which is valid)
-                for (uint8_t i = 0; i < repBufLen; ++i)
-                {
-                    repBuf[i] = SPI.transfer(VAL_TO_SEND_WHEN_READING);
-                }
-            }
-
-            // PAL.DelayMicroseconds(DELAY_US_BEFORE_CHIP_SELECT_RELEASE);
-            
-            PAL.DigitalWrite(pinChipSelect_, HIGH);
-            //SPI.endTransaction();
-        }
-        
-        return retVal;
-    }
 
 private:
 
