@@ -682,7 +682,7 @@
 /// \endcode
 /// Caution: the actual radiated power output will depend heavily on the power supply voltage and the antenna.
 
-class RH_RF24 : public RHSPIDriver
+class RH_RF24_mod : public RHSPIDriver
 {
 public:
     /// \brief Defines property values for a set of modem configuration registers
@@ -852,7 +852,7 @@ public:
     ///                     Connecting SDN directly to ground does not aloways provide reliable radio startup.
     /// \param[in] spi Pointer to the SPI interface object to use. 
     ///                Defaults to the standard Arduino hardware SPI interface
-    RH_RF24(uint8_t slaveSelectPin = SS, uint8_t interruptPin = 2, uint8_t sdnPin = 9, RHGenericSPI& spi = hardware_spi);
+    RH_RF24_mod(uint8_t slaveSelectPin = SS, uint8_t interruptPin = 2, uint8_t sdnPin = 9, RHGenericSPI& spi = hardware_spi);
   
     /// Initialises this instance and the radio module connected to it.
     /// The following steps are taken:
@@ -1114,7 +1114,7 @@ private:
     static void         isr2();
 
     /// Array of instances connected to interrupts 0 and 1
-    static RH_RF24*     _deviceForInterrupt[];
+    static RH_RF24_mod*     _deviceForInterrupt[];
 
     /// Index of next interrupt number to use in _deviceForInterrupt
     static uint8_t      _interruptCount;

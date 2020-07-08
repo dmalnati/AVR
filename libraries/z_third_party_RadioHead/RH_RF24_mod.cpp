@@ -3,7 +3,7 @@
 // Copyright (C) 2011 Mike McCauley
 // $Id: RH_RF24.cpp,v 1.24 2019/09/02 05:21:52 mikem Exp $
 
-#include <RH_RF24.h>
+#include <RH_RF24_mod.h>
 
 // Use one of the pre-built radio configuration files
 // You can use other WDS generated sample configs accorinding to your needs
@@ -19,14 +19,14 @@
 // Interrupt vectors for the 3 Arduino interrupt pins
 // Each interrupt can be handled by a different instance of RH_RF24, allowing you to have
 // 2 or more RF24s per Arduino
-RH_RF24* RH_RF24::_deviceForInterrupt[RH_RF24_NUM_INTERRUPTS] = {0, 0, 0};
-uint8_t RH_RF24::_interruptCount = 0; // Index into _deviceForInterrupt for next device
+RH_RF24_mod* RH_RF24_mod::_deviceForInterrupt[RH_RF24_NUM_INTERRUPTS] = {0, 0, 0};
+uint8_t RH_RF24_mod::_interruptCount = 0; // Index into _deviceForInterrupt for next device
 
 // This configuration data is defined in radio_config_Si4460.h 
 // which was generated with the Silicon Labs WDS program
 PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
 
-RH_RF24::RH_RF24(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
+RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
     :
     RHSPIDriver(slaveSelectPin, spi)
 {
@@ -36,12 +36,12 @@ RH_RF24::RH_RF24(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, R
     _myInterruptIndex = 0xff; // Not allocated yet
 }
 
-void RH_RF24::setIdleMode(uint8_t idleMode)
+void RH_RF24_mod::setIdleMode(uint8_t idleMode)
 {
     _idleMode = idleMode;
 }
 
-bool RH_RF24::init()
+bool RH_RF24_mod::init()
 {
     if (!RHSPIDriver::init())
 	return false;
@@ -159,7 +159,7 @@ bool RH_RF24::init()
 }
 
 // C++ level interrupt handler for this instance
-void RH_RF24::handleInterrupt()
+void RH_RF24_mod::handleInterrupt()
 {
     uint8_t status[8];
     command(RH_RF24_CMD_GET_INT_STATUS, NULL, 0, status, sizeof(status));
@@ -229,7 +229,7 @@ void RH_RF24::handleInterrupt()
 }
 
 // Check whether the latest received message is complete and uncorrupted
-void RH_RF24::validateRxBuf()
+void RH_RF24_mod::validateRxBuf()
 {
     // Validate headers etc
     if (_bufLen >= RH_RF24_HEADER_LEN)
@@ -249,13 +249,13 @@ void RH_RF24::validateRxBuf()
     }
 }
 
-bool RH_RF24::clearRxFifo()
+bool RH_RF24_mod::clearRxFifo()
 {
     uint8_t fifo_clear[] = { 0x02 };
     return command(RH_RF24_CMD_FIFO_INFO, fifo_clear, sizeof(fifo_clear));
 }
 
-void RH_RF24::clearBuffer()
+void RH_RF24_mod::clearBuffer()
 {
     _bufLen = 0;
     _txBufSentIndex = 0;
@@ -265,23 +265,23 @@ void RH_RF24::clearBuffer()
 // These are low level functions that call the interrupt handler for the correct
 // instance of RH_RF24.
 // 3 interrupts allows us to have 3 different devices
-void RH_INTERRUPT_ATTR RH_RF24::isr0()
+void RH_INTERRUPT_ATTR RH_RF24_mod::isr0()
 {
     if (_deviceForInterrupt[0])
 	_deviceForInterrupt[0]->handleInterrupt();
 }
-void RH_INTERRUPT_ATTR RH_RF24::isr1()
+void RH_INTERRUPT_ATTR RH_RF24_mod::isr1()
 {
     if (_deviceForInterrupt[1])
 	_deviceForInterrupt[1]->handleInterrupt();
 }
-void RH_INTERRUPT_ATTR RH_RF24::isr2()
+void RH_INTERRUPT_ATTR RH_RF24_mod::isr2()
 {
     if (_deviceForInterrupt[2])
 	_deviceForInterrupt[2]->handleInterrupt();
 }
 
-bool RH_RF24::available()
+bool RH_RF24_mod::available()
 {
     if (_mode == RHModeTx)
 	return false;
@@ -290,7 +290,7 @@ bool RH_RF24::available()
     return _rxBufValid;
 }
 
-bool RH_RF24::recv(uint8_t* buf, uint8_t* len)
+bool RH_RF24_mod::recv(uint8_t* buf, uint8_t* len)
 {
     if (!available())
 	return false;
@@ -307,7 +307,7 @@ bool RH_RF24::recv(uint8_t* buf, uint8_t* len)
     return true;
 }
 
-bool RH_RF24::send(const uint8_t* data, uint8_t len)
+bool RH_RF24_mod::send(const uint8_t* data, uint8_t len)
 {
     if (len > RH_RF24_MAX_MESSAGE_LEN)
 	return false;
@@ -343,7 +343,7 @@ bool RH_RF24::send(const uint8_t* data, uint8_t len)
 }
 
 // This is different to command() since we must not wait for CTS
-bool RH_RF24::writeTxFifo(uint8_t *data, uint8_t len)
+bool RH_RF24_mod::writeTxFifo(uint8_t *data, uint8_t len)
 {
     ATOMIC_BLOCK_START;
     // First send the command
@@ -359,7 +359,7 @@ bool RH_RF24::writeTxFifo(uint8_t *data, uint8_t len)
     return true;
 }
 
-void RH_RF24::sendNextFragment()
+void RH_RF24_mod::sendNextFragment()
 {
     if (_txBufSentIndex < _bufLen)
     {
@@ -377,7 +377,7 @@ void RH_RF24::sendNextFragment()
     }
 }
 
-void RH_RF24::readNextFragment()
+void RH_RF24_mod::readNextFragment()
 {
     // Get the packet length from the RX FIFO length
     uint8_t fifo_info[1];
@@ -407,13 +407,13 @@ void RH_RF24::readNextFragment()
     _bufLen += fifo_len;
 }
 
-uint8_t RH_RF24::maxMessageLength()
+uint8_t RH_RF24_mod::maxMessageLength()
 {
     return RH_RF24_MAX_MESSAGE_LEN;
 }
 
 // Sets registers from a canned modem configuration structure
-void RH_RF24::setModemRegisters(const ModemConfig* config)
+void RH_RF24_mod::setModemRegisters(const ModemConfig* config)
 {
 #ifdef RH_HAVE_SERIAL
   Serial.println("Programming Error: setModemRegisters is obsolete. Generate custom radio config file with WDS instead");
@@ -423,7 +423,7 @@ void RH_RF24::setModemRegisters(const ModemConfig* config)
 
 // Set one of the canned Modem configs
 // Returns true if its a valid choice
-bool RH_RF24::setModemConfig(ModemConfigChoice index)
+bool RH_RF24_mod::setModemConfig(ModemConfigChoice index)
 {
 #ifdef RH_HAVE_SERIAL
   Serial.println("Programming Error: setModemRegisters is obsolete. Generate custom radio config file with WDS instead");
@@ -432,14 +432,14 @@ bool RH_RF24::setModemConfig(ModemConfigChoice index)
   return false;
 }
 
-void RH_RF24::setPreambleLength(uint16_t bytes)
+void RH_RF24_mod::setPreambleLength(uint16_t bytes)
 {
     uint8_t config[] = { (uint8_t)bytes, 0x14, 0x00, 0x00, 
 			 RH_RF24_PREAMBLE_FIRST_1 | RH_RF24_PREAMBLE_LENGTH_BYTES | RH_RF24_PREAMBLE_STANDARD_1010};
     set_properties(RH_RF24_PROPERTY_PREAMBLE_TX_LENGTH, config, sizeof(config));
 }
 
-bool RH_RF24::setCRCPolynomial(CRCPolynomial polynomial)
+bool RH_RF24_mod::setCRCPolynomial(CRCPolynomial polynomial)
 {
     if (polynomial >= CRC_NONE &&
 	polynomial <= CRC_Castagnoli)
@@ -452,7 +452,7 @@ bool RH_RF24::setCRCPolynomial(CRCPolynomial polynomial)
 	return false;
 }
 
-void RH_RF24::setSyncWords(const uint8_t* syncWords, uint8_t len)
+void RH_RF24_mod::setSyncWords(const uint8_t* syncWords, uint8_t len)
 {
     if (len > 4 || len < 1)
 	return;
@@ -461,7 +461,7 @@ void RH_RF24::setSyncWords(const uint8_t* syncWords, uint8_t len)
     set_properties(RH_RF24_PROPERTY_SYNC_CONFIG, config, sizeof(config));
 }
 
-bool RH_RF24::setFrequency(float centre, float afcPullInRange)
+bool RH_RF24_mod::setFrequency(float centre, float afcPullInRange)
 {
   (void)afcPullInRange; // Not used
     // See Si446x Data Sheet section 5.3.1
@@ -528,7 +528,7 @@ bool RH_RF24::setFrequency(float centre, float afcPullInRange)
     return set_properties(RH_RF24_PROPERTY_FREQ_CONTROL_INTE, freq_control, sizeof(freq_control));
 }
 
-void RH_RF24::setModeIdle()
+void RH_RF24_mod::setModeIdle()
 {
     if (_mode != RHModeIdle)
     {
@@ -542,7 +542,7 @@ void RH_RF24::setModeIdle()
     }
 }
 
-bool RH_RF24::sleep()
+bool RH_RF24_mod::sleep()
 {
     if (_mode != RHModeSleep)
     {
@@ -556,7 +556,7 @@ bool RH_RF24::sleep()
     return true;
 }
 
-void RH_RF24::setModeRx()
+void RH_RF24_mod::setModeRx()
 {
     if (_mode != RHModeRx)
     {
@@ -577,7 +577,7 @@ void RH_RF24::setModeRx()
     }
 }
 
-void RH_RF24::setModeTx()
+void RH_RF24_mod::setModeTx()
 {
     if (_mode != RHModeTx)
     {
@@ -592,7 +592,7 @@ void RH_RF24::setModeTx()
     }
 }
 
-void RH_RF24::setTxPower(uint8_t power)
+void RH_RF24_mod::setTxPower(uint8_t power)
 {
     uint8_t pa_bias_clkduty = 0;
     // These calculations valid for advertised power from Si chips at Vcc = 3.3V
@@ -625,7 +625,7 @@ void RH_RF24::setTxPower(uint8_t power)
 }
 
 // Caution: There was a bug in A1 hardware that will not handle 1 byte commands. 
-bool RH_RF24::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_len, uint8_t* read_buf, uint8_t read_len)
+bool RH_RF24_mod::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_len, uint8_t* read_buf, uint8_t read_len)
 {
     bool   done = false;
 
@@ -673,7 +673,7 @@ bool RH_RF24::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_len, 
     return done; // False if too many attempts at CTS
 }
 
-bool RH_RF24::configure(const uint8_t* commands)
+bool RH_RF24_mod::configure(const uint8_t* commands)
 {
     // Command strings are constructed in radio_config_Si4460.h 
     // Each command starts with a count of the bytes in that command:
@@ -690,7 +690,7 @@ bool RH_RF24::configure(const uint8_t* commands)
     return true;
 }
 
-void RH_RF24::power_on_reset()
+void RH_RF24_mod::power_on_reset()
 {
     // Sigh: its necessary to control the SDN pin to reset this ship. 
     // Tying it to GND does not produce reliable startups
@@ -702,13 +702,13 @@ void RH_RF24::power_on_reset()
     delay(10);
 }
 
-bool RH_RF24::cmd_clear_all_interrupts()
+bool RH_RF24_mod::cmd_clear_all_interrupts()
 {
     uint8_t write_buf[] = { 0x00, 0x00, 0x00 }; 
     return command(RH_RF24_CMD_GET_INT_STATUS, write_buf, sizeof(write_buf));
 }
 
-bool RH_RF24::set_properties(uint16_t firstProperty, const uint8_t* values, uint8_t count)
+bool RH_RF24_mod::set_properties(uint16_t firstProperty, const uint8_t* values, uint8_t count)
 {
     uint8_t buf[15];
 
@@ -721,7 +721,7 @@ bool RH_RF24::set_properties(uint16_t firstProperty, const uint8_t* values, uint
     return command(RH_RF24_CMD_SET_PROPERTY, buf, count + 3);
 }
 
-bool RH_RF24::get_properties(uint16_t firstProperty, uint8_t* values, uint8_t count)
+bool RH_RF24_mod::get_properties(uint16_t firstProperty, uint8_t* values, uint8_t count)
 {
     if (count > 16)
 	count = 16;
@@ -732,7 +732,7 @@ bool RH_RF24::get_properties(uint16_t firstProperty, uint8_t* values, uint8_t co
     return command(RH_RF24_CMD_GET_PROPERTY, buf, sizeof(buf), values, count);
 }
 
-float RH_RF24::get_temperature()
+float RH_RF24_mod::get_temperature()
 {
     uint8_t write_buf[] = { 0x10 };
     uint8_t read_buf[8];
@@ -742,7 +742,7 @@ float RH_RF24::get_temperature()
     return ((800 + read_buf[6]) / 4096.0) * temp_adc - ((read_buf[7] / 2) + 256);
 }
 
-float RH_RF24::get_battery_voltage()
+float RH_RF24_mod::get_battery_voltage()
 {
     uint8_t write_buf[] = { 0x08 };
     uint8_t read_buf[8];
@@ -752,7 +752,7 @@ float RH_RF24::get_battery_voltage()
     return 3.0 * battery_adc / 1280;
 }
 
-float RH_RF24::get_gpio_voltage(uint8_t gpio)
+float RH_RF24_mod::get_gpio_voltage(uint8_t gpio)
 {
     uint8_t write_buf[] = { 0x04 };
     uint8_t read_buf[8];
@@ -763,7 +763,7 @@ float RH_RF24::get_gpio_voltage(uint8_t gpio)
     return 3.0 * gpio_adc / 1280;
 }
 
-uint8_t RH_RF24::frr_read(uint8_t reg)
+uint8_t RH_RF24_mod::frr_read(uint8_t reg)
 {
     uint8_t ret;
 
@@ -780,7 +780,7 @@ uint8_t RH_RF24::frr_read(uint8_t reg)
 }
 
 // List of command replies to be printed by prinRegisters()
-PROGMEM static const RH_RF24::CommandInfo commands[] =
+PROGMEM static const RH_RF24_mod::CommandInfo commands[] =
 {
     { RH_RF24_CMD_PART_INFO,            8 },
     { RH_RF24_CMD_FUNC_INFO,            6 },
@@ -1010,7 +1010,7 @@ PROGMEM static const uint16_t properties[] =
 };
 #define	NUM_PROPERTIES (sizeof(properties)/sizeof(uint16_t))
 
-bool RH_RF24::printRegisters()
+bool RH_RF24_mod::printRegisters()
 {  
 #ifdef RH_HAVE_SERIAL
     uint8_t i;
