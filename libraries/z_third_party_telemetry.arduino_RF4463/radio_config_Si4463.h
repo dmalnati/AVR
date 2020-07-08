@@ -199,7 +199,19 @@
 //   PKT_FIELD_2_LENGTH_7_0 - Unsigned 13-bit Field 2 length value.
 //   PKT_FIELD_2_CONFIG - General data processing and packet configuration bits for Field 2.
 */
-#define RF_PKT_LEN_12 0x11, 0x12, 0x0C, 0x08, 0x00, 0x00, 0x00, 0x30, 0x30, 0x00, 0x07, 0x04, 0x80, 0x00, 0x00, 0x00
+#define RF_PKT_LEN_12 0x11, 0x12, 0x0C, 0x08, \
+        0x00,   /*    default          */ \
+        0x00,   /*    default          */            \
+        0x00,   /*    default          */            \
+        0x30,   /*    default          */            \
+        0x30,   /*    default          */            \
+        0x00,   /*    default          */            \
+        0x07,   /*    PKT_FIELD_1_LENGTH_7_0 - so... 7 bytes?          */            \
+        0x04,   /*    PKT_FIELD_1_CONFIG -  PN_START = 1, whiten=1, manch=1         */            \
+        0x80,   /*    PKT_FIELD_1_CRC_CONFIG - check CRC          */            \
+        0x00,   /*              */            \
+        0x00,   /*              */            \
+        0x00 \
 
 /*
 // Set properties:           RF_PKT_FIELD_2_CRC_CONFIG_12
@@ -577,37 +589,19 @@
 
 #ifndef FIRMWARE_LOAD_COMPILE
 #define RADIO_CONFIGURATION_DATA_ARRAY { \
+        /* only leave this here because config reader skips it */ \
         0x07, RF_POWER_UP, \
-        0x08, RF_GPIO_PIN_CFG, \
-        0x06, RF_GLOBAL_XO_TUNE_2, \
-        0x05, RF_GLOBAL_CONFIG_1, \
-        0x05, RF_INT_CTL_ENABLE_1, \
-        0x08, RF_FRR_CTL_A_MODE_4, \
-        0x0D, RF_PREAMBLE_TX_LENGTH_9, \
-        0x09, RF_SYNC_CONFIG_5, \
-        0x05, RF_PKT_CRC_CONFIG_1, \
-        0x08, RF_PKT_WHT_SEED_15_8_4, \
-        0x10, RF_PKT_LEN_12, \
-        0x10, RF_PKT_FIELD_2_CRC_CONFIG_12, \
-        0x10, RF_PKT_FIELD_5_CRC_CONFIG_12, \
-        0x0D, RF_PKT_RX_FIELD_3_CRC_CONFIG_9, \
+        \
         0x10, RF_MODEM_MOD_TYPE_12, \
         0x05, RF_MODEM_FREQ_DEV_0_1, \
         0x0C, RF_MODEM_TX_RAMP_DELAY_8, \
         0x0D, RF_MODEM_BCR_OSR_1_9, \
         0x0B, RF_MODEM_AFC_GEAR_7, \
-        0x05, RF_MODEM_AGC_CONTROL_1, \
-        0x0D, RF_MODEM_AGC_WINDOW_SIZE_9, \
+        \
         0x0D, RF_MODEM_OOK_CNT1_9, \
-        0x05, RF_MODEM_RSSI_CONTROL_1, \
-        0x05, RF_MODEM_RSSI_COMP_1, \
+        \
         0x05, RF_MODEM_CLKGEN_BAND_1, \
-        0x10, RF_MODEM_CHFLT_RX1_CHFLT_COE13_7_0_12, \
-        0x10, RF_MODEM_CHFLT_RX1_CHFLT_COE1_7_0_12, \
-        0x10, RF_MODEM_CHFLT_RX2_CHFLT_COE7_7_0_12, \
-        0x08, RF_PA_MODE_4, \
-        0x0B, RF_SYNTH_PFDCP_CPFF_7, \
-        0x10, RF_MATCH_VALUE_1_12, \
+        \
         0x0C, RF_FREQ_CONTROL_INTE_8, \
         0x00 \
  }
