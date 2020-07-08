@@ -265,6 +265,18 @@ void Log(LogBIN val)
 }
 
 
+void LogNNL(LogHEX val)
+{
+    val.LogNNL();
+}
+
+void Log(LogHEX val)
+{
+    LogNNL(val);
+    LogNL();
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //

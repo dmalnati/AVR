@@ -149,6 +149,54 @@ extern void LogNNL(LogBIN val);
 extern void Log(LogBIN val);
 
 
+class LogHEX
+{
+    friend void ::LogNNL(LogHEX);
+    
+public:
+    LogHEX(uint8_t val, uint8_t showPrefix = 1)
+    : showPrefix_(showPrefix)
+    , val_(val)
+    {
+        // Nothing to do
+    }
+    
+private:
+    
+    void LogNNL()
+    {
+        if (showPrefix_)
+        {
+            ::LogNNL("0x");
+        }
+
+        uint8_t buf[2] = {
+            (uint8_t)((val_ & 0xF0) >> 4),
+            (uint8_t)((val_ & 0x0F) >> 0),
+        };
+
+        for (uint8_t b : buf)
+        {
+            if (b <= 9)
+            {
+                ::LogNNL(b);
+            }
+            else
+            {
+                ::LogNNL((char)('A' + (b - 10)));
+            }
+        }
+    }
+
+    uint8_t showPrefix_;
+    uint8_t val_;
+};
+
+
+extern void LogNNL(LogHEX val);
+extern void Log(LogHEX val);
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Floating Point
