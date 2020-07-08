@@ -29,8 +29,9 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
 RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
     :
     RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin), spi)
+    //, ied_(interruptPin, LEVEL_FALLING)
 {
-    _interruptPin = PAL.GetArduinoPinFromPhysicalPin(interruptPin);
+    _interruptPin = interruptPin;
     _sdnPin = PAL.GetArduinoPinFromPhysicalPin(sdnPin);
     _idleMode = RH_RF24_DEVICE_STATE_READY;
     _myInterruptIndex = 0xff; // Not allocated yet
@@ -45,17 +46,6 @@ bool RH_RF24_mod::init()
 {
     if (!RHSPIDriver::init())
 	return false;
-
-    // Determine the interrupt number that corresponds to the interruptPin
-    int interruptNumber = digitalPinToInterrupt(_interruptPin);
-    if (interruptNumber == NOT_AN_INTERRUPT)
-	return false;
-#ifdef RH_ATTACHINTERRUPT_TAKES_PIN_NUMBER
-    interruptNumber = _interruptPin;
-#endif
-
-    // Tell the low level SPI interface we will use SPI within this interrupt
-    spiUsingInterrupt(interruptNumber);
 
     // Initialise the radio
     power_on_reset();
@@ -79,34 +69,11 @@ bool RH_RF24_mod::init()
     // We override a few things later that we ned to be sure of.
     configure(RF24_CONFIGURATION_DATA);
 
-    // Add by Adrien van den Bossche <vandenbo@univ-tlse2.fr> for Teensy
-    // ARM M4 requires the below. else pin interrupt doesn't work properly.
-    // On all other platforms, its innocuous, belt and braces
-    pinMode(_interruptPin, INPUT); 
-
     // Set up interrupt handler
-    // Since there are a limited number of interrupt glue functions isr*() available,
-    // we can only support a limited number of devices simultaneously
-    // ON some devices, notably most Arduinos, the interrupt pin passed in is actuallt the 
-    // interrupt number. You have to figure out the interruptnumber-to-interruptpin mapping
-    // yourself based on knwledge of what Arduino board you are running on.
-    if (_myInterruptIndex == 0xff)
-    {
-	// First run, no interrupt allocated yet
-	if (_interruptCount <= RH_RF24_NUM_INTERRUPTS)
-	    _myInterruptIndex = _interruptCount++;
-	else
-	    return false; // Too many devices, not enough interrupt vectors
-    }
-    _deviceForInterrupt[_myInterruptIndex] = this;
-    if (_myInterruptIndex == 0)
-	attachInterrupt(interruptNumber, isr0, FALLING);
-    else if (_myInterruptIndex == 1)
-	attachInterrupt(interruptNumber, isr1, FALLING);
-    else if (_myInterruptIndex == 2)
-	attachInterrupt(interruptNumber, isr2, FALLING);
-    else
-	return false; // Too many devices, not enough interrupt vectors
+    ied_.SetCallback([this](uint8_t){
+        handleInterrupt();
+    });
+    ied_.RegisterForPCIntEvent(_interruptPin, PCIntEventHandler::MODE::MODE_FALLING);
 
     // Ensure we get the interrupts we need, irrespective of whats in the radio_config
     uint8_t int_ctl[] = {RH_RF24_MODEM_INT_STATUS_EN | RH_RF24_PH_INT_STATUS_EN, 0xff, 0xff, 0x00 };
@@ -427,8 +394,8 @@ bool RH_RF24_mod::setModemConfig(ModemConfigChoice index)
 {
 #ifdef RH_HAVE_SERIAL
   Serial.println("Programming Error: setModemRegisters is obsolete. Generate custom radio config file with WDS instead");
-  (void)index; // Prevent warnings
 #endif
+  (void)index; // Prevent warnings
   return false;
 }
 

@@ -7,20 +7,29 @@
 // It is designed to work with the other example rf24_server.
 // Tested on Anarduino Mini http://www.anarduino.com/mini/ with RFM24W and RFM26W
 
+#include "Evm.h"
+#include "TimedEventHandler.h"
+
 #include <SPI.h>
 #include <RH_RF24_mod.h>
 
+static Evm::Instance<10,10,10> evm;
+static TimedEventHandlerDelegate ted;
+
 // Singleton instance of the radio driver
-static const uint8_t PIN_IRQ = 2;  // real pin 4;
-static const uint8_t PIN_SDN = 7;  // real pin 13;
-static const uint8_t PIN_SEL = 8;  // real pin 14;
-RH_RF24_mod rf24(PIN_SEL, PIN_IRQ, PIN_SDN);
+static const uint8_t PIN_IRQ = 12;  // mod supports real pin 12;
+static const uint8_t PIN_SDN = 13;  // mod supports real pin 13;
+static const uint8_t PIN_SEL = 14;  // mod supports real pin 14;
+static RH_RF24_mod rf24(PIN_SEL, PIN_IRQ, PIN_SDN);
+
 
 void setup() 
 {
-  Serial.begin(9600);
+  LogStart(9600);
+  Log("Starting");
+  
   if (!rf24.init())
-    Serial.println("init failed");
+    Log("init failed");
   // The default radio config is for 30MHz Xtal, 434MHz base freq 2GFSK 5kbps 10kHz deviation
   // power setting 0x10
   // If you want a different frequency mand or modulation scheme, you must generate a new
@@ -33,7 +42,10 @@ void setup()
 
 void loop()
 {
-  Serial.println("Sending to rf24_server");
+    ted.SetCallback([](){
+
+        
+  Log("Sending to rf24_server");
   // Send a message to rf24_server
   uint8_t data[] = "Hello World!";
   rf24.send(data, sizeof(data));
@@ -48,17 +60,24 @@ void loop()
     // Should be a reply message for us now   
     if (rf24.recv(buf, &len))
     {
-      Serial.print("got reply: ");
-      Serial.println((char*)buf);
+      Log("got reply: ", (char*)buf);
     }
     else
     {
-      Serial.println("recv failed");
+      Log("recv failed");
     }
   }
   else
   {
-    Serial.println("No reply, is rf24_server running?");
+    Log("No reply, is rf24_server running?");
   }
-  delay(400);
+  Log("");
+  
+    });
+  
+  ted.RegisterForTimedEventInterval(400, 0);
+
+  Log("MainLoop");
+  Log("");
+  evm.MainLoop();
 }

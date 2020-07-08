@@ -27,8 +27,9 @@
  * - support my core libraries
  * - take in real pin numbers, not arduino pin numbers
  *   - but convert to arduino internally
- * - support pin change interrupts instead of port interrupts
  * - Log not Serial
+ * - support pin change interrupts instead of port interrupts
+ * - Make efficient use of memory
  * 
  * Basically
  * - external interfaces work the way I am used to
@@ -38,7 +39,7 @@
 
 #include "PAL.h"
 #include "Log.h"
-
+#include "PCIntEventHandler.h"
 
 #include <RHGenericSPI.h>
 #include <RHSPIDriver.h>
@@ -1172,6 +1173,7 @@ private:
     /// Time in millis since the last preamble was received (and the last time the RSSI was measured)
     uint32_t            _lastPreambleTime;
 
+    PCIntEventHandlerDelegate ied_;
 };
 
 /// @example rf24_client.pde

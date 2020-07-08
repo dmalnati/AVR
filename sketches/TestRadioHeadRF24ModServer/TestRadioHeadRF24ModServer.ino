@@ -7,21 +7,27 @@
 // It is designed to work with the other example rf24_client
 // Tested on Anarduino Mini http://www.anarduino.com/mini/ with RFM24W and RFM26W
 
+#include "Evm.h"
+#include "TimedEventHandler.h"
+
 #include <SPI.h>
 #include <RH_RF24_mod.h>
 
+static Evm::Instance<10,10,10> evm;
+static TimedEventHandlerDelegate ted;
+
 // Singleton instance of the radio driver
-static const uint8_t PIN_IRQ = 2;  // real pin 4;
-static const uint8_t PIN_SDN = 7;  // real pin 13;
-static const uint8_t PIN_SEL = 8;  // real pin 14;
+static const uint8_t PIN_IRQ = 12;  // mod supports real pin 12;
+static const uint8_t PIN_SDN = 13;  // mod supports real pin 13;
+static const uint8_t PIN_SEL = 14;  // mod supports real pin 14;
 RH_RF24_mod rf24(PIN_SEL, PIN_IRQ, PIN_SDN);
 
 
 void setup() 
 {
-  Serial.begin(9600);
+  LogStart(9600);
   if (!rf24.init())
-    Serial.println("init failed");
+    Log("init failed");
   // The default radio config is for 30MHz Xtal, 434MHz base freq 2GFSK 5kbps 10kHz deviation
   // power setting 0x10
   // If you want a different frequency mand or modulation scheme, you must generate a new
@@ -33,6 +39,9 @@ void setup()
 
 void loop()
 {
+    ted.SetCallback([](){
+
+    
   if (rf24.available())
   {
     // Should be a message for us now   
@@ -41,8 +50,7 @@ void loop()
     if (rf24.recv(buf, &len))
     {
 //      RF24::printBuffer("request: ", buf, len);
-      Serial.print("got request: ");
-      Serial.println((char*)buf);
+      Log("got request: ", (char*)buf);
 //      Serial.print("RSSI: ");
 //      Serial.println((uint8_t)rf24.lastRssi(), DEC);
       
@@ -50,11 +58,19 @@ void loop()
       uint8_t data[] = "And hello back to you";
       rf24.send(data, sizeof(data));
       rf24.waitPacketSent();
-      Serial.println("Sent a reply");
+      Log("Sent a reply");
     }
     else
     {
-      Serial.println("recv failed");
+      Log("recv failed");
     }
   }
+
+    });
+  ted.RegisterForTimedEventInterval(400, 0);
+
+  Log("MainLoop");
+  Log("");
+  evm.MainLoop();
+    
 }
