@@ -7,6 +7,8 @@
 // It is designed to work with the other example rf24_server.
 // Tested on Anarduino Mini http://www.anarduino.com/mini/ with RFM24W and RFM26W
 
+#include "Log.h"
+#include "LogBlob.h"
 #include "Evm.h"
 #include "TimedEventHandler.h"
 
@@ -23,61 +25,72 @@ static const uint8_t PIN_SEL = 14;  // mod supports real pin 14;
 static RH_RF24_mod rf24(PIN_SEL, PIN_IRQ, PIN_SDN);
 
 
+
+void SendData()
+{
+    uint8_t data[] = "Hello World!";
+    Log("Sending data");
+    LogBlob(data, sizeof(data));
+    LogNL();
+    rf24.send(data, sizeof(data));
+}
+
+
 void setup() 
 {
-  LogStart(9600);
-  Log("Starting");
-  
-  if (!rf24.init())
-    Log("init failed");
-  // The default radio config is for 30MHz Xtal, 434MHz base freq 2GFSK 5kbps 10kHz deviation
-  // power setting 0x10
-  // If you want a different frequency mand or modulation scheme, you must generate a new
-  // radio config file as per the RH_RF24 module documentation and recompile
-  // You can change a few other things programatically:
-  //rf24.setFrequency(435.0); // Only within the same frequency band
-  //rf24.setTxPower(0x7f);
+    LogStart(9600);
+    Log("Starting");
+
+    rf24.SetOnMessageTransmittedCallback([](){
+        Log("Transmit complete");
+        
+        rf24.setModeRx();
+
+        // Set timeout for waiting for reply
+        uint32_t ms = 1000;
+        Log("Waiting for reply for ", ms, " ms");
+        LogNL();
+        ted.SetCallback([](){
+            Log("Haven't received response, trying again");
+    
+            SendData();
+        });
+        ted.RegisterForTimedEvent(ms);
+    });
+    
+    rf24.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufLen){
+        Log("Recieved reply");
+        LogBlob(buf, bufLen);
+        LogNL();
+
+        // Schedule next send (which also cancels giveup timer)
+        uint32_t ms = 1000;
+        Log("Waiting to send again for ", ms, " ms");
+        LogNL();
+        ted.SetCallback([](){
+            SendData();
+        });
+        ted.RegisterForTimedEvent(ms);
+    });
+        
+    if (!rf24.init())
+    {
+        Log("Init FAIL");
+    }
+    else
+    {
+        Log("Init OK");
+
+        SendData();
+        
+        Log("MainLoop");
+        Log("");
+        evm.MainLoop();
+    }
 }
 
 
 void loop()
 {
-    ted.SetCallback([](){
 
-        
-  Log("Sending to rf24_server");
-  // Send a message to rf24_server
-  uint8_t data[] = "Hello World!";
-  rf24.send(data, sizeof(data));
-  
-  rf24.waitPacketSent();
-  // Now wait for a reply
-  uint8_t buf[RH_RF24_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-
-  if (rf24.waitAvailableTimeout(500))
-  { 
-    // Should be a reply message for us now   
-    if (rf24.recv(buf, &len))
-    {
-      Log("got reply: ", (char*)buf);
-    }
-    else
-    {
-      Log("recv failed");
-    }
-  }
-  else
-  {
-    Log("No reply, is rf24_server running?");
-  }
-  Log("");
-  
-    });
-  
-  ted.RegisterForTimedEventInterval(400, 0);
-
-  Log("MainLoop");
-  Log("");
-  evm.MainLoop();
 }

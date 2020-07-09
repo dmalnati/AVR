@@ -37,6 +37,7 @@
  * 
  */
 
+#include "Function.h"
 #include "PAL.h"
 #include "Log.h"
 #include "PCIntEventHandler.h"
@@ -885,6 +886,16 @@ public:
     /// - Sets the tranmitter power level to 16 (about 2.4dBm on RFM4)
     /// \return  true if everything was successful
     bool        init();
+
+    void SetOnMessageReceivedCallback(function<void(uint8_t *buf, uint8_t bufSize)> rxCb)
+    {
+        rxCb_ = rxCb;
+    }
+
+    void SetOnMessageTransmittedCallback(function<void()> txCb)
+    {
+        txCb_ = txCb;
+    }
     
     /// Sets the chip mode that will be used when the RH_RF24 driver is idle (ie not transmitting or receiving)
     /// You can use this to control the power level consumed while idle, at the cost of slower
@@ -1174,6 +1185,9 @@ private:
     uint32_t            _lastPreambleTime;
 
     PCIntEventHandlerDelegate ied_;
+
+    function<void()>                             txCb_;
+    function<void(uint8_t *buf, uint8_t bufLen)> rxCb_;
 };
 
 /// @example rf24_client.pde

@@ -3,6 +3,8 @@
 // Copyright (C) 2011 Mike McCauley
 // $Id: RH_RF24.cpp,v 1.24 2019/09/02 05:21:52 mikem Exp $
 
+#include "Evm.h"
+
 #include <RH_RF24_mod.h>
 
 // Use one of the pre-built radio configuration files
@@ -165,6 +167,9 @@ void RH_RF24_mod::handleInterrupt()
 	    // RH_RF24 configured to transition automatically to Idle after packet sent
 	    _mode = RHModeIdle;
 	    clearBuffer();
+
+        // packet sent event, (not merely that the queue is almost empty)
+        Evm::GetInstance().RegisterEvmMessage(txCb_);
 	}
 	if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
 	{
@@ -181,6 +186,24 @@ void RH_RF24_mod::handleInterrupt()
 	    validateRxBuf();
 	    // Radio will have transitioned automatically to the _idleMode
 	    _mode = RHModeIdle;
+
+        if (available())
+        {
+            // packet received event
+            Evm::GetInstance().RegisterEvmMessage([this](){
+                // Duplicate recv() logic here
+
+                // CAUTION: first 4 octets of _buf contain the headers
+                if (_bufLen >= RH_RF24_HEADER_LEN)
+                {
+                    ATOMIC_BLOCK_START;
+                    rxCb_(_buf    + RH_RF24_HEADER_LEN,
+                          _bufLen - RH_RF24_HEADER_LEN);
+                    ATOMIC_BLOCK_END;
+                }
+                clearBuffer(); // Got the most recent message
+            });
+        }
 	}
 	if (status[2] & RH_RF24_INT_STATUS_TX_FIFO_ALMOST_EMPTY)
 	{
