@@ -15,10 +15,12 @@ static const uint8_t PIN_IRQ = 12;
 static const uint8_t PIN_SDN = 13;
 static const uint8_t PIN_SEL = 14;
 static RFLink r(PIN_IRQ, PIN_SDN, PIN_SEL);
-static RFLink4463_Raw &rr = *r.GetLinkRaw();
-static RFSI4463PRO &rf = r.GetRadio();
+static RFLink_Raw &rr = *r.GetLinkRaw();
+//static RH_RF24_mod &rf = r.GetRadio();
 
-Pin dbg(6, LOW);
+static uint8_t VERBOSE = 1;
+
+static Pin dbg(6, LOW);
 
 static char bufTx64[65] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -65,7 +67,6 @@ void OnCommand(char *cmdStr)
     else if (!strcmp_P(cmd, P("rawsa")))
     {
         console.Exec("somtc");
-        console.Exec("sss 0");
     }
 
     // Raw Receciver
@@ -80,6 +81,23 @@ void OnCommand(char *cmdStr)
     {
         console.Exec("somrcl");
         console.Exec("mr");
+    }
+
+    ///////////////////////////////////////////////////
+    //
+    // Misc
+    //
+    ///////////////////////////////////////////////////
+
+    else if (!strcmp_P(cmd, P("verbose")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+
+            VERBOSE = val;
+            Log(P("Verbose "), VERBOSE);
+        }
     }
 
     
@@ -99,6 +117,53 @@ void OnCommand(char *cmdStr)
     {
         Log(P("SetOnMessageReceivedCallback(Raw)"));
         rr.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufSize){
+            uint32_t timeDiff = PAL.Micros() - SEND_TIME_START;
+            
+            PAL.DigitalToggle(dbg);
+            PAL.DigitalToggle(dbg);
+            
+            char bufReq[] = "REQ_RTT";
+            char bufRep[] = "REP_RTT";
+
+            // check if we're getting a RTT request
+            if (bufSize == sizeof(bufReq))
+            {
+                if (!memcmp((uint8_t *)bufReq, buf, sizeof(bufReq)))
+                {
+                    SEND_TIME_START = PAL.Micros();
+
+
+                    /*
+                     * This isn't working for several reasons
+                     * - I think I'm replying and writing over the same buffer I'm receiving from
+                     *   - so probably need more copying
+                     * - Am I in an ISR?  I shouldn't be, but Delay isn't working.
+                     *   - Ahh, interrupts blocked.  Can I safely not block them?
+                     *     - If I'm receiving a packet rx event, can anything else affect the buffer?
+                     *     - What if I send before returning from that callback?
+                     *       - I think deep lib uses a single shared buffer
+                     * 
+                     */
+
+                    Log("Delaying");
+                    PAL.Delay(1000);
+                    PAL.DelayMicroseconds(10000ul);
+                    rr.Send((uint8_t *)bufRep, sizeof(bufRep));
+                    
+                    Log(P("Got REQ_RTT, sent REP_RTT"));
+                }
+            }
+
+            // check if we're getting a reply to a RTT
+            else if (bufSize == sizeof(bufRep))
+            {
+                if (!memcmp((uint8_t *)bufRep, buf, sizeof(bufRep)))
+                {
+                    Log(P("Got REP_RTT returned"));
+                    Log(P("  RTT: "), timeDiff, " us");
+                }
+            } 
+            
             Log(P("RxCbRaw - "), bufSize, P(" bytes"));
             LogBlob(buf, bufSize);
             LogNL();
@@ -108,35 +173,31 @@ void OnCommand(char *cmdStr)
     {
         Log(P("SetOnMessageTransmittedCallback"));
         r.SetOnMessageTransmittedCallback([](){
-            PAL.DigitalWrite(dbg, LOW);
-            Log(P("TxCb"));
             uint32_t timeDiff = PAL.Micros() - SEND_TIME_START;
-            Log(P("  Send time total: "), timeDiff, " us");
-            LogNL();
-        });
-    }
-    else if (!strcmp_P(cmd, P("sss")))
-    {
-        if (str.TokenCount(' ') == 2)
-        {
-            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
-            
-            Log(P("SetSendSync "), val);
+            PAL.DigitalWrite(dbg, LOW);
 
-            r.SetSendSync(val);
-        }
-    }
-    else if (!strcmp_P(cmd, P("mlp")))
-    {
-        Log(P("ModeLowPower"));
-        uint8_t retVal = r.ModeLowPower();
-        Log(P("  "), retVal);
+            if (VERBOSE)
+            {
+                Log(P("TxCb"));
+                Log(P("  Send time total: "), timeDiff, " us");
+                LogNL();
+            }
+        });
     }
     else if (!strcmp_P(cmd, P("mr")))
     {
         Log(P("ModeReceive"));
         uint8_t retVal = r.ModeReceive();
         Log(P("  "), retVal);
+    }
+    else if (!strcmp_P(cmd, P("rtt")))
+    {
+        char buf[] = "REQ_RTT";
+        
+        Log(P("RTT"));
+        PAL.DigitalWrite(dbg, HIGH);
+        SEND_TIME_START = PAL.Micros();
+        rr.Send((uint8_t *)buf, sizeof(buf));
     }
     else if (!strcmp_P(cmd, P("sendr")))
     {
@@ -147,7 +208,7 @@ void OnCommand(char *cmdStr)
         uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= 50)
+        if (bufSize != 0 && bufSize <= RFLink_Raw::MAX_PACKET_SIZE)
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -161,15 +222,18 @@ void OnCommand(char *cmdStr)
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
         LogBlob((uint8_t *)strSend, len);
         
-        SEND_TIME_START = PAL.Micros();
         PAL.DigitalWrite(dbg, HIGH);
+        SEND_TIME_START = PAL.Micros();
         uint8_t retVal = rr.Send((uint8_t *)strSend, len);
-        uint32_t timeAfterSend = PAL.Micros();
-        Log(P("  "), retVal);
-
-        uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-        Log(P("  Send time: "), timeDiff, " us");
-
+        
+        if (VERBOSE)
+        {
+            uint32_t timeAfterSend = PAL.Micros();
+            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+            Log(P("  "), retVal);
+            Log(P("  Send time: "), timeDiff, " us");
+        }
+        
         if (restoreByte)
         {
             bufTx64[bufSize] = cTmp;
@@ -227,7 +291,7 @@ void OnCommand(char *cmdStr)
             console.Exec("show");
         }
     }
-    else if (!strcmp_P(cmd, P("protid")))
+    else if (!strcmp_P(cmd, P("prot")))
     {
         if (str.TokenCount(' ') == 2)
         {
@@ -272,7 +336,7 @@ void OnCommand(char *cmdStr)
         uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= 50)
+        if (bufSize != 0 && bufSize <= RFLink::MAX_PACKET_SIZE)
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -316,7 +380,7 @@ void OnCommand(char *cmdStr)
             uint8_t bufSize = atoi(strSend);
             char cTmp = '\0';
             uint8_t restoreByte = 0;
-            if (bufSize != 0 && bufSize <= 50)
+            if (bufSize != 0 && bufSize <= RFLink::MAX_PACKET_SIZE)
             {
                 strSend = bufTx64;
                 len     = bufSize;
@@ -359,23 +423,6 @@ void OnCommand(char *cmdStr)
         });
     }
 
-    ///////////////////////////////////////////////////
-    //
-    // RF4463PRO
-    //
-    ///////////////////////////////////////////////////
-   
-    else if (!strcmp_P(cmd, P("freq")))
-    {
-        if (str.TokenCount(' ') == 2)
-        {
-            uint32_t val = atol(str.TokenAtIdx(1, ' '));
-            
-            Log(P("Freq "), val);
-
-            rf.SetFrequencyInternal(val);
-        }
-    }
 
     ///////////////////////////////////////////////////
     //

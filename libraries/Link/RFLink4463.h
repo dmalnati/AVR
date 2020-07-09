@@ -6,8 +6,7 @@
 #include "Function.h"
 #include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
-//#include "RF4463.h"
-#include "RFSI4463PRO_tmp.h"
+#include "RH_RF24_mod.h"
 #include "Log.h"
 
 
@@ -58,245 +57,100 @@
 
 
 
-class RFLink4463_Raw
+class RFLink_Raw
 {
 public:
-    static const uint8_t MAX_PACKET_SIZE = 50;
+    static const uint8_t MAX_PACKET_SIZE = 64;
 
 public:
-    RFLink4463_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
-    // : radio_(
-    //     PAL.GetArduinoPinFromPhysicalPin(pinIrq),
-    //     PAL.GetArduinoPinFromPhysicalPin(pinSdn),
-    //     PAL.GetArduinoPinFromPhysicalPin(pinSel)
-    // )
-    : radio_(pinIrq, pinSel, pinSdn)    // my libs RFSI4463PRO
-    , ied_(pinIrq, LEVEL_FALLING)
-    , sendSync_(1)
-    , state_(State::IDLE)
+    RFLink_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
+    : radio_(pinSel, pinIrq, pinSdn)
     , goBackToReceiveOnSendComplete_(0)
     {
-        ied_.SetCallback([this](uint8_t){
-            OnPinChange();
-        });
+        // Nothing to do
     }
 
     uint8_t Init()
     {
-        ChangeState(State::IDLE);
-
-        uint8_t retVal = radio_.init();
-
-        return retVal;
+        return radio_.init();
     }
     
     void SetOnMessageReceivedCallback(function<void(uint8_t *buf, uint8_t bufSize)> rxCb)
     {
         rxCb_ = rxCb;
+
+        radio_.SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufLen){
+            // Stay in receiving mode
+            ModeReceive();
+
+            if (bufLen)
+            {
+                rxCb_(buf, bufLen);
+            }
+        });
     }
 
     void SetOnMessageTransmittedCallback(function<void()> txCb)
     {
         txCb_ = txCb;
+
+        radio_.SetOnMessageTransmittedCallback([this](){
+            txCb_();
+
+            if (goBackToReceiveOnSendComplete_)
+            {
+                ModeReceive();
+            }
+        });
     }
     
-    void SetSendSync(uint8_t val)
-    {
-        sendSync_ = val;
-    }
-
-    uint8_t ModeLowPower()
-    {
-        uint8_t retVal = 0;
-
-        ChangeState(State::LOW_POWER);
-
-        retVal = radio_.EnterStandbyMode();
-
-        return retVal;
-    }
-
     uint8_t ModeReceive()
     {
-        uint8_t retVal = 0;
-
-        PreChangeState(State::RECEIVING);
-
         goBackToReceiveOnSendComplete_ = 1;
 
-        retVal = radio_.rxInit();
+        radio_.setModeRx();
 
-        ied_.RegisterForInterruptEvent();
-
-        PostChangeState(State::RECEIVING);
-
-        return retVal;
+        return 1;
     }
 
     // Send behavior:
-    // - sync
-    //   - function doesn't return until message completely sent
     // - async
     //   - get notified
     //     - callback when message completed and you can send another
     //   - don't get notified
     //
     // If you async send a new message before completion of prior send, function
-    // will return an error.
+    // will block until prior message sent.
     //
     // If you try to receive or go low power before completion of prior send,
     // no protection is in place and behavior undefined, including never
     // getting a callback about send complete.
     //
-    uint8_t Send(uint8_t* buf, uint8_t len)
+    uint8_t Send(uint8_t *buf, uint8_t len)
     {
         uint8_t retVal = 0;
 
-        if (state_ != State::SENDING)
+        if (len <= MAX_PACKET_SIZE && len != 0)
         {
-            if (len <= MAX_PACKET_SIZE && len != 0)
-            {
-                if (sendSync_)
-                {
-                    retVal = radio_.txPacket(buf, len, sendSync_);
-
-                    ChangeState(State::IDLE);
-                }
-                else
-                {
-                    PreChangeState(State::SENDING);
-
-                    ied_.RegisterForInterruptEvent();
-
-                    retVal = radio_.txPacket(buf, len, sendSync_);
-
-                    PostChangeState(State::SENDING);
-                }
-            }
-            else
-            {
-                retVal = 0;
-            }
+            retVal = radio_.send(buf, len);
         }
-        else
-        {
-            // Was already in async sending state, caller tried to send again,
-            // so return failure.
-            // Continue to allow callback for completion of prior send.
-            retVal = 0;
-        }
-        
+
         return retVal;
     }
 
-    // Convenience access to buffer for those who want to make use of it between
-    // uses within this class.
-    // Perfectly ok to use as the buffer to fill before passing to Send().
-    void GetTxBuf(uint8_t **buf, uint8_t *bufSize)
-    {
-        *buf     = buf_;
-        *bufSize = MAX_PACKET_SIZE;
-    }
-
-    
-    RFSI4463PRO &GetRadio()
+    RH_RF24_mod &GetRadio()
     {
         return radio_;
     }
-    
-    
-    
-private:
-
-    enum class State : uint8_t
-    {
-        IDLE = 0,
-        LOW_POWER = 1,
-        SENDING = 2,
-        RECEIVING = 3,
-    };
-
-    void OnPinChange()
-    {
-        uint16_t phStatus = radio_.CmdGetPhStatus_Debug();
-
-        uint8_t phStatusPending = ((uint8_t *)&phStatus)[0];
-        uint8_t phStatusCurrent = ((uint8_t *)&phStatus)[1];
-
-        Log("statusP: ", LogBIN(phStatusPending));
-        Log("statusC: ", LogBIN(phStatusCurrent));
-
-        radio_.CmdFifoInfo_GetCountsDebug();
-
-        if (state_ == State::SENDING)
-        {
-            ChangeState(State::IDLE);
-
-            txCb_();
-        }
-        else if (state_ == State::RECEIVING)
-        {
-            uint8_t bufSize = radio_.rxPacket(buf_);
-
-            radio_.rxInit();
-
-            if (bufSize)
-            {
-                rxCb_(buf_, bufSize);
-            }
-        }
-    }
-
-    // Basically kill events associated with moving oldState->IDLE but don't
-    // actually change the state.
-    void PreChangeState(State)
-    {
-        ied_.DeRegisterForInterruptEvent();
-    }
-
-    void PostChangeState(State newState)
-    {
-        if (newState == State::IDLE)
-        {
-            if (goBackToReceiveOnSendComplete_)
-            {
-                ModeReceive();
-            }
-            else
-            {
-                state_ = newState;
-            }
-        }
-        else
-        {
-            state_ = newState;
-        }
-    }
-
-    void ChangeState(State newState)
-    {
-        PreChangeState(newState);
-        PostChangeState(newState);
-    }
-
 
 private:
 
-    // RF4463 radio_;
-    RFSI4463PRO radio_;
-
-    InterruptEventHandlerDelegate ied_;
-        
-    function<void(uint8_t *buf, uint8_t bufSize)> rxCb_;
-    function<void()>                              txCb_;
-
-    uint8_t sendSync_;
-
-    State state_;
+    RH_RF24_mod radio_;
 
     uint8_t goBackToReceiveOnSendComplete_;
 
-    uint8_t buf_[MAX_PACKET_SIZE];
+    function<void(uint8_t *buf, uint8_t bufSize)> rxCb_;
+    function<void()>                              txCb_;
 };
 
 
@@ -317,12 +171,17 @@ struct RFLinkHeader
 };
 
 class RFLink
-: public RFLink4463_Raw
+: public RFLink_Raw
 {
 public:
 
+    static const uint8_t MAX_PACKET_SIZE = RFLink_Raw::MAX_PACKET_SIZE - sizeof(RFLinkHeader);
+
+
+public:
+
     RFLink(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
-    : RFLink4463_Raw(pinIrq, pinSdn, pinSel)
+    : RFLink_Raw(pinIrq, pinSdn, pinSel)
     , realm_(0)
     , srcAddr_(0)
     , dstAddr_(0)
@@ -337,7 +196,7 @@ public:
                                                     uint8_t      *buf,
                                                     uint8_t       bufSize)> rxCb)
     {
-        RFLink4463_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){
+        RFLink_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){
             OnRxAvailable(buf, bufSize);
         });
 
@@ -412,17 +271,13 @@ public:
         uint8_t retVal = 0;
         
         // First check to see if it can all fit
-        if (((sizeof(RFLinkHeader) + bufSize) <= RFLink4463_Raw::MAX_PACKET_SIZE))
+        if (((sizeof(RFLinkHeader) + bufSize) <= RFLink_Raw::MAX_PACKET_SIZE))
         {
             // Reserve space to craft outbound message
-            uint8_t *bufNew     = NULL;
-            uint8_t  bufSizeNew = 0;
-            RFLink4463_Raw::GetTxBuf(&bufNew, &bufSizeNew);
-            
-            bufSizeNew = sizeof(RFLinkHeader) + bufSize;
+            uint8_t bufSizeNew = sizeof(RFLinkHeader) + bufSize;
             
             // Fill out header
-            RFLinkHeader *hdr = (RFLinkHeader *)&(bufNew[0]);
+            RFLinkHeader *hdr = (RFLinkHeader *)buf_;
             
             hdr->realm      = realm_;
             hdr->srcAddr    = srcAddr_;
@@ -430,10 +285,10 @@ public:
             hdr->protocolId = protocolId_;
 
             // Copy in user data
-            memcpy(&(bufNew[sizeof(RFLinkHeader)]), buf, bufSize);
+            memcpy(&(buf_[sizeof(RFLinkHeader)]), buf, bufSize);
             
             // Hand off to RFLink4463_Raw, note success value
-            retVal = RFLink4463_Raw::Send(bufNew, bufSizeNew);
+            retVal = RFLink_Raw::Send(buf_, bufSizeNew);
         }
         
         return retVal;
@@ -445,7 +300,7 @@ public:
         return SendTo(dstAddr_, buf, bufSize);
     }
 
-    RFLink4463_Raw *GetLinkRaw()
+    RFLink_Raw *GetLinkRaw()
     {
         return this;
     }
@@ -488,6 +343,8 @@ private:
     uint8_t receiveBroadcast_;
     uint8_t protocolId_;
     uint8_t promiscuousMode_;
+
+    uint8_t buf_[RFLink_Raw::MAX_PACKET_SIZE + sizeof(RFLinkHeader)];
 };
 
 
