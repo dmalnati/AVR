@@ -50,7 +50,8 @@
 #define RH_RF24_NUM_INTERRUPTS 3
 
 // Maximum payload length the RF24 can support, limited by our 1 octet message length
-#define RH_RF24_MAX_PAYLOAD_LEN 255
+// Aim for 64 bytes of pure application message, no header, no sizing
+#define RH_RF24_MAX_PAYLOAD_LEN (1 + 64 + RH_RF24_HEADER_LEN)
 
 // The length of the headers we add.
 // The headers are inside the RF24's payload
