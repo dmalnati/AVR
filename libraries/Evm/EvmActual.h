@@ -112,6 +112,12 @@ private:
     
     void ServiceInterruptEventHandlers();
 
+    // Message Handling
+public:
+    virtual
+    uint8_t RegisterEvmMessage(EvmMessage msg);
+    void ServiceEvmMessageList();
+
     
     //////////////////////////////////////////////////////////////////////
     //
@@ -169,17 +175,19 @@ private:
                 CmpTimedEventHandler>  timedEventHandlerList_;
 
 
-    // This is a data structure which needs to be carefully managed.
+    // These are data structures which needs to be carefully managed.
     //
-    // It can be accessed both from ISR-driven code as well as typical
+    // They can be accessed both from ISR-driven code as well as typical
     // "main thread" code.
     //
-    // As a result, any code which accesses this structure must be
+    // As a result, any code which accesses these structures must be
     // written with a full appreciation of which code is driving
     // its execution and prevent corruption of its data
     // as well as any logic making use of its data.
     Queue<InterruptEventHandler *,
           COUNT_INTERRUPT_EVENT_HANDLER>  interruptEventHandlerList_;
+    
+    Queue<EvmMessage, 2> evmMessageList_;
     
     uint8_t lowPowerEnabled_;
 };
