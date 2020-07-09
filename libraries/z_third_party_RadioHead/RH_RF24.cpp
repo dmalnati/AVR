@@ -427,8 +427,8 @@ bool RH_RF24::setModemConfig(ModemConfigChoice index)
 {
 #ifdef RH_HAVE_SERIAL
   Serial.println("Programming Error: setModemRegisters is obsolete. Generate custom radio config file with WDS instead");
-  (void)index; // Prevent warnings
 #endif
+  (void)index; // Prevent warnings
   return false;
 }
 
