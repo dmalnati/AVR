@@ -74,6 +74,8 @@ public:
     }
 
     uint8_t GetLogicLevel() const { return logicLevel_; }
+
+    uint32_t GetISREventTimeUs() { return PCIntEventHandler::GetEventTimeUs(); }
     
     //////////////////////////////////////////////////////////////////////
     //

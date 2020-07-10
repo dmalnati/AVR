@@ -5,10 +5,15 @@
 
 extern volatile uint8_t  port__pinStateLast[];
 
+extern volatile uint32_t TIME_US_ISR;
+
+
 
 // ISR for Port B
 ISR(PCINT0_vect)
 {
+    TIME_US_ISR = PAL.Micros();
+
     // Cache prior value for handoff
     uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_B];
     
@@ -22,6 +27,8 @@ ISR(PCINT0_vect)
 // ISR for Port C
 ISR(PCINT1_vect)
 {
+    TIME_US_ISR = PAL.Micros();
+
     // Cache prior value for handoff
     uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_C];
     
@@ -35,6 +42,8 @@ ISR(PCINT1_vect)
 // ISR for Port D
 ISR(PCINT2_vect)
 {
+    TIME_US_ISR = PAL.Micros();
+    
     // Cache prior value for handoff
     uint8_t pinStateLast = port__pinStateLast[PlatformAbstractionLayer::PORT_D];
     

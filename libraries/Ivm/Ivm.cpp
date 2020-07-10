@@ -99,6 +99,7 @@ Ivm::OnPortPinStateChange(uint8_t port,
             pcieh->GetMode() ==
                 PCIntEventHandler::MODE::MODE_RISING_AND_FALLING)
         {
+            pcieh->SetEventTimeUs(GetEventTimeUs());
             pcieh->OnPCIntEvent(changeDir);
         }
     }
@@ -315,6 +316,8 @@ static volatile uint8_t  port__pinStateLast[3] = { 0,     0,     0     };
 // Storage for BADISREventHandler
 static BADISREventHandler *behPtr = NULL;
 
+// Storage for timestamp of ISR fire time
+static volatile uint32_t TIME_US_ISR = 0;
 
 
 //////////////////////////////////////////////////////////////////////
@@ -322,6 +325,12 @@ static BADISREventHandler *behPtr = NULL;
 // API implementation for this architecture
 //
 //////////////////////////////////////////////////////////////////////
+
+uint32_t
+Ivm::GetEventTimeUs()
+{
+    return TIME_US_ISR;
+}
 
 uint8_t
 Ivm::AttachInterruptForPhysicalPin(uint8_t            physicalPin,

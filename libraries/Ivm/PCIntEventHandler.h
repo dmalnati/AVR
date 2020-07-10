@@ -16,7 +16,7 @@ public:
     PCIntEventHandler()
     : pin_(0)
     , mode_(MODE::MODE_UNDEFINED)
-    , logicLevel_(0)
+    , timeUsEvent_(0)
     {
         // Nothing to do
     }
@@ -31,7 +31,9 @@ public:
     
     uint8_t GetPin()        const { return pin_;        }
     MODE    GetMode()       const { return mode_;       }
-    uint8_t GetLogicLevel() const { return logicLevel_; }
+    
+    void     SetEventTimeUs(uint32_t timeUsEvent) { timeUsEvent_ = timeUsEvent; }
+    uint32_t GetEventTimeUs() const { return timeUsEvent_; }
     
     
     //
@@ -49,7 +51,8 @@ private:
     
     uint8_t pin_;
     MODE    mode_;
-    uint8_t logicLevel_;
+
+    volatile uint32_t timeUsEvent_;
 };
 
 
@@ -80,10 +83,6 @@ public:
         return cbFn_;
     }
     
-    void operator()()
-    {
-        GetCallback()(GetLogicLevel());
-    }
 
 private:
     virtual void OnPCIntEvent(uint8_t logicLevel)

@@ -88,7 +88,10 @@ private:
                                   
                                   
     // Architecture-specific implementations for these interfaces are required.
-                                  
+
+    static uint32_t
+    GetEventTimeUs();
+
     static uint8_t
     AttachInterruptForPhysicalPin(uint8_t            physicalPin,
                                   PCIntEventHandler *pcieh);
