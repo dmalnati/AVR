@@ -5,135 +5,154 @@
 #include "PAL.h"
 #include "Function.h"
 #include "TimedEventHandler.h"
-#include "VirtualWireModified.h"
+#include "InterruptEventHandler.h"
+#include "RFSI4463PROPacket.h"
+#include "Log.h"
 
 
-// Notes about features:
-// - Abstracts libs and hw behind the implementation
-//   - VirtualWire at first implementation.
-// - Synchronous read unavailable, async callbacks only.
 //
 // How to use:
-// - TX and RX can be used independently or together.
-//   - pass -1 for any pin not used
-// - RX
-//   - Lets caller register for callback when message arrives
+// - TX and RX can be both be used, but only one at a time.
+//   - lib should wait for module to signal send complete before waiting to
+//     get signal for message received (both using IRQ pin)
+// - Send can be synchronous or not.
+// - Low power can be enabled at any point.
+// - If a receiver sends, on send complete the mode goes back to receiving.
+// - If a receiver goes to low power, it must manually emerge by either
+//   sending or receiving again.
 //
+//
+// A pure receiver:
+// ----------------
+// RFLink4463_Raw radio();
+// radio.Init();
+// radio.SetOnMessageReceivedCallback();
+//   [async wait for message receive]
+//
+//
+// A pure sender:
+// --------------
+// RFLink4463_Raw radio();
+// radio.Init();
+// radio.ModeLowPower();
+// radio.Send();
+// radio.ModeLowPower();
+// radio.Send();
+//
+//
+// A hybrid sender/receiver:
+// -------------------------
+// RFLink4463_Raw radio();
+// radio.Init();
+// radio.Send();
+// radio.SetOnMessageReceivedCallback();
+// radio.ModeReceive();
+//   [async wait for message receive]
+// radio.Send(syncronous=1);
+//   [async wait for message receive]
+// radio.Send(synchronous=0)
+//   [async wait for send complete]
+//   [async wait for message receive]
+// 
+
 
 
 class RFLink_Raw
 {
 public:
-    static const uint8_t C_IDLE  = 0;
-    static const uint8_t C_TIMED = 1;
-    static const uint8_t C_INTER = 0;
-    
-    //static const uint16_t DEFAULT_BAUD = 2000;
-    static const uint16_t DEFAULT_BAUD = 100;
-    
-    static const uint8_t  POLL_PERIOD_MS = 10;
+    static const uint8_t MAX_PACKET_SIZE = 64;
 
-    RFLink_Raw()
-    : sendSync_(1)
+public:
+    RFLink_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
+    : radio_(pinSel, pinIrq, pinSdn)
+    , goBackToReceiveOnSendComplete_(0)
     {
         // Nothing to do
+    }
+
+    uint8_t Init()
+    {
+        return radio_.init();
     }
     
     void SetOnMessageReceivedCallback(function<void(uint8_t *buf, uint8_t bufSize)> rxCb)
     {
         rxCb_ = rxCb;
-    }
-    
-    uint8_t Init(int8_t   rxPin,
-                 int8_t   txPin,
-                 uint16_t baud = DEFAULT_BAUD)
-    {
-        // Determine Arduino pin for handoff to VirtualWire
-        uint8_t arduinoRxPin = PAL.GetArduinoPinFromPhysicalPin(rxPin);
-        uint8_t arduinoTxPin = PAL.GetArduinoPinFromPhysicalPin(txPin);
-        
-        // Handle RX functions
-        if (rxPin != -1) { vw_set_rx_pin(arduinoRxPin); }
-        
-        // Handle TX functions
-        if (txPin != -1) { vw_set_tx_pin(arduinoTxPin); }
-        
-        // Configure bitrate, common between RX and TX
-        if (rxPin != -1 || txPin != -1) { vw_setup(baud); }
-        
-        // Handle RX functions
-        if (rxPin != -1) { vw_rx_start(); }
-        
-        // Start Idle processing if necessary
-        ted_.SetCallback([this](){ CheckForRxData(); });
-        if (rxPin != -1) { ted_.RegisterForTimedEventInterval(POLL_PERIOD_MS); }
-        
-        return (rxPin != -1 || txPin != -1);
+
+        radio_.SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufLen){
+            // Stay in receiving mode
+            ModeReceive();
+
+            if (bufLen)
+            {
+                rxCb_(buf, bufLen);
+            }
+        });
     }
 
-    void SetSendSync(uint8_t val)
+    void SetOnMessageTransmittedCallback(function<void()> txCb)
     {
-        sendSync_ = val;
+        txCb_ = txCb;
+
+        radio_.SetOnMessageTransmittedCallback([this](){
+            // Go back to receive first, as callback may decide to send
+            // again and we don't want to cancel that immediately afterward
+            if (goBackToReceiveOnSendComplete_)
+            {
+                ModeReceive();
+            }
+
+            txCb_();
+        });
     }
     
-    uint8_t Send(uint8_t* buf, uint8_t len)
+    uint8_t ModeReceive()
+    {
+        goBackToReceiveOnSendComplete_ = 1;
+
+        radio_.setModeRx();
+
+        return 1;
+    }
+
+    // Send behavior:
+    // - async
+    //   - get notified
+    //     - callback when message completed and you can send another
+    //   - don't get notified
+    //
+    // You cannot send a subsequent message until prior message send callback
+    // is executed and the function will return false.
+    //
+    // If you try to receive or go low power before completion of prior send,
+    // no protection is in place and behavior undefined, including never
+    // getting a callback about send complete.
+    //
+    uint8_t Send(uint8_t *buf, uint8_t len)
     {
         uint8_t retVal = 0;
 
-        // VirtualWire synchronously finishes sending the prior message if the
-        // next is sent before completion, unless sendSync is enabled, at which
-        // point this function doesn't return until the message is fully sent.
-
-        // pass-through to VirtualWire
-        retVal = vw_send(buf, len);
-
-        if (sendSync_)
+        if (len <= MAX_PACKET_SIZE && len != 0)
         {
-            vw_wait_tx();
+            retVal = radio_.send(buf, len);
         }
-        
+
         return retVal;
     }
-    
-    uint8_t GetTxBuf(uint8_t **buf, uint8_t *bufLen)
+
+    RFSI4463PROPacket &GetRadio()
     {
-        *buf    = txBuf_;
-        *bufLen = VW_MAX_PAYLOAD;
-        
-        return 1;
+        return radio_;
     }
-    
-    uint8_t SendFromTxBuf(uint8_t bufLen)
-    {
-        return Send(txBuf_, bufLen);
-    }
-    
+
 private:
-    
-    void CheckForRxData()
-    {
-        uint8_t *buf    = NULL;
-        uint8_t  bufLen = VW_MAX_PAYLOAD;
-        
-        if (vw_get_message(&buf, &bufLen))
-        {
-            // Call back listener
-            rxCb_(buf, bufLen);
-            
-            vw_get_message_completed();
-        }
-    }
-        
-    // RX Members
+
+    RFSI4463PROPacket radio_;
+
+    uint8_t goBackToReceiveOnSendComplete_;
+
     function<void(uint8_t *buf, uint8_t bufSize)> rxCb_;
-
-    // TX Members
-    uint8_t txBuf_[VW_MAX_PAYLOAD];
-    
-    // Misc
-    TimedEventHandlerDelegate ted_;
-
-    uint8_t sendSync_;
+    function<void()>                              txCb_;
 };
 
 
@@ -143,7 +162,7 @@ private:
 
 
 
-// Stand in the way of RFLink_Raw and data handed back to the application
+// Provide addressing/filtering on top of raw RF
 
 struct RFLinkHeader
 {
@@ -154,19 +173,21 @@ struct RFLinkHeader
 };
 
 class RFLink
-: private RFLink_Raw
+: public RFLink_Raw
 {
 public:
 
-    static const uint8_t C_IDLE  = RFLink_Raw::C_IDLE;
-    static const uint8_t C_TIMED = RFLink_Raw::C_TIMED;
-    static const uint8_t C_INTER = RFLink_Raw::C_INTER;
+    static const uint8_t MAX_PACKET_SIZE = RFLink_Raw::MAX_PACKET_SIZE - sizeof(RFLinkHeader);
 
 
-    RFLink()
-    : realm_(0)
+public:
+
+    RFLink(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
+    : RFLink_Raw(pinIrq, pinSdn, pinSel)
+    , realm_(0)
     , srcAddr_(0)
     , dstAddr_(0)
+    , receiveBroadcast_(0)
     , protocolId_(0)
     , promiscuousMode_(0)
     {
@@ -177,57 +198,73 @@ public:
                                                     uint8_t      *buf,
                                                     uint8_t       bufSize)> rxCb)
     {
-        rxCb_ = rxCb;
-    }
+        RFLink_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){
+            OnRxAvailable(buf, bufSize);
+        });
 
-    uint8_t Init(
-         int8_t   rxPin,
-         int8_t   txPin,
-         uint16_t baud = RFLink_Raw::DEFAULT_BAUD)
-    {
-        uint8_t retVal = RFLink_Raw::Init(rxPin, txPin, baud);
-        
-        // Intercept this interface
-        RFLink_Raw::SetOnMessageReceivedCallback([this](uint8_t *buf, uint8_t bufSize){ OnRxAvailable(buf, bufSize); });
-        
-        return retVal;
+        rxCb_ = rxCb;
     }
     
     void SetRealm(uint8_t realm)
     {
         realm_ = realm;
     }
+
+    uint8_t GetRealm() const
+    {
+        return realm_;
+    }
     
     void SetSrcAddr(uint8_t srcAddr)
     {
         srcAddr_ = srcAddr;
+    }
+
+    uint8_t GetSrcAddr() const
+    {
+        return srcAddr_;
     }
     
     void SetDstAddr(uint8_t dstAddr)
     {
         dstAddr_ = dstAddr;
     }
+
+    uint8_t GetDstAddr() const
+    {
+        return dstAddr_;
+    }
     
     void SetProtocolId(uint8_t protocolId)
     {
         protocolId_ = protocolId;
     }
-    
-    void EnablePromiscuousMode()
+
+    uint8_t GetProtocolId() const
     {
-        promiscuousMode_ = 1;
-    }
-    
-    void DisablePromiscuousMode()
-    {
-        promiscuousMode_ = 0;
+        return protocolId_;
     }
 
-    void SetSendSync(uint8_t val)
+    void SetReceiveBroadcast(uint8_t receiveBroadcast)
     {
-        RFLink_Raw::SetSendSync(val);
+        receiveBroadcast_ = receiveBroadcast;
+    }
+
+    uint8_t GetReceiveBroadcast() const
+    {
+        return receiveBroadcast_;
     }
     
+    void SetPromiscuousMode(uint8_t val)
+    {
+        promiscuousMode_ = val;
+    }
+
+    uint8_t GetPromiscuousMode() const
+    {
+        return promiscuousMode_;
+    }
+
     // Encapsulate
     uint8_t SendTo(uint8_t  dstAddr,
                    uint8_t *buf,
@@ -236,17 +273,13 @@ public:
         uint8_t retVal = 0;
         
         // First check to see if it can all fit
-        if (((sizeof(RFLinkHeader) + bufSize) <= VW_MAX_PAYLOAD))
+        if (((sizeof(RFLinkHeader) + bufSize) <= RFLink_Raw::MAX_PACKET_SIZE))
         {
             // Reserve space to craft outbound message
-            uint8_t *bufNew     = NULL;
-            uint8_t  bufSizeNew = 0;
-            RFLink_Raw::GetTxBuf(&bufNew, &bufSizeNew);
-            
-            bufSizeNew = sizeof(RFLinkHeader) + bufSize;
+            uint8_t bufSizeNew = sizeof(RFLinkHeader) + bufSize;
             
             // Fill out header
-            RFLinkHeader *hdr = (RFLinkHeader *)&(bufNew[0]);
+            RFLinkHeader *hdr = (RFLinkHeader *)buf_;
             
             hdr->realm      = realm_;
             hdr->srcAddr    = srcAddr_;
@@ -254,36 +287,43 @@ public:
             hdr->protocolId = protocolId_;
 
             // Copy in user data
-            memcpy(&(bufNew[sizeof(RFLinkHeader)]), buf, bufSize);
+            memcpy(&(buf_[sizeof(RFLinkHeader)]), buf, bufSize);
             
-            // Hand off to RFLink_Raw, note success value
-            retVal = RFLink_Raw::SendFromTxBuf(bufSizeNew);
+            // Hand off to RFLink4463_Raw, note success value
+            retVal = RFLink_Raw::Send(buf_, bufSizeNew);
         }
         
         return retVal;
     }
     
+    // Hide RFLink4463_Raw::Send
     uint8_t Send(uint8_t *buf, uint8_t bufSize)
     {
         return SendTo(dstAddr_, buf, bufSize);
     }
 
+    RFLink_Raw *GetLinkRaw()
+    {
+        return this;
+    }
+
     
 private:
-    // Intercepted from RFLink_Raw
+
     void OnRxAvailable(uint8_t *buf, uint8_t bufSize)
     {
-        Log("RX Available");
-
         // Filter before passing up.  Must have at least full header.
         if (bufSize >= sizeof(RFLinkHeader))
         {
             RFLinkHeader *hdr = (RFLinkHeader *)buf;
 
-            if ((hdr->realm      == realm_   &&
-                 hdr->dstAddr    == srcAddr_ &&
-                 hdr->protocolId == protocolId_) || 
-                promiscuousMode_)
+            // Calculate whether to pass along this message
+            uint8_t realmOk    = (hdr->realm == realm_);
+            uint8_t addrOk     = (hdr->dstAddr == srcAddr_) ||
+                                 (hdr->dstAddr == 255 && receiveBroadcast_);
+            uint8_t protocolOk = (hdr->protocolId == protocolId_);
+
+            if ((realmOk && addrOk && protocolOk) || promiscuousMode_)
             {
                 // Filter criteria passed.
                 
@@ -302,8 +342,11 @@ private:
     uint8_t realm_;
     uint8_t srcAddr_;
     uint8_t dstAddr_;
+    uint8_t receiveBroadcast_;
     uint8_t protocolId_;
     uint8_t promiscuousMode_;
+
+    uint8_t buf_[RFLink_Raw::MAX_PACKET_SIZE + sizeof(RFLinkHeader)];
 };
 
 

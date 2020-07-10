@@ -24,12 +24,12 @@
 // Use one of the pre-built radio configuration files
 // You can use other WDS generated sample configs accorinding to your needs
 // or generate a custom one with WDS and include it here
-// See RF24configs/README for file name encoding standard
-//#include "RF24configs/radio_config_Si4464_27_434_2GFSK_5_10.h"
-#include "RF24configs/radio_config_Si4464_30_434_2GFSK_5_10.h"
-//#include "RF24configs/radio_config_Si4464_30_434_2GFSK_10_20.h"
-//#include "RF24configs/radio_config_Si4464_30_915_2GFSK_5_10.h"
-//#include "RF24configs/radio_config_Si4464_30_915_2GFSK_10_20.h"
+// See RFSI4463PROPacket/README for file name encoding standard
+//#include "RFSI4463PROPacket_Configs/radio_config_Si4464_27_434_2GFSK_5_10.h"
+#include "RFSI4463PROPacket_Configs/radio_config_Si4464_30_434_2GFSK_5_10.h"
+//#include "RFSI4463PROPacket_Configs/radio_config_Si4464_30_434_2GFSK_10_20.h"
+//#include "RFSI4463PROPacket_Configs/radio_config_Si4464_30_915_2GFSK_5_10.h"
+//#include "RFSI4463PROPacket_Configs/radio_config_Si4464_30_915_2GFSK_10_20.h"
 
 
 // This configuration data is defined in radio_config_Si4460.h 
@@ -830,7 +830,7 @@ public:
 
 
 
-class RH_RF24_mod : public RHSPIDriver
+class RFSI4463PROPacket : public RHSPIDriver
 {
 public:
 
@@ -881,7 +881,7 @@ public:
     void            setMode(RHMode mode) { _mode = mode; }
 
 
-    RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin)
+    RFSI4463PROPacket(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin)
         :
         RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin))
         , _mode(RHModeInitialising)

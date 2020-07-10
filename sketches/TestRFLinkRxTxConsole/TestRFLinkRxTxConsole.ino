@@ -2,7 +2,7 @@
 #include "Log.h"
 #include "LogBlob.h"
 #include "SerialInput.h"
-#include "RFLink4463.h"
+#include "RFLink.h"
 
 
 // runs at 433.500 MHz
@@ -16,7 +16,7 @@ static const uint8_t PIN_SDN = 13;
 static const uint8_t PIN_SEL = 14;
 static RFLink r(PIN_IRQ, PIN_SDN, PIN_SEL);
 static RFLink_Raw &rr = *r.GetLinkRaw();
-//static RH_RF24_mod &rf = r.GetRadio();
+//static RFSI4463PROPacket &rf = r.GetRadio();
 
 static uint8_t VERBOSE = 1;
 
