@@ -3,9 +3,10 @@
 
 
 #include "PAL.h"
+#include "StrFormat.h"
 
 
-template <uint8_t EVENT_COUNT>
+template <uint8_t EVENT_COUNT, uint32_t(*TIME_FUNCTION)()>
 class DurationAuditor
 {
 private:
@@ -17,6 +18,7 @@ private:
 
 public:
     DurationAuditor()
+    : fnGetTime_(TIME_FUNCTION)
     {
         Reset();
     }
@@ -33,9 +35,14 @@ public:
 
     void Audit(const char *eventName)
     {
+        Audit(eventName, fnGetTime_());
+    }
+
+    void Audit(const char *eventName, uint32_t eventTime)
+    {
         if (eventListIdx_ < EVENT_COUNT)
         {
-            eventList_[eventListIdx_] = Event{eventName, PAL.Millis()};
+            eventList_[eventListIdx_] = Event{eventName, eventTime};
 
             ++eventListIdx_;
         }
@@ -45,22 +52,28 @@ public:
     {
         uint8_t eventCount = eventListIdx_;
 
-        Log(P("Event Count: "), eventCount);
-
         if (eventCount > 1)
         {
-            Event &first = eventList_[0];
-            Event &last  = eventList_[eventCount - 1];
+            Report(0, eventCount - 1);
+
+            if (eventCount > 2)
+            {
+                for (uint8_t i = 1; i < eventCount; ++i)
+                {
+                    Report(i - 1, i);
+                }
+            }
+        }
+    }
+
+    void Report(uint8_t eventNum1, uint8_t eventNum2)
+    {
+        if (eventNum1 < eventListIdx_ && eventNum2 < eventListIdx_)
+        {
+            Event &first = eventList_[eventNum1];
+            Event &last  = eventList_[eventNum2];
 
             AuditPair(first, last);
-
-            for (uint8_t i = 1; i < eventCount; ++i)
-            {
-                Event &prior = eventList_[i - 1];
-                Event &curr  = eventList_[i];
-
-                AuditPair(prior, curr);
-            }
         }
     }
 
@@ -68,17 +81,40 @@ private:
 
     void AuditPair(Event &prior, Event &curr)
     {
-        Log(curr.eventTime - prior.eventTime,
-            P(" ms: "),
-            prior.eventName,
-            P(" -> "),
-            curr.eventName);
+        uint32_t timeDiff = curr.eventTime - prior.eventTime;
+
+        char buf[14];
+        StrFormat::U32ToStrCommas(buf, timeDiff);
+
+        // Support hundreds of millisecons
+        // for ms mode, this is 3 digits
+        // for us mode, this is 7 digits
+        const char *formatStr = "%3s ms: %s -> %s\n";
+        if (fnGetTime_ == PAL.Micros)
+        {
+            formatStr = "%7s us: %s -> %s\n";
+        }
+
+        printf(formatStr,
+               buf,
+               prior.eventName,
+               curr.eventName);
     }
 
+    using TimeFn = uint32_t(*)();
+    TimeFn fnGetTime_;
+    
     Event eventList_[EVENT_COUNT];
 
     uint8_t eventListIdx_;
 };
+
+
+template <uint8_t EVENT_COUNT>
+using DurationAuditorMillis = DurationAuditor<EVENT_COUNT, PlatformAbstractionLayer::Millis>;
+
+template <uint8_t EVENT_COUNT>
+using DurationAuditorMicros = DurationAuditor<EVENT_COUNT, PlatformAbstractionLayer::Micros>;
 
 
 

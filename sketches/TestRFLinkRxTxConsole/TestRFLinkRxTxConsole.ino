@@ -3,9 +3,10 @@
 #include "LogBlob.h"
 #include "SerialInput.h"
 #include "RFLink.h"
+#include "DurationAuditor.h"
 
 
-// runs at 433.500 MHz
+// runs at 434.000 MHz
 
 
 static Evm::Instance<10,10,10> evm;
@@ -16,7 +17,7 @@ static const uint8_t PIN_SDN = 13;
 static const uint8_t PIN_SEL = 14;
 static RFLink r(PIN_IRQ, PIN_SDN, PIN_SEL);
 static RFLink_Raw &rr = *r.GetLinkRaw();
-//static RFSI4463PROPacket &rf = r.GetRadio();
+static RFSI4463PROPacket &radio = r.GetRadio();
 
 static uint8_t VERBOSE = 1;
 
@@ -28,9 +29,6 @@ static char bufTx64[65] =
     "0123456789"
     ":)";
 
-
-
-static uint32_t SEND_TIME_START = 0;
 
 
 void OnCommand(char *cmdStr)
@@ -117,8 +115,6 @@ void OnCommand(char *cmdStr)
     {
         Log(P("SetOnMessageReceivedCallback(Raw)"));
         rr.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufSize){
-            uint32_t timeDiff = PAL.Micros() - SEND_TIME_START;
-            
             PAL.DigitalToggle(dbg);
             PAL.DigitalToggle(dbg);
             
@@ -126,44 +122,68 @@ void OnCommand(char *cmdStr)
             char bufRep[] = "REP_RTT";
 
             // check if we're getting a RTT request
+            uint8_t handled = 0;
             if (bufSize == sizeof(bufReq))
             {
                 if (!memcmp((uint8_t *)bufReq, buf, sizeof(bufReq)))
                 {
-                    SEND_TIME_START = PAL.Micros();
+                    handled = 1;
                     
                     rr.Send((uint8_t *)bufRep, sizeof(bufRep));
                     
                     Log(P("Got REQ_RTT, sent REP_RTT"));
+
+                    RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
+                    DurationAuditorMicros<2> auditor;
+                    auditor.Audit("RX", m.timeUsPacketRxComplete);
+                    auditor.Audit("TX", m.timeUsPacketTxStart);
+                    
+                    LogNNL(P("Response latency: "));
+                    auditor.Report(0, 1);
+                }
+                else if (!memcmp((uint8_t *)bufRep, buf, sizeof(bufRep)))
+                {
+                    handled = 1;
+                    
+                    Log(P("Got REP_RTT returned"));
+
+                    RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
+                    DurationAuditorMicros<3> auditor;
+                    auditor.Audit("TX", m.timeUsPacketTxStart);
+                    auditor.Audit("TXC", m.timeUsPacketTxComplete);
+                    auditor.Audit("RX", m.timeUsPacketRxComplete);
+
+                    auditor.Report();
+                    LogNL();
                 }
             }
-
-            // check if we're getting a reply to a RTT
-            else if (bufSize == sizeof(bufRep))
-            {
-                if (!memcmp((uint8_t *)bufRep, buf, sizeof(bufRep)))
-                {
-                    Log(P("Got REP_RTT returned"));
-                    Log(P("  RTT: "), timeDiff, " us");
-                }
-            } 
             
-            Log(P("RxCbRaw - "), bufSize, P(" bytes"));
-            LogBlob(buf, bufSize);
-            LogNL();
+            if (!handled)
+            {
+                Log(P("RxCbRaw - "), bufSize, P(" bytes"));
+                Log(P("RSSI: "), m.rssi);
+                LogBlob(buf, bufSize);
+                LogNL();
+            }
         });
     }
     else if (!strcmp_P(cmd, P("somtc")))
     {
         Log(P("SetOnMessageTransmittedCallback"));
         r.SetOnMessageTransmittedCallback([](){
-            uint32_t timeDiff = PAL.Micros() - SEND_TIME_START;
+            uint32_t timeNow = PAL.Micros();
+
             PAL.DigitalWrite(dbg, LOW);
 
             if (VERBOSE)
             {
                 Log(P("TxCb"));
-                Log(P("  Send time total: "), timeDiff, " us");
+                RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
+                DurationAuditorMicros<5> auditor;
+                auditor.Audit("TX", m.timeUsPacketTxStart);
+                auditor.Audit("TXC", m.timeUsPacketTxComplete);
+                auditor.Audit("TXCApp", timeNow);
+                auditor.Report();
                 LogNL();
             }
         });
@@ -180,7 +200,6 @@ void OnCommand(char *cmdStr)
         
         Log(P("RTT"));
         PAL.DigitalWrite(dbg, HIGH);
-        SEND_TIME_START = PAL.Micros();
         rr.Send((uint8_t *)buf, sizeof(buf));
     }
     else if (!strcmp_P(cmd, P("sendr")))
@@ -207,15 +226,14 @@ void OnCommand(char *cmdStr)
         LogBlob((uint8_t *)strSend, len);
         
         PAL.DigitalWrite(dbg, HIGH);
-        SEND_TIME_START = PAL.Micros();
         uint8_t retVal = rr.Send((uint8_t *)strSend, len);
         
         if (VERBOSE)
         {
-            uint32_t timeAfterSend = PAL.Micros();
-            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-            Log(P("  "), retVal);
-            Log(P("  Send time: "), timeDiff, " us");
+//            uint32_t timeAfterSend = PAL.Micros();
+//            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+//            Log(P("  "), retVal);
+//            Log(P("  Send time: "), timeDiff, " us");
         }
         
         if (restoreByte)
@@ -334,14 +352,13 @@ void OnCommand(char *cmdStr)
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
         LogBlob((uint8_t *)strSend, len);
         
-        SEND_TIME_START = PAL.Micros();
         PAL.DigitalWrite(dbg, HIGH);
         uint8_t retVal = r.Send((uint8_t *)strSend, len);
         uint32_t timeAfterSend = PAL.Micros();
         Log(P("  "), retVal);
 
-        uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-        Log(P("  Send time: "), timeDiff, " us");
+//        uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+//        Log(P("  Send time: "), timeDiff, " us");
 
         if (restoreByte)
         {
@@ -378,14 +395,13 @@ void OnCommand(char *cmdStr)
             Log(P("SendTo "), dst, P(" ["), len, P("]: \""), strSend, "\"");
             LogBlob((uint8_t *)strSend, len);
             
-            SEND_TIME_START = PAL.Micros();
             PAL.DigitalWrite(dbg, HIGH);
             uint8_t retVal = r.SendTo(dst, (uint8_t *)strSend, len);
             uint32_t timeAfterSend = PAL.Micros();
             Log(P("  "), retVal);
     
-            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-            Log(P("  Send time: "), timeDiff, " us");
+//            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
+//            Log(P("  Send time: "), timeDiff, " us");
     
             if (restoreByte)
             {

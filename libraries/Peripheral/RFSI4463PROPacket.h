@@ -867,12 +867,6 @@ public:
 	RHModeCad               ///< Transport is in the process of detecting channel activity (if supported)
     } RHMode;
 
-    /// Returns the most recent RSSI (Receiver Signal Strength Indicator).
-    /// Usually it is the RSSI of the last received message, which is measured when the preamble is received.
-    /// If you called readRssi() more recently, it will return that more recent value.
-    /// \return The most recent RSSI measurement in dBm.
-    int16_t        lastRssi() { return _lastRssi; }
-
     /// Returns the operating mode of the library.
     /// \return the current mode, one of RF69_MODE_*
     RHMode          mode() { return _mode; }
@@ -925,6 +919,7 @@ public:
 
         // Set up interrupt handler
         ied_.SetCallback([this](uint8_t){
+            measurements_.timeUsLastISR = ied_.GetISREventTimeUs();
             handleInterrupt();
         });
         ied_.RegisterForInterruptEvent();
@@ -1012,6 +1007,8 @@ public:
         }
         if (status[2] & RH_RF24_INT_STATUS_PACKET_SENT)
         {
+            measurements_.timeUsPacketTxComplete = measurements_.timeUsLastISR;
+
             // Transmission does not automatically clear the tx buffer.
             // Could retransmit if we wanted
             // RH_RF24 configured to transition automatically to Idle after packet sent
@@ -1023,11 +1020,13 @@ public:
         }
         if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
         {
+            measurements_.timeUsPacketRxOnChip = measurements_.timeUsLastISR;
+
             // A complete message has been received with good CRC
             // Get the RSSI, configured to latch at sync detect in radio_config
             uint8_t modem_status[6];
             command(RH_RF24_CMD_GET_MODEM_STATUS, NULL, 0, modem_status, sizeof(modem_status));
-            _lastRssi = modem_status[3];
+            measurements_.rssi = modem_status[3];
             
             // Save it in our buffer
             readNextFragment();
@@ -1042,6 +1041,8 @@ public:
                 uint8_t rxBufLen = _bufLen - RH_RF24_HEADER_LEN;
                 memcpy(rxBuf_, _buf + RH_RF24_HEADER_LEN, rxBufLen);
                 clearBuffer();
+
+                measurements_.timeUsPacketRxHandoffComplete = PAL.Micros();
 
                 // on message received callback
                 rxCb_(rxBuf_, rxBufLen);
@@ -1125,6 +1126,8 @@ public:
             return false;
         }
 
+        measurements_.timeUsPacketTxStart = PAL.Micros();
+
         setModeIdle(); // Prevent RX while filling the fifo
 
         // Put the payload in the FIFO
@@ -1143,6 +1146,9 @@ public:
 
         sendNextFragment();
         setModeTx();
+
+        measurements_.timeUsPacketTxHandoffComplete = PAL.Micros();
+
         return true;
     }
 
@@ -1589,8 +1595,40 @@ public:
 
 
     RHMode     _mode;
-    int16_t     _lastRssi;
 
+    struct Measurements
+    {
+        uint32_t timeUsLastISR  = 0; // Last ISR time deep within Ivm
+
+        // Receive timestamps
+        // First there's a HW interrupt from the chip saying message received
+        // Second there's extracting from chip, processing, ready to fire callback
+        //
+        // There is no asynchronous state between these two, they're synchronously in order
+        //
+        uint32_t timeUsPacketRxOnChip          = 0; // ISR time, later identified as being chip RX packet received interrupt
+        uint32_t timeUsPacketRxHandoffComplete = 0; // After RxOnChip, immediately before callback
+
+        // Transmit timestamps
+        //
+        // First two are part of async send.
+        //   There is no async state between the two, they're synchronously in order
+        // Third is notification the chip has completed sending
+        //   This is an async callback
+        uint32_t timeUsPacketTxStart           = 0; // Immediately within send()
+        uint32_t timeUsPacketTxHandoffComplete = 0; // After TxStart, after SPI transfer of data to chip
+        uint32_t timeUsPacketTxComplete        = 0; // ISR time, later identified as being chip TX complete interrupt
+
+        // Received signal strength indicator
+        uint8_t rssi = 0;
+    };
+
+    Measurements GetMeasurements()
+    {
+        return measurements_;
+    }
+
+    Measurements measurements_;
 
 
     InterruptEventHandlerDelegate ied_;
