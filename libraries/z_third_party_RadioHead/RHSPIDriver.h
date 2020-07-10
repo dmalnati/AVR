@@ -6,101 +6,123 @@
 #ifndef RHSPIDriver_h
 #define RHSPIDriver_h
 
-#include <RHGenericDriver.h>
-#include <RHHardwareSPI.h>
+#include "RHHardwareSPI.h"
 
 // This is the bit in the SPI address that marks it as a write
 #define RH_SPI_WRITE_MASK 0x80
 
-class RHGenericSPI;
 
-/////////////////////////////////////////////////////////////////////
-/// \class RHSPIDriver RHSPIDriver.h <RHSPIDriver.h>
-/// \brief Base class for RadioHead drivers that use the SPI bus
-/// to communicate with its transport hardware.
-///
-/// This class can be subclassed by Drivers that require to use the SPI bus.
-/// It can be configured to use either the RHHardwareSPI class (if there is one available on the platform)
-/// of the bitbanged RHSoftwareSPI class. The default behaviour is to use a pre-instantiated built-in RHHardwareSPI
-/// interface.
-///
-/// SPI bus access is protected by ATOMIC_BLOCK_START and ATOMIC_BLOCK_END, which will ensure interrupts 
-/// are disabled during access.
-/// 
-/// The read and write routines implement commonly used SPI conventions: specifically that the MSB
-/// of the first byte transmitted indicates that it is a write and the remaining bits indicate the rehgister to access)
-/// This can be overriden 
-/// in subclasses if necessaryor an alternative class, RHNRFSPIDriver can be used to access devices like 
-/// Nordic NRF series radios, which have different requirements.
-///
-/// Application developers are not expected to instantiate this class directly: 
-/// it is for the use of Driver developers.
-class RHSPIDriver : public RHGenericDriver
+
+class RHSPIDriver
 {
 public:
-    /// Constructor
-    /// \param[in] slaveSelectPin The controler pin to use to select the desired SPI device. This pin will be driven LOW
-    /// during SPI communications with the SPI device that uis iused by this Driver.
-    /// \param[in] spi Reference to the SPI interface to use. The default is to use a default built-in Hardware interface.
-    RHSPIDriver(uint8_t slaveSelectPin = SS, RHGenericSPI& spi = hardware_spi);
-    
-    /// Initialise the Driver transport hardware and software.
-    /// Make sure the Driver is properly configured before calling init().
-    /// \return true if initialisation succeeded.
-    bool init();
+    RHSPIDriver(uint8_t slaveSelectPin)
+        : 
+        _slaveSelectPin(slaveSelectPin)
+    {
+    }
 
-    /// Reads a single register from the SPI device
-    /// \param[in] reg Register number
-    /// \return The value of the register
-    uint8_t        spiRead(uint8_t reg);
+    bool init()
+    {
+        // start the SPI library with the default speeds etc:
+        // On Arduino Due this defaults to SPI1 on the central group of 6 SPI pins
+        _spi.begin();
 
-    /// Writes a single byte to the SPI device
-    /// \param[in] reg Register number
-    /// \param[in] val The value to write
-    /// \return Some devices return a status byte during the first data transfer. This byte is returned.
-    ///  it may or may not be meaningfule depending on the the type of device being accessed.
-    uint8_t           spiWrite(uint8_t reg, uint8_t val);
+        // Initialise the slave select pin
+        // On Maple, this must be _after_ spi.begin
 
-    /// Reads a number of consecutive registers from the SPI device using burst read mode
-    /// \param[in] reg Register number of the first register
-    /// \param[in] dest Array to write the register values to. Must be at least len bytes
-    /// \param[in] len Number of bytes to read
-    /// \return Some devices return a status byte during the first data transfer. This byte is returned.
-    ///  it may or may not be meaningfule depending on the the type of device being accessed.
-    uint8_t           spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len);
+        // Sometimes we dont want to work the _slaveSelectPin here
+        if (_slaveSelectPin != 0xff)
+        pinMode(_slaveSelectPin, OUTPUT);
 
-    /// Write a number of consecutive registers using burst write mode
-    /// \param[in] reg Register number of the first register
-    /// \param[in] src Array of new register values to write. Must be at least len bytes
-    /// \param[in] len Number of bytes to write
-    /// \return Some devices return a status byte during the first data transfer. This byte is returned.
-    ///  it may or may not be meaningfule depending on the the type of device being accessed.
-    uint8_t           spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len);
+        deselectSlave();
 
-    /// Set or change the pin to be used for SPI slave select.
-    /// This can be called at any time to change the
-    /// pin that will be used for slave select in subsquent SPI operations.
-    /// \param[in] slaveSelectPin The pin to use
-    void setSlaveSelectPin(uint8_t slaveSelectPin);
+        // This delay is needed for ATMega and maybe some others, but
+        // 100ms is too long for STM32L0, and somehow can cause the USB interface to fail
+        // in some versions of the core.
+        delay(100);
+        
+        return true;
+    }
 
-    /// Set the SPI interrupt number
-    /// If SPI transactions can occur within an interrupt, tell the low level SPI
-    /// interface which interrupt is used
-    /// \param[in] interruptNumber the interrupt number
-    void spiUsingInterrupt(uint8_t interruptNumber);
+    uint8_t spiRead(uint8_t reg)
+    {
+        uint8_t val;
+        ATOMIC_BLOCK_START;
+        selectSlave();
+        _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the address with the write mask off
+        val = _spi.transfer(0); // The written value is ignored, reg value is read
+        deselectSlave();
+        ATOMIC_BLOCK_END;
+        return val;
+    }
 
-    protected:
+    uint8_t spiWrite(uint8_t reg, uint8_t val)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK_START;
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the address with the write mask on
+        _spi.transfer(val); // New value follows
+        deselectSlave();
+        _spi.endTransaction();
+        ATOMIC_BLOCK_END;
+        return status;
+    }
 
-    // Override this if you need an unusual way of selecting the slave before SPI transactions
-    // The default uses digitalWrite(_slaveSelectPin, LOW)
-    virtual void selectSlave();
-    
-    // Override this if you need an unusual way of selecting the slave before SPI transactions
-    // The default uses digitalWrite(_slaveSelectPin, HIGH)
-    virtual void deselectSlave();
-    
+    uint8_t spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK_START;
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the start address with the write mask off
+        while (len--)
+        *dest++ = _spi.transfer(0);
+        deselectSlave();
+        _spi.endTransaction();
+        ATOMIC_BLOCK_END;
+        return status;
+    }
+
+    uint8_t spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK_START;
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the start address with the write mask on
+        while (len--)
+        _spi.transfer(*src++);
+        deselectSlave();
+        _spi.endTransaction();
+        ATOMIC_BLOCK_END;
+        return status;
+    }
+
+    void setSlaveSelectPin(uint8_t slaveSelectPin)
+    {
+        _slaveSelectPin = slaveSelectPin;
+    }
+
+    void spiUsingInterrupt(uint8_t interruptNumber)
+    {
+        _spi.usingInterrupt(interruptNumber);
+    }
+
+    void selectSlave()
+    {
+        digitalWrite(_slaveSelectPin, LOW);
+    }
+        
+    void deselectSlave()
+    {
+        digitalWrite(_slaveSelectPin, HIGH);
+    }
+
     /// Reference to the RHGenericSPI instance to use to transfer data with the SPI device
-    RHGenericSPI&       _spi;
+    RHHardwareSPI _spi;
 
     /// The pin number of the Slave Select pin that is used to select the desired device.
     uint8_t             _slaveSelectPin;

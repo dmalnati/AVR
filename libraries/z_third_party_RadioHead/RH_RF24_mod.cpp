@@ -18,25 +18,18 @@
 //#include "RF24configs/radio_config_Si4464_30_915_2GFSK_10_20.h"
 
 
-// Interrupt vectors for the 3 Arduino interrupt pins
-// Each interrupt can be handled by a different instance of RH_RF24, allowing you to have
-// 2 or more RF24s per Arduino
-RH_RF24_mod* RH_RF24_mod::_deviceForInterrupt[RH_RF24_NUM_INTERRUPTS] = {0, 0, 0};
-uint8_t RH_RF24_mod::_interruptCount = 0; // Index into _deviceForInterrupt for next device
-
 // This configuration data is defined in radio_config_Si4460.h 
 // which was generated with the Silicon Labs WDS program
 PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY;
 
-RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
+RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin)
     :
-    RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin), spi)
+    RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin))
+    , _mode(RHModeInitialising)
     , ied_(interruptPin, LEVEL_FALLING)
 {
-    _interruptPin = interruptPin;
     _sdnPin = PAL.GetArduinoPinFromPhysicalPin(sdnPin);
     _idleMode = RH_RF24_DEVICE_STATE_READY;
-    _myInterruptIndex = 0xff; // Not allocated yet
 }
 
 void RH_RF24_mod::setIdleMode(uint8_t idleMode)
@@ -154,14 +147,12 @@ void RH_RF24_mod::handleInterrupt()
 	    // CRC Error
 	    // Radio automatically went to _idleMode
 	    _mode = RHModeIdle;
-	    _rxBad++;
 
 	    clearRxFifo();
 	    clearBuffer();
 	}
 	if (status[2] & RH_RF24_INT_STATUS_PACKET_SENT)
 	{
-	    _txGood++; 
 	    // Transmission does not automatically clear the tx buffer.
 	    // Could retransmit if we wanted
 	    // RH_RF24 configured to transition automatically to Idle after packet sent
@@ -178,7 +169,6 @@ void RH_RF24_mod::handleInterrupt()
 	    uint8_t modem_status[6];
 	    command(RH_RF24_CMD_GET_MODEM_STATUS, NULL, 0, modem_status, sizeof(modem_status));
 	    _lastRssi = modem_status[3];
-	    _lastPreambleTime = millis();
 	    
 	    // Save it in our buffer
 	    readNextFragment();
@@ -189,16 +179,13 @@ void RH_RF24_mod::handleInterrupt()
 
         if (available())
         {
-            if (_bufLen >= RH_RF24_HEADER_LEN)
-            {
-                // copy buffer to dedicated receive buffer
-                uint8_t rxBufLen = _bufLen - RH_RF24_HEADER_LEN;
-                memcpy(rxBuf_, _buf + RH_RF24_HEADER_LEN, rxBufLen);
-                clearBuffer();
+            // copy buffer to dedicated receive buffer
+            uint8_t rxBufLen = _bufLen - RH_RF24_HEADER_LEN;
+            memcpy(rxBuf_, _buf + RH_RF24_HEADER_LEN, rxBufLen);
+            clearBuffer();
 
-                // on message received callback
-                rxCb_(rxBuf_, rxBufLen);
-            }
+            // on message received callback
+            rxCb_(rxBuf_, rxBufLen);
         }
 	}
 	if (status[2] & RH_RF24_INT_STATUS_TX_FIFO_ALMOST_EMPTY)
@@ -218,21 +205,7 @@ void RH_RF24_mod::handleInterrupt()
 void RH_RF24_mod::validateRxBuf()
 {
     // Validate headers etc
-    if (_bufLen >= RH_RF24_HEADER_LEN)
-    {
-	_rxHeaderTo    = _buf[0];
-	_rxHeaderFrom  = _buf[1];
-	_rxHeaderId    = _buf[2];
-	_rxHeaderFlags = _buf[3];
-	if (_promiscuous ||
-	    _rxHeaderTo == _thisAddress ||
-	    _rxHeaderTo == RH_BROADCAST_ADDRESS)
-	{
-	    // Its for us
-	    _rxGood++;
 	    _rxBufValid = true;
-	}
-    }
 }
 
 bool RH_RF24_mod::clearRxFifo()
@@ -248,25 +221,6 @@ void RH_RF24_mod::clearBuffer()
     _rxBufValid = false;
 }
 
-// These are low level functions that call the interrupt handler for the correct
-// instance of RH_RF24.
-// 3 interrupts allows us to have 3 different devices
-void RH_INTERRUPT_ATTR RH_RF24_mod::isr0()
-{
-    if (_deviceForInterrupt[0])
-	_deviceForInterrupt[0]->handleInterrupt();
-}
-void RH_INTERRUPT_ATTR RH_RF24_mod::isr1()
-{
-    if (_deviceForInterrupt[1])
-	_deviceForInterrupt[1]->handleInterrupt();
-}
-void RH_INTERRUPT_ATTR RH_RF24_mod::isr2()
-{
-    if (_deviceForInterrupt[2])
-	_deviceForInterrupt[2]->handleInterrupt();
-}
-
 bool RH_RF24_mod::available()
 {
     if (_mode == RHModeTx)
@@ -280,8 +234,8 @@ bool RH_RF24_mod::recv(uint8_t* buf, uint8_t* len)
 {
     if (!available())
 	return false;
-    // CAUTION: first 4 octets of _buf contain the headers
-    if (buf && len && (_bufLen >= RH_RF24_HEADER_LEN))
+
+    if (buf && len)
     {
 	ATOMIC_BLOCK_START;
 	if (*len > _bufLen - RH_RF24_HEADER_LEN)
@@ -312,22 +266,13 @@ bool RH_RF24_mod::send(const uint8_t* data, uint8_t len)
         return false;
     }
 
-    waitPacketSent(); // Make sure we dont interrupt an outgoing message
     setModeIdle(); // Prevent RX while filling the fifo
-
-    if (!waitCAD()) 
-	return false;  // Check channel activity
 
     // Put the payload in the FIFO
     // First the length in fixed length field 1. This wont appear in the receiver fifo since
     // we have turned off IN_FIFO in PKT_LEN
     _buf[0] = len + RH_RF24_HEADER_LEN;
     // Now the rest of the payload in variable length field 2
-    // First the headers
-    _buf[1] = _txHeaderTo;
-    _buf[2] = _txHeaderFrom;
-    _buf[3] = _txHeaderId;
-    _buf[4] = _txHeaderFlags;
     // Then the message
     memcpy(_buf + 1 + RH_RF24_HEADER_LEN, data, len);
     _bufLen = len + 1 + RH_RF24_HEADER_LEN;
@@ -388,7 +333,6 @@ void RH_RF24_mod::readNextFragment()
     if ((_bufLen + fifo_len) > sizeof(_buf))
     {
 	// Overflow pending
-	_rxBad++;
 	setModeIdle();
 	clearRxFifo();
 	clearBuffer();

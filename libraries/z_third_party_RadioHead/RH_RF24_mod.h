@@ -44,8 +44,8 @@
 #include "Log.h"
 #include "InterruptEventHandler.h"
 
-#include <RHGenericSPI.h>
-#include <RHSPIDriver.h>
+//#include <RHGenericSPI.h>
+#include "RHSPIDriver.h"
 
 // This is the maximum number of interrupts the driver can support
 // Most Arduinos can handle 2, Megas can handle more
@@ -53,7 +53,7 @@
 
 // The length of the headers we add.
 // The headers are inside the RF24's payload
-#define RH_RF24_HEADER_LEN 4
+#define RH_RF24_HEADER_LEN 0
 
 // Maximum payload length the RF24 can support, limited by our 1 octet message length
 // Aim for 64 bytes of pure application message, no header, no sizing
@@ -857,6 +857,30 @@ public:
 	uint8_t      replyLen;  ///< Number of bytes in the reply stream (after the CTS)
     }   CommandInfo;
 
+    typedef enum
+    {
+	RHModeInitialising = 0, ///< Transport is initialising. Initial default value until init() is called..
+	RHModeSleep,            ///< Transport hardware is in low power sleep mode (if supported)
+	RHModeIdle,             ///< Transport is idle.
+	RHModeTx,               ///< Transport is in the process of transmitting a message.
+	RHModeRx,               ///< Transport is in the process of receiving a message.
+	RHModeCad               ///< Transport is in the process of detecting channel activity (if supported)
+    } RHMode;
+
+    /// Returns the most recent RSSI (Receiver Signal Strength Indicator).
+    /// Usually it is the RSSI of the last received message, which is measured when the preamble is received.
+    /// If you called readRssi() more recently, it will return that more recent value.
+    /// \return The most recent RSSI measurement in dBm.
+    int16_t        lastRssi() { return _lastRssi; }
+
+    /// Returns the operating mode of the library.
+    /// \return the current mode, one of RF69_MODE_*
+    RHMode          mode() { return _mode; }
+
+    /// Sets the operating mode of the transport.
+    void            setMode(RHMode mode) { _mode = mode; }
+
+
     /// Constructor. You can have multiple instances, but each instance must have its own
     /// interrupt and slave select pin. After constructing, you must call init() to initialise the interface
     /// and the radio module. A maximum of 3 instances can co-exist on one processor, provided there are sufficient
@@ -876,7 +900,7 @@ public:
     ///                     Connecting SDN directly to ground does not aloways provide reliable radio startup.
     /// \param[in] spi Pointer to the SPI interface object to use. 
     ///                Defaults to the standard Arduino hardware SPI interface
-    RH_RF24_mod(uint8_t slaveSelectPin = SS, uint8_t interruptPin = 2, uint8_t sdnPin = 9, RHGenericSPI& spi = hardware_spi);
+    RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin);
   
     /// Initialises this instance and the radio module connected to it.
     /// The following steps are taken:
@@ -1083,7 +1107,7 @@ public:
     /// changing mode it idle, transmit or receive (eg by calling send(), recv(), available() etc)
     /// Caution: there is a time penalty as the radio takes a finte time to wake from sleep mode.
     /// \return true if sleep mode was successfully entered.
-    virtual bool    sleep();
+    bool    sleep();
 
     /// Return the integer value of the device type
     /// as read from the device in from RH_RF24_CMD_PART_INFO.
@@ -1091,6 +1115,7 @@ public:
     /// connected.
     /// \return The integer device type
     uint16_t deviceType() {return _deviceType;};
+    uint16_t _deviceType = 0;
 
 protected:
     /// This is a low level function to handle the interrupts for one instance of RF24.
@@ -1138,54 +1163,32 @@ protected:
 
 private:
 
-    /// Low level interrupt service routine for RF24 connected to interrupt 0
-    static void         isr0();
-
-    /// Low level interrupt service routine for RF24 connected to interrupt 1
-    static void         isr1();
-
-    /// Low level interrupt service routine for RF24 connected to interrupt 1
-    static void         isr2();
-
-    /// Array of instances connected to interrupts 0 and 1
-    static RH_RF24_mod*     _deviceForInterrupt[];
-
-    /// Index of next interrupt number to use in _deviceForInterrupt
-    static uint8_t      _interruptCount;
-
-    /// The configured interrupt pin connected to this instance
-    uint8_t             _interruptPin;
-
-    /// The index into _deviceForInterrupt[] for this device (if an interrupt is already allocated)
-    /// else 0xff
-    uint8_t             _myInterruptIndex;
-
     /// The configured pin connected to the SDN pin of the radio
     uint8_t             _sdnPin;
 
     /// The radio OP mode to use when mode is RHModeIdle
     uint8_t             _idleMode; 
 
-    /// The reported PART device type
-    uint16_t             _deviceType;
-
     /// The selected output power in dBm
     int8_t              _power;
 
     /// The message length in _buf
-    volatile uint8_t    _bufLen;
+    uint8_t    _bufLen;
 
     /// Array of octets of the last received message or the next to transmit message
     uint8_t             _buf[RH_RF24_MAX_PAYLOAD_LEN];
 
     /// True when there is a valid message in the Rx buffer
-    volatile bool       _rxBufValid;
+    bool       _rxBufValid;
 
     /// Index into TX buffer of the next to send chunk
-    volatile uint8_t    _txBufSentIndex;
-  
-    /// Time in millis since the last preamble was received (and the last time the RSSI was measured)
-    uint32_t            _lastPreambleTime;
+    uint8_t    _txBufSentIndex;
+
+
+    RHMode     _mode;
+    int16_t     _lastRssi;
+
+
 
     InterruptEventHandlerDelegate ied_;
 
