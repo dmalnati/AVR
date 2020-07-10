@@ -2,6 +2,11 @@
 #define __STR_FORMAT_H__
 
 
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+
 class StrFormat
 {
 public:
@@ -10,6 +15,8 @@ public:
     
 public:
 
+    // does not attempt to null terminate.
+    // simply slots the string into the target.
     static void U32ToStrPadLeft(char *bufTarget, uint32_t val, uint8_t width, char pad)
     {
         // Deal with buffer needed to hold a U32 plus NULL
@@ -45,6 +52,62 @@ public:
         // Actually do some copying
         memset(bufTarget, pad, padBytes);
         memcpy(&bufTarget[padBytes], u32StrBuf_, bytesToCopy);
+    }
+
+    // 14 byte buffer required.
+    // Buffer not required to be pre-null-terminated.
+    //
+    // Converts integer to comma-grouped string, no padding.
+    //    4294967295
+    // 4,294,967,295 = 13 bytes plus null terminator required as bufTarget size
+    //  | 1         = idx comma
+    //      | 5     = idx comma
+    //          | 9 = idx comma 
+    //
+    // does not attempt to null terminate.
+    // simply slots the string into the target.
+    static void U32ToStrCommas(char *bufTarget, uint32_t val)
+    {
+        const uint8_t MIN_BUF_WIDTH = 13;
+        U32ToStrPadLeft(bufTarget, val, MIN_BUF_WIDTH, ' ');
+
+        // Now we have a buffer which may be left-padded, so we can find places
+        // to insert a comma and shift everything else left.
+        for (auto commaIdx : (uint8_t[]){ 9, 5, 1 })
+        {
+            if (bufTarget[commaIdx] != ' ')
+            {
+                // shift everything left leaving a place for the comma
+                for (uint8_t i = 0; i < commaIdx; ++i)
+                {
+                    bufTarget[i] = bufTarget[i + 1];
+                }
+
+                // add the comma
+                bufTarget[commaIdx] = ',';
+            }
+        }
+
+        // Find where padding ends
+        uint8_t idxValStart = 0;
+        uint8_t found = 0;
+        for (uint8_t i = 0; i < MIN_BUF_WIDTH && !found; ++i)
+        {
+            if (bufTarget[i] != ' ')
+            {
+                idxValStart = i;
+                found = 1;
+            }
+        }
+
+        // Shift everything left
+        for (uint8_t i = 0; i < idxValStart; ++i)
+        {
+            bufTarget[i] = bufTarget[i + idxValStart];
+        }
+
+        // Add null terminator
+        bufTarget[MIN_BUF_WIDTH - idxValStart] = '\0';
     }
 
 
