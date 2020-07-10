@@ -100,22 +100,6 @@ private:
     virtual
     uint8_t DeRegisterInterruptEventHandler(InterruptEventHandler *ieh) = 0;
     
-    // ISR Message Handling
-public:
-    template <uint8_t CAPACITY>
-    class MessageCapacity
-    {
-    public:
-        MessageCapacity()
-        {
-            static uint8_t buf[CAPACITY];
-        }
-    };
-
-    using EvmMessage = function<void()>;
-    virtual
-    uint8_t RegisterEvmMessage(EvmMessage msg);
-    
     
 //////////////////////////////////////////////////////////////////////
 //

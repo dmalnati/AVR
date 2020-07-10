@@ -280,77 +280,6 @@ ServiceInterruptEventHandlers()
 
 
 
-
-//
-// MUST NOT ENABLE INTERRUPTS IN THIS FUNCTION
-//
-// This function can be called from an ISR.
-//
-//
-// As a result, access to ISR-changeable structures must be protected,
-// as well as any logic which relies on those structures remaining static.
-//
-template <uint8_t A, uint8_t B, uint8_t C>
-uint8_t EvmActual<A,B,C>::
-RegisterEvmMessage(EvmMessage msg)
-{
-    uint8_t retVal;
-    
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        retVal = evmMessageList_.Push(msg);
-    }
-    
-    return retVal;
-}
-
-
-//
-// This function is only called from the "main thread."
-//
-// As a result, access to ISR-changeable structures must be protected,
-// as well as any logic which relies on those structures remaining static.
-//
-template <uint8_t A, uint8_t B, uint8_t C>
-void EvmActual<A,B,C>::
-ServiceEvmMessageList()
-{
-    const uint8_t MAX_EVENTS_HANDLED = 4;
-    
-    uint8_t remainingEvents = MAX_EVENTS_HANDLED;
-    
-    EvmMessage msg;
-    
-    // Suppress interrupts during critical sections of code
-    cli();
-    while (evmMessageList_.Size() && remainingEvents)
-    {
-        evmMessageList_.Pop(msg);
-        sei();
-        
-        // No need to disable interrupts here, ISR-invoked code only modifies
-        // the evmMessageList_.
-        //
-        // Everything else behaves like normal.
-        msg();
- 
-        // Keep track of remaining events willing to handle
-        --remainingEvents;
-        
-        // Suppress interrupts, about to loop around and look at list again
-        cli();
-    }
-    
-    // Re-Enable interrupts
-    sei();
-}
-
-
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////
 //
 // Main Loop
@@ -393,7 +322,6 @@ MainLoopInternal()
         ServiceIdleTimeEventHandlers();
         ServiceTimedEventHandlers();
         ServiceInterruptEventHandlers();
-        ServiceEvmMessageList();
     }
 }
 

@@ -112,12 +112,6 @@ private:
     
     void ServiceInterruptEventHandlers();
 
-    // Message Handling
-public:
-    virtual
-    uint8_t RegisterEvmMessage(EvmMessage msg);
-    void ServiceEvmMessageList();
-
     
     //////////////////////////////////////////////////////////////////////
     //
@@ -186,8 +180,6 @@ private:
     // as well as any logic making use of its data.
     Queue<InterruptEventHandler *,
           COUNT_INTERRUPT_EVENT_HANDLER>  interruptEventHandlerList_;
-    
-    Queue<EvmMessage, 2> evmMessageList_;
     
     uint8_t lowPowerEnabled_;
 };
