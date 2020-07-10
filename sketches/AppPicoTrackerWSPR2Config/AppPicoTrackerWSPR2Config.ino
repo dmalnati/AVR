@@ -25,7 +25,7 @@ static AppPicoTrackerWSPR2Config cfg =
     .pinLedGreen = 23,
 };
 
-#if 1
+#if 0
 static AppPicoTrackerWSPR2 app(cfg);
 #else
 static AppPicoTrackerWSPR2Test app(cfg);
