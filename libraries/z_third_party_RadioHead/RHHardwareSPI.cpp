@@ -4,9 +4,10 @@
 // Contributed by Joanna Rutkowska
 // $Id: RHHardwareSPI.cpp,v 1.28 2020/06/15 23:39:39 mikem Exp mikem $
 
+#include <util/atomic.h>
+
 #include <RHHardwareSPI.h>
 
-#ifdef RH_HAVE_HARDWARE_SPI
 
 // Declare a single default instance of the hardware SPI interface class
 RHHardwareSPI hardware_spi;
@@ -14,7 +15,7 @@ RHHardwareSPI hardware_spi;
 
 #if (RH_PLATFORM == RH_PLATFORM_STM32) // Maple etc
 // Declare an SPI interface to use
-HardwareSPI SPI(1);
+//HardwareSPI SPI(1);
 #elif (RH_PLATFORM == RH_PLATFORM_STM32STD) // STM32F4 Discovery
 // Declare an SPI interface to use
 HardwareSPI SPI(1);
@@ -50,23 +51,6 @@ uint8_t RHHardwareSPI::transfer(uint8_t data)
     return SPI.transfer(data);
 }
 
-#if (RH_PLATFORM == RH_PLATFORM_MONGOOSE_OS)
-uint8_t RHHardwareSPI::transfer2B(uint8_t byte0, uint8_t byte1)
-{
-    return SPI.transfer2B(byte0, byte1);
-}
-
-uint8_t RHHardwareSPI::spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
-{
-    return SPI.spiBurstRead(reg, dest, len);
-}
-
-uint8_t RHHardwareSPI::spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len)
-{
-    uint8_t status = SPI.spiBurstWrite(reg, src, len);
-    return status;
-}
-#endif
 
 void RHHardwareSPI::attachInterrupt() 
 {
@@ -105,8 +89,8 @@ void RHHardwareSPI::begin()
     // So too does rogerclarkmelbourne/Arduino_STM32
     // So too does GrumpyOldPizza/ArduinoCore-stm32l0 
     ::BitOrder bitOrder;
-#elif (RH_PLATFORM == RH_PLATFORM_ATTINY_MEGA)
-   ::BitOrder bitOrder;
+// #elif (RH_PLATFORM == RH_PLATFORM_ATTINY_MEGA)
+//    ::BitOrder bitOrder;
 #else
     uint8_t bitOrder;
 #endif
@@ -502,4 +486,4 @@ void RHHardwareSPI::usingInterrupt(uint8_t interrupt)
     (void)interrupt;
 }
 
-#endif
+//#endif

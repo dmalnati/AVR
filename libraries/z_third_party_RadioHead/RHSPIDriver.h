@@ -6,6 +6,8 @@
 #ifndef RHSPIDriver_h
 #define RHSPIDriver_h
 
+#include <util/atomic.h>
+
 #include "RHHardwareSPI.h"
 
 // This is the bit in the SPI address that marks it as a write
@@ -48,33 +50,33 @@ public:
     uint8_t spiRead(uint8_t reg)
     {
         uint8_t val;
-        ATOMIC_BLOCK_START;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         selectSlave();
         _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the address with the write mask off
         val = _spi.transfer(0); // The written value is ignored, reg value is read
         deselectSlave();
-        ATOMIC_BLOCK_END;
+        }
         return val;
     }
 
     uint8_t spiWrite(uint8_t reg, uint8_t val)
     {
         uint8_t status = 0;
-        ATOMIC_BLOCK_START;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         _spi.beginTransaction();
         selectSlave();
         status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the address with the write mask on
         _spi.transfer(val); // New value follows
         deselectSlave();
         _spi.endTransaction();
-        ATOMIC_BLOCK_END;
+        }
         return status;
     }
 
     uint8_t spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
     {
         uint8_t status = 0;
-        ATOMIC_BLOCK_START;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         _spi.beginTransaction();
         selectSlave();
         status = _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the start address with the write mask off
@@ -82,14 +84,14 @@ public:
         *dest++ = _spi.transfer(0);
         deselectSlave();
         _spi.endTransaction();
-        ATOMIC_BLOCK_END;
+        }
         return status;
     }
 
     uint8_t spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len)
     {
         uint8_t status = 0;
-        ATOMIC_BLOCK_START;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         _spi.beginTransaction();
         selectSlave();
         status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the start address with the write mask on
@@ -97,7 +99,7 @@ public:
         _spi.transfer(*src++);
         deselectSlave();
         _spi.endTransaction();
-        ATOMIC_BLOCK_END;
+        }
         return status;
     }
 

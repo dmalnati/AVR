@@ -237,11 +237,11 @@ bool RH_RF24_mod::recv(uint8_t* buf, uint8_t* len)
 
     if (buf && len)
     {
-	ATOMIC_BLOCK_START;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 	if (*len > _bufLen - RH_RF24_HEADER_LEN)
 	    *len = _bufLen - RH_RF24_HEADER_LEN;
 	memcpy(buf, _buf + RH_RF24_HEADER_LEN, *len);
-	ATOMIC_BLOCK_END;
+	}
     }
     clearBuffer(); // Got the most recent message
     return true;
@@ -290,7 +290,7 @@ bool RH_RF24_mod::send(const uint8_t* data, uint8_t len)
 // This is different to command() since we must not wait for CTS
 bool RH_RF24_mod::writeTxFifo(uint8_t *data, uint8_t len)
 {
-    ATOMIC_BLOCK_START;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     // First send the command
     digitalWrite(_slaveSelectPin, LOW);
     _spi.beginTransaction();
@@ -300,7 +300,7 @@ bool RH_RF24_mod::writeTxFifo(uint8_t *data, uint8_t len)
 	_spi.transfer(*data++);
     digitalWrite(_slaveSelectPin, HIGH);
     _spi.endTransaction();
-    ATOMIC_BLOCK_END;
+    }
     return true;
 }
 
@@ -573,7 +573,7 @@ bool RH_RF24_mod::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_l
 {
     bool   done = false;
 
-    ATOMIC_BLOCK_START;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     // First send the command
     digitalWrite(_slaveSelectPin, LOW);
     _spi.transfer(cmd);
@@ -613,7 +613,7 @@ bool RH_RF24_mod::command(uint8_t cmd, const uint8_t* write_buf, uint8_t write_l
 	// Finalise the read
 	digitalWrite(_slaveSelectPin, HIGH);
     }
-    ATOMIC_BLOCK_END;
+    }
     return done; // False if too many attempts at CTS
 }
 
@@ -712,14 +712,14 @@ uint8_t RH_RF24_mod::frr_read(uint8_t reg)
     uint8_t ret;
 
     // Do not wait for CTS
-    ATOMIC_BLOCK_START;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     // First send the command
     digitalWrite(_slaveSelectPin, LOW);
     _spi.transfer(RH_RF24_PROPERTY_FRR_CTL_A_MODE + reg);
     // Get the fast response
     ret = _spi.transfer(0);
     digitalWrite(_slaveSelectPin, HIGH);
-    ATOMIC_BLOCK_END;
+    }
     return ret;
 }
 

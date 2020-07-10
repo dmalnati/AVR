@@ -44,7 +44,6 @@
 #include "Log.h"
 #include "InterruptEventHandler.h"
 
-//#include <RHGenericSPI.h>
 #include "RHSPIDriver.h"
 
 // This is the maximum number of interrupts the driver can support
