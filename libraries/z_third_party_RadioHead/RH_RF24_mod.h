@@ -24,15 +24,17 @@
 
 /*
  * Changes I'm making
+ * - break support for synchronous ISR-based functionality
+ *   - main thread code only
+ *   - support pin change interrupts instead of port interrupts
  * - support my core libraries
  * - take in real pin numbers, not arduino pin numbers
  *   - but convert to arduino internally
  * - Log not Serial
- * - support pin change interrupts instead of port interrupts
  * - Make efficient use of memory
  * 
  * Basically
- * - external interfaces work the way I am used to
+ * - external interfaces work the way I am used to (async)
  * - internal resources can make use of core libs to work better
  * 
  */
@@ -40,7 +42,7 @@
 #include "Function.h"
 #include "PAL.h"
 #include "Log.h"
-#include "PCIntEventHandler.h"
+#include "InterruptEventHandler.h"
 
 #include <RHGenericSPI.h>
 #include <RHSPIDriver.h>
@@ -49,13 +51,13 @@
 // Most Arduinos can handle 2, Megas can handle more
 #define RH_RF24_NUM_INTERRUPTS 3
 
-// Maximum payload length the RF24 can support, limited by our 1 octet message length
-// Aim for 64 bytes of pure application message, no header, no sizing
-#define RH_RF24_MAX_PAYLOAD_LEN (1 + 64 + RH_RF24_HEADER_LEN)
-
 // The length of the headers we add.
 // The headers are inside the RF24's payload
 #define RH_RF24_HEADER_LEN 4
+
+// Maximum payload length the RF24 can support, limited by our 1 octet message length
+// Aim for 64 bytes of pure application message, no header, no sizing
+#define RH_RF24_MAX_PAYLOAD_LEN (1 + RH_RF24_HEADER_LEN + 64)
 
 // This is the maximum message length that can be supported by this driver. 
 // Can be pre-defined to a smaller size (to save SRAM) prior to including this header
@@ -1185,10 +1187,12 @@ private:
     /// Time in millis since the last preamble was received (and the last time the RSSI was measured)
     uint32_t            _lastPreambleTime;
 
-    PCIntEventHandlerDelegate ied_;
+    InterruptEventHandlerDelegate ied_;
 
     function<void()>                             txCb_;
     function<void(uint8_t *buf, uint8_t bufLen)> rxCb_;
+
+    uint8_t rxBuf_[RH_RF24_MAX_MESSAGE_LEN];
 };
 
 /// @example rf24_client.pde

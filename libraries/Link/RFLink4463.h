@@ -95,12 +95,14 @@ public:
         txCb_ = txCb;
 
         radio_.SetOnMessageTransmittedCallback([this](){
-            txCb_();
-
+            // Go back to receive first, as callback may decide to send
+            // again and we don't want to cancel that immediately afterward
             if (goBackToReceiveOnSendComplete_)
             {
                 ModeReceive();
             }
+
+            txCb_();
         });
     }
     
@@ -119,8 +121,8 @@ public:
     //     - callback when message completed and you can send another
     //   - don't get notified
     //
-    // If you async send a new message before completion of prior send, function
-    // will block until prior message sent.
+    // You cannot send a subsequent message until prior message send callback
+    // is executed and the function will return false.
     //
     // If you try to receive or go low power before completion of prior send,
     // no protection is in place and behavior undefined, including never

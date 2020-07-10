@@ -31,7 +31,7 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
 RH_RF24_mod::RH_RF24_mod(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin, RHGenericSPI& spi)
     :
     RHSPIDriver(PAL.GetArduinoPinFromPhysicalPin(slaveSelectPin), spi)
-    //, ied_(interruptPin, LEVEL_FALLING)
+    , ied_(interruptPin, LEVEL_FALLING)
 {
     _interruptPin = interruptPin;
     _sdnPin = PAL.GetArduinoPinFromPhysicalPin(sdnPin);
@@ -75,7 +75,7 @@ bool RH_RF24_mod::init()
     ied_.SetCallback([this](uint8_t){
         handleInterrupt();
     });
-    ied_.RegisterForPCIntEvent(_interruptPin, PCIntEventHandler::MODE::MODE_FALLING);
+    ied_.RegisterForInterruptEvent();
 
     // Ensure we get the interrupts we need, irrespective of whats in the radio_config
     uint8_t int_ctl[] = {RH_RF24_MODEM_INT_STATUS_EN | RH_RF24_PH_INT_STATUS_EN, 0xff, 0xff, 0x00 };
@@ -168,8 +168,8 @@ void RH_RF24_mod::handleInterrupt()
 	    _mode = RHModeIdle;
 	    clearBuffer();
 
-        // packet sent event, (not merely that the queue is almost empty)
-        Evm::GetInstance().RegisterEvmMessage(txCb_);
+        // on transmit complete callback
+        txCb_();
 	}
 	if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
 	{
@@ -189,20 +189,16 @@ void RH_RF24_mod::handleInterrupt()
 
         if (available())
         {
-            // packet received event
-            Evm::GetInstance().RegisterEvmMessage([this](){
-                // Duplicate recv() logic here
+            if (_bufLen >= RH_RF24_HEADER_LEN)
+            {
+                // copy buffer to dedicated receive buffer
+                uint8_t rxBufLen = _bufLen - RH_RF24_HEADER_LEN;
+                memcpy(rxBuf_, _buf + RH_RF24_HEADER_LEN, rxBufLen);
+                clearBuffer();
 
-                // CAUTION: first 4 octets of _buf contain the headers
-                if (_bufLen >= RH_RF24_HEADER_LEN)
-                {
-                    ATOMIC_BLOCK_START;
-                    rxCb_(_buf    + RH_RF24_HEADER_LEN,
-                          _bufLen - RH_RF24_HEADER_LEN);
-                    ATOMIC_BLOCK_END;
-                }
-                clearBuffer(); // Got the most recent message
-            });
+                // on message received callback
+                rxCb_(rxBuf_, rxBufLen);
+            }
         }
 	}
 	if (status[2] & RH_RF24_INT_STATUS_TX_FIFO_ALMOST_EMPTY)
@@ -301,6 +297,20 @@ bool RH_RF24_mod::send(const uint8_t* data, uint8_t len)
 {
     if (len > RH_RF24_MAX_MESSAGE_LEN)
 	return false;
+
+    // Check if currently sending, if so, return error.
+    //
+    // Avoid deadlock with newly customized main-thread interrupt handling.
+    //
+    // Previously main thread code could block and wait for ISRs to change the
+    // mode behind the scenes.
+    //
+    // Now that isn't possible, so callers must use async callbacks to know
+    // when to send again.
+    if (_mode == RHModeTx)
+    {
+        return false;
+    }
 
     waitPacketSent(); // Make sure we dont interrupt an outgoing message
     setModeIdle(); // Prevent RX while filling the fifo

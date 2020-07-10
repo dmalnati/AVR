@@ -131,23 +131,7 @@ void OnCommand(char *cmdStr)
                 if (!memcmp((uint8_t *)bufReq, buf, sizeof(bufReq)))
                 {
                     SEND_TIME_START = PAL.Micros();
-
-
-                    /*
-                     * This isn't working for several reasons
-                     * - I think I'm replying and writing over the same buffer I'm receiving from
-                     *   - so probably need more copying
-                     * - Am I in an ISR?  I shouldn't be, but Delay isn't working.
-                     *   - Ahh, interrupts blocked.  Can I safely not block them?
-                     *     - If I'm receiving a packet rx event, can anything else affect the buffer?
-                     *     - What if I send before returning from that callback?
-                     *       - I think deep lib uses a single shared buffer
-                     * 
-                     */
-
-                    Log("Delaying");
-                    PAL.Delay(1000);
-                    PAL.DelayMicroseconds(10000ul);
+                    
                     rr.Send((uint8_t *)bufRep, sizeof(bufRep));
                     
                     Log(P("Got REQ_RTT, sent REP_RTT"));
