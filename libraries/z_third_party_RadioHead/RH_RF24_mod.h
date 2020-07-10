@@ -39,12 +39,17 @@
  * 
  */
 
+
+#include <stdint.h>
+
+#include "SPI.h"
+
 #include "Function.h"
 #include "PAL.h"
 #include "Log.h"
 #include "InterruptEventHandler.h"
 
-#include "RHSPIDriver.h"
+
 
 // This is the maximum number of interrupts the driver can support
 // Most Arduinos can handle 2, Megas can handle more
@@ -520,190 +525,295 @@
 #define RH_RF24_PA_MODE_SWITCH_CURRENT                    0x01
 
 
-/////////////////////////////////////////////////////////////////////
-/// \class RH_RF24 RH_RF24.h <RH_RF24.h>
-/// \brief Driver to send and receive unaddressed, unreliable datagrams via an RF24 and compatible radio transceiver.
-///
-/// Works with 
-/// - Silicon Labs Si4460/1/2/3/4 transceiver chips
-/// - The equivalent HopeRF RF24/25/26/27 transceiver chips
-/// - HopeRF Complete modules: RFM24W/26W/27W
-///
-/// \par Overview
-///
-/// This class provides basic functions for sending and receiving unaddressed, 
-/// unreliable datagrams of arbitrary length to 250 octets per packet.
-///
-/// Manager classes may use this class to implement reliable, addressed datagrams and streams, 
-/// mesh routers, repeaters, translators etc.
-///
-/// Naturally, for any 2 radios to communicate that must be configured to use the same frequency and 
-/// modulation scheme.
-///
-/// This Driver provides an object-oriented interface for sending and receiving data messages with Hope-RF
-/// RF24 and compatible radio modules, such as the RFM24W module.
-///
-/// The Hope-RF (http://www.hoperf.com) RF24 family is a low-cost ISM transceiver
-/// chip. It supports FSK, GFSK, OOK over a wide range of frequencies and
-/// programmable data rates. HopeRF also sell these chips on modules which includes
-/// a crystal and antenna coupling circuits: RFM24W, RFM26W and RFM27W
-///
-/// This Driver provides functions for sending and receiving messages of up
-/// to 250 octets on any frequency supported by the RF24, in a range of
-/// predefined data rates and frequency deviations. Frequency can be set
-/// to any frequency from 142.0MHz to 1050.0MHz. Caution: most modules only support a more limited
-/// range of frequencies due to antenna tuning.
-///
-/// Up to 2 RFM24 modules can be connected to an Arduino (3 on a Mega),
-/// permitting the construction of translators and frequency changers, etc.
-///
-/// The following modulation types are suppported with a range of modem configurations for 
-/// common data rates and frequency deviations:
-/// - OOK On-Off Keying
-/// - GFSK Gaussian Frequency Shift Keying
-/// - FSK Frequency Shift Keying
-///
-/// Support for other RF24 features such as on-chip temperature measurement, 
-/// transmitter power control etc is also provided.
-///
-/// RH_RF24 uses interrupts to detect and handle events in the radio chip. The RF24 family has
-/// TX and RX FIFOs of 64 bytes, but through the use of interrupt, the RH_RF24 driver can send longer 
-/// messages by filling or emptying the FIFOs on-the-fly.
-///
-/// Tested on Anarduino Mini http://www.anarduino.com/mini/ with arduino-1.0.5
-/// on OpenSuSE 13.1. Also on Anarduino Mini with arduino-1.8.1 on Kubuntu 16.04
-///
-/// \par Packet Format
-///
-/// All messages sent and received by this RH_RF24 Driver conform to this packet format:
-///
-/// - 4 octets PREAMBLE (configurable)
-/// - 2 octets SYNC 0x2d, 0xd4 (configurable, so you can use this as a network filter)
-/// - Field containing 1 octet of message length and 2 octet CRC protecting this field
-/// - Field 2 containing at least 4 octets, and 2 octet CRC protecting this field:
-///  + 4 octets HEADER: (TO, FROM, ID, FLAGS)
-///  + 0 to 250 octets DATA 
-///  + 2 octets CRC, computed on HEADER and DATA
-///
-/// \par Connecting RFM-24 to Arduino
-///
-/// For RFM24/RFM26 and Teensy 3.1 or Anarduino Mini
-/// \code
-///                 Teensy      RFM-24/RFM26
-///                 GND----------GND (ground in)
-///                 3V3----------VCC   (3.3V in)
-/// interrupt 2 pin D2-----------NIRQ  (interrupt request out)
-///          SS pin D10----------NSEL  (chip select in)
-///         SCK pin D13----------SCK   (SPI clock in)
-///        MOSI pin D11----------SDI   (SPI Data in)
-///        MISO pin D12----------SDO   (SPI data out)
-///                 D9-----------SDN   (shutdown in)
-///                           /--GPIO0 (GPIO0 out to control transmitter antenna TX_ANT)
-///                           \--TX_ANT (TX antenna control in) RFM22B only
-///                           /--GPIO1 (GPIO1 out to control receiver antenna RX_ANT)
-///                           \--RX_ANT (RX antenna control in) RFM22B only
-/// \endcode
-/// Caution: tying the radio SDN pin to ground (though it might appear from the data sheets to make sense) 
-/// does not always produce a reliable radio startup. So this driver controls the SDN pin directly.
-/// Note: the GPIO0-TX_ANT and GPIO1-RX_ANT connections are not required for the 11dBm RFM24W, 
-/// which has no antenna switch.
-///
-/// If you have an Arduino Zero, you should note that you cannot use Pin 2 for the interrupt line 
-/// (Pin 2 is for the NMI only), instead you can use any other pin (we use Pin 3) and initialise RH_RF69 like this:
-/// \code
-/// // Slave Select is pin 10, interrupt is Pin 3
-/// RH_RF24 driver(10, 3);
-/// \endcode
-///
-/// \par Customising and configuring
-///
-/// The RH_RF24 module uses a radio configuration header file to configure the basic radio operation
-/// frequency and modulation scheme. The radio configuration header file must be generated with the
-/// Silicon Labs Wireless Development Suite (WDS) program and \#included by RH_RF24.cpp
-/// 
-/// The library will work out of the box and without further configuring with these parameters:
-/// - Si4464 or equvalent
-/// - 30MHz Crytstal
-/// - 434MHz base frequncy band
-/// - 2GFSK modulation
-/// - 5kbps data rate
-/// - 10kHz deviation
-/// using the radio configuration header file
-/// RF24configs/radio_config_Si4464_30_434_2GFSK_5_10.h
-///      which is included in RadioHead.
-///      
-/// In order to use different frequency bands or modulation schemes, you must generate a new
-/// radio configuration header file
-/// with WDS, or select one of a small set of prebuilt headers from the RF24configs folder (see README in that
-/// folder for details of the filename format).
-///
-/// To generate a new header file:
-///
-/// - Install Silicon Labs Wireless Development Suite (WDS) 3.2.11.0 or later 
-///   (Windows only, we were not able to get it to run under Wine on Linux)
-/// - Run WDS
-/// - Menu->Start Simulation
-/// - Select radio chip type Si4464, press Select Radio
-/// - Select Radio Configuration Application, press Select Application
-/// - Click on Standard Packet Tx
-/// - On the Frequency and Power tab, Select the Frequency, crystal frequency etc. The PA power level is irrelevant, 
-///   since power is set programatically 
-/// - On the RF parameters tab, select the modulation type and rates
-/// - Press Generate Source, Save custom radio configuration header file
-/// - Enter a new unique file name in the RF24configs folder in RadioHead
-/// - Edit RH_RF24.cpp to use this new header file
-/// - Recompile RH_RF24
-/// 
-/// \par RSSI
-///
-/// The RSSI (Received Signal Strength Indicator) is measured and latched after the message sync bytes are received.
-/// The latched RSSI is available from the lastRssi() member functionafter the complete message is received. 
-/// Although lastRssi() 
-/// supposedly returns a signed integer, in the case of this radio it actually returns an unsigned 8 bit integer (uint8_t)
-/// and you will have to cast the return value to use it:
-/// \code
-/// uint8_t lastRssi = (uint8_t)rf24.lastRssi();
-/// \endcode
-/// The units of RSSI are arbitrary and relative, with larger unsigned numbers indicating a stronger signal. Values up to 255
-/// are seen with radios in close proximity to each other. Lower limit of receivable strength is about 70.
-///
-/// \par Transmitter Power
-///
-/// You can control the transmitter power on the RF24/25/26/27 transceiver
-/// with the RH_RF24::setTxPower() function. The argument can be any of
-/// 0x00 to 0x4f (for RFM24/Si4460) or
-/// 0x00 to 0x7f (for others)
-/// 0x00 will yield no measurable power. For other settings there is a non-linear correlation with actual
-/// RF power output (see below)
-/// The default is 0x10. Eg:
-/// \code
-/// driver.setTxPower(0x10);
-/// \endcode
-///
-/// We have made some actual power measurements against
-/// programmed power
-/// - Anarduino Mini with RFM24-433 and RFM26-433 at Vcc = 3.3V, in CW mode, 434MHz
-/// - 10cm RG58C/U soldered direct to RFM69 module ANT and GND
-/// - bnc connecteor
-/// - 12dB attenuator
-/// - BNC-SMA adapter
-/// - MiniKits AD8307 HF/VHF Power Head (calibrated against Rohde&Schwartz 806.2020 test set)
-/// - Digitech QM-1460 digital multimeter
-/// \code
-/// Program power           Measured Power dBm
-///    HEX                  RFM24                RFM26
-///    0x00                 not measurable       not measurable
-///    0x01                 -20.4                -20.6
-///    0x0f                 2.4                  4.8
-///    0x1f                 9.4                  11.0
-///    0x2f                 11.2                 14.2
-///    0x3f                 11.6                 16.4
-///    0x4f                 11.6                 18.0
-///    0x5f                                      18.6
-///    0x6f                                      19.0
-///    0x7f                                      19.2
-/// \endcode
-/// Caution: the actual radiated power output will depend heavily on the power supply voltage and the antenna.
+
+
+
+
+
+
+
+
+
+
+
+
+class RHHardwareSPI
+{
+public:
+
+typedef enum
+{
+DataMode0 = 0, ///< SPI Mode 0: CPOL = 0, CPHA = 0
+DataMode1,     ///< SPI Mode 1: CPOL = 0, CPHA = 1
+DataMode2,     ///< SPI Mode 2: CPOL = 1, CPHA = 0
+DataMode3,     ///< SPI Mode 3: CPOL = 1, CPHA = 1
+} DataMode;
+
+typedef enum
+{
+Frequency1MHz = 0,  ///< SPI bus frequency close to 1MHz
+Frequency2MHz,      ///< SPI bus frequency close to 2MHz
+Frequency4MHz,      ///< SPI bus frequency close to 4MHz
+Frequency8MHz,      ///< SPI bus frequency close to 8MHz
+Frequency16MHz      ///< SPI bus frequency close to 16MHz
+} Frequency;
+
+typedef enum
+{
+BitOrderMSBFirst = 0,  ///< SPI MSB first
+BitOrderLSBFirst,      ///< SPI LSB first
+} BitOrder;
+
+
+
+RHHardwareSPI(Frequency frequency = Frequency1MHz, BitOrder bitOrder = BitOrderMSBFirst, DataMode dataMode = DataMode0)
+    :
+        _frequency(frequency),
+        _bitOrder(bitOrder),
+        _dataMode(dataMode)
+    {
+    }
+
+    void setBitOrder(BitOrder bitOrder)
+    {
+        _bitOrder = bitOrder;
+    }
+
+    void setDataMode(DataMode dataMode)
+    {
+        _dataMode = dataMode; 
+    }
+
+    void setFrequency(Frequency frequency)
+    {
+        _frequency = frequency;
+    }
+
+    uint8_t transfer(uint8_t data) 
+    {
+        return SPI.transfer(data);
+    }
+
+
+    void attachInterrupt() 
+    {
+        SPI.attachInterrupt();
+    }
+
+    void detachInterrupt() 
+    {
+        SPI.detachInterrupt();
+    }
+        
+    void begin() 
+    {
+        // Perhaps this is a uniform interface for SPI?
+        // Currently Teensy and ESP32 only
+    uint32_t frequency;
+    if (_frequency == Frequency16MHz)
+        frequency = 16000000;
+    else if (_frequency == Frequency8MHz)
+        frequency = 8000000;
+    else if (_frequency == Frequency4MHz)
+        frequency = 4000000;
+    else if (_frequency == Frequency2MHz)
+        frequency = 2000000;
+    else
+        frequency = 1000000;
+
+        uint8_t bitOrder;
+
+    if (_bitOrder == BitOrderLSBFirst)
+        bitOrder = LSBFIRST;
+    else
+        bitOrder = MSBFIRST;
+    
+        uint8_t dataMode;
+        if (_dataMode == DataMode0)
+        dataMode = SPI_MODE0;
+        else if (_dataMode == DataMode1)
+        dataMode = SPI_MODE1;
+        else if (_dataMode == DataMode2)
+        dataMode = SPI_MODE2;
+        else if (_dataMode == DataMode3)
+        dataMode = SPI_MODE3;
+        else
+        dataMode = SPI_MODE0;
+
+        // Save the settings for use in transactions
+    _settings = SPISettings(frequency, bitOrder, dataMode);
+    SPI.begin();
+    }
+
+    void end() 
+    {
+        return SPI.end();
+    }
+
+    void beginTransaction()
+    {
+        SPI.beginTransaction(_settings);
+    }
+
+    void endTransaction()
+    {
+        SPI.endTransaction();
+    }
+
+    void usingInterrupt(uint8_t interrupt)
+    {
+        SPI.usingInterrupt(interrupt);
+    }
+
+protected:
+    
+    /// The configure SPI Bus frequency, one of Frequency
+    Frequency    _frequency; // Bus frequency, one of Frequency
+
+    /// Bit order, one of BitOrder
+    BitOrder     _bitOrder;  
+
+    /// SPI bus mode, one of DataMode
+    DataMode     _dataMode;  
+
+    SPISettings  _settings;
+};
+
+
+
+
+
+
+// This is the bit in the SPI address that marks it as a write
+#define RH_SPI_WRITE_MASK 0x80
+
+
+
+class RHSPIDriver
+{
+public:
+    RHSPIDriver(uint8_t slaveSelectPin)
+        : 
+        _slaveSelectPin(slaveSelectPin)
+    {
+    }
+
+    bool init()
+    {
+        // start the SPI library with the default speeds etc:
+        // On Arduino Due this defaults to SPI1 on the central group of 6 SPI pins
+        _spi.begin();
+
+        // Initialise the slave select pin
+        // On Maple, this must be _after_ spi.begin
+
+        // Sometimes we dont want to work the _slaveSelectPin here
+        if (_slaveSelectPin != 0xff)
+        pinMode(_slaveSelectPin, OUTPUT);
+
+        deselectSlave();
+
+        // This delay is needed for ATMega and maybe some others, but
+        // 100ms is too long for STM32L0, and somehow can cause the USB interface to fail
+        // in some versions of the core.
+        delay(100);
+        
+        return true;
+    }
+
+    uint8_t spiRead(uint8_t reg)
+    {
+        uint8_t val;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        selectSlave();
+        _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the address with the write mask off
+        val = _spi.transfer(0); // The written value is ignored, reg value is read
+        deselectSlave();
+        }
+        return val;
+    }
+
+    uint8_t spiWrite(uint8_t reg, uint8_t val)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the address with the write mask on
+        _spi.transfer(val); // New value follows
+        deselectSlave();
+        _spi.endTransaction();
+        }
+        return status;
+    }
+
+    uint8_t spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg & ~RH_SPI_WRITE_MASK); // Send the start address with the write mask off
+        while (len--)
+        *dest++ = _spi.transfer(0);
+        deselectSlave();
+        _spi.endTransaction();
+        }
+        return status;
+    }
+
+    uint8_t spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len)
+    {
+        uint8_t status = 0;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        _spi.beginTransaction();
+        selectSlave();
+        status = _spi.transfer(reg | RH_SPI_WRITE_MASK); // Send the start address with the write mask on
+        while (len--)
+        _spi.transfer(*src++);
+        deselectSlave();
+        _spi.endTransaction();
+        }
+        return status;
+    }
+
+    void setSlaveSelectPin(uint8_t slaveSelectPin)
+    {
+        _slaveSelectPin = slaveSelectPin;
+    }
+
+    void spiUsingInterrupt(uint8_t interruptNumber)
+    {
+        _spi.usingInterrupt(interruptNumber);
+    }
+
+    void selectSlave()
+    {
+        digitalWrite(_slaveSelectPin, LOW);
+    }
+        
+    void deselectSlave()
+    {
+        digitalWrite(_slaveSelectPin, HIGH);
+    }
+
+    /// Reference to the RHGenericSPI instance to use to transfer data with the SPI device
+    RHHardwareSPI _spi;
+
+    /// The pin number of the Slave Select pin that is used to select the desired device.
+    uint8_t             _slaveSelectPin;
+};
+
+
+
+
+
+
+
+
+
+
+
 
 class RH_RF24_mod : public RHSPIDriver
 {
