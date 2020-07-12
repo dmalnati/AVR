@@ -849,7 +849,7 @@ public:
 
 private:
 
-    static const uint32_t SELF_HEALING_INTERVAL_MS = 5000;
+    static const uint32_t SELF_HEALING_INTERVAL_MS = 45000;
 
 
 public:
@@ -997,6 +997,8 @@ public:
         // actualy, 4 seems to work much better for some modulations
         setPreambleLength(4);
 
+        setTxPower(txPower_);
+
         return IsOperable();
     }
 
@@ -1020,10 +1022,6 @@ public:
     // Basically a watchdog
     void ScheduleSelfHealing()
     {
-        //Log("ScheduleSelfHealing");
-
-        DurationAuditorMicros<2> audit;
-        audit.Audit("start");
         signsOfLife_ = 0;
         ted_.SetCallback([this](){
             if (!signsOfLife_)
@@ -1039,8 +1037,6 @@ public:
         });
         
         ted_.RegisterForTimedEvent(SELF_HEALING_INTERVAL_MS);
-        audit.Audit("end");
-        audit.Report();
     }
 
     uint8_t ReInit()
@@ -1081,35 +1077,20 @@ public:
 
         RFSI4463PROPacket::RHMode modeCached = _mode;
 
-        //LogNL();
-        // Log("RI");
-        DurationAuditorMicros<2> audit;
-        audit.Audit("RI Start");
-
-        Log("mc: ", (uint8_t)modeCached);
-
         if (init())
         {
-            //Log("init() worked");
-
             if (modeCached == RHModeRx)
             {
-                //Log("Enabling RX");
-
                 SetModeRxInternal();
             }
             else if (modeCached == RHModeTx)
             {
-                //Log("TX was enabled, firing callback after 0ms");
-
                 // avoid the TX call leading to a send
                 //   leading to another send
                 //     leading to another fail
                 //       leading to another reinit
                 //         leading to recursive stack crash
                 ted_.SetCallback([this](){
-                    //Log("DelayedTx callback");
-                    LogNNL("*****");
                     txCb_();
                     ScheduleSelfHealing();
                 });
@@ -1130,13 +1111,6 @@ public:
             _mode = modeCached;
         }
 
-        // Log("_m: ", (uint8_t)_mode);
-        // Log("RetVal: ", retVal);
-        // LogNL();
-        audit.Audit("RI End");
-        audit.Report();
-
-
         return retVal;
     }
 
@@ -1146,14 +1120,16 @@ public:
         uint8_t status[8];
         command(RH_RF24_CMD_GET_INT_STATUS, NULL, 0, status, sizeof(status));
 
-        // Log("INT_STATUS   : ", LogBIN(status[0]));
-        // Log("PH_PENDING   : ", LogBIN(status[2]));
-        // Log("MODEM_PENDING: ", LogBIN(status[4]));
-        // Log("CHIP_PENDING : ", LogBIN(status[6]));
-        // LogNL();
-
         // Decode and handle the interrupt bits we are interested in
-    //    if (status[0] & RH_RF24_INT_STATUS_CHIP_INT_STATUS)
+        if (status[0] & RH_RF24_INT_STATUS_CHIP_INT_STATUS)
+        {
+            // Log("--CHIP--");
+            // Log("INT_STATUS   : ", LogBIN(status[0]));
+            // Log("PH_PENDING   : ", LogBIN(status[2]));
+            // Log("MODEM_PENDING: ", LogBIN(status[4]));
+            // Log("CHIP_PENDING : ", LogBIN(status[6]));
+            // LogNL();
+        }
         if (status[0] & RH_RF24_INT_STATUS_MODEM_INT_STATUS)
         {
             ++stats_.countIrqModem;
@@ -1169,11 +1145,42 @@ public:
                 clearRxFifo();
                 setModeRx();
             }
+
+            // if (!(status[4] & RH_RF24_INT_STATUS_INVALID_SYNC) &&
+            //     !(status[4] & RH_RF24_INT_STATUS_RSSI) &&
+            //     !(status[4] & RH_RF24_INT_STATUS_PREAMBLE_DETECT) &&
+            //     !(status[4] & RH_RF24_INT_STATUS_SYNC_DETECT))
+            // {
+            //     Log("--MODEM--");
+            //     Log("INT_STATUS   : ", LogBIN(status[0]));
+            //     Log("PH_PENDING   : ", LogBIN(status[2]));
+            //     Log("MODEM_PENDING: ", LogBIN(status[4]));
+            //     Log("CHIP_PENDING : ", LogBIN(status[6]));
+            //     LogNL();
+            // }
+
         }
         
         if (status[0] & RH_RF24_INT_STATUS_PH_INT_STATUS)
         {
             ++stats_.countIrqPh;
+
+            // if
+            // ( 
+            //     !(status[2] & RH_RF24_INT_STATUS_CRC_ERROR) &&
+            //     !(status[2] & RH_RF24_INT_STATUS_PACKET_SENT) &&
+            //     !(status[2] & RH_RF24_INT_STATUS_TX_FIFO_ALMOST_EMPTY) &&
+            //     !(status[2] & RH_RF24_INT_STATUS_RX_FIFO_ALMOST_FULL) &&
+            //     !(status[2] & RH_RF24_INT_STATUS_PACKET_RX)
+            // )
+            // {
+            //     Log("--PH--");
+            //     Log("INT_STATUS   : ", LogBIN(status[0]));
+            //     Log("PH_PENDING   : ", LogBIN(status[2]));
+            //     Log("MODEM_PENDING: ", LogBIN(status[4]));
+            //     Log("CHIP_PENDING : ", LogBIN(status[6]));
+            //     LogNL();
+            // }
 
             if (status[2] & RH_RF24_INT_STATUS_CRC_ERROR)
             {
@@ -1238,6 +1245,9 @@ public:
 
                 measurements_.timeUsPacketTxComplete = measurements_.timeUsLastISR;
 
+                ++stats_.countPacketsTx;
+                stats_.countBytesTx += countBytesRxQueued_;
+
                 // on transmit complete callback
                 txCb_();
 
@@ -1247,8 +1257,6 @@ public:
 
             if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
             {
-                ++stats_.countPacketsRx;
-
                 // A complete message has been received with good CRC
 
                 // Radio will have transitioned automatically to the _idleMode
@@ -1272,6 +1280,7 @@ public:
                 }
                 else
                 {
+                    ++stats_.countPacketsRx;
                     stats_.countBytesRx += fifoLen;
 
                     // We have capacity to receive the packet
@@ -1374,6 +1383,18 @@ public:
         return retVal;
     }
 
+    uint8_t SendvInternalAtomic(IOVec *iovList, uint8_t iovListLen)
+    {
+        uint8_t retVal = 0;
+
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        {
+            retVal = SendvInternal(iovList, iovListLen);
+        }
+
+        return retVal;
+    }
+
     uint8_t SendvInternal(IOVec *iovList, uint8_t iovListLen)
     {
         uint8_t retVal = 0;
@@ -1403,13 +1424,13 @@ public:
                 {
                     retVal = 1;
 
-                    ++stats_.countPacketsTx;
-                    stats_.countBytesTx += bufSizeTotal;
+                    countBytesRxQueued_ = bufSizeTotal;
 
                     uint8_t len = (uint8_t)bufSizeTotal;
 
                     // Prevent RX while filling the fifo
                     setModeIdle();
+                    cmd_clear_all_interrupts();
 
                     // Single packet mode, so no fragment sending logic necessary.
                     // Fill FIFO completely now based on data in hand.
@@ -1688,6 +1709,8 @@ public:
     // this function allows tuning 0-127.
     void setTxPower(uint8_t power)
     {
+        txPower_ = power;
+
         uint8_t pa_bias_clkduty = 0;
         // These calculations valid for advertised power from Si chips at Vcc = 3.3V
         // you may get lower power from RFM modules, depending on Vcc voltage, antenna etc
@@ -1874,6 +1897,8 @@ public:
 
     RHMode     _mode;
 
+    uint8_t txPower_ = 127;
+
     struct Measurements
     {
         uint32_t timeUsLastISR  = 0; // Last ISR time deep within Ivm
@@ -1929,6 +1954,7 @@ public:
     };
 
     Stats stats_;
+    uint8_t countBytesRxQueued_ = 0;
 
     Stats GetStats() const
     {

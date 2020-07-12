@@ -10,7 +10,7 @@
 
 
 static Evm::Instance<10,10,10> evm;
-static SerialAsyncConsoleEnhanced<5>  console;
+static SerialAsyncConsoleEnhanced<10>  console;
 
 static const uint8_t PIN_IRQ = 12;
 static const uint8_t PIN_SDN = 13;
@@ -32,8 +32,13 @@ void setup()
 {
     LogStart(9600);
     LogNL();
-    Log("Starting timing tester");
+    Log("Starting timing tester (rtt)");
 
+    console.RegisterCommand("status", [](char *){
+        r.DumpStatus();
+        LogNL();
+    });
+    
     console.RegisterCommand("rtt", [](char *){
         rr.SetOnMessageTransmittedCallback([](){
             // Signal that message is known sent from the application perspective.

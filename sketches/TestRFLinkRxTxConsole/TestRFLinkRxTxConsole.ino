@@ -193,9 +193,9 @@ void OnCommand(char *cmdStr)
     {
         Log(P("Forever until reset"));
         rr.SetOnMessageTransmittedCallback([](){
-            rr.Send((uint8_t *)bufTx64, 8);
+            r.Send((uint8_t *)bufTx64, 4);
         });
-        rr.Send((uint8_t *)bufTx64, 8);
+        r.Send((uint8_t *)bufTx64, 4);
     }
     else if (!strcmp_P(cmd, P("sendr")))
     {

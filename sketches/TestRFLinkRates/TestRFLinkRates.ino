@@ -9,7 +9,7 @@
 // runs at 434.000 MHz
 
 
-static Evm::Instance<10,10,10> evm;
+static Evm::Instance<5,15,10> evm;
 static SerialAsyncConsoleEnhanced<15>  console;
 
 static const uint8_t PIN_IRQ = 12;
@@ -23,19 +23,156 @@ static TimedEventHandlerDelegate ted;
 
 static uint32_t waitMsTx = 0;
 static uint32_t waitMsRx = 0;
-static uint32_t waitMsEnd = 200;
+static uint32_t waitMsEnd = 1000;
 static uint32_t waitMsRetry = 10;
 static uint32_t seqNo = 1;
-static uint32_t seqNoExpected = 0;
 
-static const uint8_t BUF_SIZE = 64;
-static const uint8_t MSG_SIZE_MIN = 8;
+static const uint8_t BUF_SIZE = RFLink_Raw::MAX_PACKET_SIZE;
+static const uint8_t MSG_SIZE_MIN = 10;
 static uint8_t msgSize = MSG_SIZE_MIN;
+
+static uint8_t txPower = 127;
+static uint8_t txId[2] = { 'A', 'a' };
+struct RxData
+{
+    uint32_t seqNo       = 0;
+    uint32_t countSeen   = 0;
+    uint32_t countMissed = 0;
+};
+const uint8_t ID_COUNT = 4;
+static RxData idStart__data[ID_COUNT];
+
+static void InitStateAll()
+{
+    for (uint8_t i = 0; i < ID_COUNT; ++i)
+    {
+        char id = 'A' + i;
+        InitState(id);
+    }
+}
+
+static void InitState(char idStart)
+{
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        RxData &data = idStart__data[idStart - 'A'];
+        
+        memset(&data, 0, sizeof(data));
+    }
+}
+
+static uint32_t GetExpectedSeqNo(char idStart)
+{
+    uint32_t seqNo = 0;
+    
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        seqNo = idStart__data[idStart - 'A'].seqNo;
+    }
+    
+    return seqNo;
+}
+
+static void SetExpectedSeqNo(char idStart, uint32_t seqNo)
+{
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        idStart__data[idStart - 'A'].seqNo = seqNo;
+    }
+}
+
+static void IncrSeen(char idStart)
+{
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        ++idStart__data[idStart - 'A'].countSeen;
+    }
+}
+
+static void IncrMissed(char idStart, uint32_t countMissed)
+{
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        idStart__data[idStart - 'A'].countMissed += countMissed;
+    }
+}
+
+uint32_t GetSeen(char idStart)
+{
+    uint32_t retVal = 0;
+    
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        retVal = idStart__data[idStart - 'A'].countSeen;
+    }
+
+    return retVal;
+}
+
+uint32_t GetMissed(char idStart)
+{
+    uint32_t retVal = 0;
+    
+    if ('A' <= idStart && idStart <= ('A' + ID_COUNT))
+    {
+        retVal = idStart__data[idStart - 'A'].countMissed;
+    }
+
+    return retVal;
+}
+
+uint32_t GetSeenTotal()
+{
+    uint32_t retVal = 0;
+    
+    for (uint8_t i = 0; i < ID_COUNT; ++i)
+    {
+        char id = 'A' + i;
+        
+        retVal += GetSeen(id);
+    }
+
+    return retVal;
+}
+
+uint32_t GetMissedTotal()
+{
+    uint32_t retVal = 0;
+    
+    for (uint8_t i = 0; i < ID_COUNT; ++i)
+    {
+        char id = 'A' + i;
+        
+        retVal += GetMissed(id);
+    }
+
+    return retVal;
+}
+
+static void ReportSeen()
+{
+    for (uint8_t i = 0; i < ID_COUNT; ++i)
+    {
+        char id = 'A' + i;
+        RxData &data = idStart__data[i];
+        
+        Log(P("    "), id, ": ", data.countSeen);
+    }
+}
+
+static void ReportMissed()
+{
+    for (uint8_t i = 0; i < ID_COUNT; ++i)
+    {
+        char id = 'A' + i;
+        RxData &data = idStart__data[i];
+        
+        Log(P("    "), id, ": ", data.countMissed);
+    }
+}
 
 static uint32_t timeUsStart = 0;
 
-static uint32_t msgCountSeen   = 0;
-static uint32_t msgCountMissed = 0;
 
 
 static uint8_t SendAndIncr()
@@ -45,7 +182,8 @@ static uint8_t SendAndIncr()
     // send full sized buffers, but only the first 8 bytes are meaningful
     uint8_t buf[BUF_SIZE];
     memcpy(buf, (uint8_t *)"SEQ:", 4);
-    memcpy(&buf[4], (uint8_t *)&seqNo, 4);
+    memcpy(&buf[4], (uint8_t *)txId, 2);
+    memcpy(&buf[6], (uint8_t *)&seqNo, 4);
     
     retVal = rr.Send(buf, msgSize);
 
@@ -65,15 +203,61 @@ void setup()
 
     console.RegisterCommand("show", [](char *){
         console.Exec("size");
+        console.Exec("txpower");
+        console.Exec("txid");
         console.Exec("txwait");
         console.Exec("txretrywait");
         console.Exec("rxwait");
         console.Exec("endwait");
+        LogNL();
+        console.Exec("status");
     });
 
     console.RegisterCommand("status", [](char *){
         r.DumpStatus();
-        LogNL();
+    });
+
+    console.RegisterCommand("txpower", [](char *cmdStr){
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') == 2)
+        {
+            uint8_t txPowerNew = atoi(str.TokenAtIdx(1, ' '));
+
+            if (txPowerNew <= 127)
+            {
+                txPower = txPowerNew;
+
+                r.SetTxPower(txPower);
+            }
+            else
+            {
+                Log(P("txpower must be <= 127"));
+            }
+        }
+        
+        Log(P("TxPower "), txPower);
+    });
+    
+    console.RegisterCommand("txid", [](char *cmdStr){
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') == 2)
+        {
+            const char *txIdNew    = str.TokenAtIdx(1, ' ');
+            uint8_t     txIdNewLen = strlen(txIdNew);
+            
+            if (txIdNewLen == 2)
+            {
+                memcpy(txId, txIdNew, 2);
+            }
+            else
+            {
+                Log(P("TX ID must be 2 char, not "), txIdNewLen);
+            }
+        }
+        
+        Log(P("TX ID "), (char)txId[0], (char)txId[1]);
     });
 
     console.RegisterCommand("txwait", [](char *cmdStr){
@@ -87,7 +271,6 @@ void setup()
         }
         
         Log(P("Waiting "), waitMsTx, P(" ms between sending messages"));
-        LogNL();
     });
 
     console.RegisterCommand("txretrywait", [](char *cmdStr){
@@ -100,8 +283,7 @@ void setup()
             waitMsRetry = val;
         }
 
-        Log(P("Waiting "), waitMsRetry, P(" ms before ending receive batch"));
-        LogNL();
+        Log(P("Waiting "), waitMsRetry, P(" ms before retrying send"));
     });
     
     console.RegisterCommand("rxwait", [](char *cmdStr){
@@ -115,7 +297,6 @@ void setup()
         }
 
         Log(P("Waiting "), waitMsRx, P(" ms during received message processing"));
-        LogNL();
     });
 
     console.RegisterCommand("endwait", [](char *cmdStr){
@@ -129,7 +310,6 @@ void setup()
         }
 
         Log(P("Waiting "), waitMsEnd, P(" ms before ending receive batch"));
-        LogNL();
     });
 
     console.RegisterCommand("size", [](char *cmdStr){
@@ -149,7 +329,6 @@ void setup()
         }
 
         Log(P("Message size "), msgSize);
-        LogNL();
     });
 
     console.RegisterCommand("send", 1, [](char *cmdStr){
@@ -165,7 +344,6 @@ void setup()
         ted.DeRegisterForTimedEvent();
 
         rr.SetOnMessageTransmittedCallback([=](){
-            LogNNL('#');
             if (seqNo != stopAtSeqNo)
             {
                 if (waitMsTx)
@@ -173,11 +351,11 @@ void setup()
                     ted.SetCallback([](){
                         if (SendAndIncr())
                         {
-                            LogNNL('+');
+                            LogNNL('S');
                         }
                         else
                         {
-                            LogNNL('-');
+                            LogNNL('s');
 
                             // Failed to send, so no callback, so try again
                             ted.RegisterForTimedEvent(waitMsRetry);
@@ -189,11 +367,11 @@ void setup()
                 {
                     if (SendAndIncr())
                     {
-                        LogNNL('+');
+                        LogNNL('S');
                     }
                     else
                     {
-                        LogNNL('-');
+                        LogNNL('s');
 
                         // Failed to send, so no callback, so try again
                         ted.SetCallback(rr.GetOnMessageTransmittedCallback());
@@ -221,8 +399,9 @@ void setup()
                 Log(P("  Kbps          : "), bytesPerSec * 8.0 / 1000.0);
                 Log(P("  Mbps          : "), bytesPerSec * 8.0 / 1000.0 / 1000.0);
                 Log(P("  ms/msg        : "), msPerMsg);
+                Log(P("  TxPower       : "), txPower);
                 Log(P("  TxWait (ms)   : "), waitMsTx);
-                LogNL();
+                Log(P("  TxId          : "), txId[0], txId[1]);
 
                 console.Exec("listen");
             }
@@ -236,11 +415,11 @@ void setup()
         
         if (SendAndIncr())
         {
-            LogNNL('+');
+            LogNNL('S');
         }
         else
         {
-            LogNNL('-');
+            LogNNL('s');
             
             // Failed to send, so no callback, so try again
             ted.SetCallback(rr.GetOnMessageTransmittedCallback());
@@ -249,43 +428,48 @@ void setup()
     });
 
     console.RegisterCommand("listen", [](char *){
+        InitStateAll();
+        
         rr.SetOnMessageReceivedCallback([&](uint8_t *buf, uint8_t bufLen){
             uint32_t timeStart = PAL.Millis();
             
             if (bufLen >= 8 && !memcmp(buf, (uint8_t *)"SEQ:", 4))
             {
+                uint8_t rxId[2];
+                memcpy(rxId, &buf[4], 2);
+                char rxIdGood = rxId[0];
+                char rxIdBad  = rxId[1];
+                uint32_t seqNoExpected = GetExpectedSeqNo(rxIdGood);
+                
                 uint32_t seqNoReceived;
-                memcpy((uint8_t *)&seqNoReceived, (uint8_t *)&buf[4], 4);
+                memcpy((uint8_t *)&seqNoReceived, (uint8_t *)&buf[6], 4);
 
                 if (seqNoExpected)
                 {
-                    if (seqNoReceived != seqNoExpected)
+                    if (seqNoReceived > seqNoExpected)
                     {
                         uint32_t countMissed = (seqNoReceived - seqNoExpected);
                         
                         for (uint8_t i = 0; i < countMissed; ++i)
                         {
-                            LogNNL('-');
+                            LogNNL(rxIdBad);
                         }
                         
-                        msgCountMissed += countMissed;
+                        IncrMissed(rxIdGood, countMissed);
                     }
 
-                    LogNNL('+');
-                    ++msgCountSeen;
+                    LogNNL(rxIdGood);
+                    IncrSeen(rxIdGood);
                 }
                 else
                 {
-                    Log(P("Receiving"));
-                    LogNNL('+');
+                    LogNNL(rxIdGood);
 
-                    msgCountSeen = 0;
-                    msgCountMissed = 0;
-
-                    ++msgCountSeen;
+                    InitState(rxIdGood);
+                    IncrSeen(rxIdGood);
                 }
 
-                seqNoExpected = seqNoReceived + 1;
+                SetExpectedSeqNo(rxIdGood, seqNoReceived + 1);
 
                 // Allow for configurable delay period to represent processing time
                 // and see the effect on received/missed packets
@@ -308,15 +492,17 @@ void setup()
         });
 
         ted.SetCallback([&](){
-            seqNoExpected = 0;
-
             LogNL();
             Log(P("Receive complete"));
             Log(P("Report:"));
-            Log(P("  Msgs seen  : "), msgCountSeen);
-            Log(P("  Msgs missed: "), msgCountMissed);
+            Log(P("  Msgs seen: "), GetSeenTotal());
+            ReportSeen();
+            Log(P("  Msgs missed: "), GetMissedTotal());
+            ReportMissed();
             Log(P("  RxWait (ms): "), waitMsRx);
             LogNL();
+
+            InitStateAll();
         });
 
         r.ModeReceive();
@@ -327,11 +513,12 @@ void setup()
     
     uint8_t initOk = r.Init();
     Log("Init - ", initOk ? "OK" : "ERR");
-    console.Exec("listen");
     LogNL();
-
+    r.SetTxPower(txPower);
+    console.Exec("listen");
     console.Exec("show");
-    
+    LogNL();
+    console.SetVerbose(1);
 
     evm.MainLoop();
 }
