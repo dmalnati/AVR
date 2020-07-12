@@ -12,7 +12,8 @@ class StrFormat
 public:
     static const uint8_t HHMMSSMMM_BUF_SIZE_NEEDED = 14;
     static const uint8_t HHMMSSMMM_IDX_MS_DOT      = 9;
-    
+    static const uint8_t COMMAS_BUF_SIZE_NEEDED_32 = 14;
+
 public:
 
     // does not attempt to null terminate.
@@ -54,19 +55,25 @@ public:
         memcpy(&bufTarget[padBytes], u32StrBuf_, bytesToCopy);
     }
 
+    // requires a 14 byte buf total, not required to be NULL terminated yet
+    static char *U32ToStrCommasPadLeft(char *bufTarget, uint32_t val)
+    {
+        U32ToStrCommas(bufTarget, val);
+        return ShiftRightAddNull(bufTarget, 14);
+    }
+
+
     // 14 byte buffer required.
     // Buffer not required to be pre-null-terminated.
     //
     // Converts integer to comma-grouped string, no padding.
     //    4294967295
-    // 4,294,967,295 = 13 bytes plus null terminator required as bufTarget size
+    // 4,294,967,295 = 14 bytes required -- 13 bytes plus null terminator required as bufTarget size
     //  | 1         = idx comma
     //      | 5     = idx comma
     //          | 9 = idx comma 
     //
-    // does not attempt to null terminate.
-    // simply slots the string into the target.
-    static void U32ToStrCommas(char *bufTarget, uint32_t val)
+    static char *U32ToStrCommas(char *bufTarget, uint32_t val)
     {
         const uint8_t MIN_BUF_WIDTH = 13;
         U32ToStrPadLeft(bufTarget, val, MIN_BUF_WIDTH, ' ');
@@ -89,16 +96,7 @@ public:
         }
 
         // Find where padding ends
-        uint8_t idxValStart = 0;
-        uint8_t found = 0;
-        for (uint8_t i = 0; i < MIN_BUF_WIDTH && !found; ++i)
-        {
-            if (bufTarget[i] != ' ')
-            {
-                idxValStart = i;
-                found = 1;
-            }
-        }
+        uint8_t idxValStart = GetPaddingEndIdx(bufTarget, MIN_BUF_WIDTH);
 
         // Shift everything left
         for (uint8_t i = 0; i < idxValStart; ++i)
@@ -108,6 +106,60 @@ public:
 
         // Add null terminator
         bufTarget[MIN_BUF_WIDTH - idxValStart] = '\0';
+
+        // Make it easier to use inline in functions
+        return bufTarget;
+    }
+
+    // returns the index of the first byte which isn't a space
+    static uint8_t GetPaddingEndIdx(char *buf, uint8_t byteCount)
+    {
+        uint8_t idxValStart = 0;
+
+        uint8_t found = 0;
+        for (uint8_t i = 0; i < byteCount && !found; ++i)
+        {
+            if (buf[i] != ' ')
+            {
+                idxValStart = i;
+                found = 1;
+            }
+        }
+
+        return idxValStart;
+    }
+
+    // Assumes the space given has 1 byte accounted for in the
+    // byteCount for NULL at end.
+    //
+    // Assumes this is a NULL terminated string already, within the
+    // bytes being handled.  Valid to be using the full capacity already.
+    //
+    // This code will ensure NULL is added.
+    // This code operates within byteCount-1 for shifting, then adds
+    // NULL at the end.
+    //
+    // Empty space left from shifting is padded with spaces.
+    static char *ShiftRightAddNull(char *bufTarget, uint32_t byteCount)
+    {
+        uint8_t lenNow   = strlen(bufTarget);
+        uint8_t lenLater = byteCount - 1;
+
+        uint8_t diff = lenLater - lenNow;
+
+        for (uint8_t i = 0; i < lenNow; ++i)
+        {
+            bufTarget[lenLater - 1 - i] = bufTarget[lenLater - 1 - (i + diff)];
+        }
+
+        for (uint8_t i = 0; i < diff; ++i)
+        {
+            bufTarget[i] = ' ';
+        }
+
+        bufTarget[lenLater] = '\0';
+
+        return bufTarget;
     }
 
 
