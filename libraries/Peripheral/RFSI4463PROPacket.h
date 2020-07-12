@@ -47,6 +47,8 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
  *   - but convert to arduino internally
  * - Log not Serial
  * - Make efficient use of memory
+ * - support single-packet flow, no multi-packet data, no streaming
+ *   - basically, single packet all-or-nothing data
  * 
  * Basically
  * - external interfaces work the way I am used to (async)
@@ -57,33 +59,41 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
 
 #include <stdint.h>
 
+#include "IOVec.h"
+
 #include "SPI.h"
 
 #include "Function.h"
 #include "PAL.h"
 #include "Log.h"
+#include "TimedEventHandler.h"
 #include "InterruptEventHandler.h"
+#include "DurationAuditor.h"
 
 
+// represent the actual physical FIFO size limit on the chip
+#define MODULE_FIFO_SIZE 64
 
-// This is the maximum number of interrupts the driver can support
-// Most Arduinos can handle 2, Megas can handle more
-#define RH_RF24_NUM_INTERRUPTS 3
+// account for the 1 byte of data we need to send, outbound.
+// since we want to send/receive a single packet containing all, we have to
+// consider both sending and receiving.
+//
+// Sending -- we have configured the chip to have a 2 field system:
+// - field 1 - size of arbitrary payload (1 byte)
+// - field 2 - arbitrary payload (variable)
+//
+// Therefore, for sending, a max payload of 63 bytes is possible, because 1 byte
+// of the chip FIFO needs to get used for the field 1.
+//
+// Receiving -- we do not receive the 1 byte payload size upon receive, despite
+// coming from a sender like us.
+// Therefore the max payload could in theory by 64 bytes.
+// However, we want a standard send/receive maximum, and so define both to be
+// the same.
+//
+// Pick a size which is 63 or less
+#define MAX_PAYLOAD_LEN   32
 
-// The length of the headers we add.
-// The headers are inside the RF24's payload
-#define RH_RF24_HEADER_LEN 0
-
-// Maximum payload length the RF24 can support, limited by our 1 octet message length
-// Aim for 64 bytes of pure application message, no header, no sizing
-#define RH_RF24_MAX_PAYLOAD_LEN (1 + RH_RF24_HEADER_LEN + 64)
-
-// This is the maximum message length that can be supported by this driver. 
-// Can be pre-defined to a smaller size (to save SRAM) prior to including this header
-// Here we allow for message length 4 bytes of address and header and payload to be included in payload size limit.
-#ifndef RH_RF24_MAX_MESSAGE_LEN
-#define RH_RF24_MAX_MESSAGE_LEN (RH_RF24_MAX_PAYLOAD_LEN - RH_RF24_HEADER_LEN - 1)
-#endif
 
 // Max number of times we will try to read CTS from the radio
 #define RH_RF24_CTS_RETRIES 2500
@@ -834,6 +844,16 @@ class RFSI4463PROPacket : public RHSPIDriver
 {
 public:
 
+    static const uint8_t MAX_PACKET_SIZE = MAX_PAYLOAD_LEN;
+
+
+private:
+
+    static const uint32_t SELF_HEALING_INTERVAL_MS = 5000;
+
+
+public:
+
     /// \brief Defines the available choices for CRC
     /// Types of permitted CRC polynomials, to be passed to setCRCPolynomial()
     /// They deliberately have the same numeric values as the CRC_POLYNOMIAL field of PKT_CRC_CONFIG
@@ -867,13 +887,6 @@ public:
 	RHModeCad               ///< Transport is in the process of detecting channel activity (if supported)
     } RHMode;
 
-    /// Returns the operating mode of the library.
-    /// \return the current mode, one of RF69_MODE_*
-    RHMode          mode() { return _mode; }
-
-    /// Sets the operating mode of the transport.
-    void            setMode(RHMode mode) { _mode = mode; }
-
 
     RFSI4463PROPacket(uint8_t slaveSelectPin, uint8_t interruptPin, uint8_t sdnPin)
         :
@@ -892,16 +905,36 @@ public:
 
     bool init()
     {
-        if (!RHSPIDriver::init())
-        return false;
+        _mode = RHModeInitialising;
+
+        // Init SPI
+        RHSPIDriver::init();
 
         // Initialise the radio
         power_on_reset();
         cmd_clear_all_interrupts();
 
+        // Set up callbacks that need to run even if everything below fails
+        // Set up interrupt handler
+        ied_.SetCallback([this](uint8_t){
+            if (IsOperable())
+            {
+                measurements_.timeUsLastISR = ied_.GetISREventTimeUs();
+                handleInterrupt();
+            }
+            else
+            {
+                ReInit();
+            }
+        });
+        ied_.RegisterForInterruptEvent();
+
+        // Do some periodic self-healing
+        ScheduleSelfHealing();
+
         // Get the device type and check it
         // This also tests whether we are really connected to a device
-        uint8_t buf[8];
+        uint8_t buf[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
         if (!command(RH_RF24_CMD_PART_INFO, 0, 0, buf, sizeof(buf)))
         return false; // SPI error? Not connected?
         _deviceType = (buf[1] << 8) | buf[2];
@@ -916,13 +949,6 @@ public:
         // #included above
         // We override a few things later that we ned to be sure of.
         configure(RF24_CONFIGURATION_DATA);
-
-        // Set up interrupt handler
-        ied_.SetCallback([this](uint8_t){
-            measurements_.timeUsLastISR = ied_.GetISREventTimeUs();
-            handleInterrupt();
-        });
-        ied_.RegisterForInterruptEvent();
 
         // Ensure we get the interrupts we need, irrespective of whats in the radio_config
         uint8_t int_ctl[] = {RH_RF24_MODEM_INT_STATUS_EN | RH_RF24_PH_INT_STATUS_EN, 0xff, 0xff, 0x00 };
@@ -953,6 +979,9 @@ public:
         uint8_t pkt_field2[] = { 0x00, sizeof(_buf), 0x00, RH_RF24_FIELD_CONFIG_CRC_START | RH_RF24_FIELD_CONFIG_SEND_CRC | RH_RF24_FIELD_CONFIG_CHECK_CRC | RH_RF24_FIELD_CONFIG_CRC_ENABLE };
         set_properties(RH_RF24_PROPERTY_PKT_FIELD_2_LENGTH_12_8, pkt_field2, sizeof(pkt_field2));
 
+        // Override the above setting
+        SetField2MaxSize();
+
         // Clear all other fields so they are never used, irrespective of the radio_config
         uint8_t pkt_fieldn[] = { 0x00, 0x00, 0x00, 0x00 };
         set_properties(RH_RF24_PROPERTY_PKT_FIELD_3_LENGTH_12_8, pkt_fieldn, sizeof(pkt_fieldn));
@@ -967,11 +996,148 @@ public:
         // 3 would be sufficient, but this is the same as RF22's
         // actualy, 4 seems to work much better for some modulations
         setPreambleLength(4);
-        // Default freq comes from the radio config file
-        // About 2.4dBm on RFM24:
-        setTxPower(0x10); 
 
-        return true;
+        return IsOperable();
+    }
+
+    // seen to be possible that the module depowers, re-powers, set back to
+    // its original state, all without triggering any interrupts or
+    // other events which get our attention to ReInit.
+    //
+    // That would leave a listener in a persistant state of thinking they
+    // were listening but actually weren't.
+    //
+    // The solution is to periodically simply ReInit, knowing that it's not
+    // possible to know if it was necessary or not.
+    //
+    // Need to balance the interruption caused by this vs the negative
+    // effect of waiting to do it.
+    //
+    // If packets are being sent and received properly, there is no need to
+    // do the reset, so monitor for signs of life and schedule time to check
+    // in occasionally to reset if needed.
+    // 
+    // Basically a watchdog
+    void ScheduleSelfHealing()
+    {
+        //Log("ScheduleSelfHealing");
+
+        DurationAuditorMicros<2> audit;
+        audit.Audit("start");
+        signsOfLife_ = 0;
+        ted_.SetCallback([this](){
+            if (!signsOfLife_)
+            {
+                ReInit();
+            }
+            else
+            {
+                ted_.RegisterForTimedEvent(SELF_HEALING_INTERVAL_MS);
+            }
+            
+            signsOfLife_ = 0;
+        });
+        
+        ted_.RegisterForTimedEvent(SELF_HEALING_INTERVAL_MS);
+        audit.Audit("end");
+        audit.Report();
+    }
+
+    uint8_t ReInit()
+    {
+        uint8_t retVal = 0;
+
+        // device can go inoperable.
+        // that's bad.
+        // OnTxComplete callbacks may never fire.
+        // Sends/Listens not knowably failed.
+        // Interrupts fire and consult bad statuses.
+        //
+        // Device seems to be able to speak SPI early on when not powered
+        // properly, but when RX mode enabled, it stops working.
+        // So init() doesn't catch that it's failing, because from its
+        // perspective it's working.
+
+        // So device can:
+        // - not work from the start but not know it until heavy operation
+        // - work initially, but stop working randomly at any point
+        //   - and later come back from this
+
+
+        // appraoch
+        // - Allow Re-Init
+        //   - cache state if listening
+        //   - init
+        //   - re-apply state if listening
+        //   - fire ontxcomplete if that was pending
+        // - return errors on API functions
+        // - attempt auto-re-init from functions which notice
+        //   - either as a result of being an API call
+        //   - or from getting IRQs
+        
+        // hopefully that gets you back to where you are and gives callers
+        // knowledge of state
+
+
+        RFSI4463PROPacket::RHMode modeCached = _mode;
+
+        //LogNL();
+        // Log("RI");
+        DurationAuditorMicros<2> audit;
+        audit.Audit("RI Start");
+
+        Log("mc: ", (uint8_t)modeCached);
+
+        if (init())
+        {
+            //Log("init() worked");
+
+            if (modeCached == RHModeRx)
+            {
+                //Log("Enabling RX");
+
+                SetModeRxInternal();
+            }
+            else if (modeCached == RHModeTx)
+            {
+                //Log("TX was enabled, firing callback after 0ms");
+
+                // avoid the TX call leading to a send
+                //   leading to another send
+                //     leading to another fail
+                //       leading to another reinit
+                //         leading to recursive stack crash
+                ted_.SetCallback([this](){
+                    //Log("DelayedTx callback");
+                    LogNNL("*****");
+                    txCb_();
+                    ScheduleSelfHealing();
+                });
+                ted_.RegisterForTimedEvent(0);
+
+                // no need to worry about real IRQ triggering callback, should
+                // be in a different mode now with all interrupts cleared.
+            }
+
+            // Seen to not work on init, so if not entering RX/TX, this
+            // may be a false answer too
+            retVal = IsOperable();
+        }
+        else
+        {
+            retVal = 0;
+
+            _mode = modeCached;
+        }
+
+        // Log("_m: ", (uint8_t)_mode);
+        // Log("RetVal: ", retVal);
+        // LogNL();
+        audit.Audit("RI End");
+        audit.Report();
+
+
+        return retVal;
     }
 
     // C++ level interrupt handler for this instance
@@ -980,92 +1146,154 @@ public:
         uint8_t status[8];
         command(RH_RF24_CMD_GET_INT_STATUS, NULL, 0, status, sizeof(status));
 
+        // Log("INT_STATUS   : ", LogBIN(status[0]));
+        // Log("PH_PENDING   : ", LogBIN(status[2]));
+        // Log("MODEM_PENDING: ", LogBIN(status[4]));
+        // Log("CHIP_PENDING : ", LogBIN(status[6]));
+        // LogNL();
+
         // Decode and handle the interrupt bits we are interested in
     //    if (status[0] & RH_RF24_INT_STATUS_CHIP_INT_STATUS)
         if (status[0] & RH_RF24_INT_STATUS_MODEM_INT_STATUS)
         {
-    //	if (status[4] & RH_RF24_INT_STATUS_INVALID_PREAMBLE)
-        if (status[4] & RH_RF24_INT_STATUS_INVALID_SYNC)
-        {
-            // After INVALID_SYNC, sometimes the radio gets into a silly state and subsequently reports it for every packet
-            // Need to reset the radio and clear the RX FIFO, cause sometimes theres junk there too
-            _mode = RHModeIdle;
-            clearRxFifo();
-            clearBuffer();
-        }
-        }
-        if (status[0] & RH_RF24_INT_STATUS_PH_INT_STATUS)
-        {
-        if (status[2] & RH_RF24_INT_STATUS_CRC_ERROR)
-        {
-            // CRC Error
-            // Radio automatically went to _idleMode
-            _mode = RHModeIdle;
+            ++stats_.countIrqModem;
 
-            clearRxFifo();
-            clearBuffer();
-        }
-        if (status[2] & RH_RF24_INT_STATUS_PACKET_SENT)
-        {
-            measurements_.timeUsPacketTxComplete = measurements_.timeUsLastISR;
-
-            // Transmission does not automatically clear the tx buffer.
-            // Could retransmit if we wanted
-            // RH_RF24 configured to transition automatically to Idle after packet sent
-            _mode = RHModeIdle;
-            clearBuffer();
-
-            // on transmit complete callback
-            txCb_();
-        }
-        if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
-        {
-            measurements_.timeUsPacketRxOnChip = measurements_.timeUsLastISR;
-
-            // A complete message has been received with good CRC
-            // Get the RSSI, configured to latch at sync detect in radio_config
-            uint8_t modem_status[6];
-            command(RH_RF24_CMD_GET_MODEM_STATUS, NULL, 0, modem_status, sizeof(modem_status));
-            measurements_.rssi = modem_status[3];
-            
-            // Save it in our buffer
-            readNextFragment();
-            // And see if we have a valid message
-            validateRxBuf();
-            // Radio will have transitioned automatically to the _idleMode
-            _mode = RHModeIdle;
-
-            if (available())
+        //	if (status[4] & RH_RF24_INT_STATUS_INVALID_PREAMBLE)
+            if (status[4] & RH_RF24_INT_STATUS_INVALID_SYNC)
             {
-                // copy buffer to dedicated receive buffer
-                uint8_t rxBufLen = _bufLen - RH_RF24_HEADER_LEN;
-                memcpy(rxBuf_, _buf + RH_RF24_HEADER_LEN, rxBufLen);
-                clearBuffer();
+                ++stats_.countErrInvalidSync;
 
-                measurements_.timeUsPacketRxHandoffComplete = PAL.Micros();
-
-                // on message received callback
-                rxCb_(rxBuf_, rxBufLen);
+                // After INVALID_SYNC, sometimes the radio gets into a silly state and subsequently reports it for every packet
+                // Need to reset the radio and clear the RX FIFO, cause sometimes theres junk there too
+                _mode = RHModeIdle;
+                clearRxFifo();
+                setModeRx();
             }
         }
-        if (status[2] & RH_RF24_INT_STATUS_TX_FIFO_ALMOST_EMPTY)
+        
+        if (status[0] & RH_RF24_INT_STATUS_PH_INT_STATUS)
         {
-            // TX FIFO almost empty, maybe send another chunk, if there is one
-            sendNextFragment();
-        }
-        if (status[2] & RH_RF24_INT_STATUS_RX_FIFO_ALMOST_FULL)
-        {
-            // Some more data to read, get it
-            readNextFragment();
-        }
-        }
-    }
+            ++stats_.countIrqPh;
 
-    // Check whether the latest received message is complete and uncorrupted
-    void validateRxBuf()
-    {
-        // Validate headers etc
-            _rxBufValid = true;
+            if (status[2] & RH_RF24_INT_STATUS_CRC_ERROR)
+            {
+                ++stats_.countErrCrc;
+
+                // CRC Error
+
+                // Radio automatically went to _idleMode
+                _mode = RHModeIdle;
+
+                clearRxFifo();
+
+                // get back to listening.  you must have been already or you
+                // wouldn't be receiving and decoding CRCs.
+                setModeRx();
+
+                // ok I've seen this now too
+                // what to do in this case?
+                // doesn't seem to be seeing new packets
+                    // not actually in rx mode anymore at this point
+
+                // also don't pass up a junked up CRC packet...
+                // so get some elseifs
+                    // Actually no, registers indicate CRC pass, I think it's
+                    // something wrong on the sender side
+
+                // also on the receiver side, the CRCs seem to stay junked?
+                // like seemingly good sends don't decode anymore?
+                    // what makes you think it's good on the send side?
+                        // nothing changed?
+                        // if I do a reset on receiver it works again(?)
+                            // no... trashed on sender side seemingly
+                                // when?  what happened?  how to tell?
+                                // was logging, probably slowed down the final
+                                // byte of 64 char send, fucked up CRC calculator,
+                                // and I bet the CRC calculator doesn't reset for
+                                // each packet.
+                                    // Nope!  ok, so then I don't get it.  I think
+                                    // I trashed the internal state of the chip somehow when
+                                    // I let the TX queue drain and then putting in a bit more data.
+                                    // so I think from then on there's garbage in the queue.
+                                    // if I were able to clearTxFifo (can't) I bet this would sort it
+                                        // actually that doesn't appear to be true either.
+                                        // seems to only happen when I underflow on second packet (65th byte)
+                                        // that messes up CRCs.  If I underflow (on purpose) on the first packet
+                                        // the CRC check passes on receiver, but the data is garbage, due (I think)
+                                        // to the sender chip making up data to send and CRCing it (correctly).
+                
+                // Solution -- single packet transmissions.
+                // No single transmission can span more than a single TX queue.
+                // Meaning our buffer must be smaller than the chip FIFO.
+                // This is fine.
+
+            }
+
+            if (status[2] & RH_RF24_INT_STATUS_PACKET_SENT)
+            {
+                // Transmission does not automatically clear the tx buffer.
+                // Could retransmit if we wanted
+                // RH_RF24 configured to transition automatically to Idle after packet sent
+                _mode = RHModeIdle;
+
+                measurements_.timeUsPacketTxComplete = measurements_.timeUsLastISR;
+
+                // on transmit complete callback
+                txCb_();
+
+                // Reset timeout after a clear sign the module is functioning
+                signsOfLife_ = 1;
+            }
+
+            if (status[2] & RH_RF24_INT_STATUS_PACKET_RX)
+            {
+                ++stats_.countPacketsRx;
+
+                // A complete message has been received with good CRC
+
+                // Radio will have transitioned automatically to the _idleMode
+                _mode = RHModeIdle;
+
+                // Look at what the module has for a packet size
+                uint8_t fifoLen = ReadFifoLen();
+
+                // Check if the packet received can fit in our buffer
+                if (fifoLen > MAX_PAYLOAD_LEN)
+                {
+                    ++stats_.countErrRxOverflow;
+
+                    // Overflow pending
+                    setModeIdle();
+                    clearRxFifo();
+
+                    // get back to listening.  you must have been already or you
+                    // wouldn't be receiving and decoding CRCs.
+                    setModeRx();
+                }
+                else
+                {
+                    stats_.countBytesRx += fifoLen;
+
+                    // We have capacity to receive the packet
+
+                    // Receive data into buffer
+                    readRxFifo(_buf, fifoLen);
+
+                    // Get the RSSI, configured to latch at sync detect in radio_config
+                    measurements_.rssi = ReadRSSI();
+
+                    // Timestamp the events
+                    measurements_.timeUsPacketRxOnChip          = measurements_.timeUsLastISR;
+                    measurements_.timeUsPacketRxHandoffComplete = PAL.Micros();
+
+                    // on message received callback
+                    rxCb_(_buf, fifoLen);
+                }
+
+                // Reset timeout after a clear sign the module is functioning
+                signsOfLife_ = 1;
+            }
+        }
     }
 
     bool clearRxFifo()
@@ -1074,82 +1302,159 @@ public:
         return command(RH_RF24_CMD_FIFO_INFO, fifo_clear, sizeof(fifo_clear));
     }
 
-    void clearBuffer()
+    uint8_t ReadRSSI()
     {
-        _bufLen = 0;
-        _txBufSentIndex = 0;
-        _rxBufValid = false;
+        uint8_t modem_status[6];
+        command(RH_RF24_CMD_GET_MODEM_STATUS, NULL, 0, modem_status, sizeof(modem_status));
+    
+        return modem_status[3];
     }
 
-    bool available()
+    uint8_t IsOperable()
     {
-        if (_mode == RHModeTx)
-        return false;
-        if (!_rxBufValid)
-        setModeRx(); // Make sure we are receiving
-        return _rxBufValid;
-    }
+        uint8_t retVal = 1;
 
-    bool recv(uint8_t* buf, uint8_t* len)
-    {
-        if (!available())
-        return false;
-
-        if (buf && len)
+        uint8_t buf[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+        if (!command(RH_RF24_CMD_PART_INFO, 0, 0, buf, sizeof(buf)))
         {
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-        if (*len > _bufLen - RH_RF24_HEADER_LEN)
-            *len = _bufLen - RH_RF24_HEADER_LEN;
-        memcpy(buf, _buf + RH_RF24_HEADER_LEN, *len);
+            retVal = 0;
         }
+        else
+        {
+            uint16_t deviceType = (buf[1] << 8) | buf[2];
+
+            if (deviceType != 0x4463)
+            {
+                retVal = 0;
+            }
         }
-        clearBuffer(); // Got the most recent message
-        return true;
+
+        return retVal;
     }
 
-    bool send(const uint8_t* data, uint8_t len)
+    uint8_t IsOperableReInitIfNot()
     {
-        if (len > RH_RF24_MAX_MESSAGE_LEN)
-        return false;
+        uint8_t retVal = 0;
 
+        if (IsOperable())
+        {
+            retVal = 1;
+        }
+        else
+        {
+            ++stats_.countErrReInitReqd;
+
+            retVal = ReInit();
+        }
+
+        return retVal;
+    }
+
+    uint8_t ReadFifoLen()
+    {
+        uint8_t fifoLen;
+
+        command(RH_RF24_CMD_FIFO_INFO, NULL, 0, (uint8_t *)&fifoLen, 1);
+        
+        return fifoLen;
+    }
+
+    uint8_t sendv(IOVec *iovList, uint8_t iovListLen)
+    {
+        uint8_t retVal = 0;
+
+        if (IsOperableReInitIfNot())
+        {
+            if (SendvInternal(iovList, iovListLen))
+            {
+                retVal = IsOperable();
+            }
+        }
+
+        return retVal;
+    }
+
+    uint8_t SendvInternal(IOVec *iovList, uint8_t iovListLen)
+    {
+        uint8_t retVal = 0;
+
+        // Take measurements
+        measurements_.timeUsPacketTxStart = PAL.Micros();
+        
         // Check if currently sending, if so, return error.
         //
-        // Avoid deadlock with newly customized main-thread interrupt handling.
-        //
-        // Previously main thread code could block and wait for ISRs to change the
-        // mode behind the scenes.
-        //
-        // Now that isn't possible, so callers must use async callbacks to know
-        // when to send again.
-        if (_mode == RHModeTx)
+        // Callers must use async callbacks to know when to send again.
+        if (_mode != RHModeTx)
         {
-            return false;
+            // Calculate if total buffer size exceeds capacity
+            uint16_t bufSizeTotal = 0;
+
+            for (uint8_t i = 0; i < iovListLen; ++i)
+            {
+                bufSizeTotal += iovList[i].bufLen;
+            }
+
+            // Observed that sending a 0 sized packet messes up receivers.
+            // Unclear why.  Didn't research deeply enough, just don't send
+            // 0-byte packets until you need to and then research it.
+            if (bufSizeTotal)
+            {
+                if (bufSizeTotal <= MAX_PAYLOAD_LEN)
+                {
+                    retVal = 1;
+
+                    ++stats_.countPacketsTx;
+                    stats_.countBytesTx += bufSizeTotal;
+
+                    uint8_t len = (uint8_t)bufSizeTotal;
+
+                    // Prevent RX while filling the fifo
+                    setModeIdle();
+
+                    // Single packet mode, so no fragment sending logic necessary.
+                    // Fill FIFO completely now based on data in hand.
+
+                    // First, push the size of the payload to be sent.
+                    // This is a 1 byte size
+                    writeTxFifo((uint8_t *)&len, 1);
+
+                    // Next push all the payload data
+                    for (uint8_t i = 0; i < iovListLen; ++i)
+                    {
+                        writeTxFifo(iovList[i].buf, iovList[i].bufLen);
+                    }
+
+                    // Tell the module the size of the payload data as well
+                    SetField2Size(len);
+
+                    // Instruct module to send
+                    setModeTx();
+
+                    // Take note of timestamp immediately following handoff to module
+                    measurements_.timeUsPacketTxHandoffComplete = PAL.Micros();
+                }
+                else
+                {
+                    ++stats_.countErrTxOverflow;
+                }
+            }
+        }
+        else
+        {
+            ++stats_.countErrTxEarly;
         }
 
-        measurements_.timeUsPacketTxStart = PAL.Micros();
+        return retVal;
+    }
 
-        setModeIdle(); // Prevent RX while filling the fifo
+    bool send(uint8_t *data, uint8_t len)
+    {
+        IOVec iov;
 
-        // Put the payload in the FIFO
-        // First the length in fixed length field 1. This wont appear in the receiver fifo since
-        // we have turned off IN_FIFO in PKT_LEN
-        _buf[0] = len + RH_RF24_HEADER_LEN;
-        // Now the rest of the payload in variable length field 2
-        // Then the message
-        memcpy(_buf + 1 + RH_RF24_HEADER_LEN, data, len);
-        _bufLen = len + 1 + RH_RF24_HEADER_LEN;
-        _txBufSentIndex = 0;
+        iov.buf    = data;
+        iov.bufLen = len;
 
-        // Set the field 2 length to the variable payload length
-        uint8_t l[] = { (uint8_t)(len + RH_RF24_HEADER_LEN)};
-        set_properties(RH_RF24_PROPERTY_PKT_FIELD_2_LENGTH_7_0, l, sizeof(l));
-
-        sendNextFragment();
-        setModeTx();
-
-        measurements_.timeUsPacketTxHandoffComplete = PAL.Micros();
-
-        return true;
+        return sendv(&iov, 1);
     }
 
     // This is different to command() since we must not wait for CTS
@@ -1161,64 +1466,33 @@ public:
         _spi.beginTransaction();
         _spi.transfer(RH_RF24_CMD_TX_FIFO_WRITE);
         // Now write any write data
-        while (len--)
-        _spi.transfer(*data++);
+        if (len)
+        {
+            while (len--)
+            _spi.transfer(*data++);
+        }
         digitalWrite(_slaveSelectPin, HIGH);
         _spi.endTransaction();
         }
         return true;
     }
 
-    void sendNextFragment()
+    void readRxFifo(uint8_t *buf, uint8_t len)
     {
-        if (_txBufSentIndex < _bufLen)
-        {
-        // Some left to send?
-        uint8_t len = _bufLen - _txBufSentIndex;
-        // But dont send too much, see how much room is left
-        uint8_t fifo_info[2];
-        command(RH_RF24_CMD_FIFO_INFO, NULL, 0, fifo_info, sizeof(fifo_info));
-        // fifo_info[1] is space left in TX FIFO
-        if (len > fifo_info[1])
-            len = fifo_info[1];
-
-        writeTxFifo(_buf + _txBufSentIndex, len);
-        _txBufSentIndex += len;
-        }
-    }
-
-    void readNextFragment()
-    {
-        // Get the packet length from the RX FIFO length
-        uint8_t fifo_info[1];
-        command(RH_RF24_CMD_FIFO_INFO, NULL, 0, fifo_info, sizeof(fifo_info));
-        uint8_t fifo_len = fifo_info[0]; 
-
-        // Check for overflow
-        if ((_bufLen + fifo_len) > sizeof(_buf))
-        {
-        // Overflow pending
-        setModeIdle();
-        clearRxFifo();
-        clearBuffer();
-        return;
-        }
-        // So we have room
-        // Now read the fifo_len bytes from the RX FIFO
         // This is different to command() since we dont wait for CTS
         digitalWrite(_slaveSelectPin, LOW);
-        _spi.transfer(RH_RF24_CMD_RX_FIFO_READ);
-        uint8_t* p = _buf + _bufLen;
-        uint8_t l = fifo_len;
-        while (l--)
-        *p++ = _spi.transfer(0);
-        digitalWrite(_slaveSelectPin, HIGH);
-        _bufLen += fifo_len;
-    }
 
-    uint8_t maxMessageLength()
-    {
-        return RH_RF24_MAX_MESSAGE_LEN;
+        _spi.transfer(RH_RF24_CMD_RX_FIFO_READ);
+
+        if (len)
+        {
+            while (len--)
+            {
+                *buf++ = _spi.transfer(0);
+            }
+        }
+
+        digitalWrite(_slaveSelectPin, HIGH);
     }
 
     void setPreambleLength(uint16_t bytes)
@@ -1345,16 +1619,39 @@ public:
         return true;
     }
 
+    void SetField2MaxSize()
+    {
+        // This is a 13-bit unsigned integer
+        SetField2Size(0x1FFF);
+    }
+
+    void SetField2Size(uint16_t size)
+    {
+        // This is a 13-bit unsigned integer
+        const uint16_t sizeBigEndian = PAL.htons(size);
+
+        set_properties(RH_RF24_PROPERTY_PKT_FIELD_2_LENGTH_12_8, (uint8_t *)&sizeBigEndian, 2);
+    }
+
     void setModeRx()
     {
-        if (_mode != RHModeRx)
-        {
-        // CAUTION: we cant clear the rx buffers here, else we set up a race condition
-        // with the _rxBufValid test in available()
+        SetModeRxInternal();
+    }
 
-        // Tell the receiver the max data length we will accept (a TX may have changed it)
-        uint8_t l[] = { sizeof(_buf) };
-        set_properties(RH_RF24_PROPERTY_PKT_FIELD_2_LENGTH_7_0, l, sizeof(l));
+    void SetModeRxInternal()
+    {
+        // Tell the receiver the max data length we will accept, which is the maximum which can
+        // fit into the FIFO.
+        // We want all packets to be received and processed in the application.
+        // Despite the fact that we're not able to receive the full-sized packet, we want
+        // to know that.
+        //
+        // Observations show that packets received greater than this configured limit
+        // show up as a CRC error interrupt.
+        //
+        // Following this change, any sized packet should be observable (though not received).
+        //
+        SetField2MaxSize();
         
         // Set the antenna switch pins using the GPIO, assuming we have an RFM module with antenna switch
         uint8_t gpio_config[] = { RH_RF24_GPIO_HIGH, RH_RF24_GPIO_LOW };
@@ -1363,7 +1660,6 @@ public:
         uint8_t rx_config[] = { 0x00, RH_RF24_CONDITION_RX_START_IMMEDIATE, 0x00, 0x00, _idleMode, _idleMode, _idleMode};
         command(RH_RF24_CMD_START_RX, rx_config, sizeof(rx_config));
         _mode = RHModeRx;
-        }
     }
 
     void setModeTx()
@@ -1377,36 +1673,30 @@ public:
         uint8_t tx_params[] = { 0x00, 
                     (uint8_t)((_idleMode << 4) | RH_RF24_CONDITION_RETRANSMIT_NO | RH_RF24_CONDITION_START_IMMEDIATE)};
         command(RH_RF24_CMD_START_TX, tx_params, sizeof(tx_params));
-        _mode = RHModeTx;
+        
+        // don't change internal mode unless actually successfully changed the module mode.
+        // this state will be used later to decide if to artifically fire a ontransmit callback.
+        if (IsOperable())
+        {
+            _mode = RHModeTx;
+        }
+
         }
     }
 
+    // chip defaults to maximum power.
+    // this function allows tuning 0-127.
     void setTxPower(uint8_t power)
     {
         uint8_t pa_bias_clkduty = 0;
         // These calculations valid for advertised power from Si chips at Vcc = 3.3V
         // you may get lower power from RFM modules, depending on Vcc voltage, antenna etc
-        if (_deviceType == 0x4460)
-        {
-        // 0x4f = 13dBm
-        pa_bias_clkduty = 0xc0;
-        if (power > 0x4f)
-            power = 0x4f;
-        }
-        else if (_deviceType == 0x4461)
-        {
-        // 0x7f = 16dBm
-        pa_bias_clkduty = 0xc0;
-        if (power > 0x7f)
-            power = 0x7f;
-        }
-        else if (_deviceType == 0x4463 || _deviceType == 0x4464 )
-        {
+
         // 0x7f = 20dBm
         pa_bias_clkduty = 0x00; // Per WDS suggestion
         if (power > 0x7f)
             power = 0x7f;
-        }
+
         uint8_t power_properties[] = {0x08, 0x00, 0x00 }; // PA_MODE from WDS sugggestions (why?)
         power_properties[1] = power;
         power_properties[2] = pa_bias_clkduty;
@@ -1578,20 +1868,8 @@ public:
     /// The radio OP mode to use when mode is RHModeIdle
     uint8_t             _idleMode; 
 
-    /// The selected output power in dBm
-    int8_t              _power;
-
-    /// The message length in _buf
-    uint8_t    _bufLen;
-
     /// Array of octets of the last received message or the next to transmit message
-    uint8_t             _buf[RH_RF24_MAX_PAYLOAD_LEN];
-
-    /// True when there is a valid message in the Rx buffer
-    bool       _rxBufValid;
-
-    /// Index into TX buffer of the next to send chunk
-    uint8_t    _txBufSentIndex;
+    uint8_t             _buf[MAX_PAYLOAD_LEN];
 
 
     RHMode     _mode;
@@ -1623,12 +1901,39 @@ public:
         uint8_t rssi = 0;
     };
 
-    Measurements GetMeasurements()
+    Measurements GetMeasurements() const
     {
         return measurements_;
     }
 
     Measurements measurements_;
+
+
+    struct Stats
+    {
+        uint16_t countErrReInitReqd  = 0;
+        uint16_t countErrInvalidSync = 0;
+        uint16_t countErrCrc         = 0;
+        uint16_t countErrRxOverflow  = 0;
+        uint16_t countErrTxOverflow  = 0;
+        uint16_t countErrTxEarly     = 0;
+
+        uint16_t countIrqModem = 0;
+        uint16_t countIrqPh    = 0;
+
+        uint16_t countPacketsRx = 0;
+        uint16_t countBytesRx   = 0;
+
+        uint16_t countPacketsTx = 0;
+        uint16_t countBytesTx   = 0;
+    };
+
+    Stats stats_;
+
+    Stats GetStats() const
+    {
+        return stats_;
+    }
 
 
     InterruptEventHandlerDelegate ied_;
@@ -1646,7 +1951,8 @@ public:
     function<void()>                             txCb_;
     function<void(uint8_t *buf, uint8_t bufLen)> rxCb_;
 
-    uint8_t rxBuf_[RH_RF24_MAX_MESSAGE_LEN];
+    TimedEventHandlerDelegate ted_;
+    uint8_t                   signsOfLife_ = 0;
 };
 
 

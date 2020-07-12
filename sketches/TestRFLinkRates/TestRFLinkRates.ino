@@ -10,7 +10,7 @@
 
 
 static Evm::Instance<10,10,10> evm;
-static SerialAsyncConsoleEnhanced<10>  console;
+static SerialAsyncConsoleEnhanced<15>  console;
 
 static const uint8_t PIN_IRQ = 12;
 static const uint8_t PIN_SDN = 13;
@@ -23,6 +23,8 @@ static TimedEventHandlerDelegate ted;
 
 static uint32_t waitMsTx = 0;
 static uint32_t waitMsRx = 0;
+static uint32_t waitMsEnd = 200;
+static uint32_t waitMsRetry = 10;
 static uint32_t seqNo = 1;
 static uint32_t seqNoExpected = 0;
 
@@ -35,41 +37,43 @@ static uint32_t timeUsStart = 0;
 static uint32_t msgCountSeen   = 0;
 static uint32_t msgCountMissed = 0;
 
-static void SendAndIncr()
+
+static uint8_t SendAndIncr()
 {
+    uint8_t retVal = 0;
+    
     // send full sized buffers, but only the first 8 bytes are meaningful
     uint8_t buf[BUF_SIZE];
     memcpy(buf, (uint8_t *)"SEQ:", 4);
     memcpy(&buf[4], (uint8_t *)&seqNo, 4);
     
-    rr.Send(buf, msgSize);
-    ++seqNo;
+    retVal = rr.Send(buf, msgSize);
+
+    if (retVal)
+    {
+        ++seqNo;
+    }
+
+    return retVal;
 }
 
 void setup()
 {
     LogStart(9600);
     LogNL();
-    Log("Starting");
-
-            if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_WATCHDOG)
-        {
-            Log(P("WDTR"));
-        }
-        else if (PAL.GetStartupMode() == PlatformAbstractionLayer::StartupMode::RESET_BROWNOUT)
-        {
-            Log(P("BODR"));
-        }
-        else
-        {
-            Log("Other startup: ", (uint8_t)PAL.GetStartupMode());
-        }
-
+    Log("Starting rate tester");
 
     console.RegisterCommand("show", [](char *){
         console.Exec("size");
         console.Exec("txwait");
+        console.Exec("txretrywait");
         console.Exec("rxwait");
+        console.Exec("endwait");
+    });
+
+    console.RegisterCommand("status", [](char *){
+        r.DumpStatus();
+        LogNL();
     });
 
     console.RegisterCommand("txwait", [](char *cmdStr){
@@ -85,6 +89,20 @@ void setup()
         Log(P("Waiting "), waitMsTx, P(" ms between sending messages"));
         LogNL();
     });
+
+    console.RegisterCommand("txretrywait", [](char *cmdStr){
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atol(str.TokenAtIdx(1, ' '));
+
+            waitMsRetry = val;
+        }
+
+        Log(P("Waiting "), waitMsRetry, P(" ms before ending receive batch"));
+        LogNL();
+    });
     
     console.RegisterCommand("rxwait", [](char *cmdStr){
         Str str(cmdStr);
@@ -97,6 +115,20 @@ void setup()
         }
 
         Log(P("Waiting "), waitMsRx, P(" ms during received message processing"));
+        LogNL();
+    });
+
+    console.RegisterCommand("endwait", [](char *cmdStr){
+        Str str(cmdStr);
+
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atol(str.TokenAtIdx(1, ' '));
+
+            waitMsEnd = val;
+        }
+
+        Log(P("Waiting "), waitMsEnd, P(" ms before ending receive batch"));
         LogNL();
     });
 
@@ -133,20 +165,40 @@ void setup()
         ted.DeRegisterForTimedEvent();
 
         rr.SetOnMessageTransmittedCallback([=](){
+            LogNNL('#');
             if (seqNo != stopAtSeqNo)
             {
                 if (waitMsTx)
                 {
                     ted.SetCallback([](){
-                        SendAndIncr();
-                        LogNNL('.');
+                        if (SendAndIncr())
+                        {
+                            LogNNL('+');
+                        }
+                        else
+                        {
+                            LogNNL('-');
+
+                            // Failed to send, so no callback, so try again
+                            ted.RegisterForTimedEvent(waitMsRetry);
+                        }
                     });
                     ted.RegisterForTimedEvent(waitMsTx);
                 }
                 else
                 {
-                    SendAndIncr();
-                    LogNNL('.');
+                    if (SendAndIncr())
+                    {
+                        LogNNL('+');
+                    }
+                    else
+                    {
+                        LogNNL('-');
+
+                        // Failed to send, so no callback, so try again
+                        ted.SetCallback(rr.GetOnMessageTransmittedCallback());
+                        ted.RegisterForTimedEvent(waitMsRetry);
+                    }
                 }
             }
             else
@@ -182,8 +234,18 @@ void setup()
 
         timeUsStart = PAL.Micros();
         
-        SendAndIncr();
-        LogNNL('.');
+        if (SendAndIncr())
+        {
+            LogNNL('+');
+        }
+        else
+        {
+            LogNNL('-');
+            
+            // Failed to send, so no callback, so try again
+            ted.SetCallback(rr.GetOnMessageTransmittedCallback());
+            ted.RegisterForTimedEvent(waitMsRetry);
+        }
     });
 
     console.RegisterCommand("listen", [](char *){
@@ -237,7 +299,7 @@ void setup()
                 PAL.Delay(timeWait);
 
                 // If no new messages seen for a while, re-set expectations
-                ted.RegisterForTimedEvent(200);
+                ted.RegisterForTimedEvent(waitMsEnd);
             }
         });
 

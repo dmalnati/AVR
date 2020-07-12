@@ -8,6 +8,7 @@
 #include "InterruptEventHandler.h"
 #include "RFSI4463PROPacket.h"
 #include "Log.h"
+#include "StrFormat.h"
 
 
 //
@@ -60,7 +61,9 @@
 class RFLink_Raw
 {
 public:
-    static const uint8_t MAX_PACKET_SIZE = 64;
+
+    static const uint8_t MAX_PACKET_SIZE = RFSI4463PROPacket::MAX_PACKET_SIZE;
+
 
 public:
     RFLink_Raw(uint8_t pinIrq, uint8_t pinSdn, uint8_t pinSel)
@@ -83,10 +86,7 @@ public:
             // Stay in receiving mode
             ModeReceive();
 
-            if (bufLen)
-            {
-                rxCb_(buf, bufLen);
-            }
+            rxCb_(buf, bufLen);
         });
     }
 
@@ -105,14 +105,27 @@ public:
             txCb_();
         });
     }
+
+    function<void()> GetOnMessageTransmittedCallback() const
+    {
+        return txCb_;
+    }
     
     uint8_t ModeReceive()
     {
+        uint8_t retVal = 1;
+
         goBackToReceiveOnSendComplete_ = 1;
 
         radio_.setModeRx();
 
-        return 1;
+        return retVal;
+    }
+
+    // max 127
+    void SetTxPower(uint8_t power)
+    {
+        radio_.setTxPower(power);
     }
 
     // Send behavior:
@@ -130,14 +143,52 @@ public:
     //
     uint8_t Send(uint8_t *buf, uint8_t len)
     {
-        uint8_t retVal = 0;
+        IOVec iov;
 
-        if (len <= MAX_PACKET_SIZE && len != 0)
-        {
-            retVal = radio_.send(buf, len);
-        }
+        iov.buf    = buf;
+        iov.bufLen = len;
 
-        return retVal;
+        return Sendv(&iov, 1);
+    }
+
+    uint8_t Sendv(IOVec *iovList, uint8_t iovListLen)
+    {
+        return radio_.sendv(iovList, iovListLen);
+    }
+
+    uint8_t IsOperable()
+    {
+        return radio_.IsOperable();
+    }
+
+    void DumpStatus()
+    {
+        Log(P("Operable: "), radio_.IsOperable());
+        Log(P("Mode    : "), radio_._mode);
+        DumpStats();
+    }
+
+    void DumpStats()
+    {
+        RFSI4463PROPacket::Stats stats = radio_.GetStats();
+
+        char buf[StrFormat::COMMAS_BUF_SIZE_NEEDED_32];
+
+        Log(P("countErrReInitReqd : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrReInitReqd));
+        Log(P("countErrInvalidSync: "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrInvalidSync));
+        Log(P("countErrCrc        : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrCrc));
+        Log(P("countErrRxOverflow : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrRxOverflow));
+        Log(P("countErrTxOverflow : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrTxOverflow));
+        Log(P("countErrTxEarly    : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countErrTxEarly));
+
+        Log(P("countIrqModem      : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countIrqModem));
+        Log(P("countIrqPh         : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countIrqPh));
+
+        Log(P("countPacketsRx     : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countPacketsRx));
+        Log(P("countBytesRx       : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countBytesRx));
+
+        Log(P("countPacketsTx     : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countPacketsTx));
+        Log(P("countBytesTx       : "), StrFormat::U32ToStrCommasPadLeft(buf, stats.countBytesTx));
     }
 
     RFSI4463PROPacket &GetRadio()
@@ -265,37 +316,38 @@ public:
         return promiscuousMode_;
     }
 
-    // Encapsulate
     uint8_t SendTo(uint8_t  dstAddr,
                    uint8_t *buf,
                    uint8_t  bufSize)
     {
         uint8_t retVal = 0;
         
-        // First check to see if it can all fit
-        if (((sizeof(RFLinkHeader) + bufSize) <= RFLink_Raw::MAX_PACKET_SIZE))
-        {
-            // Reserve space to craft outbound message
-            uint8_t bufSizeNew = sizeof(RFLinkHeader) + bufSize;
-            
-            // Fill out header
-            RFLinkHeader *hdr = (RFLinkHeader *)buf_;
-            
-            hdr->realm      = realm_;
-            hdr->srcAddr    = srcAddr_;
-            hdr->dstAddr    = dstAddr;
-            hdr->protocolId = protocolId_;
+        // Fill out header
+        RFLinkHeader hdr;
+        
+        hdr.realm      = realm_;
+        hdr.srcAddr    = srcAddr_;
+        hdr.dstAddr    = dstAddr;
+        hdr.protocolId = protocolId_;
 
-            // Copy in user data
-            memcpy(&(buf_[sizeof(RFLinkHeader)]), buf, bufSize);
-            
-            // Hand off to RFLink4463_Raw, note success value
-            retVal = RFLink_Raw::Send(buf_, bufSizeNew);
-        }
+        // Prepare IO vector to send
+        IOVec iov[] = {
+            {
+                .buf    = (uint8_t *)&hdr,
+                .bufLen = sizeof(hdr),
+            },
+            {
+                .buf    = buf,
+                .bufLen = bufSize,
+            }
+        };
+        
+        // Hand off to RFLink4463_Raw
+        retVal = RFLink_Raw::Sendv(iov, 2);
         
         return retVal;
     }
-    
+
     // Hide RFLink4463_Raw::Send
     uint8_t Send(uint8_t *buf, uint8_t bufSize)
     {
@@ -345,8 +397,6 @@ private:
     uint8_t receiveBroadcast_;
     uint8_t protocolId_;
     uint8_t promiscuousMode_;
-
-    uint8_t buf_[RFLink_Raw::MAX_PACKET_SIZE + sizeof(RFLinkHeader)];
 };
 
 

@@ -111,60 +111,31 @@ void OnCommand(char *cmdStr)
         uint8_t retVal = r.Init();
         Log(P("  "), retVal);
     }
+    else if (!strcmp_P(cmd, P("reinit")))
+    {
+        Log(P("ReInit"));
+        uint8_t retVal = radio.ReInit();
+        Log(P("  "), retVal);
+    }
+    else if (!strcmp_P(cmd, P("status")))
+    {
+        r.DumpStatus();
+        LogNL();
+    }
     else if (!strcmp_P(cmd, P("somrcr")))
     {
         Log(P("SetOnMessageReceivedCallback(Raw)"));
         rr.SetOnMessageReceivedCallback([](uint8_t *buf, uint8_t bufSize){
             PAL.DigitalToggle(dbg);
             PAL.DigitalToggle(dbg);
+
+
+            RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
             
-            char bufReq[] = "REQ_RTT";
-            char bufRep[] = "REP_RTT";
-
-            // check if we're getting a RTT request
-            uint8_t handled = 0;
-            if (bufSize == sizeof(bufReq))
-            {
-                if (!memcmp((uint8_t *)bufReq, buf, sizeof(bufReq)))
-                {
-                    handled = 1;
-                    
-                    rr.Send((uint8_t *)bufRep, sizeof(bufRep));
-                    
-                    Log(P("Got REQ_RTT, sent REP_RTT"));
-
-                    RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
-                    DurationAuditorMicros<2> auditor;
-                    auditor.Audit("RX", m.timeUsPacketRxComplete);
-                    auditor.Audit("TX", m.timeUsPacketTxStart);
-                    
-                    LogNNL(P("Response latency: "));
-                    auditor.Report(0, 1);
-                }
-                else if (!memcmp((uint8_t *)bufRep, buf, sizeof(bufRep)))
-                {
-                    handled = 1;
-                    
-                    Log(P("Got REP_RTT returned"));
-
-                    RFSI4463PROPacket::Measurements m = radio.GetMeasurements();
-                    DurationAuditorMicros<3> auditor;
-                    auditor.Audit("TX", m.timeUsPacketTxStart);
-                    auditor.Audit("TXC", m.timeUsPacketTxComplete);
-                    auditor.Audit("RX", m.timeUsPacketRxComplete);
-
-                    auditor.Report();
-                    LogNL();
-                }
-            }
-            
-            if (!handled)
-            {
-                Log(P("RxCbRaw - "), bufSize, P(" bytes"));
-                Log(P("RSSI: "), m.rssi);
-                LogBlob(buf, bufSize);
-                LogNL();
-            }
+            Log(P("RxCbRaw - "), bufSize, P(" bytes"));
+            Log(P("RSSI: "), m.rssi);
+            LogBlob(buf, bufSize);
+            LogNL();
         });
     }
     else if (!strcmp_P(cmd, P("somtc")))
@@ -202,16 +173,40 @@ void OnCommand(char *cmdStr)
         PAL.DigitalWrite(dbg, HIGH);
         rr.Send((uint8_t *)buf, sizeof(buf));
     }
+    else if (!strcmp_P(cmd, P("setModeTx")))
+    {
+        Log(P("radio.setModeTx"));
+        radio.setModeTx();
+    }
+    else if (!strcmp_P(cmd, P("power")))
+    {
+        if (str.TokenCount(' ') == 2)
+        {
+            uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+
+            Log(P("Power "), val);
+
+            r.SetTxPower(val);
+        }
+    }
+    else if (!strcmp_P(cmd, P("forever")))
+    {
+        Log(P("Forever until reset"));
+        rr.SetOnMessageTransmittedCallback([](){
+            rr.Send((uint8_t *)bufTx64, 8);
+        });
+        rr.Send((uint8_t *)bufTx64, 8);
+    }
     else if (!strcmp_P(cmd, P("sendr")))
     {
-        char *strSend = &cmdStr[6];
+        const char *strSend = str.UnsafePtrAtTokenAtIdx(1, ' ');
         uint8_t len = strlen(strSend);
 
         // support sending a size-in-bytes as opposed to a string
-        uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= RFLink_Raw::MAX_PACKET_SIZE)
+        uint8_t bufSize = atoi(strSend);
+        if (isdigit(strSend[0]))
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -221,7 +216,7 @@ void OnCommand(char *cmdStr)
 
             restoreByte = 1;
         }
-        
+
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
         LogBlob((uint8_t *)strSend, len);
         
@@ -230,10 +225,7 @@ void OnCommand(char *cmdStr)
         
         if (VERBOSE)
         {
-//            uint32_t timeAfterSend = PAL.Micros();
-//            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-//            Log(P("  "), retVal);
-//            Log(P("  Send time: "), timeDiff, " us");
+            Log(P("  "), retVal);
         }
         
         if (restoreByte)
@@ -354,11 +346,7 @@ void OnCommand(char *cmdStr)
         
         PAL.DigitalWrite(dbg, HIGH);
         uint8_t retVal = r.Send((uint8_t *)strSend, len);
-        uint32_t timeAfterSend = PAL.Micros();
         Log(P("  "), retVal);
-
-//        uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-//        Log(P("  Send time: "), timeDiff, " us");
 
         if (restoreByte)
         {
@@ -397,11 +385,7 @@ void OnCommand(char *cmdStr)
             
             PAL.DigitalWrite(dbg, HIGH);
             uint8_t retVal = r.SendTo(dst, (uint8_t *)strSend, len);
-            uint32_t timeAfterSend = PAL.Micros();
             Log(P("  "), retVal);
-    
-//            uint32_t timeDiff = timeAfterSend - SEND_TIME_START;
-//            Log(P("  Send time: "), timeDiff, " us");
     
             if (restoreByte)
             {

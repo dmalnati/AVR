@@ -32,7 +32,7 @@ void setup()
 {
     LogStart(9600);
     LogNL();
-    Log("Starting");
+    Log("Starting timing tester");
 
     console.RegisterCommand("rtt", [](char *){
         rr.SetOnMessageTransmittedCallback([](){
