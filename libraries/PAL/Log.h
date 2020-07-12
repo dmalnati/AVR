@@ -116,6 +116,20 @@ class LogBIN
     };
     
 public:
+    LogBIN(uint8_t val, uint8_t showPrefix = 1)
+    : showPrefix_(showPrefix)
+    {
+        data_.val      = (uint32_t)val << 24;
+        data_.bitCount = 8;
+    }
+    
+    LogBIN(uint16_t val, uint8_t showPrefix = 1)
+    : showPrefix_(showPrefix)
+    {
+        data_.val      = (uint32_t)val << 16;
+        data_.bitCount = 16;
+    }
+
     LogBIN(uint32_t val, uint8_t showPrefix = 1)
     : showPrefix_(showPrefix)
     {
