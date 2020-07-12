@@ -229,6 +229,80 @@ public:
     {
         verbose_ = verbose;
     }
+
+    void InterpretCommand(char *strCmd)
+    {
+        Str str(strCmd);
+        
+        const char *cmd = str.TokenAtIdx(0, ' ');
+
+        uint8_t found = 0;
+        for (uint8_t i = 0; i < cmdToFnListIdx_ && !found; ++i)
+        {
+            if (!strcmp(cmd, cmdToFnList_[i].cmd))
+            {
+                found = 1;
+                
+                // Check if min arguments apply, and if yes, if present
+                uint8_t executeFunction = 1;
+                if (cmdToFnList_[i].reqArgCount != -1)
+                {
+                    uint8_t argCount = str.TokenCount(' ') - 1;
+                    
+                    if (argCount != cmdToFnList_[i].reqArgCount)
+                    {
+                        executeFunction = 0;
+                        
+                        if (verbose_)
+                        {
+                            Log(P("ERR: "),
+                                cmdToFnList_[i].cmd,
+                                ' ',
+                                argCount,
+                                '/',
+                                cmdToFnList_[i].reqArgCount,
+                                P(" args provided"));
+                        }
+                    }
+                }
+                
+                str.Release();
+                
+                if (executeFunction)
+                {
+                    cmdToFnList_[i].fn(strCmd);
+                }
+            }
+        }
+        
+        if (!found)
+        {
+            str.Release();
+                
+            fnErr_(strCmd);
+        }
+        
+        if (verbose_)
+        {
+            LogNL();
+        }
+    }
+
+    void InterpretCommandMulti(char *strCmd)
+    {
+        Str str(strCmd);
+        
+        uint8_t tokenCount = str.TokenCount(';');
+
+        for (uint8_t i = 0; i < tokenCount; ++i)
+        {
+            char *cmd = (char *)str.TokenAtIdx(i, ';');
+
+            InterpretCommand(cmd);
+        }
+
+        str.Release();
+    }
     
     void Start()
     {
@@ -240,60 +314,7 @@ public:
             
             if (strLen)
             {
-                Str str(strCmd);
-                
-                const char *cmd = str.TokenAtIdx(0, ' ');
-
-                uint8_t found = 0;
-                for (uint8_t i = 0; i < cmdToFnListIdx_ && !found; ++i)
-                {
-                    if (!strcmp(cmd, cmdToFnList_[i].cmd))
-                    {
-                        found = 1;
-                        
-                        // Check if min arguments apply, and if yes, if present
-                        uint8_t executeFunction = 1;
-                        if (cmdToFnList_[i].reqArgCount != -1)
-                        {
-                            uint8_t argCount = str.TokenCount(' ') - 1;
-                            
-                            if (argCount != cmdToFnList_[i].reqArgCount)
-                            {
-                                executeFunction = 0;
-                                
-                                if (verbose_)
-                                {
-                                    Log(P("ERR: "),
-                                        cmdToFnList_[i].cmd,
-                                        ' ',
-                                        argCount,
-                                        '/',
-                                        cmdToFnList_[i].reqArgCount,
-                                        P(" args provided"));
-                                }
-                            }
-                        }
-                        
-                        str.Release();
-                        
-                        if (executeFunction)
-                        {
-                            cmdToFnList_[i].fn(strCmd);
-                        }
-                    }
-                }
-                
-                if (!found)
-                {
-                    str.Release();
-                        
-                    fnErr_(strCmd);
-                }
-                
-                if (verbose_)
-                {
-                    LogNL();
-                }
+                InterpretCommandMulti(strCmd);
             }            
         });
         sarl_.Start();
