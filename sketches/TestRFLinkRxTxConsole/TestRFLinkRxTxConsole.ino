@@ -218,10 +218,10 @@ void OnCommand(char *cmdStr)
         }
 
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
-        LogBlob((uint8_t *)strSend, len);
+        LogBlob((uint8_t *)strSend, len + 1);
         
         PAL.DigitalWrite(dbg, HIGH);
-        uint8_t retVal = rr.Send((uint8_t *)strSend, len);
+        uint8_t retVal = rr.Send((uint8_t *)strSend, len + 1);
         
         if (VERBOSE)
         {
@@ -323,14 +323,14 @@ void OnCommand(char *cmdStr)
     }
     else if (!strcmp_P(cmd, P("sendl")))
     {
-        char *strSend = &cmdStr[6];
+        const char *strSend = str.UnsafePtrAtTokenAtIdx(1, ' ');
         uint8_t len = strlen(strSend);
 
         // support sending a size-in-bytes as opposed to a string
-        uint8_t bufSize = atoi(strSend);
         char cTmp = '\0';
         uint8_t restoreByte = 0;
-        if (bufSize != 0 && bufSize <= RFLink::MAX_PACKET_SIZE)
+        uint8_t bufSize = atoi(strSend);
+        if (isdigit(strSend[0]))
         {
             strSend = bufTx64;
             len     = bufSize;
@@ -342,12 +342,16 @@ void OnCommand(char *cmdStr)
         }
 
         Log(P("Send ["), len, P("]: \""), strSend, "\"");
-        LogBlob((uint8_t *)strSend, len);
+        LogBlob((uint8_t *)strSend, len + 1);
         
         PAL.DigitalWrite(dbg, HIGH);
-        uint8_t retVal = r.Send((uint8_t *)strSend, len);
-        Log(P("  "), retVal);
-
+        uint8_t retVal = r.Send((uint8_t *)strSend, len + 1);
+        
+        if (VERBOSE)
+        {
+            Log(P("  "), retVal);
+        }
+        
         if (restoreByte)
         {
             bufTx64[bufSize] = cTmp;
@@ -361,36 +365,40 @@ void OnCommand(char *cmdStr)
             // find dst
             uint8_t dst = atoi(str.TokenAtIdx(1, ' '));
 
-            // find data, follows command and destination
             const char *strSend = str.UnsafePtrAtTokenAtIdx(2, ' ');
             uint8_t len = strlen(strSend);
-    
+
             // support sending a size-in-bytes as opposed to a string
-            uint8_t bufSize = atoi(strSend);
             char cTmp = '\0';
             uint8_t restoreByte = 0;
-            if (bufSize != 0 && bufSize <= RFLink::MAX_PACKET_SIZE)
+            uint8_t bufSize = atoi(strSend);
+            if (isdigit(strSend[0]))
             {
                 strSend = bufTx64;
                 len     = bufSize;
-    
+
                 cTmp = bufTx64[bufSize];
                 bufTx64[bufSize] = '\0';
-    
+
                 restoreByte = 1;
             }
-    
-            Log(P("SendTo "), dst, P(" ["), len, P("]: \""), strSend, "\"");
-            LogBlob((uint8_t *)strSend, len);
+
+            Log(P("Send ["), len, P("]: \""), strSend, "\"");
+            LogBlob((uint8_t *)strSend, len + 1);
             
             PAL.DigitalWrite(dbg, HIGH);
-            uint8_t retVal = r.SendTo(dst, (uint8_t *)strSend, len);
-            Log(P("  "), retVal);
-    
+            uint8_t retVal = r.SendTo(dst, (uint8_t *)strSend, len + 1);
+            
+            if (VERBOSE)
+            {
+                Log(P("  "), retVal);
+            }
+            
             if (restoreByte)
             {
                 bufTx64[bufSize] = cTmp;
             }
+
         }
     }
     else if (!strcmp_P(cmd, P("somrcl")))
