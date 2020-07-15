@@ -9,8 +9,8 @@
 
 // Timer1:A = Red      = 15
 // Timer1:B = Green    = 16
-// Timer2:A = Blue     = 17
-// Timer2:B = (unused) = 5
+// Timer2:A = (Unused) = 17
+// Timer2:B = Blue     =  5
 
 
 // Designed to simplify accessing PWM for RGB LEDs.
@@ -35,7 +35,8 @@ public:
     RgbLedPwmController()
     : tcLedRed_(Timer1::GetTimerChannelA())
     , tcLedGreen_(Timer1::GetTimerChannelB())
-    , tcLedBlue_(Timer2::GetTimerChannelA())
+    // , tcLedBlue_(Timer2::GetTimerChannelA())
+    , tcLedBlue_(Timer2::GetTimerChannelB())
     , redValCached_(0)
     , greenValCached_(0)
     , blueValCached_(0)
