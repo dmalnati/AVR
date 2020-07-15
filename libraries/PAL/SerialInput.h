@@ -1024,15 +1024,18 @@ private:
 // Provide the type you want to be able to set values on.
 // Then decide the number of parameters you intend to expose.
 // If you want any commands, indicate those as well.
-template <typename T, uint8_t PARAM_COUNT, uint8_t CMD_COUNT, uint8_t FORMATTER_COUNT>
+template <typename T, uint8_t PARAM_COUNT, uint8_t CMD_COUNT = 0, uint8_t FORMATTER_COUNT = 0>
 class PersistantConfigManager
 {
+    static const uint32_t DEFAULT_WAIT_FOR_USER_TIMEOUT_MS = 5000;
+
 public:
 
-    PersistantConfigManager(uint8_t pinConfigure, T &config)
+    PersistantConfigManager(uint8_t pinConfigure, T &config, uint32_t waitForUserTimeoutMs = DEFAULT_WAIT_FOR_USER_TIMEOUT_MS)
     : pinConfigure_(pinConfigure)
     , config_(config)
     , saved_(0)
+    , waitForUserTimeoutMs_(waitForUserTimeoutMs)
     {
         // Nothing to do
     }
@@ -1105,7 +1108,7 @@ private:
                 
                 cont = 0;
             }
-            else if (timeNow - timeStart >= 5000)
+            else if (timeNow - timeStart >= waitForUserTimeoutMs_)
             {
                 cont = 0;
             }
@@ -1214,6 +1217,7 @@ private:
     
     uint8_t saved_;
 
+    uint32_t waitForUserTimeoutMs_;
 };
 
 
