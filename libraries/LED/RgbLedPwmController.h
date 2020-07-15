@@ -35,7 +35,6 @@ public:
     RgbLedPwmController()
     : tcLedRed_(Timer1::GetTimerChannelA())
     , tcLedGreen_(Timer1::GetTimerChannelB())
-    // , tcLedBlue_(Timer2::GetTimerChannelA())
     , tcLedBlue_(Timer2::GetTimerChannelB())
     , redValCached_(0)
     , greenValCached_(0)
