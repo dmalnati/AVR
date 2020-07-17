@@ -21,9 +21,14 @@ protected:
     
     static const uint8_t DEFAULT_PHASE_OFFSET_BRADS = 0;
 
+public:
+
     struct ColorState
     {
-        uint8_t val = 0;
+        uint8_t                     val              = 0;
+        uint32_t                    periodMs         = 0;
+        uint8_t                     phaseOffsetBrads = 0;
+        Q88::INTERNAL_STORAGE_TYPE  rotation         = 0;
     };
 
     struct RgbColorState
@@ -68,39 +73,20 @@ public:
 
     void SetPeriodRed(uint32_t periodMs)
     {
-        SetFrequencyRed(PeriodToFrequency(periodMs));
+        colorState_.red.periodMs = periodMs;
+        SetFrequencyRed(PeriodToFrequency(colorState_.red.periodMs));
     }
 
     void SetPeriodGreen(uint32_t periodMs)
     {
-        SetFrequencyGreen(PeriodToFrequency(periodMs));
+        colorState_.green.periodMs = periodMs;
+        SetFrequencyGreen(PeriodToFrequency(colorState_.green.periodMs));
     }
 
     void SetPeriodBlue(uint32_t periodMs)
     {
-        SetFrequencyBlue(PeriodToFrequency(periodMs));
-    }
-
-    void SetFrequencyAll(double frequency)
-    {
-        SetFrequencyRed(frequency);
-        SetFrequencyGreen(frequency);
-        SetFrequencyBlue(frequency);
-    }
-
-    void SetFrequencyRed(double frequency)
-    {
-        soRed_.SetFrequency(frequency);
-    }
-
-    void SetFrequencyGreen(double frequency)
-    {
-        soGreen_.SetFrequency(frequency);
-    }
-
-    void SetFrequencyBlue(double frequency)
-    {
-        soBlue_.SetFrequency(frequency);
+        colorState_.blue.periodMs = periodMs;
+        SetFrequencyBlue(PeriodToFrequency(colorState_.blue.periodMs));
     }
 
     void SetPhaseOffsetAll(uint8_t phaseOffsetBrads)
@@ -112,17 +98,20 @@ public:
 
     void SetPhaseOffsetRed(uint8_t phaseOffsetBrads)
     {
-        soRed_.SetPhaseOffset(phaseOffsetBrads);
+        colorState_.red.phaseOffsetBrads = phaseOffsetBrads;
+        soRed_.SetPhaseOffset(colorState_.red.phaseOffsetBrads);
     }
 
     void SetPhaseOffsetGreen(uint8_t phaseOffsetBrads)
     {
-        soGreen_.SetPhaseOffset(phaseOffsetBrads);
+        colorState_.green.phaseOffsetBrads = phaseOffsetBrads;
+        soGreen_.SetPhaseOffset(colorState_.green.phaseOffsetBrads);
     }
 
     void SetPhaseOffsetBlue(uint8_t phaseOffsetBrads)
     {
-        soBlue_.SetPhaseOffset(phaseOffsetBrads);
+        colorState_.blue.phaseOffsetBrads = phaseOffsetBrads;
+        soBlue_.SetPhaseOffset(colorState_.blue.phaseOffsetBrads);
     }
 
     void Start()
@@ -153,6 +142,31 @@ public:
         running_ = 0;
     }
 
+    const RgbColorState GetState()
+    {
+        return colorState_;
+    }
+
+    void SetState(RgbColorState rgbColorState)
+    {
+        // Red
+        pwmController_.SetRed(rgbColorState.red.val);
+        SetPeriodRed(rgbColorState.red.periodMs);
+        SetPhaseOffsetRed(rgbColorState.red.phaseOffsetBrads);
+        soRed_.ReplaceRotationState(rgbColorState.red.rotation);
+
+        // Green
+        pwmController_.SetGreen(rgbColorState.green.val);
+        SetPeriodGreen(rgbColorState.green.periodMs);
+        SetPhaseOffsetGreen(rgbColorState.green.phaseOffsetBrads);
+        soGreen_.ReplaceRotationState(rgbColorState.green.rotation);
+
+        // Blue
+        pwmController_.SetBlue(rgbColorState.blue.val);
+        SetPeriodBlue(rgbColorState.blue.periodMs);
+        SetPhaseOffsetBlue(rgbColorState.blue.phaseOffsetBrads);
+        soBlue_.ReplaceRotationState(rgbColorState.blue.rotation);
+    }
 
 
 protected:
@@ -194,14 +208,41 @@ protected:
 
     void GetNextState()
     {
-        colorState_.red.val   = soRed_.GetNextSampleAbs();
-        colorState_.green.val = soGreen_.GetNextSampleAbs();
-        colorState_.blue.val  = soBlue_.GetNextSampleAbs();
+        colorState_.red.val        = soRed_.GetNextSampleAbs();
+        colorState_.red.rotation   = soRed_.GetRotationState();
+
+        colorState_.green.val      = soGreen_.GetNextSampleAbs();
+        colorState_.green.rotation = soGreen_.GetRotationState();
+
+        colorState_.blue.val       = soBlue_.GetNextSampleAbs();
+        colorState_.blue.rotation  = soBlue_.GetRotationState();
     }
 
     RgbColorState colorState_;
 
 private:
+
+    void SetFrequencyAll(double frequency)
+    {
+        SetFrequencyRed(frequency);
+        SetFrequencyGreen(frequency);
+        SetFrequencyBlue(frequency);
+    }
+
+    void SetFrequencyRed(double frequency)
+    {
+        soRed_.SetFrequency(frequency);
+    }
+
+    void SetFrequencyGreen(double frequency)
+    {
+        soGreen_.SetFrequency(frequency);
+    }
+
+    void SetFrequencyBlue(double frequency)
+    {
+        soBlue_.SetFrequency(frequency);
+    }
 
     double PeriodToFrequency(uint32_t periodMs)
     {
