@@ -1897,7 +1897,7 @@ public:
 
     RHMode     _mode;
 
-    uint8_t txPower_ = 127;
+    uint8_t txPower_ = 10;
 
     struct Measurements
     {
