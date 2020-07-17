@@ -7,7 +7,7 @@
 
 
 template <uint8_t EVENT_COUNT, uint32_t(*TIME_FUNCTION)()>
-class DurationAuditor
+class DurationAuditorBase
 {
 private:
     struct Event
@@ -17,7 +17,7 @@ private:
     };
 
 public:
-    DurationAuditor()
+    DurationAuditorBase()
     : fnGetTime_(TIME_FUNCTION)
     {
         Reset();
@@ -111,10 +111,10 @@ private:
 
 
 template <uint8_t EVENT_COUNT>
-using DurationAuditorMillis = DurationAuditor<EVENT_COUNT, PlatformAbstractionLayer::Millis>;
+using DurationAuditorMillis = DurationAuditorBase<EVENT_COUNT, PlatformAbstractionLayer::Millis>;
 
 template <uint8_t EVENT_COUNT>
-using DurationAuditorMicros = DurationAuditor<EVENT_COUNT, PlatformAbstractionLayer::Micros>;
+using DurationAuditor = DurationAuditorBase<EVENT_COUNT, PlatformAbstractionLayer::Micros>;
 
 
 
