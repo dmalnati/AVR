@@ -50,7 +50,7 @@ struct MsgTxnStop
 
 
 // Compile-time warn about sizing
-static_assert(sizeof(MsgTxnApply) <= RFLink::MAX_PACKET_SIZE, "MsgTxnStart too large");
+static_assert(sizeof(MsgTxnApply) <= RFLink::MAX_PACKET_SIZE, "MsgTxnApply too large");
 
 
 
@@ -110,6 +110,15 @@ public:
 
     void Run()
     {
+        Init();
+        RunInternal();
+    }
+
+
+protected:
+
+    void Init()
+    {
         LogStart(9600);
         Log(P("Starting"));
 
@@ -128,20 +137,21 @@ public:
         {
             Log(P("Config OK"));
             LogNL();
-
-            SetUpEffects();
-            SetUpRadio();
-
-            evm_.MainLoop();
         }
         else
         {
             Log(P("Bad Configuration"));
+            while (1) {}
         }
     }
 
+    void RunInternal()
+    {
+        SetUpEffects();
+        SetUpRadio();
 
-protected:
+        evm_.MainLoop();
+    }
 
     void OnMsg(const MsgTxnDumpStatus &)
     {
@@ -152,6 +162,7 @@ protected:
     {
         Log("Got TxnApply: ", msg.msgType);
 
+        // 625us at 8MHz
         rgb_.SetState(msg.rgbColorState);
 
         if (msg.alsoStart)
@@ -231,8 +242,8 @@ private:
 private:
 
     static const uint8_t C_IDLE  =  0;
-    static const uint8_t C_TIMED = 10;
-    static const uint8_t C_INTER = 10;
+    static const uint8_t C_TIMED =  5;
+    static const uint8_t C_INTER =  1;
     
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
 
@@ -274,12 +285,16 @@ public:
 
     void Run()
     {
+        // Run base class Init
+        AppBikeLightComputer::Init();
+
+        // Add additional behavior
         SetUpRadio();
         SetUpCommandHandler();
         InputsEnable();
 
-        // Run inner class
-        AppBikeLightComputer::Run();
+        // Run base class
+        AppBikeLightComputer::RunInternal();
     }
 
 private:
@@ -326,66 +341,70 @@ private:
 
     void SetUpCommandHandler()
     {
-        console_.RegisterCommand("apply", [this](char *cmdStr){
+        console_.RegisterErrorHandler([this](char *cmdStr){
             Str str(cmdStr);
-
-            MsgTxnApply msg;
-
-            if (str.TokenCount(' ') == 2)
+            const char *cmd = str.TokenAtIdx(0, ' ');
+            
+            if (!strcmp_P(cmd, P("apply")))
             {
-                uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+                MsgTxnApply msg;
 
-                msg.alsoStart = val;
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    msg.alsoStart = val;
+                }
+
+                Log(P("Apply "), msg.alsoStart ? P("and Start") : P("but not Start"));
+
+                msg.rgbColorState = rgb_.GetState();
+
+                // Log(P("Red"));
+                // PrintColorState(msg.rgbColorState.red);
+                // Log(P("Green"));
+                // PrintColorState(msg.rgbColorState.green);
+                // Log(P("Blue"));
+                // PrintColorState(msg.rgbColorState.blue);
+
+                SendAndApply(msg);
             }
+            else if (!strcmp_P(cmd, P("start")))
+            {
+                Log(P("Start"));
 
-            Log(P("Apply "), msg.alsoStart ? P("and Start") : P("but not Start"));
+                MsgTxnStart msg;
 
-            msg.rgbColorState = rgb_.GetState();
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("aas")))
+            {
+                Log(P("ApplyAndStart"));
 
-            // Log(P("Red"));
-            // PrintColorState(msg.rgbColorState.red);
-            // Log(P("Green"));
-            // PrintColorState(msg.rgbColorState.green);
-            // Log(P("Blue"));
-            // PrintColorState(msg.rgbColorState.blue);
+                console_.Exec("apply 1");
+            }
+            else if (!strcmp_P(cmd, P("pause")))
+            {
+                Log(P("Pause"));
 
-            SendAndApply(msg);
-        });
+                MsgTxnPause msg;
 
-        console_.RegisterCommand("start", [this](char *){
-            Log(P("Start"));
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("stop")))
+            {
+                Log(P("Stop"));
 
-            MsgTxnStart msg;
+                MsgTxnStop msg;
 
-            SendAndApply(msg);
-        });
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("status")))
+            {
+                MsgTxnDumpStatus msg;
 
-        console_.RegisterCommand("aas", [this](char *){
-            Log(P("ApplyAndStart"));
-
-            console_.Exec("apply 1");
-        });
-
-        console_.RegisterCommand("pause", [this](char *){
-            Log(P("Pause"));
-
-            MsgTxnPause msg;
-
-            SendAndApply(msg);
-        });
-        
-        console_.RegisterCommand("stop", [this](char *){
-            Log(P("Stop"));
-
-            MsgTxnStop msg;
-
-            SendAndApply(msg);
-        });
-
-        console_.RegisterCommand("status", [this](char *){
-            MsgTxnDumpStatus msg;
-
-            SendAndApply(msg);
+                SendAndApply(msg);
+            }
         });
 
         console_.SetVerbose(0);
@@ -394,7 +413,7 @@ private:
 
 private:
 
-    SerialAsyncConsoleEnhanced<10>  console_;
+    SerialAsyncConsoleEnhanced<0>  console_;
 
     AppBikeLightComputerRemoteConfig &cfg_;
 };
