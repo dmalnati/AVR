@@ -70,7 +70,10 @@ public:
     : radio_(pinSel, pinIrq, pinSdn)
     , goBackToReceiveOnSendComplete_(0)
     {
-        // Nothing to do
+        // Make sure defaults are set because we trigger going back to RX
+        // mode on different events
+        SetOnMessageReceivedCallback(DefaultOnMessageReceivedCallback);
+        SetOnMessageTransmittedCallback(DefaultOnMessageTransmittedCallback);
     }
 
     uint8_t Init()
@@ -195,6 +198,20 @@ public:
     {
         return radio_;
     }
+
+
+private:
+
+    static void DefaultOnMessageReceivedCallback(uint8_t *, uint8_t)
+    {
+
+    }
+
+    static void DefaultOnMessageTransmittedCallback()
+    {
+
+    }
+
 
 private:
 
