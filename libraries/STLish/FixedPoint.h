@@ -15,6 +15,12 @@ template <uint8_t  BITS_WHOLE,
           typename STORAGE_TYPE_HALF_SIZE>
 class FixedPoint
 {
+public:
+
+    using INTERNAL_STORAGE_TYPE = STORAGE_TYPE;
+
+private:
+
     using FixedPointClass = FixedPoint<BITS_WHOLE,
                                        BITS_FRAC,
                                        STORAGE_TYPE,
@@ -56,6 +62,18 @@ public:
     inline FixedPoint(const FixedPointClass &val)
     {
         operator=(val);
+    }
+
+    // For inspecting internal state
+    inline auto GetValueState() const
+    {
+        return val_;
+    }
+
+    // For adjusting internal state
+    inline void ReplaceValueState(INTERNAL_STORAGE_TYPE val)
+    {
+        val_ = val;
     }
 
     // Useful for assignment after subtraction in limit mode stepping

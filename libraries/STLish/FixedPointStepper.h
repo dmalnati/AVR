@@ -22,6 +22,22 @@ public:
     {
         val_ = val;
     }
+
+    explicit inline operator uint8_t() const
+    {
+        return (uint8_t)val_;
+    }
+
+    inline auto GetValueState() const
+    {
+        return val_.GetValueState();
+    }
+
+    template <typename T>
+    inline void ReplaceValueState(T t)
+    {
+        val_.ReplaceValueState(t);
+    }
     
     template <typename T>
     inline void SetStepSize(const T &stepSize)
@@ -81,11 +97,6 @@ public:
         }
     }
     
-    explicit inline operator uint8_t() const
-    {
-        return (uint8_t)val_;
-    }
-
     
     
 private:

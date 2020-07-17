@@ -175,6 +175,16 @@ public:
     {
         return 128 + GetNextSample();
     }
+
+    Q88::INTERNAL_STORAGE_TYPE GetRotationState() const
+    {
+        return rotation_.GetValueState();
+    }
+
+    void ReplaceRotationState(Q88::INTERNAL_STORAGE_TYPE rotation)
+    {
+        rotation_.ReplaceValueState(rotation);
+    }
     
     void Reset()
     {
