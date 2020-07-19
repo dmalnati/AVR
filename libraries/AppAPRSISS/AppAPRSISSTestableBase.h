@@ -150,8 +150,7 @@ public:
 
         msg.SetDstAddress("APZ001", 0);
         msg.SetSrcAddress(userConfig_.aprs.callsign, userConfig_.aprs.ssid);
-        msg.AddRepeaterAddress("ARISS", 0);
-        msg.AddRepeaterAddress("WIDE2", 1);
+        msg.AddRepeaterAddress("RS0ISS", 0);
 
         // Add APRS data
         uint8_t *bufInfo    = NULL;

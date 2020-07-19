@@ -97,8 +97,10 @@ private:
     {
         SensorGPSUblox::Measurement m;
 
+        Log("Checking GPS");
         if (gps_.GetLocationMeasurement(&m))
         {
+            Log("GPS Locked");
             PAL.DigitalWrite(cfg_.pinLedGreen, HIGH);
 
             // If we lock once, that's good enough, it'll update later on
@@ -110,6 +112,8 @@ private:
         {
             PAL.DigitalToggle(cfg_.pinLedGreen);
         }
+
+        LogNL();
     }
 
     void OnPressSend()
