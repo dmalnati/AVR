@@ -247,7 +247,7 @@ ISR(PCINT3_vect, ISR_ALIASOF(PCINT0_vect));
 // Constructor
 //
 ThinSoftwareSerial::ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic /* = false */) : 
-  _runningAtSpeedFactor(100.0),
+  _runningAtSpeedFactor(1.0),
   _rx_delay_centering(0),
   _rx_delay_intrabit(0),
   _rx_delay_stopbit(0),
