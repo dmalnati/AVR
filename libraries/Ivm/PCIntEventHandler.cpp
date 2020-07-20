@@ -36,9 +36,6 @@ DeRegisterForPCIntEvent()
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
         retVal = Ivm::DeRegisterPCIntEventHandler(this);
-        
-        pin_  = 0;
-        mode_ = MODE::MODE_UNDEFINED;
     }
     
     return retVal;

@@ -14,8 +14,14 @@ public:
                                 MODE_RISING_AND_FALLING };
 
     PCIntEventHandler()
-    : pin_(0)
-    , mode_(MODE::MODE_UNDEFINED)
+    : PCIntEventHandler(0, MODE::MODE_UNDEFINED)
+    {
+        // Nothing to do
+    }
+
+    PCIntEventHandler(uint8_t pin, MODE mode)
+    : pin_(pin)
+    , mode_(mode)
     , timeUsEvent_(0)
     {
         // Nothing to do
@@ -27,6 +33,10 @@ public:
     }
 
     uint8_t RegisterForPCIntEvent(uint8_t pin, MODE mode);
+    uint8_t RegisterForPCIntEvent()
+    {
+        return RegisterForPCIntEvent(pin_, mode_);
+    }
     uint8_t DeRegisterForPCIntEvent();
     
     uint8_t GetPin()        const { return pin_;        }
@@ -69,6 +79,12 @@ class PCIntEventHandlerDelegate
 {
 public:
     PCIntEventHandlerDelegate()
+    {
+        // Nothing to do
+    }
+
+    PCIntEventHandlerDelegate(uint8_t pin, MODE mode)
+    : PCIntEventHandler(pin, mode)
     {
         // Nothing to do
     }
