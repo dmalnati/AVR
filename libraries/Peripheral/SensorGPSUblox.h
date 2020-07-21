@@ -26,6 +26,19 @@ public:
     // it calculated as 70ms.
     static const uint32_t MIN_DELAY_NEW_TIME_LOCK_MS = 70;
     
+    // Structure size 14
+    struct MeasurementLocationDMS
+    {
+        int16_t  latitudeDegrees;
+        uint8_t  latitudeMinutes;
+        double   latitudeSeconds;
+        
+        int16_t  longitudeDegrees;
+        uint8_t  longitudeMinutes;
+        double   longitudeSeconds;
+    };
+
+    // Structure size 70 bytes
     struct Measurement
     {
         uint32_t clockTimeAtMeasurement;
@@ -50,13 +63,7 @@ public:
         int32_t latitudeDegreesMillionths;
         int32_t longitudeDegreesMillionths;
         
-        int16_t  latitudeDegrees;
-        uint8_t  latitudeMinutes;
-        double   latitudeSeconds;
-        
-        int16_t  longitudeDegrees;
-        uint8_t  longitudeMinutes;
-        double   longitudeSeconds;
+        MeasurementLocationDMS locationDms;
         
         static const uint8_t MAIDENHEAD_GRID_LEN = 6;
         char maidenheadGrid[MAIDENHEAD_GRID_LEN + 1] = { 0 };
@@ -102,8 +109,7 @@ public:
     SensorGPSUblox(int8_t pinRx, int8_t pinTx)
     : pinRx_(pinRx)
     , pinTx_(pinTx)
-    , ss_(PAL.GetArduinoPinFromPhysicalPin(pinRx_),
-          PAL.GetArduinoPinFromPhysicalPin(pinTx_))
+    , ss_(pinRx_, pinTx_)
     {
         // nothing to do
     }
@@ -394,6 +400,22 @@ public:
     ///////////////////////////////////////////////////////////////////////////
     
     // May not return true if the async polling hasn't acquired enough data yet
+    uint8_t GetLocationDMSMeasurement(MeasurementLocationDMS *mdms)
+    {
+        uint8_t retVal = 0;
+        
+        // Check if both necessary sentences have been received
+        if (tgps_.GetLastTimeRMC() != 0 && tgps_.GetLastTimeGGA() != 0)
+        {
+            retVal = 1;
+            
+            GetMeasurementLocationDMSInternal(mdms);
+        }
+        
+        return retVal;
+    }
+
+    // May not return true if the async polling hasn't acquired enough data yet
     uint8_t GetLocationMeasurement(Measurement *m)
     {
         uint8_t retVal = 0;
@@ -426,6 +448,26 @@ public:
 
 private:
 
+    void GetMeasurementLocationDMSInternal(MeasurementLocationDMS *mdms)
+    {
+        int32_t latitudeDegreesMillionths;
+        int32_t longitudeDegreesMillionths;
+        uint32_t msSinceLastFix;
+
+        tgps_.get_position(latitudeDegreesMillionths,
+                           longitudeDegreesMillionths,
+                           msSinceLastFix);
+
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(latitudeDegreesMillionths,
+                                                     mdms->latitudeDegrees,
+                                                     mdms->latitudeMinutes,
+                                                     mdms->latitudeSeconds);
+        
+        ConvertTinyGPSLatLongToDegreesMinutesSeconds(longitudeDegreesMillionths,
+                                                     mdms->longitudeDegrees,
+                                                     mdms->longitudeMinutes,
+                                                     mdms->longitudeSeconds);
+    }
     
     void GetMeasurementInternal(Measurement *m)
     {
@@ -456,16 +498,8 @@ private:
         m->courseDegrees = tgps_.course() / 100;    // convert from 100ths of a degree
         m->speedKnots    = tgps_.speed() / 100;     // convert from 100ths of a knot
  
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->latitudeDegreesMillionths,
-                                                     m->latitudeDegrees,
-                                                     m->latitudeMinutes,
-                                                     m->latitudeSeconds);
-        
-        ConvertTinyGPSLatLongToDegreesMinutesSeconds(m->longitudeDegreesMillionths,
-                                                     m->longitudeDegrees,
-                                                     m->longitudeMinutes,
-                                                     m->longitudeSeconds);
-        
+        GetMeasurementLocationDMSInternal(&m->locationDms);
+
         ConvertToMaidenheadGrid(m->latitudeDegreesMillionths,
                                 m->longitudeDegreesMillionths,
                                 m->maidenheadGrid);
