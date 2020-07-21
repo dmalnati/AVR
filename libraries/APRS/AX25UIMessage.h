@@ -102,8 +102,10 @@ public:
         {
             retVal = 1;
             
+            // Return buffer, and size, making sure to leave 2 bytes at the end
+            // for the checksum
             *buf     = &(buf_[bufIdxNextByte_]);
-            *bufSize = bufSize_ - (&(buf_[bufIdxNextByte_]) - buf_);
+            *bufSize = bufSize_ - (&(buf_[bufIdxNextByte_]) - buf_) - 2;
         }
         
         return retVal;
