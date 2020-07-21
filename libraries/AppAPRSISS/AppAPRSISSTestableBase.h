@@ -148,7 +148,7 @@ public:
 
         AX25UIMessage &msg = *amt_.GetAX25UIMessage();
 
-        msg.SetDstAddress("APZ001", 0);
+        msg.SetDstAddress("CQ", 0);
         msg.SetSrcAddress(userConfig_.aprs.callsign, userConfig_.aprs.ssid);
         msg.AddRepeaterAddress("RS0ISS", 0);
 
