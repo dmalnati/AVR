@@ -13,7 +13,7 @@ class ThinSoftwareSerial
 {
 public:
 
-    static const uint8_t BUF_SIZE = 64;
+    static const uint8_t BUF_SIZE = 32;
 
 
 public:
