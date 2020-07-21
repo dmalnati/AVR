@@ -6,7 +6,7 @@
 
 
 class APRSPositionReportMessageAPRSISS
-: public APRSPositionReportMessage
+: public APRSPositionReportMessageNoTimestamp
 {
 public:
 

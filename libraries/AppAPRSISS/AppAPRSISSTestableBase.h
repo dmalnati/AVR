@@ -141,7 +141,7 @@ public:
     //
     ///////////////////////////////////////////////////////////////////////////
     
-    void SendMessage(SensorGPSUblox::Measurement &gpsMeasurement)
+    void SendMessage(SensorGPSUblox::MeasurementLocationDMS &gpsMeasurement)
     {
         // Kick the watchdog
         PAL.WatchdogReset();
@@ -163,10 +163,6 @@ public:
             APRSPositionReportMessageAPRSISS aprm;
             aprm.SetTargetBuf(bufInfo, bufInfoLen);
             
-            // Fill out standard APRS fields
-            aprm.SetTimeLocal(gpsMeasurement.hour,
-                              gpsMeasurement.minute,
-                              gpsMeasurement.second);
             aprm.SetLatitude(gpsMeasurement.latitudeDegrees,
                              gpsMeasurement.latitudeMinutes,
                              gpsMeasurement.latitudeSeconds);
@@ -176,13 +172,6 @@ public:
                               gpsMeasurement.longitudeSeconds);
             aprm.SetSymbolCode(userConfig_.aprs.symbolTableAndCode[1]);
             
-            // Fill out extended standard APRS fields
-            aprm.SetCommentCourseAndSpeed(gpsMeasurement.courseDegrees,
-                                          gpsMeasurement.speedKnots);
-            aprm.SetCommentAltitude(gpsMeasurement.altitudeFt);
-
-            // Fill out my custom extensions
-            aprm.AppendCommentString(" ");
             aprm.SetComment(userConfig_.aprs.comment);
 
             // Update message structure to know how many bytes we used
@@ -306,10 +295,17 @@ public:
 
     PinInputNoIvm pinInputSend_;
     
-    SensorGPSUblox  gps_;
+    SensorGPSUblox                         gps_;
+    SensorGPSUblox::MeasurementLocationDMS m_;
 
     RFSI4463PRO                 radio_;
-    AX25UIMessageTransmitter<>  amt_;
+
+    static const uint8_t NUM_ROUTING_PATHS = 1;
+    static const uint8_t INFORMATION_FIELD_LEN = 36;
+
+    using AX25UIMessageTransmitterType = AX25UIMessageTransmitter<NUM_ROUTING_PATHS, INFORMATION_FIELD_LEN>;
+
+    AX25UIMessageTransmitterType  amt_;
 
     const TerminalControl::Color colorOutput_ = TerminalControl::Color::YELLOW;
 

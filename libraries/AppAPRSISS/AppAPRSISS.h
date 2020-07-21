@@ -43,7 +43,7 @@ public:
     void Run()
     {
         AppAPRSISSTestableBase::Init();
-        
+
         // Interact with user if present
         uint8_t userConfigOk = 0;
         
@@ -95,12 +95,10 @@ private:
 
     void OnCheckGpsLockState()
     {
-        SensorGPSUblox::Measurement m;
-
-        Log("Checking GPS");
-        if (gps_.GetLocationMeasurement(&m))
+        Log(P("Checking GPS: "), PAL.Millis());
+        if (gps_.GetLocationDMSMeasurement(&m_))
         {
-            Log("GPS Locked");
+            Log(P("GPS Locked"));
             PAL.DigitalWrite(cfg_.pinLedGreen, HIGH);
 
             // If we lock once, that's good enough, it'll update later on
@@ -112,8 +110,6 @@ private:
         {
             PAL.DigitalToggle(cfg_.pinLedGreen);
         }
-
-        LogNL();
     }
 
     void OnPressSend()
@@ -123,15 +119,14 @@ private:
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         PAL.DigitalWrite(cfg_.pinLedRed, HIGH);
         
-        SensorGPSUblox::Measurement m;
-        gps_.GetLocationMeasurement(&m);
+        gps_.GetLocationDMSMeasurement(&m_);
 
         // Need to prevent the GPS from sending text while transmitting.
         // It causes interrupts to fire and mess up the timing of the
         // signal to the radio.
         StopGPS();
 
-        SendMessage(m);
+        SendMessage(m_);
 
         StartGPS();
 
@@ -143,7 +138,7 @@ private:
 private:
 
     static const uint8_t C_IDLE  =  0;
-    static const uint8_t C_TIMED = 20;
+    static const uint8_t C_TIMED = 10;
     static const uint8_t C_INTER =  0;
     
     Evm::Instance<C_IDLE, C_TIMED, C_INTER> evm_;
