@@ -31,7 +31,7 @@ private:
     
     static const uint8_t BIT_STUFF_AFTER_COUNT = 5;
     
-    static const uint8_t COMMAND_QUEUE_CAPACITY = 8;
+    static const uint8_t COMMAND_QUEUE_CAPACITY = 1;
     
 
     // Build the messages from the main thread to the ISR thread which will
