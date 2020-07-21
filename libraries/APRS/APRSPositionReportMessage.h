@@ -5,14 +5,26 @@
 #include "StrFormat.h"
 
 
-class APRSPositionReportMessage
+class APRSPositionReportMessageBase
 {
-    // Minimum size of valid message with empty comment section
-    static const uint8_t MIN_BUF_SIZE = 27;
-    
-    // Maximum size of valid message with full comment section (+ 43 bytes)
-    static const uint8_t MAX_BUF_SIZE = 70;
-    
+protected:
+
+    struct MessageDetails
+    {
+        uint8_t MIN_BUF_SIZE = 0;
+        uint8_t MAX_BUF_SIZE = 0;
+
+        char messageType = '\0';
+
+        uint8_t idxTime       = 0; // size 7
+        uint8_t idxLat        = 0; // size 8
+        uint8_t idxSymTableId = 0; // size 1
+        uint8_t idxLng        = 0; // size 9
+        uint8_t idxSymCode    = 0; // size 1
+    };
+
+    MessageDetails msgDetails_;
+
 
 public:
  
@@ -20,13 +32,13 @@ public:
     {
         uint8_t retVal = 0;
        
-        if (buf && bufSize >= MIN_BUF_SIZE)
+        if (buf && bufSize >= msgDetails_.MIN_BUF_SIZE)
         {
             retVal = 1;
             
             buf_             = (char *)buf;
-            bufSize_         = bufSize <= MAX_BUF_SIZE ? bufSize : MAX_BUF_SIZE;
-            commentNextByte_ = &(buf_[MIN_BUF_SIZE]);
+            bufSize_         = bufSize <= msgDetails_.MAX_BUF_SIZE ? bufSize : msgDetails_.MAX_BUF_SIZE;
+            commentNextByte_ = &(buf_[msgDetails_.MIN_BUF_SIZE]);
 
             // Zero (spaces) all buf bytes passed in
             memset(buf_, ' ', bufSize);
@@ -63,7 +75,7 @@ public:
     // 24-hour time
     void SetTimeLocal(uint8_t hours, uint8_t minutes, uint8_t seconds)
     {
-        const uint8_t BUF_LOCATION = 1;
+        const uint8_t BUF_LOCATION = msgDetails_.idxTime;
         
         if (buf_)
         {
@@ -97,7 +109,7 @@ public:
     //
     void SetLatitude(int8_t degrees, uint8_t minutes, double seconds)
     {
-        const uint8_t BUF_LOCATION = 8;
+        const uint8_t BUF_LOCATION = msgDetails_.idxLat;
         
         if (buf_)
         {
@@ -136,7 +148,7 @@ public:
     
     void SetSymbolTableID(char id)
     {
-        const uint8_t BUF_LOCATION = 16;
+        const uint8_t BUF_LOCATION = msgDetails_.idxSymTableId;
         
         if (buf_)
         {
@@ -156,7 +168,7 @@ public:
     //
     void SetLongitude(int16_t degrees, uint8_t minutes, double seconds)
     {
-        const uint8_t BUF_LOCATION = 17;
+        const uint8_t BUF_LOCATION = msgDetails_.idxLng;
         
         if (buf_)
         {
@@ -195,7 +207,7 @@ public:
     
     void SetSymbolCode(char code)
     {
-        const uint8_t BUF_LOCATION = 26;
+        const uint8_t BUF_LOCATION = msgDetails_.idxSymCode;
         
         if (buf_)
         {
@@ -360,8 +372,8 @@ private:
             // Get location in buffer
             char *p = &(buf_[BUF_LOCATION]);
             
-            // Set MessageType (no messaging, w/ timestamp)
-            *p = '/';
+            // Set MessageType
+            *p = msgDetails_.messageType;
         }
     }
     
@@ -371,8 +383,8 @@ private:
         
         if (buf_)
         {
-            uint8_t commentBytesAllocated = (bufSize_ - MIN_BUF_SIZE);
-            uint8_t commentBytesUsed      = (commentNextByte_ - &(buf_[MIN_BUF_SIZE]));
+            uint8_t commentBytesAllocated = (bufSize_ - msgDetails_.MIN_BUF_SIZE);
+            uint8_t commentBytesUsed      = (commentNextByte_ - &(buf_[msgDetails_.MIN_BUF_SIZE]));
             
             retVal = commentBytesAllocated - commentBytesUsed;    
         }
@@ -391,6 +403,59 @@ private:
     uint8_t  bufSize_         = 0;
     char    *commentNextByte_ = NULL;
 };
+
+
+// p. 94 (pdf page 104)
+class APRSPositionReportMessage
+: public APRSPositionReportMessageBase
+{
+public:
+
+    APRSPositionReportMessage()
+    {
+        msgDetails_ = {
+            // Minimum size of valid message with empty comment section
+            .MIN_BUF_SIZE = 27,
+            // Maximum size of valid message with full comment section (+ 43 bytes)
+            .MAX_BUF_SIZE = 70,
+
+            .messageType = '/',
+
+            .idxTime       =  1, // size 7
+            .idxLat        =  8, // size 8
+            .idxSymTableId = 16, // size 1
+            .idxLng        = 17, // size 9
+            .idxSymCode    = 26, // size 1
+        };
+    }
+};
+
+
+// p. 94 (pdf page 104)
+class APRSPositionReportMessageNoTimestamp
+: public APRSPositionReportMessageBase
+{
+public:
+
+    APRSPositionReportMessageNoTimestamp()
+    {
+        msgDetails_ = {
+            // Minimum size of valid message with empty comment section
+            .MIN_BUF_SIZE = 20,
+            // Maximum size of valid message with full comment section (+ 43 bytes)
+            .MAX_BUF_SIZE = 63,
+
+            .messageType = '=',
+
+            .idxTime       =  0, // doesn't exist
+            .idxLat        =  1, // size 8
+            .idxSymTableId =  9, // size 1
+            .idxLng        = 10, // size 9
+            .idxSymCode    = 19, // size 1
+        };
+    }
+};
+
 
 
 
