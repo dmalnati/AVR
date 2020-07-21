@@ -8,6 +8,7 @@
 #include <util/atomic.h>
 
 #include "Function.h"
+#include "Log.h"
 
 #include <Arduino.h>
 
@@ -66,6 +67,87 @@ public:
         MCUSR = 0;
         
         WatchdogDisable();
+    }
+
+    static inline uint16_t GetMemSramSize()
+    {
+        const uint16_t ADDR_SRAM_START = 0x100;
+
+        // RAMEND is a predefind address, and we can measure the amount of
+        // sram by comparing to the start address of sram.
+        // RAMEND = 2303
+        // ADDR_SRAM_START = 0x100
+        // RAMEND - ADDR_SRAM_START = 2047, so +1 for 2048
+        constexpr uint16_t sramTotal = RAMEND - ADDR_SRAM_START + 1;
+
+        return sramTotal;
+    }
+
+    static inline uint16_t GetMemDataSectionSize()
+    {
+        extern char *__data_start;
+        extern char *__data_end;
+
+        uint16_t size = (uint16_t)&__data_end - (uint16_t)&__data_start;
+        
+        return size;
+    }
+
+    static inline uint16_t GetMemBssSectionSize()
+    {
+        extern char *__bss_start;
+        extern char *__bss_end;
+
+        uint16_t size = (uint16_t)&__bss_end - (uint16_t)&__bss_start;
+        
+        return size;
+    }
+
+    static inline uint16_t GetMemHeapSize()
+    {
+        extern char *__brkval;
+        extern char *__heap_start;
+
+        uint16_t size = 0;
+
+        if ((uint16_t)__brkval != 0)
+        {
+            size = (uint16_t)__brkval - (uint16_t)&__heap_start;
+        }
+
+        return size;
+    }
+
+    static inline uint16_t GetMemStackSize()
+    {
+        uint8_t varOnTheStack;
+
+        uint16_t size = RAMEND - (uint16_t)&varOnTheStack + 1;
+
+        return size;
+    }
+    
+    static inline uint16_t GetMemFree()
+    {
+        uint16_t size =
+            GetMemSramSize() -
+                (
+                    GetMemDataSectionSize() +
+                    GetMemBssSectionSize()  +
+                    GetMemHeapSize()        +
+                    GetMemStackSize()
+                );
+
+        return size;
+    }
+
+    static void MemReport()
+    {
+        Log(P("Free     : "), GetMemFree());
+        Log(P("StackSize: "), GetMemStackSize());
+        // Log(P("HeapSize : "), GetMemHeapSize());
+        // Log(P("BssSize  : "), GetMemBssSectionSize());
+        // Log(P("DataSize : "), GetMemDataSectionSize());
     }
     
     static void PinMode(Pin pin, uint8_t mode)
