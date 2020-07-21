@@ -25,8 +25,7 @@
  * Total transmission time including flags therefore is ~1300ms.
  *
  */
-template <typename ModemBell202Type     = ModemBell202Pwm,
-          uint8_t NUM_ROUTING_PATHS     =  1,
+template <uint8_t NUM_ROUTING_PATHS     =  1,
           uint8_t INFORMATION_FIELD_LEN = 70>
 class AX25UIMessageTransmitter
 {
@@ -188,7 +187,7 @@ private:
     uint8_t buf_[BUF_SIZE];
 
     AX25UIMessage      msg_;
-    ModemBell202Type   modem_;
+    ModemBell202Pwm    modem_;
     
     function<void()> fnBeforeModemStart_;
     function<void()> fnAfterModemEnd_;
