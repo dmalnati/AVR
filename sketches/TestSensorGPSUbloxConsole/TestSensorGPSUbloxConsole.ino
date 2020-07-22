@@ -185,12 +185,12 @@ void Print()
     Log(P("speedKnots                : "), m.speedKnots);
     Log(P("latitudeDegreesMillionths : "), m.latitudeDegreesMillionths);
     Log(P("longitudeDegreesMillionths: "), m.longitudeDegreesMillionths);
-    Log(P("latitudeDegrees           : "), m.latitudeDegrees);
-    Log(P("latitudeMinutes           : "), m.latitudeMinutes);
-    Log(P("latitudeSeconds           : "), m.latitudeSeconds);
-    Log(P("longitudeDegrees          : "), m.longitudeDegrees);
-    Log(P("longitudeMinutes          : "), m.longitudeMinutes);
-    Log(P("longitudeSeconds          : "), m.longitudeSeconds);
+    Log(P("latitudeDegrees           : "), m.locationDms.latitudeDegrees);
+    Log(P("latitudeMinutes           : "), m.locationDms.latitudeMinutes);
+    Log(P("latitudeSeconds           : "), m.locationDms.latitudeSeconds);
+    Log(P("longitudeDegrees          : "), m.locationDms.longitudeDegrees);
+    Log(P("longitudeMinutes          : "), m.locationDms.longitudeMinutes);
+    Log(P("longitudeSeconds          : "), m.locationDms.longitudeSeconds);
     Log(P("altitudeFt                : "), m.altitudeFt);
     
     LogNL();
@@ -474,10 +474,7 @@ off
         function<void(void)> fnAfterAttempt = [](){
             console.Exec("off");
         };
-        
-        function<uint8_t(void)> fnOkToContinue = [](){
-            return 1;
-        };
+
         
         PAL.WatchdogEnable(WatchdogTimeout::TIMEOUT_8000_MS);
         uint8_t gpsLockOk =
@@ -485,8 +482,7 @@ off
                 &m,
                  DURATION_MAX_GPS_TIME_LOCK_WAIT_MS,
                  fnBeforeAttempt,
-                 fnAfterAttempt,
-                 fnOkToContinue);
+                 fnAfterAttempt);
         PAL.WatchdogDisable();
 
         if (gpsLockOk)
@@ -632,43 +628,3 @@ off
 
 
 void loop() {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
