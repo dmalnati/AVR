@@ -18,15 +18,13 @@ public:
 
 public:
 
-    ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin, bool inverse_logic = false) : 
+    ThinSoftwareSerial(uint8_t receivePin, uint8_t transmitPin) : 
     _runningAtSpeedFactor(1.0),
     _rx_delay_centering(0),
     _rx_delay_intrabit(0),
     _rx_delay_stopbit(0),
     _tx_delay(0),
-    _buffer_overflow(false),
-    _inverse_logic(inverse_logic),
-    pcied_(receivePin, PCIntEventHandler::MODE::MODE_RISING_AND_FALLING)
+    pcied_(receivePin, PCIntEventHandler::MODE::MODE_FALLING)
     {
         setTX(PAL.GetArduinoPinFromPhysicalPin(transmitPin));
         setRX(PAL.GetArduinoPinFromPhysicalPin(receivePin));
@@ -56,23 +54,17 @@ public:
         // timings are the most critical (deviations stack 8 times)
         _tx_delay = subtract_cap(bit_delay, 15 / 4);
 
-        // Timings counted from gcc 4.8.2 output. This works up to 115200 on
-        // 16Mhz and 57600 on 8Mhz.
-        //
-        // When the start bit occurs, there are 3 or 4 cycles before the
-        // interrupt flag is set, 4 cycles before the PC is set to the right
-        // interrupt vector address and the old PC is pushed on the stack,
-        // and then 75 cycles of instructions (including the RJMP in the
-        // ISR vector table) until the first delay. After the delay, there
-        // are 17 more cycles until the pin value is read (excluding the
-        // delay in the loop).
-        // We want to have a total delay of 1.5 bit time. Inside the loop,
-        // we already wait for 1 bit time - 23 cycles, so here we wait for
-        // 0.5 bit time - (71 + 18 - 22) cycles.
-        _rx_delay_centering = subtract_cap(bit_delay / 2, (4 + 4 + 75 + 17 - 23) / 4);
-
         // There are 23 cycles in each loop iteration (excluding the delay)
         _rx_delay_intrabit = subtract_cap(bit_delay, 23 / 4);
+
+        
+        // at 8MHz the bit is sampled 12us after it starts
+        // at 16MHz the bit is sampled 6us after it starts
+        // at 9600 baud, bit duration is 104us
+        //
+        // The number below was manually tuned
+        _rx_delay_centering = _rx_delay_intrabit - 34;
+        
 
         // There are 37 cycles from the last bit read to the start of
         // stopbit delay and 11 cycles from the delay until the interrupt
@@ -110,29 +102,17 @@ public:
             return false;
         }
 
-        _buffer_overflow = false;
         _receive_buffer_head = _receive_buffer_tail = 0;
 
-        setRxIntMsk(true);
+
+        pcied_.RegisterForPCIntEvent();
 
         return true;
     }
 
     void stopListening()
     {
-        setRxIntMsk(false);
-    }
-
-    bool overflow()
-    {
-        bool ret = _buffer_overflow;
-
-        if (ret)
-        {
-            _buffer_overflow = false;
-        }
-
-        return ret;
+        pcied_.DeRegisterForPCIntEvent();
     }
 
     size_t write(uint8_t b)
@@ -149,25 +129,12 @@ public:
         uint8_t reg_mask = _transmitBitMask;
         uint8_t inv_mask = ~_transmitBitMask;
         uint8_t oldSREG = SREG;
-        bool inv = _inverse_logic;
         uint16_t delay = _tx_delay;
-
-        if (inv)
-        {
-            b = ~b;
-        }
 
         cli();  // turn off interrupts for a clean txmit
 
         // Write the start bit
-        if (inv)
-        {
-            *reg |= reg_mask;
-        }
-        else
-        {
-            *reg &= inv_mask;
-        }
+        *reg &= inv_mask;
 
         tunedDelay(delay);
 
@@ -188,14 +155,7 @@ public:
         }
 
         // restore pin to natural state
-        if (inv)
-        {
-            *reg &= inv_mask;
-        }
-        else
-        {
-            *reg |= reg_mask;
-        }
+        *reg |= reg_mask;
 
         SREG = oldSREG; // turn interrupts back on
         tunedDelay(_tx_delay);
@@ -255,56 +215,43 @@ public:
 
 public:
 
-    // private static method for timing
     static inline void tunedDelay(uint16_t delay) { 
         _delay_loop_2(delay);
     }
 
-    //
-    // The receive routine called by the interrupt handler
-    //
     inline void recv() __attribute__((__always_inline__))
     {
-        uint8_t d = 0;
+        // actually aiming for the front of the bit so we can read them all
+        // sooner and exit the ISR sooner
+        tunedDelay(_rx_delay_centering);
 
-        // If RX line is high, then we don't see any start bit
-        // so interrupt is probably not for us
-        if (_inverse_logic ? rx_pin_read() : !rx_pin_read())
+        // Read each of the 8 bits
+        uint8_t d = 0;
+        for (uint8_t i = 8; i > 0; --i)
         {
-            // Read each of the 8 bits
-            for (uint8_t i=8; i > 0; --i)
+            d >>= 1;
+            if (rx_pin_read())
             {
-                tunedDelay(_rx_delay_intrabit);
-                d >>= 1;
-                if (rx_pin_read())
                 d |= 0x80;
             }
 
-            if (_inverse_logic)
+            // only delay between bits, not after the last
+            if (i - 1)
             {
-                d = ~d;
+                tunedDelay(_rx_delay_intrabit);
             }
-
-            // if buffer full, set the overflow flag and return
-            uint8_t next = (_receive_buffer_tail + 1) % BUF_SIZE;
-            if (next != _receive_buffer_head)
-            {
-                // save new data in buffer: tail points to where byte goes
-                _receive_buffer[_receive_buffer_tail] = d; // save new byte
-                _receive_buffer_tail = next;
-            } 
-            else 
-            {
-                _buffer_overflow = true;
-            }
-
-            // Re-enable interrupts when we're sure to be inside the stop bit.
-            // This will also reset any queued interrupts which would have
-            // have fired while this processing was going on.
-            setRxIntMsk(true);
-
         }
+
+        // if buffer full, discard new byte
+        uint8_t next = (_receive_buffer_tail + 1) % BUF_SIZE;
+        if (next != _receive_buffer_head)
+        {
+            // save new data in buffer: tail points to where byte goes
+            _receive_buffer[_receive_buffer_tail] = d; // save new byte
+            _receive_buffer_tail = next;
+        } 
     }
+
 
     uint8_t rx_pin_read()
     {
@@ -317,7 +264,7 @@ public:
         // the pin would be output low for a short while before switching to
         // output high. Now, it is input with pullup for a short while, which
         // is fine. With inverse logic, either order is fine.
-        digitalWrite(tx, _inverse_logic ? LOW : HIGH);
+        digitalWrite(tx, HIGH);
         pinMode(tx, OUTPUT);
         _transmitBitMask = digitalPinToBitMask(tx);
         uint8_t port = digitalPinToPort(tx);
@@ -328,28 +275,13 @@ public:
     void setRX(uint8_t rx)
     {
         pinMode(rx, INPUT);
-        if (!_inverse_logic)
-        {
-            digitalWrite(rx, HIGH);  // pullup for normal logic!
-        }
+        digitalWrite(rx, HIGH);  // pullup for normal logic!
         _receivePin = rx;
         _receiveBitMask = digitalPinToBitMask(rx);
         uint8_t port = digitalPinToPort(rx);
         _receivePortRegister = portInputRegister(port);
     }
 
-
-    inline void setRxIntMsk(bool enable) __attribute__((__always_inline__))
-    {
-        if (enable)
-        {
-            pcied_.RegisterForPCIntEvent();
-        }
-        else
-        {
-            pcied_.DeRegisterForPCIntEvent();
-        }
-    }
 
     // Return num - sub, or 1 if the result would be < 1
     static uint16_t subtract_cap(uint16_t num, uint16_t sub)
@@ -384,9 +316,6 @@ public:
     uint16_t _rx_delay_intrabit;
     uint16_t _rx_delay_stopbit;
     uint16_t _tx_delay;
-
-    uint16_t _buffer_overflow:1;
-    uint16_t _inverse_logic:1;
 
     uint8_t _receive_buffer[BUF_SIZE]; 
     volatile uint8_t _receive_buffer_tail;
