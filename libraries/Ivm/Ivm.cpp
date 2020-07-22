@@ -121,6 +121,8 @@ Ivm::OnPortPinStateChange(uint8_t port,
  * changeDir : 0b0100  (new & change) -- only applies to bits which changed
  *
  */
+// Unrolled for speed.
+// On 8MHz, entire ISR (from ISR() start to finish was reduced from 50us to 23us)
 void
 Ivm::OnISR(uint8_t port,
            uint8_t bitmapPortPinState,
@@ -130,23 +132,127 @@ Ivm::OnISR(uint8_t port,
     uint8_t bitmapChange    = (uint8_t)bitmapPortPinStateLast ^ bitmapPortPinState;
     uint8_t bitmapChangeDir = (uint8_t)bitmapPortPinState     & bitmapChange;
 
-    // Apply bitmaps to figure out which pins actually changed and how
-    for (uint8_t portPin = 0; portPin < 8; ++portPin)
     {
-        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(portPin));
+        const uint8_t pin = 0;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
         
         if (pinChanged)
         {
             // Normalize -- Change up == 1, Change down == 0
             uint8_t changeDir =
-                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(portPin)) ? 1 : 0;
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
             
-            Ivm::OnPortPinStateChange(port, portPin, changeDir);
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 1;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 2;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 3;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 4;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 5;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 6;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
+        }
+    }
+
+    {
+        const uint8_t pin = 7;
+
+        uint8_t pinChanged = (uint8_t)(bitmapChange & (uint8_t)_BV(pin));
+        
+        if (pinChanged)
+        {
+            // Normalize -- Change up == 1, Change down == 0
+            uint8_t changeDir =
+                (uint8_t)(bitmapChangeDir & (uint8_t)_BV(pin)) ? 1 : 0;
+            
+            Ivm::OnPortPinStateChange(port, pin, changeDir);
         }
     }
 }
 
- 
  
 uint8_t
 Ivm::RegisterBADISREventHandler(BADISREventHandler *beh)
