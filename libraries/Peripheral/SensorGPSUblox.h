@@ -91,7 +91,7 @@ public:
     
 private:
     static const uint32_t BAUD                  = 9600;
-    static const uint32_t POLL_PERIOD_MS        = 25;
+    static const uint32_t POLL_PERIOD_MS        = 5;
     static const uint16_t GPS_WARMUP_TIME_MS    = 200;
     
     using FnGetAbstractMeasurement               = uint8_t (SensorGPSUblox::*)(Measurement *);
@@ -521,7 +521,7 @@ private:
         while (ss_.available() > 0)
         {
             uint8_t b = ss_.read();
-            
+
             tgps_.encode(b);
         }
     }
