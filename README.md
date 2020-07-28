@@ -18,6 +18,6 @@ In addition to the core libraries, application libraries exist as well, such as:
 - Peripheral interface objects (radio modules, sensors, motors)
 - Signal synthesis (music, RF modulation)
 - RF Protocols (APRS, WSPR)
-- Utility functions (containers)
+- Utility functions (containers, string parsers/formatters, etc)
 
 Built on top of the above is a number of applications (prefixed with "App").
