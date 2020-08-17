@@ -47,6 +47,14 @@ struct MsgTxnStop
     uint8_t msgType = MSG_TYPE;
 };
 
+struct MsgTxnPct
+{
+    static const uint8_t MSG_TYPE = 5;
+    uint8_t msgType = MSG_TYPE;
+
+    uint8_t pct = 100;
+};
+
 
 
 // Compile-time warn about sizing
@@ -100,6 +108,14 @@ private:
     };
 
 
+    struct RuntimeConfiguration
+    {
+        // This will only be changed on the remotely-controlled.
+        // The master state keeper, the remote, will never scale down.
+        uint8_t pctRange = 100;
+    };
+
+
 public:
     AppBikeLightComputer(AppBikeLightComputerConfig &cfg)
     : cfg_(cfg)
@@ -137,6 +153,12 @@ protected:
         {
             Log(P("Config OK"));
             LogNL();
+
+            // Pull in stored configuration if any
+            ReadRuntimeConfig();
+            Log(P("Read Runtime Config"));
+            Log(P("  Pct: "), runtimeCfg_.pctRange);
+            rgb_.SetRangePct(runtimeCfg_.pctRange);
         }
         else
         {
@@ -192,6 +214,15 @@ protected:
         rgb_.Stop();
     }
 
+    void OnMsg(const MsgTxnPct &msg)
+    {
+        Log("Got TxnPct: ", msg.msgType, ", ", msg.pct);
+
+        runtimeCfg_.pctRange = msg.pct;
+        WriteRuntimeConfig();
+        rgb_.SetRangePct(runtimeCfg_.pctRange);
+    }
+
 
 private:
 
@@ -233,9 +264,20 @@ private:
             CheckAndDispatch<MsgTxnStart>(buf, bufLen);
             CheckAndDispatch<MsgTxnPause>(buf, bufLen);
             CheckAndDispatch<MsgTxnStop>(buf, bufLen);
+            CheckAndDispatch<MsgTxnPct>(buf, bufLen);
         });
 
         radio_.ModeReceive();
+    }
+
+    void ReadRuntimeConfig()
+    {
+        ea_.Read(runtimeCfg_);
+    }
+
+    void WriteRuntimeConfig()
+    {
+        ea_.Write(runtimeCfg_);
     }
 
 
@@ -255,6 +297,9 @@ protected:
     RFLink radio_;
 
     RgbLedEffectsController rgb_;
+
+    RuntimeConfiguration                 runtimeCfg_;
+    EepromAccessor<RuntimeConfiguration> ea_;
 };
 
 
@@ -317,12 +362,18 @@ private:
 
     }
 
+    template <typename T>
+    void Send(const T &t)
+    {
+        // Send to remote systems
+        radio_.Send((uint8_t *)&t, sizeof(t));
+    }
 
     template <typename T>
     void SendAndApply(const T &t)
     {
         // Send to remote systems
-        radio_.Send((uint8_t *)&t, sizeof(t));
+        Send(t);
 
         // Wait for transmission to complete before allowing new ones
         InputsDisable();
@@ -399,11 +450,41 @@ private:
 
                 SendAndApply(msg);
             }
+            else if (!strcmp_P(cmd, P("pct")))
+            {
+                MsgTxnPct msg;
+
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    Log(P("Pct "), val);
+
+                    msg.pct = val;
+
+                    Send(msg);
+                }
+            }
             else if (!strcmp_P(cmd, P("status")))
             {
                 MsgTxnDumpStatus msg;
 
                 SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("power")))
+            {
+                MsgTxnApply msg;
+
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint32_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    Log(P("Power "), val);
+
+                    radio_.SetTxPower(val);
+
+                    msg.alsoStart = val;
+                }
             }
         });
 
