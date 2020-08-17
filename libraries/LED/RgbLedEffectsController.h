@@ -44,6 +44,7 @@ public:
     : soRed_(SignalSourceSineWave::GetSample)
     , soGreen_(SignalSourceSineWave::GetSample)
     , soBlue_(SignalSourceSineWave::GetSample)
+    , pctRangeMultiplier_(1.0)
     , running_(0)
     {
         soRed_.SetSampleRate(SAMPLING_FREQUENCY_HZ);
@@ -114,6 +115,11 @@ public:
         soBlue_.SetPhaseOffset(colorState_.blue.phaseOffsetBrads);
     }
 
+    void SetRangePct(uint8_t pctRange)
+    {
+        pctRangeMultiplier_ = (double)pctRange / 100.0;
+    }
+
     void Start()
     {
         if (!running_)
@@ -149,20 +155,22 @@ public:
 
     void SetState(RgbColorState rgbColorState)
     {
+        // Expect full-range values, adjust using multiplier here
+
         // Red
-        pwmController_.SetRed(rgbColorState.red.val);
+        pwmController_.SetRed(rgbColorState.red.val * pctRangeMultiplier_);
         SetPeriodRed(rgbColorState.red.periodMs);
         SetPhaseOffsetRed(rgbColorState.red.phaseOffsetBrads);
         soRed_.ReplaceRotationState(rgbColorState.red.rotation);
 
         // Green
-        pwmController_.SetGreen(rgbColorState.green.val);
+        pwmController_.SetGreen(rgbColorState.green.val * pctRangeMultiplier_);
         SetPeriodGreen(rgbColorState.green.periodMs);
         SetPhaseOffsetGreen(rgbColorState.green.phaseOffsetBrads);
         soGreen_.ReplaceRotationState(rgbColorState.green.rotation);
 
         // Blue
-        pwmController_.SetBlue(rgbColorState.blue.val);
+        pwmController_.SetBlue(rgbColorState.blue.val * pctRangeMultiplier_);
         SetPeriodBlue(rgbColorState.blue.periodMs);
         SetPhaseOffsetBlue(rgbColorState.blue.phaseOffsetBrads);
         soBlue_.ReplaceRotationState(rgbColorState.blue.rotation);
@@ -257,9 +265,11 @@ private:
 
     void ApplyNextState()
     {
-        pwmController_.SetRed(colorState_.red.val);
-        pwmController_.SetGreen(colorState_.green.val);
-        pwmController_.SetBlue(colorState_.blue.val);
+        // Expect full-range values, adjust using multiplier here
+        
+        pwmController_.SetRed(colorState_.red.val * pctRangeMultiplier_);
+        pwmController_.SetGreen(colorState_.green.val * pctRangeMultiplier_);
+        pwmController_.SetBlue(colorState_.blue.val * pctRangeMultiplier_);
     }
 
 
@@ -272,6 +282,8 @@ private:
     SignalOscillator soRed_;
     SignalOscillator soGreen_;
     SignalOscillator soBlue_;
+
+    double pctRangeMultiplier_;
 
     uint8_t running_;
 };
