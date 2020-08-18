@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "Evm.h"
 #include "SerialInput.h"
+#include "PinInput.h"
 #include "RFLink.h"
 #include "RgbLedEffectsController.h"
 
@@ -70,6 +71,7 @@ struct AppBikeLightComputerConfig
 {
     // interfacing config
     uint8_t pinConfigure;
+    uint8_t pinInputStartStop;
 
     // radio config
     uint8_t pinIrq;
@@ -324,6 +326,7 @@ public:
     AppBikeLightComputerRemote(AppBikeLightComputerRemoteConfig &cfg)
     : AppBikeLightComputer(cfg.cfg)
     , cfg_(cfg)
+    , piStartStop_(cfg_.cfg.pinInputStartStop)
     {
         // Nothing to do
     }
@@ -354,7 +357,21 @@ private:
 
     void InputsEnable()
     {
+        static uint8_t onOff = 0;
 
+        piStartStop_.SetCallback([this](uint8_t){
+            if (onOff)
+            {
+                SendTxnStart();
+            }
+            else
+            {
+                SendTxnStop();
+            }
+
+            onOff = !onOff;
+        });
+        piStartStop_.Enable();
     }
 
     void InputsDisable()
@@ -380,6 +397,20 @@ private:
 
         // Apply internally
         OnMsg(t);
+    }
+
+    void SendTxnStart()
+    {
+        MsgTxnStart msg;
+
+        SendAndApply(msg);
+    }
+
+    void SendTxnStop()
+    {
+        MsgTxnStop msg;
+
+        SendAndApply(msg);
     }
 
     void PrintColorState(RgbLedEffectsController::ColorState &cs)
@@ -424,9 +455,7 @@ private:
             {
                 Log(P("Start"));
 
-                MsgTxnStart msg;
-
-                SendAndApply(msg);
+                SendTxnStart();
             }
             else if (!strcmp_P(cmd, P("aas")))
             {
@@ -446,9 +475,7 @@ private:
             {
                 Log(P("Stop"));
 
-                MsgTxnStop msg;
-
-                SendAndApply(msg);
+                SendTxnStop();
             }
             else if (!strcmp_P(cmd, P("pct")))
             {
@@ -497,6 +524,8 @@ private:
     SerialAsyncConsoleEnhanced<0>  console_;
 
     AppBikeLightComputerRemoteConfig &cfg_;
+
+    PinInput piStartStop_;
 };
 
 
