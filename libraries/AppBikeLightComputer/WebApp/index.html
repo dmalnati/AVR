@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+    <script src="./colorjoe/dist/colorjoe.js"></script>
+
+    <script>
+'strict';
+
+function OnLoad()
+{
+    console.log("OnLoad");
+
+    const joe = colorjoe.rgb('cjoe1');
+
+    joe.on("change", (color) => {
+        OnColorInProgress(color.hex());
+    });
+
+    joe.on("done", (color) => {
+        OnColorFinal(color.hex());
+    });
+
+
+}
+
+// eg #55b973
+function OnColorInProgress(hexValRgb)
+{
+    console.log("OnColorInput");
+    console.log(hexValRgb);
+
+    let decValR = parseInt("0x" + hexValRgb.substring(1, 3));
+    let decValG = parseInt("0x" + hexValRgb.substring(3, 5));
+    let decValB = parseInt("0x" + hexValRgb.substring(5, 8));
+
+    console.log(decValR);
+    console.log(decValG);
+    console.log(decValB);
+
+    document.getElementById('spanid').innerHTML += `${decValR}<br/>`;
+}
+
+function OnColorFinal(hexValRgb)
+{
+    console.log("OnColorChange");
+    console.log(hexValRgb);
+}
+
+
+    </script>
+
+    <link rel="stylesheet" type="text/css" href="./colorjoe/css/colorjoe.css">
+
+
+    <head>
+        <title>Bike Lights</title>
+
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+
+        <body onload='OnLoad()'>
+            <div id='cjoe1'></div>
+            <br>
+            <span id='spanid'>
+                Log here:<br>
+            </span>
+        </body>
+    </head>
+</html>
