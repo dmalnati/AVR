@@ -92,7 +92,7 @@ PROGMEM const uint8_t RF24_CONFIGURATION_DATA[] = RADIO_CONFIGURATION_DATA_ARRAY
 // the same.
 //
 // Pick a size which is 63 or less
-#define MAX_PAYLOAD_LEN   32
+#define MAX_PAYLOAD_LEN   42
 
 
 // Max number of times we will try to read CTS from the radio
