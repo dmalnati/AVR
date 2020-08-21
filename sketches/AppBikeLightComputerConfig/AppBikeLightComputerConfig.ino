@@ -5,6 +5,7 @@ static AppBikeLightComputerRemoteConfig cfg =
     .cfg = {
         // interfacing config
         .pinConfigure = 6,
+        .pinInputStartStop = 11,
     
         // radio config
         .pinIrq = 12,
