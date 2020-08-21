@@ -652,7 +652,7 @@ private:
                     if (val)
                     {
                         ted_.SetCallback([this](){
-                            console_.Exec("apply 1");
+                            console_.Exec("apply");
                         });
                         ted_.RegisterForTimedEventInterval(val * 1000, 0);
                     }
