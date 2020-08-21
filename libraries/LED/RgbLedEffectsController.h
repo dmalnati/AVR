@@ -15,9 +15,9 @@ protected:
     static const     uint16_t SAMPLING_FREQUENCY_HZ = 100;
     static const     uint32_t SAMPLING_INTERVAL_MS  = 1000 / SAMPLING_FREQUENCY_HZ;
 
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS   = 20000;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS = 10000;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS  = 18000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS   = 10000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS =  5000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS  =  8000;
 
     static const     uint8_t DEFAULT_COLOR_LITERAL = 255;
     
