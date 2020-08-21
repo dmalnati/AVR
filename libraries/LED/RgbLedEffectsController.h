@@ -15,17 +15,30 @@ protected:
     static const     uint16_t SAMPLING_FREQUENCY_HZ = 100;
     static const     uint32_t SAMPLING_INTERVAL_MS  = 1000 / SAMPLING_FREQUENCY_HZ;
 
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS   = 10000;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS =  5000;
-    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS  =  8000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_RED_MS   = 20000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_GREEN_MS = 10000;
+    static const     uint32_t DEFAULT_SIGNAL_PERIOD_BLUE_MS  = 18000;
+
+    static const     uint8_t DEFAULT_COLOR_LITERAL = 255;
     
     static const uint8_t DEFAULT_PHASE_OFFSET_BRADS = 0;
 
 public:
 
+    enum ChannelMode : uint8_t
+    {
+        OSCILLATOR,
+        LITERAL,
+    };
+
     struct ColorState
     {
-        uint8_t                     val              = 0;
+        ChannelMode mode = ChannelMode::OSCILLATOR;
+
+        // Val can be from literal value or oscillator
+        uint8_t val = 0;
+
+        // Oscillator keeps going regardless of whether literal color in effect
         uint32_t                    periodMs         = 0;
         uint8_t                     phaseOffsetBrads = 0;
         Q88::INTERNAL_STORAGE_TYPE  rotation         = 0;
@@ -41,9 +54,15 @@ public:
 
 public:
     RgbLedEffectsController()
-    : soRed_(SignalSourceSineWave::GetSample)
+    : modeRed_(ChannelMode::OSCILLATOR)
+    , soRed_(SignalSourceSineWave::GetSample)
+    , literalRed_(DEFAULT_COLOR_LITERAL)
+    , modeGreen_(ChannelMode::OSCILLATOR)
     , soGreen_(SignalSourceSineWave::GetSample)
+    , literalGreen_(DEFAULT_COLOR_LITERAL)
+    , modeBlue_(ChannelMode::OSCILLATOR)
     , soBlue_(SignalSourceSineWave::GetSample)
+    , literalBlue_(DEFAULT_COLOR_LITERAL)
     , pctRangeMultiplier_(1.0)
     , running_(0)
     {
@@ -63,6 +82,21 @@ public:
     ~RgbLedEffectsController()
     {
         Stop();
+    }
+
+    void SetModeRed(ChannelMode mode)
+    {
+        modeRed_ = mode;
+    }
+
+    void SetModeGreen(ChannelMode mode)
+    {
+        modeGreen_ = mode;
+    }
+
+    void SetModeBlue(ChannelMode mode)
+    {
+        modeBlue_ = mode;
     }
 
     void SetPeriodAll(uint32_t periodMs)
@@ -115,6 +149,21 @@ public:
         soBlue_.SetPhaseOffset(colorState_.blue.phaseOffsetBrads);
     }
 
+    void SetLiteralRed(uint8_t val)
+    {
+        literalRed_ = val;
+    }
+
+    void SetLiteralGreen(uint8_t val)
+    {
+        literalGreen_ = val;
+    }
+
+    void SetLiteralBlue(uint8_t val)
+    {
+        literalBlue_ = val;
+    }
+
     void SetRangePct(uint8_t pctRange)
     {
         pctRangeMultiplier_ = (double)pctRange / 100.0;
@@ -158,22 +207,28 @@ public:
         // Expect full-range values, adjust using multiplier here
 
         // Red
+        SetModeRed(rgbColorState.red.mode);
         pwmController_.SetRed(rgbColorState.red.val * pctRangeMultiplier_);
         SetPeriodRed(rgbColorState.red.periodMs);
         SetPhaseOffsetRed(rgbColorState.red.phaseOffsetBrads);
         soRed_.ReplaceRotationState(rgbColorState.red.rotation);
+        SetLiteralRed(rgbColorState.red.val);
 
         // Green
+        SetModeGreen(rgbColorState.green.mode);
         pwmController_.SetGreen(rgbColorState.green.val * pctRangeMultiplier_);
         SetPeriodGreen(rgbColorState.green.periodMs);
         SetPhaseOffsetGreen(rgbColorState.green.phaseOffsetBrads);
         soGreen_.ReplaceRotationState(rgbColorState.green.rotation);
+        SetLiteralGreen(rgbColorState.green.val);
 
         // Blue
+        SetModeBlue(rgbColorState.blue.mode);
         pwmController_.SetBlue(rgbColorState.blue.val * pctRangeMultiplier_);
         SetPeriodBlue(rgbColorState.blue.periodMs);
         SetPhaseOffsetBlue(rgbColorState.blue.phaseOffsetBrads);
         soBlue_.ReplaceRotationState(rgbColorState.blue.rotation);
+        SetLiteralBlue(rgbColorState.blue.val);
     }
 
 
@@ -216,15 +271,26 @@ protected:
 
     void GetNextState()
     {
+        // Allow oscillator to run unconditionally
+        colorState_.red.mode       = modeRed_;
         colorState_.red.val        = soRed_.GetNextSampleAbs();
         colorState_.red.rotation   = soRed_.GetRotationState();
 
+        colorState_.green.mode     = modeGreen_;
         colorState_.green.val      = soGreen_.GetNextSampleAbs();
         colorState_.green.rotation = soGreen_.GetRotationState();
 
+        colorState_.blue.mode      = modeBlue_;
         colorState_.blue.val       = soBlue_.GetNextSampleAbs();
         colorState_.blue.rotation  = soBlue_.GetRotationState();
+
+        // Override with literal if configured
+        if (modeRed_   == ChannelMode::LITERAL) { colorState_.red.val   = literalRed_;   }
+        if (modeGreen_ == ChannelMode::LITERAL) { colorState_.green.val = literalGreen_; }
+        if (modeBlue_  == ChannelMode::LITERAL) { colorState_.blue.val  = literalBlue_;  }
     }
+
+
 
     RgbColorState colorState_;
 
@@ -279,9 +345,17 @@ private:
 
     RgbLedPwmController pwmController_;
 
+    ChannelMode      modeRed_;
     SignalOscillator soRed_;
+    uint8_t          literalRed_;
+
+    ChannelMode      modeGreen_;
     SignalOscillator soGreen_;
+    uint8_t          literalGreen_;
+
+    ChannelMode      modeBlue_;
     SignalOscillator soBlue_;
+    uint8_t          literalBlue_;
 
     double pctRangeMultiplier_;
 

@@ -4,6 +4,7 @@
 
 #include "Log.h"
 #include "Evm.h"
+#include "TimedEventHandler.h"
 #include "SerialInput.h"
 #include "PinInput.h"
 #include "RFLink.h"
@@ -54,6 +55,23 @@ struct MsgTxnPct
     uint8_t msgType = MSG_TYPE;
 
     uint8_t pct = 100;
+};
+
+struct MsgTxnMode
+{
+    static const uint8_t MSG_TYPE = 6;
+    uint8_t msgType = MSG_TYPE;
+
+    enum Color : uint8_t
+    {
+        RED,
+        GREEN,
+        BLUE,
+    };
+
+    Color color;
+    RgbLedEffectsController::ChannelMode mode;
+    uint8_t val;
 };
 
 
@@ -225,6 +243,36 @@ protected:
         rgb_.SetRangePct(runtimeCfg_.pctRange);
     }
 
+    void OnMsg(const MsgTxnMode &msg)
+    {
+        Log("Got TxnMode");
+
+        if (msg.color == MsgTxnMode::Color::RED)
+        {
+            rgb_.SetModeRed(msg.mode);
+            if (msg.mode == RgbLedEffectsController::ChannelMode::LITERAL)
+            {
+                rgb_.SetLiteralRed(msg.val);
+            }
+        }
+        else if (msg.color == MsgTxnMode::Color::GREEN)
+        {
+            rgb_.SetModeGreen(msg.mode);
+            if (msg.mode == RgbLedEffectsController::ChannelMode::LITERAL)
+            {
+                rgb_.SetLiteralGreen(msg.val);
+            }
+        }
+        else if (msg.color == MsgTxnMode::Color::BLUE)
+        {
+            rgb_.SetModeBlue(msg.mode);
+            if (msg.mode == RgbLedEffectsController::ChannelMode::LITERAL)
+            {
+                rgb_.SetLiteralBlue(msg.val);
+            }
+        }
+    }
+
 
 private:
 
@@ -267,6 +315,7 @@ private:
             CheckAndDispatch<MsgTxnPause>(buf, bufLen);
             CheckAndDispatch<MsgTxnStop>(buf, bufLen);
             CheckAndDispatch<MsgTxnPct>(buf, bufLen);
+            CheckAndDispatch<MsgTxnMode>(buf, bufLen);
         });
 
         radio_.ModeReceive();
@@ -339,6 +388,7 @@ public:
         // Add additional behavior
         SetUpRadio();
         SetUpCommandHandler();
+        SetUpInitialState();
         InputsEnable();
 
         // Run base class
@@ -362,11 +412,11 @@ private:
         piStartStop_.SetCallback([this](uint8_t){
             if (onOff)
             {
-                SendTxnStart();
+                SendAndApplyTxnStart();
             }
             else
             {
-                SendTxnStop();
+                SendAndApplyTxnStop();
             }
 
             onOff = !onOff;
@@ -399,14 +449,14 @@ private:
         OnMsg(t);
     }
 
-    void SendTxnStart()
+    void SendAndApplyTxnStart()
     {
         MsgTxnStart msg;
 
         SendAndApply(msg);
     }
 
-    void SendTxnStop()
+    void SendAndApplyTxnStop()
     {
         MsgTxnStop msg;
 
@@ -427,7 +477,102 @@ private:
             Str str(cmdStr);
             const char *cmd = str.TokenAtIdx(0, ' ');
             
-            if (!strcmp_P(cmd, P("apply")))
+
+            ////////////////////////////////////////////////////////////////////
+            //
+            // Commands that are applied both to remote and bike computers.
+            // These states are meant to be kept in sync.
+            //
+            ////////////////////////////////////////////////////////////////////
+
+            if (!strcmp_P(cmd, P("start")))
+            {
+                Log(P("Start"));
+
+                SendAndApplyTxnStart();
+            }
+            else if (!strcmp_P(cmd, P("mro")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::RED;
+                msg.mode = RgbLedEffectsController::ChannelMode::OSCILLATOR;
+
+                Log(P("MRO"));
+
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("mgo")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::GREEN;
+                msg.mode = RgbLedEffectsController::ChannelMode::OSCILLATOR;
+
+                Log(P("MGO"));
+
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("mbo")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::BLUE;
+                msg.mode = RgbLedEffectsController::ChannelMode::OSCILLATOR;
+
+                Log(P("MBO"));
+
+                SendAndApply(msg);
+            }
+            else if (!strcmp_P(cmd, P("mrl")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::RED;
+                msg.mode = RgbLedEffectsController::ChannelMode::LITERAL;
+
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    msg.val = val;
+
+                    Log(P("MRL "), msg.val);
+
+                    SendAndApply(msg);
+                }
+            }
+            else if (!strcmp_P(cmd, P("mgl")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::GREEN;
+                msg.mode = RgbLedEffectsController::ChannelMode::LITERAL;
+
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    msg.val = val;
+
+                    Log(P("MGL "), msg.val);
+
+                    SendAndApply(msg);
+                }
+            }
+            else if (!strcmp_P(cmd, P("mbl")))
+            {
+                MsgTxnMode msg;
+                msg.color = MsgTxnMode::Color::BLUE;
+                msg.mode = RgbLedEffectsController::ChannelMode::LITERAL;
+
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    msg.val = val;
+
+                    Log(P("MBL "), msg.val);
+
+                    SendAndApply(msg);
+                }
+            }
+            else if (!strcmp_P(cmd, P("apply")))
             {
                 MsgTxnApply msg;
 
@@ -442,20 +587,7 @@ private:
 
                 msg.rgbColorState = rgb_.GetState();
 
-                // Log(P("Red"));
-                // PrintColorState(msg.rgbColorState.red);
-                // Log(P("Green"));
-                // PrintColorState(msg.rgbColorState.green);
-                // Log(P("Blue"));
-                // PrintColorState(msg.rgbColorState.blue);
-
                 SendAndApply(msg);
-            }
-            else if (!strcmp_P(cmd, P("start")))
-            {
-                Log(P("Start"));
-
-                SendTxnStart();
             }
             else if (!strcmp_P(cmd, P("aas")))
             {
@@ -475,8 +607,17 @@ private:
             {
                 Log(P("Stop"));
 
-                SendTxnStop();
+                SendAndApplyTxnStop();
             }
+
+
+            ////////////////////////////////////////////////////////////////////
+            //
+            // Commands that are forwarded to the bike computers but don't
+            // affect the state of the remote
+            //
+            ////////////////////////////////////////////////////////////////////
+
             else if (!strcmp_P(cmd, P("pct")))
             {
                 MsgTxnPct msg;
@@ -492,11 +633,34 @@ private:
                     Send(msg);
                 }
             }
-            else if (!strcmp_P(cmd, P("status")))
-            {
-                MsgTxnDumpStatus msg;
 
-                SendAndApply(msg);
+
+            ////////////////////////////////////////////////////////////////////
+            //
+            // Commands that apply to the remote itself
+            //
+            ////////////////////////////////////////////////////////////////////
+
+            else if (!strcmp_P(cmd, P("sync")))
+            {
+                if (str.TokenCount(' ') == 2)
+                {
+                    uint8_t val = atoi(str.TokenAtIdx(1, ' '));
+
+                    Log(P("Sync "), val);
+
+                    if (val)
+                    {
+                        ted_.SetCallback([this](){
+                            console_.Exec("apply 1");
+                        });
+                        ted_.RegisterForTimedEventInterval(val * 1000, 0);
+                    }
+                    else
+                    {
+                        ted_.DeRegisterForTimedEvent();
+                    }
+                }
             }
             else if (!strcmp_P(cmd, P("power")))
             {
@@ -513,10 +677,29 @@ private:
                     msg.alsoStart = val;
                 }
             }
+
+
+            ////////////////////////////////////////////////////////////////////
+            //
+            // Debug
+            //
+            ////////////////////////////////////////////////////////////////////
+
+            else if (!strcmp_P(cmd, P("status")))
+            {
+                MsgTxnDumpStatus msg;
+
+                SendAndApply(msg);
+            }
         });
 
         console_.SetVerbose(0);
         console_.Start();
+    }
+
+    void SetUpInitialState()
+    {
+        console_.Exec("sync 5");
     }
 
 private:
@@ -526,6 +709,8 @@ private:
     AppBikeLightComputerRemoteConfig &cfg_;
 
     PinInput piStartStop_;
+
+    TimedEventHandlerDelegate ted_;
 };
 
 
