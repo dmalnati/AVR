@@ -1,0 +1,13 @@
+{
+    "name": "BikeLightWebApp",
+    "start_url": "./",
+    "scope": "./",
+    "background_color": "black",
+    "icons": [{
+            "src": "./icon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }],
+    "display": "fullscreen",
+    "orientation": "portrait"
+}

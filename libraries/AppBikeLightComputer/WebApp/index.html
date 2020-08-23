@@ -385,9 +385,25 @@ Queue.prototype.length = function() {
         <title>Bike Lights</title>
 
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, user-scalable=no">
+
+        <!-- Web-App Settings -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="manifest" href="manifest.json">
+        <meta name="theme-color" content="black">
+        
+        <!-- Fallback settings -->
+        <link rel="icon" href="./icon.png" />
         <meta name="mobile-web-app-capable" content="yes">
+        
+        <!-- Apple Web-App Settings -->
+        <link rel="apple-touch-icon" href="./icon.png">
         <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    
+
+
+
 
         <body onload='OnLoad()'>
             <input type='range' min='0' max='100' value='30' id='pctRange' style='width: 100%'>
