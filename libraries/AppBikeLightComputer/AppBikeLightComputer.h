@@ -74,6 +74,16 @@ struct MsgTxnMode
     uint8_t val;
 };
 
+struct MsgTxnMultiMode
+{
+    static const uint8_t MSG_TYPE = 7;
+    uint8_t msgType = MSG_TYPE;
+
+    MsgTxnMode red;
+    MsgTxnMode green;
+    MsgTxnMode blue;
+};
+
 
 
 // Compile-time warn about sizing
@@ -127,13 +137,7 @@ private:
         }
     };
 
-
-    struct RuntimeConfiguration
-    {
-        // This will only be changed on the remotely-controlled.
-        // The master state keeper, the remote, will never scale down.
-        uint8_t pctRange = 100;
-    };
+    static const uint8_t DEFAULT_PCT_RANGE = 30;
 
 
 public:
@@ -174,11 +178,7 @@ protected:
             Log(P("Config OK"));
             LogNL();
 
-            // Pull in stored configuration if any
-            ReadRuntimeConfig();
-            Log(P("Read Runtime Config"));
-            Log(P("  Pct: "), runtimeCfg_.pctRange);
-            rgb_.SetRangePct(runtimeCfg_.pctRange);
+            rgb_.SetRangePct(DEFAULT_PCT_RANGE);
         }
         else
         {
@@ -238,14 +238,13 @@ protected:
     {
         Log("Got TxnPct: ", msg.msgType, ", ", msg.pct);
 
-        runtimeCfg_.pctRange = msg.pct;
-        WriteRuntimeConfig();
-        rgb_.SetRangePct(runtimeCfg_.pctRange);
+        rgb_.SetRangePct(msg.pct);
     }
 
     void OnMsg(const MsgTxnMode &msg)
     {
-        Log("Got TxnMode");
+        // Eliminate logging on high-throughput messages
+        // Log("Got TxnMode");
 
         if (msg.color == MsgTxnMode::Color::RED)
         {
@@ -272,6 +271,18 @@ protected:
             }
         }
     }
+
+    void OnMsg(const MsgTxnMultiMode &msg)
+    {
+        // Eliminate logging on high-throughput messages
+        // Log("Got TxnMultiMode");
+
+        OnMsg(msg.red);
+        OnMsg(msg.green);
+        OnMsg(msg.blue);
+    }
+
+
 
 
 private:
@@ -316,19 +327,10 @@ private:
             CheckAndDispatch<MsgTxnStop>(buf, bufLen);
             CheckAndDispatch<MsgTxnPct>(buf, bufLen);
             CheckAndDispatch<MsgTxnMode>(buf, bufLen);
+            CheckAndDispatch<MsgTxnMultiMode>(buf, bufLen);
         });
 
         radio_.ModeReceive();
-    }
-
-    void ReadRuntimeConfig()
-    {
-        ea_.Read(runtimeCfg_);
-    }
-
-    void WriteRuntimeConfig()
-    {
-        ea_.Write(runtimeCfg_);
     }
 
 
@@ -348,9 +350,6 @@ protected:
     RFLink radio_;
 
     RgbLedEffectsController rgb_;
-
-    RuntimeConfiguration                 runtimeCfg_;
-    EepromAccessor<RuntimeConfiguration> ea_;
 };
 
 
@@ -400,7 +399,8 @@ private:
     void SetUpRadio()
     {
         radio_.SetOnMessageTransmittedCallback([this](){
-            Log(P("Msg Sent"));
+            // Eliminate logging on high-throughput messages
+            //Log(P("Msg Sent"));
             InputsEnable();
         });
     }
@@ -533,7 +533,7 @@ private:
 
                     msg.val = val;
 
-                    Log(P("MRL "), msg.val);
+                    // Log(P("MRL "), msg.val);
 
                     SendAndApply(msg);
                 }
@@ -550,7 +550,7 @@ private:
 
                     msg.val = val;
 
-                    Log(P("MGL "), msg.val);
+                    // Log(P("MGL "), msg.val);
 
                     SendAndApply(msg);
                 }
@@ -567,7 +567,34 @@ private:
 
                     msg.val = val;
 
-                    Log(P("MBL "), msg.val);
+                    // Log(P("MBL "), msg.val);
+
+                    SendAndApply(msg);
+                }
+            }
+            else if (!strcmp_P(cmd, P("rgb")))
+            {
+                MsgTxnMultiMode msg;
+
+                if (str.TokenCount(' ') == 4)
+                {
+                    uint8_t valR = atoi(str.TokenAtIdx(1, ' '));
+                    uint8_t valG = atoi(str.TokenAtIdx(2, ' '));
+                    uint8_t valB = atoi(str.TokenAtIdx(3, ' '));
+
+                    msg.red.color = MsgTxnMode::Color::RED;
+                    msg.red.mode  = RgbLedEffectsController::ChannelMode::LITERAL;
+                    msg.red.val   = valR;
+
+                    msg.green.color = MsgTxnMode::Color::GREEN;
+                    msg.green.mode  = RgbLedEffectsController::ChannelMode::LITERAL;
+                    msg.green.val   = valG;
+
+                    msg.blue.color = MsgTxnMode::Color::BLUE;
+                    msg.blue.mode  = RgbLedEffectsController::ChannelMode::LITERAL;
+                    msg.blue.val   = valB;
+
+                    // Log(P("RGB "), msg.red.val, " ", msg.green.val, " ", msg.blue.val);
 
                     SendAndApply(msg);
                 }
@@ -626,7 +653,7 @@ private:
                 {
                     uint8_t val = atoi(str.TokenAtIdx(1, ' '));
 
-                    Log(P("Pct "), val);
+                    // Log(P("Pct "), val);
 
                     msg.pct = val;
 
